@@ -258,6 +258,7 @@ services:
       - NGINX_MODE=${NGINX_MODE:-http}
       - DOMAINS=${DOMAINS:-app.example.local,www.app.example.local}
       - FIRST_DOMAIN=${FIRST_DOMAIN:-app.example.local}
+      - METRICS_ENABLED=${METRICS_ENABLED:-false}
     healthcheck:
       test: |
         /bin/sh -c '
@@ -272,14 +273,19 @@ services:
       start_period: 5s
     command: >
       /bin/sh -c "
-      mkdir -p /var/www/certbot/.well-known/acme-challenge && 
-      echo 'OK' > /var/www/certbot/.well-known/acme-challenge/health && 
+      mkdir -p /var/www/certbot/.well-known/acme-challenge &&
+      echo 'OK' > /var/www/certbot/.well-known/acme-challenge/health &&
       export DOMAINS='${DOMAINS}' &&
       export FIRST_DOMAIN='${FIRST_DOMAIN}' &&
       echo 'Using domains: '$DOMAINS &&
       echo 'Using first domain: '$FIRST_DOMAIN &&
-      envsubst '$${DOMAINS} $${FIRST_DOMAIN}' < /etc/nginx/nginx.conf.template.${NGINX_MODE} > /etc/nginx/nginx.conf && 
-      nginx -t && 
+      if [ \"$${METRICS_ENABLED}\" != \"true\" ]; then
+        sed '/# METRICS_GRAFANA_UPSTREAM_START/,/# METRICS_GRAFANA_UPSTREAM_END/d; /# METRICS_GRAFANA_LOCATION_START/,/# METRICS_GRAFANA_LOCATION_END/d' /etc/nginx/nginx.conf.template.$${NGINX_MODE} > /tmp/nginx.conf.tpl;
+      else
+        cp /etc/nginx/nginx.conf.template.$${NGINX_MODE} /tmp/nginx.conf.tpl;
+      fi &&
+      envsubst '$${DOMAINS} $${FIRST_DOMAIN}' < /tmp/nginx.conf.tpl > /etc/nginx/nginx.conf &&
+      nginx -t &&
       nginx -g 'daemon off;'"
     volumes:
       - ./.docker/nginx/nginx.conf.template.http:/etc/nginx/nginx.conf.template.http:ro
@@ -309,8 +315,6 @@ services:
           memory: 128M
     depends_on:
       core-api:
-        condition: service_started
-      grafana:
         condition: service_started
 
   # Сервис для первоначального получения сертификатов

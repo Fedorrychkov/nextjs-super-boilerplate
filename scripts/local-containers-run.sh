@@ -6,11 +6,15 @@ CERTBOT_DIR="${PROJECT_ROOT}/certbot"
 CERTS_DIR="${PROJECT_ROOT}/certs"
 COMPOSE_FILE="${PROJECT_ROOT}/docker-compose.local.yml"
 
-# Управление миграциями
 DEPLOY_STATE_DIR="${PROJECT_ROOT}/.deploy"
 mkdir -p "$DEPLOY_STATE_DIR"
-# По умолчанию миграции отключены, нужно явно включить через MIGRATIONS_RUN=true
 MIGRATIONS_RUN=${MIGRATIONS_RUN:-false}
+REDIS_ENABLED=${REDIS_ENABLED:-false}
+METRICS_ENABLED=${METRICS_ENABLED:-false}
+
+CORE_SERVICES="core-api"
+[ "$REDIS_ENABLED" = "true" ] && CORE_SERVICES="core-api redis"
+METRICS_SERVICES="prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana"
 
 # Общие функции
 if [ -f "${PROJECT_ROOT}/scripts/lib/deploy-utils.sh" ]; then
@@ -21,7 +25,6 @@ else
     exit 1
 fi
 
-# Режим отката: поднимаем core-api+redis, делаем rollback N миграций, останавливаем
 function rollback_mode() {
     local env=${1:-stage}
     local env_file=$(get_env_file $env)
@@ -29,7 +32,7 @@ function rollback_mode() {
     echo "Starting rollback mode..."
     API_ENV=${env} \
     ENV_FILE=${env_file} \
-    docker-compose -f ${COMPOSE_FILE} up -d core-api redis
+    docker-compose -f ${COMPOSE_FILE} up -d $CORE_SERVICES
 
     echo "Waiting for core-api to be ready for rollback..."
     attempts=0; max_attempts=20
@@ -56,9 +59,9 @@ function rollback_mode() {
         echo "No migrations to rollback."
     fi
 
-    echo "Stopping core-api and redis after rollback..."
-    docker-compose -f ${COMPOSE_FILE} stop core-api redis
-    docker-compose -f ${COMPOSE_FILE} rm -f core-api redis
+    echo "Stopping core services after rollback..."
+    docker-compose -f ${COMPOSE_FILE} stop $CORE_SERVICES
+    docker-compose -f ${COMPOSE_FILE} rm -f $CORE_SERVICES
 
     echo "Clearing migrations state files..."
     clear_migrations_state "$env"
@@ -84,7 +87,7 @@ function bg_validate_green() {
     export SUFFIX=-green
     API_ENV=${env} \
     ENV_FILE=${env_file} \
-    docker-compose -f ${COMPOSE_FILE} up -d core-api redis
+    docker-compose -f ${COMPOSE_FILE} up -d $CORE_SERVICES
 
     echo "Waiting for GREEN core-api to become healthy..."
     attempts=0; max_attempts=30
@@ -121,7 +124,7 @@ function bg_down_green() {
     docker rm -f api-service-green redis-green 2>/dev/null || true
 }
 
-# Ручной перевыпуск сертификатов
+# Manual certificate renewal
 function renew_certificates() {
     local env=${1:-stage}
     local env_file=$(get_env_file $env)
@@ -153,16 +156,16 @@ function renew_certificates() {
 }
 
 
-# Получаем дополнительные параметры docker-compose
+# Get additional docker-compose parameters
 DOCKER_OPTS="${@:3}"
 
-# Проверка наличия docker-compose.local.yml
+# Check if docker-compose.local.yml exists
 if [ ! -f "$COMPOSE_FILE" ]; then
     echo "Error: docker-compose.local.yml not found at $COMPOSE_FILE"
     exit 1
 fi
 
-# Запуск в режиме HTTP
+# Start in HTTP mode
 function start_http() {
     check_resources
 
@@ -186,14 +189,14 @@ function start_http() {
         docker pull "$CORE_API_IMAGE"
         export CORE_API_IMAGE
         API_ENV=$env ENV_FILE=$env_file NGINX_MODE=http DOMAINS="$domains" FIRST_DOMAIN="$FIRST_DOMAIN" \
-            docker-compose -f ${COMPOSE_FILE} up ${DOCKER_OPTS} core-api redis nginx
+            docker-compose -f ${COMPOSE_FILE} up ${DOCKER_OPTS} $CORE_SERVICES nginx
     else
         API_ENV=$env \
         ENV_FILE=$env_file \
         NGINX_MODE=http \
         DOMAINS="$domains" \
         FIRST_DOMAIN="$FIRST_DOMAIN" \
-        docker-compose -f ${COMPOSE_FILE} up ${DOCKER_OPTS} --build core-api redis nginx
+        docker-compose -f ${COMPOSE_FILE} up ${DOCKER_OPTS} --build $CORE_SERVICES nginx
     fi
 }
 
@@ -202,10 +205,10 @@ function start_https() {
 
     local env=${1:-stage}
     local raw_domains="$*"
-    # Парсим опциональный флаг --migrationsRun=true|false (устаревший, используйте MIGRATIONS_RUN env var)
+    # Parse optional --migrationsRun=true|false flag (deprecated, use MIGRATIONS_RUN env var)
     if [[ "$raw_domains" =~ --migrationsRun=([^[:space:]]+) ]]; then
         MIGRATIONS_RUN="${BASH_REMATCH[1]}"
-        # Убираем флаг из доменов
+        # Remove flag from domains
         raw_domains=$(echo "$raw_domains" | sed 's/--migrationsRun=[^ ]*//')
     fi
     local domains=$(parse_domains "$raw_domains")
@@ -241,9 +244,9 @@ function start_https() {
     fi
 
     echo "Stage 1: Starting API service..."
-    docker-compose -f ${COMPOSE_FILE} up -d core-api redis
+    docker-compose -f ${COMPOSE_FILE} up -d $CORE_SERVICES
 
-    # Ждем здоровья API перед миграциями
+    # Wait for API health before migrations
     echo "Waiting for core-api to become healthy..."
     attempts=0; max_attempts=30
     while true; do
@@ -260,7 +263,7 @@ function start_https() {
         sleep 2
     done
 
-    # Миграции до включения HTTPS
+    # Migrations before enabling HTTPS
     echo "Stage 1.1: Running DB migrations (MIGRATIONS_RUN=$MIGRATIONS_RUN)..."
     newly_applied_migs=$(run_migrations_flow "$env") || migs_rc=$?
     migs_rc=${migs_rc:-0}
@@ -309,12 +312,12 @@ function start_https() {
         exit 1
     fi
 
-    # Ждем получения сертификатов (через Docker volume, а не локальную папку)
+    # Wait for certificates (through Docker volume, not local folder)
     echo "Waiting for certificates..."
     attempts=0
     max_attempts=30
 
-    # Фиксированное имя volume (можно переопределить переменной LE_VOLUME_NAME)
+    # Fixed volume name (can be overridden by LE_VOLUME_NAME variable)
     le_volume="${LE_VOLUME_NAME:-letsencrypt_certs}"
     echo "Debug: Using letsencrypt volume: ${le_volume}"
 
@@ -339,25 +342,25 @@ function start_https() {
     echo "Stage 4: Switching nginx to HTTPS mode..."
     export NGINX_MODE=https
 
-    # Останавливаем в правильном порядке
+    # Stop containers in the correct order
     echo "Debug: Stopping containers in order..."
-    docker-compose -f ${COMPOSE_FILE} stop core-api redis
-    docker-compose -f ${COMPOSE_FILE} rm -f core-api redis
+    docker-compose -f ${COMPOSE_FILE} stop $CORE_SERVICES
+    docker-compose -f ${COMPOSE_FILE} rm -f $CORE_SERVICES
     
     docker-compose -f ${COMPOSE_FILE} stop nginx
     docker-compose -f ${COMPOSE_FILE} rm -f nginx
 
-    # Добавляем паузу
+    # Add pause
     sleep 5
 
-    # Запускаем в правильном порядке
+    # Start containers in the correct order
     echo "Debug: Starting containers in order..."
     API_ENV=${env} \
     ENV_FILE=${env_file} \
     NGINX_MODE=https \
     DOMAINS="$domains" \
     FIRST_DOMAIN="$FIRST_DOMAIN" \
-    docker-compose -f ${COMPOSE_FILE} up -d core-api redis
+    docker-compose -f ${COMPOSE_FILE} up -d $CORE_SERVICES
 
     sleep 5
 
@@ -368,7 +371,7 @@ function start_https() {
     FIRST_DOMAIN="$FIRST_DOMAIN" \
     docker-compose -f ${COMPOSE_FILE} up -d nginx
 
-    # Проверяем, что контейнеры получили правильные имена
+    # Check if containers have the correct names
     if ! docker ps --format '{{.Names}}' | grep -q "api-service"; then
         echo "Error: core-api container not found with correct name"
         container_id=$(docker ps -q --filter "name=_core-api")
@@ -385,17 +388,17 @@ function start_https() {
         fi
     fi
 
-    # Добавляем отладочную информацию
+    # Add debug information
     echo "Debug: Current environment variables:"
     echo "DOMAINS=$DOMAINS"
     echo "FIRST_DOMAIN=$FIRST_DOMAIN"
     echo "NGINX_MODE=$NGINX_MODE"
 
-    # Проверяем статус контейнера перед остановкой
+    # Check container status before stopping
     echo "Debug: Container status before stop:"
     docker-compose -f ${COMPOSE_FILE} ps nginx
 
-    # Пересоздаем health check файл перед рестартом nginx
+    # Recreate health check file before restarting nginx
     echo "Debug: Creating health check file..."
     docker-compose -f ${COMPOSE_FILE} exec nginx sh -c "
         echo 'Debug: Current directory structure:' &&
@@ -409,12 +412,12 @@ function start_https() {
     echo "Debug: Checking nginx configuration..."
     docker-compose -f ${COMPOSE_FILE} exec nginx nginx -T
 
-    # Проверяем статус после перезапуска
+    # Check container status after restart
     echo "Debug: Container status after restart:"
     docker-compose -f ${COMPOSE_FILE} ps nginx
     docker-compose -f ${COMPOSE_FILE} logs nginx
 
-    # Добавляем паузу после создания контейнеров
+    # Add pause after creating containers
     echo "Waiting for containers to initialize..."
     sleep 10
 
@@ -460,7 +463,7 @@ function start_https() {
     
     echo "HTTPS setup completed successfully!"
 
-    # После успешного поднятия сервиса очищаем записи о количестве миграций
+    # After successful service startup, clean up the migration count records
     if [ -f "${DEPLOY_STATE_DIR}/last_new_migrations_${env}.count" ]; then
         echo "Cleaning migrations delta state file..."
         : > "${DEPLOY_STATE_DIR}/last_new_migrations_${env}.count"
@@ -470,13 +473,18 @@ function start_https() {
         : > "${DEPLOY_STATE_DIR}/migrations_${env}.count"
     fi
 
-    echo "Starting monitoring services..."
-    docker-compose -f ${COMPOSE_FILE} up -d prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana redis
-
-    echo "Monitoring services started successfully!"
+    if [ "$METRICS_ENABLED" = "true" ] || [ "$REDIS_ENABLED" = "true" ]; then
+        echo "Starting optional services (metrics and/or redis)..."
+        EXTRA_SERVICES=""
+        [ "$METRICS_ENABLED" = "true" ] && EXTRA_SERVICES="$METRICS_SERVICES"
+        [ "$REDIS_ENABLED" = "true" ] && EXTRA_SERVICES="$EXTRA_SERVICES redis"
+        EXTRA_SERVICES=$(echo "$EXTRA_SERVICES")
+        docker-compose -f ${COMPOSE_FILE} up -d $EXTRA_SERVICES
+        echo "Optional services started."
+    fi
 }
 
-# Полная пересборка
+# Full rebuild
 function rebuild() {
     cd ${PROJECT_ROOT}
     prepare_dirs
@@ -490,15 +498,15 @@ function rebuild() {
     docker-compose -f ${COMPOSE_FILE} up ${DOCKER_OPTS}
 }
 
-# Очистка
+# Cleanup
 function clean() {
     cd ${PROJECT_ROOT}
     
     echo "🛑 Stopping containers..."
-    # На всякий случай, пробуем через docker-compose
+    # Try to stop containers through docker-compose
     docker-compose -f ${COMPOSE_FILE} down --remove-orphans
 
-    # Принудительно останавливаем все контейнеры проекта (включая green)
+    # Force stop all containers in the project (including green)
     docker stop service-api-certbot-init service-api-certbot core-nginx-service api-service api-service-green prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana redis redis-green 2>/dev/null || true
     docker rm -f service-api-certbot-init service-api-certbot core-nginx-service api-service api-service-green prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana redis redis-green 2>/dev/null || true
 
@@ -537,7 +545,9 @@ case "$1" in
     *) 
         echo "Usage: ./scripts/local-containers-run.sh [http|https|rebuild|clean|renew-certs] [stage|prod] [-d domain1.com,domain2.com]"
         echo "Environment variables:"
-        echo "  MIGRATIONS_RUN=true|false  - Enable/disable database migrations (default: false)"
+        echo "  MIGRATIONS_RUN=true|false   - Enable/disable database migrations (default: false)"
+        echo "  REDIS_ENABLED=true|false   - Start Redis container (default: false)"
+        echo "  METRICS_ENABLED=true|false  - Start metrics stack (prometheus, grafana, loki, etc.) (default: false)"
         echo "  DEPLOY_MODE=default|registry - default: build on server; registry: use CORE_API_IMAGE (pull only)"
         echo "  CORE_API_IMAGE=<image>     - When DEPLOY_MODE=registry, image to pull (e.g. ghcr.io/owner/sapian-web-core-api:sha)"
         echo "Commands:"

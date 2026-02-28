@@ -14,9 +14,11 @@ http {
         server api-service:3000;  # Используем новое фиксированное имя контейнера
     }
 
+    # METRICS_GRAFANA_UPSTREAM_START
     upstream grafana {
         server grafana:3000;
     }
+    # METRICS_GRAFANA_UPSTREAM_END
 
     # Обновляем настройки real_ip
     real_ip_recursive on;  # Включаем рекурсивный поиск реального IP
@@ -108,6 +110,7 @@ http {
             add_header X-Real-Path $request_filename always;
         }
 
+        # METRICS_GRAFANA_LOCATION_START
         # Проксирование Grafana (subpath /grafana/)
         location /grafana/ {
             proxy_pass http://grafana/grafana/;
@@ -123,6 +126,7 @@ http {
             proxy_send_timeout 60s;
             proxy_read_timeout 60s;
         }
+        # METRICS_GRAFANA_LOCATION_END
 
         location / {
             set $original_client_ip $http_x_forwarded_for;

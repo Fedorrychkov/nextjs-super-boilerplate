@@ -64,10 +64,15 @@ on:
         default: ''
         type: string
 
-      grafana_enabled:
-        description: Enable grafana
+      redis_enabled:
+        description: Enable Redis (pull and start redis container)
         required: false
-        default: true
+        default: false
+        type: boolean
+      metrics_enabled:
+        description: Enable metrics/monitoring stack (prometheus, grafana, loki, etc.)
+        required: false
+        default: false
         type: boolean
 
       certbot_email:
@@ -165,7 +170,7 @@ jobs:
           TG_API_ENV: ${{ inputs.api_env }}
           TG_NGINX_MODE: ${{ inputs.nginx_mode }}
           TG_DOMAIN: ${{ inputs.domain }}
-          TG_GRAFANA_ENABLED: ${{ inputs.grafana_enabled }}
+          TG_METRICS_ENABLED: ${{ inputs.metrics_enabled }}
           GITHUB_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
           GITHUB_BRANCH_URL: https://github.com/${{ github.repository }}/tree/${{ github.ref_name }}
           GITHUB_COMMIT_URL: https://github.com/${{ github.repository }}/commit/${{ github.sha }}
@@ -246,12 +251,14 @@ jobs:
           GHCR_TOKEN: ${{ secrets.ghcr_token }}
           GRAFANA_ADMIN_USER: ${{ inputs.grafana_admin_user }}
           GRAFANA_ADMIN_PASSWORD: ${{ inputs.grafana_admin_password }}
+          REDIS_ENABLED: ${{ inputs.redis_enabled }}
+          METRICS_ENABLED: ${{ inputs.metrics_enabled }}
         with:
           host: ${{ secrets.server_host }}
           username: ${{ secrets.server_username }}
           password: ${{ secrets.server_password }}
           port: 22
-          envs: GH_USERNAME, GITHUB_TOKEN, DEPLOY_MODE, CORE_API_IMAGE, GHCR_USERNAME, GHCR_TOKEN, GRAFANA_ADMIN_USER, GRAFANA_ADMIN_PASSWORD
+          envs: GH_USERNAME, GITHUB_TOKEN, DEPLOY_MODE, CORE_API_IMAGE, GHCR_USERNAME, GHCR_TOKEN, GRAFANA_ADMIN_USER, GRAFANA_ADMIN_PASSWORD, REDIS_ENABLED, METRICS_ENABLED
           command_timeout: 25m
           script: |
             if [ "$DEPLOY_MODE" = "registry" ]; then
@@ -262,6 +269,13 @@ jobs:
               echo "Logging in to ghcr.io..."
               echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin || exit 1
             fi
+
+            REDIS_ENABLED=${REDIS_ENABLED:-false}
+            METRICS_ENABLED=${METRICS_ENABLED:-false}
+            CORE_UP="core-api"; [ "$REDIS_ENABLED" = "true" ] && CORE_UP="core-api redis"
+            METRICS_SERVICES="prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana"
+            EXTRA_UP="certbot"; [ "$METRICS_ENABLED" = "true" ] && EXTRA_UP="$EXTRA_UP $METRICS_SERVICES"; [ "$REDIS_ENABLED" = "true" ] && EXTRA_UP="$EXTRA_UP redis"
+            EXTRA_STOP="certbot"; [ "$METRICS_ENABLED" = "true" ] && EXTRA_STOP="$EXTRA_STOP $METRICS_SERVICES"
 
             docker volume create letsencrypt_certs || true
             docker volume create certbot_logs || true
@@ -305,9 +319,9 @@ jobs:
                   cd "$HOME/app"
                   chmod +x scripts/local-containers-run.sh || true
                   API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }} \
-                    docker-compose -f docker-compose.local.yml stop core-api redis || true
+                    docker-compose -f docker-compose.local.yml stop $CORE_UP || true
                   API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }} \
-                    docker-compose -f docker-compose.local.yml rm -f core-api redis || true
+                    docker-compose -f docker-compose.local.yml rm -f $CORE_UP || true
                   if [ "$DEPLOY_MODE" = "registry" ] && [ -n "$CORE_API_IMAGE" ]; then
                     docker pull "$CORE_API_IMAGE"
                   else
@@ -315,7 +329,7 @@ jobs:
                       docker-compose -f docker-compose.local.yml build --no-cache core-api
                   fi
                   API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }} CORE_API_IMAGE="$CORE_API_IMAGE" \
-                    docker-compose -f docker-compose.local.yml up -d core-api redis
+                    docker-compose -f docker-compose.local.yml up -d $CORE_UP
                   docker kill -s HUP core-nginx-service || ( \
                     API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} \
                       docker-compose -f docker-compose.local.yml stop nginx || true; \
@@ -326,11 +340,11 @@ jobs:
                   ) || true
                   MIGRATIONS_RUN=${{ inputs.migrations_run }} ./scripts/local-containers-run.sh bg-down ${{ inputs.api_env }} || true
                   API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} \
-                    docker-compose -f docker-compose.local.yml stop certbot prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana || true
+                    docker-compose -f docker-compose.local.yml stop $EXTRA_STOP || true
                   API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} \
-                    docker-compose -f docker-compose.local.yml rm -f certbot prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana || true
+                    docker-compose -f docker-compose.local.yml rm -f $EXTRA_STOP || true
                   API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} \
-                    docker-compose -f docker-compose.local.yml up -d certbot prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana redis
+                    docker-compose -f docker-compose.local.yml up -d $EXTRA_UP
                 fi
               else
                 echo "No app_new found. Falling back to cold deploy path."
@@ -356,13 +370,14 @@ jobs:
               fi
               cd "$HOME/app"
               chmod +x scripts/local-containers-run.sh
-              MIGRATIONS_RUN=${{ inputs.migrations_run }} CERTBOT_TEST_MODE=${{ inputs.certbot_test_mode }} CERTBOT_EMAIL=${{ inputs.certbot_email }} ./scripts/local-containers-run.sh https ${{ inputs.api_env }} -d ${{ inputs.domain }}
+              MIGRATIONS_RUN=${{ inputs.migrations_run }} CERTBOT_TEST_MODE=${{ inputs.certbot_test_mode }} CERTBOT_EMAIL=${{ inputs.certbot_email }} REDIS_ENABLED=$REDIS_ENABLED METRICS_ENABLED=$METRICS_ENABLED ./scripts/local-containers-run.sh https ${{ inputs.api_env }} -d ${{ inputs.domain }}
+              COLD_STOP="$EXTRA_STOP"; [ "$REDIS_ENABLED" = "true" ] && COLD_STOP="$COLD_STOP redis"
               API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} \
-                docker-compose -f docker-compose.local.yml stop prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana || true
+                docker-compose -f docker-compose.local.yml stop $COLD_STOP || true
               API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} \
-                docker-compose -f docker-compose.local.yml rm -f prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana || true
+                docker-compose -f docker-compose.local.yml rm -f $COLD_STOP || true
               API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} \
-                docker-compose -f docker-compose.local.yml up -d prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana
+                docker-compose -f docker-compose.local.yml up -d $EXTRA_UP
             fi
 
       - name: 🧹 Cleanup backup on success
@@ -428,7 +443,7 @@ jobs:
         TG_API_ENV: ${{ inputs.api_env }}
         TG_NGINX_MODE: ${{ inputs.nginx_mode }}
         TG_DOMAIN: ${{ inputs.domain }}
-        TG_GRAFANA_ENABLED: ${{ inputs.grafana_enabled }}
+        TG_METRICS_ENABLED: ${{ inputs.metrics_enabled }}
         GITHUB_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
         GITHUB_BRANCH_URL: https://github.com/${{ github.repository }}/tree/${{ github.ref_name }}
         GITHUB_COMMIT_URL: https://github.com/${{ github.repository }}/commit/${{ github.sha }}
@@ -454,7 +469,7 @@ jobs:
         TG_API_ENV: ${{ inputs.api_env }}
         TG_NGINX_MODE: ${{ inputs.nginx_mode }}
         TG_DOMAIN: ${{ inputs.domain }}
-        TG_GRAFANA_ENABLED: ${{ inputs.grafana_enabled }}
+        TG_METRICS_ENABLED: ${{ inputs.metrics_enabled }}
         GITHUB_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
         GITHUB_BRANCH_URL: https://github.com/${{ github.repository }}/tree/${{ github.ref_name }}
         GITHUB_COMMIT_URL: https://github.com/${{ github.repository }}/commit/${{ github.sha }}
@@ -480,7 +495,7 @@ jobs:
         TG_API_ENV: ${{ inputs.api_env }}
         TG_NGINX_MODE: ${{ inputs.nginx_mode }}
         TG_DOMAIN: ${{ inputs.domain }}
-        TG_GRAFANA_ENABLED: ${{ inputs.grafana_enabled }}
+        TG_METRICS_ENABLED: ${{ inputs.metrics_enabled }}
         GITHUB_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
         GITHUB_BRANCH_URL: https://github.com/${{ github.repository }}/tree/${{ github.ref_name }}
         GITHUB_COMMIT_URL: https://github.com/${{ github.repository }}/commit/${{ github.sha }}
