@@ -6,8 +6,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { useProfileQuery, useRefreshTokenQuery } from '~/query/auth'
 
 import { AuthUserContext } from './useAuth'
+import { routes } from '~/constants'
+import { UserRole } from '~/api/user'
 
-const expectedRoutes = ['/login', '/logout', '/refresh']
+const expectedRoutes = [routes.home.path, routes.login.path, routes.logout.path, routes.refresh.path, routes.uiKit.path]
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isClient, setIsClient] = useState(false)
@@ -37,13 +39,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return {
       authUser: profile ?? null,
       isLoading: isLoading || !isClient,
-      isFetched,
-      isAdmin: ['admin'].includes(profile?.role ?? ''),
-      role: profile?.role ?? null,
+      isFetched: isEnabled ? isFetched : true,
+      isAdmin: profile?.role ? [UserRole.ADMIN].includes(profile?.role) : false,
+      role: profile?.role ? profile?.role : null,
       refetch: async () => refetch(),
       isClient,
     }
-  }, [profile, isLoading, isFetched, isClient, refetch])
+  }, [profile, isLoading, isFetched, isClient, refetch, isEnabled])
 
   return <AuthUserContext.Provider value={values}>{children}</AuthUserContext.Provider>
 }

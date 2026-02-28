@@ -33,19 +33,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <title>Circle Test APP</title>
-        <meta name="description" content="Circle Test" />
+        <title>Production Ready Next.js Boilerplate</title>
+        <meta name="description" content="You can use this boilerplate to start your best next project" />
         <link rel="icon" href="/favicon.ico" />
-        <link rel="apple-touch-icon" href="/favicon-32x32.png" />
 
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="application-name" content="Circle Test" />
-        <meta name="apple-mobile-web-app-title" content="Circle Test" />
+        <meta name="application-name" content="Production Ready Next.js Boilerplate" />
+        <meta name="apple-mobile-web-app-title" content="Production Ready Next.js Boilerplate" />
         <meta name="msapplication-starturl" content="/" />
-
-        <link rel="apple-touch-icon" sizes="512x512" href="/android-chrome-512x512.png" />
-        <link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png" />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <QueryProvider>

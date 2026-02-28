@@ -117,7 +117,7 @@ const Footer = () => {
 const ProfileSection = () => {
   const router = useRouter()
 
-  const { authUser, isLoading } = useAuth()
+  const { authUser, isLoading, isFetched } = useAuth()
 
   return (
     <div className="p-4 border-b border-gray-200">
@@ -126,11 +126,11 @@ const ProfileSection = () => {
           <User className="h-6 w-6 min-w-6 min-h-6" />
         </div>
         <div className="w-full overflow-hidden">
-          {isLoading || !authUser ? (
+          {isLoading || !isFetched ? (
             <Skeleton width="100%" height={24} />
           ) : (
             <div className="flex flex-col gap-1">
-              <p className="text-sm text-gray-500 truncate">{authUser?.email}</p>
+              <p className="text-sm text-gray-500 truncate">{authUser?.email ?? 'Anonymous'}</p>
             </div>
           )}
         </div>
