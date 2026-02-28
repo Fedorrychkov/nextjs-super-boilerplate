@@ -4,6 +4,12 @@ const {
   JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change',
   JWT_ACCESS_EXPIRES_IN = Number(process.env.JWT_ACCESS_EXPIRES_IN || 3600), // 1 hour
   JWT_REFRESH_EXPIRES_IN = Number(process.env.JWT_REFRESH_EXPIRES_IN || 15724800), // 21 days
+  MONGO_URI = process.env.MONGO_URI || '',
+  MONGO_HOST = process.env.MONGO_HOST || 'localhost',
+  MONGO_PORT = process.env.MONGO_PORT || '27017',
+  MONGO_USER = process.env.MONGO_USER || '',
+  MONGO_PASSWORD = process.env.MONGO_PASSWORD || '',
+  MONGO_DB = process.env.MONGO_DB || 'app',
 } = process.env
 
 const isDevelop = APP_ENV === 'development'
@@ -17,4 +23,14 @@ const JWT_CONFIG = {
   refreshExpiresIn: JWT_REFRESH_EXPIRES_IN,
 }
 
-export { APP_ENV, isDevelop, isProd, isStage, NEXT_PUBLIC_APP_ENV, JWT_CONFIG }
+// MongoDB: use MONGO_URI (e.g. for Atlas or full DSN) or build from host/port/user/password/db (e.g. local container mongo:27017)
+const MONGODB_CONFIG = {
+  uri: MONGO_URI || undefined,
+  host: MONGO_HOST,
+  port: Number(MONGO_PORT) || 27017,
+  user: MONGO_USER || undefined,
+  password: MONGO_PASSWORD || undefined,
+  db: MONGO_DB,
+}
+
+export { APP_ENV, isDevelop, isProd, isStage, NEXT_PUBLIC_APP_ENV, JWT_CONFIG, MONGODB_CONFIG }

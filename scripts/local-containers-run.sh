@@ -11,9 +11,11 @@ mkdir -p "$DEPLOY_STATE_DIR"
 MIGRATIONS_RUN=${MIGRATIONS_RUN:-false}
 REDIS_ENABLED=${REDIS_ENABLED:-false}
 METRICS_ENABLED=${METRICS_ENABLED:-false}
+MONGO_ENABLED=${MONGO_ENABLED:-false}
 
 CORE_SERVICES="core-api"
-[ "$REDIS_ENABLED" = "true" ] && CORE_SERVICES="core-api redis"
+[ "$REDIS_ENABLED" = "true" ] && CORE_SERVICES="$CORE_SERVICES redis"
+[ "$MONGO_ENABLED" = "true" ] && CORE_SERVICES="$CORE_SERVICES mongo"
 METRICS_SERVICES="prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana"
 
 # Общие функции
@@ -75,8 +77,8 @@ function bg_validate_green() {
 
     # Clean up any existing green containers to avoid ContainerConfig errors
     echo "Cleaning up any existing green containers..."
-    docker stop api-service-green redis-green 2>/dev/null || true
-    docker rm -f api-service-green redis-green 2>/dev/null || true
+    docker stop api-service-green redis-green mongo-green 2>/dev/null || true
+    docker rm -f api-service-green redis-green mongo-green 2>/dev/null || true
 
     if [ "${DEPLOY_MODE:-default}" = "registry" ] && [ -n "${CORE_API_IMAGE:-}" ]; then
         echo "DEPLOY_MODE=registry: pulling core-api image $CORE_API_IMAGE"
@@ -120,8 +122,8 @@ function bg_validate_green() {
 function bg_down_green() {
     echo "Stopping GREEN stack..."
     # Принудительно останавливаем зеленые контейнеры (docker-compose может не найти их из-за SUFFIX)
-    docker stop api-service-green redis-green 2>/dev/null || true
-    docker rm -f api-service-green redis-green 2>/dev/null || true
+    docker stop api-service-green redis-green mongo-green 2>/dev/null || true
+    docker rm -f api-service-green redis-green mongo-green 2>/dev/null || true
 }
 
 # Manual certificate renewal
@@ -473,11 +475,12 @@ function start_https() {
         : > "${DEPLOY_STATE_DIR}/migrations_${env}.count"
     fi
 
-    if [ "$METRICS_ENABLED" = "true" ] || [ "$REDIS_ENABLED" = "true" ]; then
-        echo "Starting optional services (metrics and/or redis)..."
+    if [ "$METRICS_ENABLED" = "true" ] || [ "$REDIS_ENABLED" = "true" ] || [ "$MONGO_ENABLED" = "true" ]; then
+        echo "Starting optional services (metrics, redis, mongo)..."
         EXTRA_SERVICES=""
         [ "$METRICS_ENABLED" = "true" ] && EXTRA_SERVICES="$METRICS_SERVICES"
         [ "$REDIS_ENABLED" = "true" ] && EXTRA_SERVICES="$EXTRA_SERVICES redis"
+        [ "$MONGO_ENABLED" = "true" ] && EXTRA_SERVICES="$EXTRA_SERVICES mongo"
         EXTRA_SERVICES=$(echo "$EXTRA_SERVICES")
         docker-compose -f ${COMPOSE_FILE} up -d $EXTRA_SERVICES
         echo "Optional services started."
@@ -506,9 +509,8 @@ function clean() {
     # Try to stop containers through docker-compose
     docker-compose -f ${COMPOSE_FILE} down --remove-orphans
 
-    # Force stop all containers in the project (including green)
-    docker stop service-api-certbot-init service-api-certbot core-nginx-service api-service api-service-green prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana redis redis-green 2>/dev/null || true
-    docker rm -f service-api-certbot-init service-api-certbot core-nginx-service api-service api-service-green prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana redis redis-green 2>/dev/null || true
+    docker stop service-api-certbot-init service-api-certbot core-nginx-service api-service api-service-green prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana redis redis-green mongo mongo-green 2>/dev/null || true
+    docker rm -f service-api-certbot-init service-api-certbot core-nginx-service api-service api-service-green prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana redis redis-green mongo mongo-green 2>/dev/null || true
 
     # Clean up old app_new images
     echo "Cleaning up old app_new images..."
@@ -548,6 +550,7 @@ case "$1" in
         echo "  MIGRATIONS_RUN=true|false   - Enable/disable database migrations (default: false)"
         echo "  REDIS_ENABLED=true|false   - Start Redis container (default: false)"
         echo "  METRICS_ENABLED=true|false  - Start metrics stack (prometheus, grafana, loki, etc.) (default: false)"
+        echo "  MONGO_ENABLED=true|false   - Start MongoDB container (default: false). If false, use MONGO_URI to external cluster."
         echo "  DEPLOY_MODE=default|registry - default: build on server; registry: use CORE_API_IMAGE (pull only)"
         echo "  CORE_API_IMAGE=<image>     - When DEPLOY_MODE=registry, image to pull (e.g. ghcr.io/owner/sapian-web-core-api:sha)"
         echo "Commands:"

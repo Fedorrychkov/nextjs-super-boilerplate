@@ -389,8 +389,26 @@ services:
         max-size: "2g"
         max-file: "3"
 
+  mongo:
+    container_name: mongo${SUFFIX}
+    image: mongo:7.2
+    restart: always
+    networks:
+      - api_network
+    expose:
+      - 27017
+    volumes:
+      - mongo_data:/data/db
+    logging:
+      driver: "json-file"
+      options:
+        tag: "{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}"
+        max-size: "2g"
+        max-file: "3"
+
 volumes:
   redis_data:
+  mongo_data:
   letsencrypt_certs:
     name: letsencrypt_certs
   certbot_logs:

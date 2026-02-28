@@ -28,6 +28,7 @@ jobs:
       tag: 'tag.example'
       redis_enabled: false
       metrics_enabled: false
+      mongo_enabled: true
       certbot_email: example@example.com
 
     secrets:

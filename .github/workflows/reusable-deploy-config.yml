@@ -74,6 +74,11 @@ on:
         required: false
         default: false
         type: boolean
+      mongo_enabled:
+        description: Enable MongoDB container (local). If false, use external cluster via MONGO_URI in env.
+        required: false
+        default: false
+        type: boolean
 
       certbot_email:
         description: Certbot email
@@ -253,12 +258,13 @@ jobs:
           GRAFANA_ADMIN_PASSWORD: ${{ inputs.grafana_admin_password }}
           REDIS_ENABLED: ${{ inputs.redis_enabled }}
           METRICS_ENABLED: ${{ inputs.metrics_enabled }}
+          MONGO_ENABLED: ${{ inputs.mongo_enabled }}
         with:
           host: ${{ secrets.server_host }}
           username: ${{ secrets.server_username }}
           password: ${{ secrets.server_password }}
           port: 22
-          envs: GH_USERNAME, GITHUB_TOKEN, DEPLOY_MODE, CORE_API_IMAGE, GHCR_USERNAME, GHCR_TOKEN, GRAFANA_ADMIN_USER, GRAFANA_ADMIN_PASSWORD, REDIS_ENABLED, METRICS_ENABLED
+          envs: GH_USERNAME, GITHUB_TOKEN, DEPLOY_MODE, CORE_API_IMAGE, GHCR_USERNAME, GHCR_TOKEN, GRAFANA_ADMIN_USER, GRAFANA_ADMIN_PASSWORD, REDIS_ENABLED, METRICS_ENABLED, MONGO_ENABLED
           command_timeout: 25m
           script: |
             if [ "$DEPLOY_MODE" = "registry" ]; then
@@ -272,13 +278,15 @@ jobs:
 
             REDIS_ENABLED=${REDIS_ENABLED:-false}
             METRICS_ENABLED=${METRICS_ENABLED:-false}
-            CORE_UP="core-api"; [ "$REDIS_ENABLED" = "true" ] && CORE_UP="core-api redis"
+            MONGO_ENABLED=${MONGO_ENABLED:-false}
+            CORE_UP="core-api"; [ "$REDIS_ENABLED" = "true" ] && CORE_UP="$CORE_UP redis"; [ "$MONGO_ENABLED" = "true" ] && CORE_UP="$CORE_UP mongo"
             METRICS_SERVICES="prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana"
-            EXTRA_UP="certbot"; [ "$METRICS_ENABLED" = "true" ] && EXTRA_UP="$EXTRA_UP $METRICS_SERVICES"; [ "$REDIS_ENABLED" = "true" ] && EXTRA_UP="$EXTRA_UP redis"
-            EXTRA_STOP="certbot"; [ "$METRICS_ENABLED" = "true" ] && EXTRA_STOP="$EXTRA_STOP $METRICS_SERVICES"
+            EXTRA_UP="certbot"; [ "$METRICS_ENABLED" = "true" ] && EXTRA_UP="$EXTRA_UP $METRICS_SERVICES"; [ "$REDIS_ENABLED" = "true" ] && EXTRA_UP="$EXTRA_UP redis"; [ "$MONGO_ENABLED" = "true" ] && EXTRA_UP="$EXTRA_UP mongo"
+            EXTRA_STOP="certbot"; [ "$METRICS_ENABLED" = "true" ] && EXTRA_STOP="$EXTRA_STOP $METRICS_SERVICES"; [ "$REDIS_ENABLED" = "true" ] && EXTRA_STOP="$EXTRA_STOP redis"; [ "$MONGO_ENABLED" = "true" ] && EXTRA_STOP="$EXTRA_STOP mongo"
 
             docker volume create letsencrypt_certs || true
             docker volume create certbot_logs || true
+            docker volume create mongo_data || true
 
             USE_BG=false
             if [ "${{ inputs.blue_green_enabled }}" = "true" ]; then
@@ -303,8 +311,8 @@ jobs:
                 chmod +x scripts/local-containers-run.sh || true
                 if ! MIGRATIONS_RUN=${{ inputs.migrations_run }} ./scripts/local-containers-run.sh bg-validate ${{ inputs.api_env }}; then
                   echo "Blue/Green validation failed. Cleaning up and falling back to cold deploy."
-                  docker stop api-service-green redis-green 2>/dev/null || true
-                  docker rm -f api-service-green redis-green 2>/dev/null || true
+                  docker stop api-service-green redis-green mongo-green 2>/dev/null || true
+                  docker rm -f api-service-green redis-green mongo-green 2>/dev/null || true
                   cd "$HOME"
                   USE_BG=false
                 else
@@ -355,7 +363,7 @@ jobs:
                 if [ -d "$HOME/app" ]; then mv "$HOME/app" "$HOME/app.bak" || true; fi
                 mv "$HOME/app_new" "$HOME/app"
                 cd "$HOME/app" && chmod +x scripts/local-containers-run.sh
-                MIGRATIONS_RUN=${{ inputs.migrations_run }} CERTBOT_TEST_MODE=${{ inputs.certbot_test_mode }} CERTBOT_EMAIL=${{ inputs.certbot_email }} ./scripts/local-containers-run.sh https ${{ inputs.api_env }} -d ${{ inputs.domain }}
+                MIGRATIONS_RUN=${{ inputs.migrations_run }} CERTBOT_TEST_MODE=${{ inputs.certbot_test_mode }} CERTBOT_EMAIL=${{ inputs.certbot_email }} REDIS_ENABLED=$REDIS_ENABLED METRICS_ENABLED=$METRICS_ENABLED MONGO_ENABLED=$MONGO_ENABLED ./scripts/local-containers-run.sh https ${{ inputs.api_env }} -d ${{ inputs.domain }}
               fi
             else
               echo "Cold deploy path..."
@@ -370,8 +378,8 @@ jobs:
               fi
               cd "$HOME/app"
               chmod +x scripts/local-containers-run.sh
-              MIGRATIONS_RUN=${{ inputs.migrations_run }} CERTBOT_TEST_MODE=${{ inputs.certbot_test_mode }} CERTBOT_EMAIL=${{ inputs.certbot_email }} REDIS_ENABLED=$REDIS_ENABLED METRICS_ENABLED=$METRICS_ENABLED ./scripts/local-containers-run.sh https ${{ inputs.api_env }} -d ${{ inputs.domain }}
-              COLD_STOP="$EXTRA_STOP"; [ "$REDIS_ENABLED" = "true" ] && COLD_STOP="$COLD_STOP redis"
+              MIGRATIONS_RUN=${{ inputs.migrations_run }} CERTBOT_TEST_MODE=${{ inputs.certbot_test_mode }} CERTBOT_EMAIL=${{ inputs.certbot_email }} REDIS_ENABLED=$REDIS_ENABLED METRICS_ENABLED=$METRICS_ENABLED MONGO_ENABLED=$MONGO_ENABLED ./scripts/local-containers-run.sh https ${{ inputs.api_env }} -d ${{ inputs.domain }}
+              COLD_STOP="$EXTRA_STOP"; [ "$REDIS_ENABLED" = "true" ] && COLD_STOP="$COLD_STOP redis"; [ "$MONGO_ENABLED" = "true" ] && COLD_STOP="$COLD_STOP mongo"
               API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} \
                 docker-compose -f docker-compose.local.yml stop $COLD_STOP || true
               API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} \
