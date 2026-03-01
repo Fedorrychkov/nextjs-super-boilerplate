@@ -33,4 +33,4 @@ const MONGODB_CONFIG = {
   db: MONGO_DB,
 }
 
-export { APP_ENV, isDevelop, isProd, isStage, NEXT_PUBLIC_APP_ENV, JWT_CONFIG, MONGODB_CONFIG }
+export { APP_ENV, isDevelop, isProd, isStage, JWT_CONFIG, MONGODB_CONFIG, NEXT_PUBLIC_APP_ENV }

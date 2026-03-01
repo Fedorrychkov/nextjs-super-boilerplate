@@ -1,13 +1,13 @@
+import { AxiosError } from 'axios'
 import { cookies, headers } from 'next/headers'
 import { redirect, RedirectType } from 'next/navigation'
 
 import { ClientAuthApi } from '~/api/auth'
 import { UserRole } from '~/api/user'
+import { routes } from '~/constants'
+import { logger } from '~/utils/logger'
 
 import { getAxiosHeaders } from './getAxiosHeaders'
-import { logger } from '~/utils/logger'
-import { routes } from '~/constants'
-import { AxiosError } from 'axios'
 
 export type PageProps<T extends Record<string, unknown> | undefined = undefined> = {
   params: Promise<T>
