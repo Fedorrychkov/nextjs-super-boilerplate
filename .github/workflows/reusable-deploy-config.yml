@@ -130,6 +130,8 @@ on:
       grafana_admin_password:
         description: Grafana admin password
         required: false
+      certbot_email:
+        required: false
 
 permissions:
   contents: read
@@ -255,7 +257,7 @@ jobs:
           GH_USERNAME: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CERTBOT_TEST_MODE: ${{ inputs.certbot_test_mode }}
-          CERTBOT_EMAIL: ${{ inputs.certbot_email }}
+          CERTBOT_EMAIL: ${{ secrets.certbot_email || inputs.certbot_email }}
           DOMAINS: ${{ inputs.domain }}
           DEPLOY_MODE: ${{ env.DEPLOY_MODE }}
           CORE_API_IMAGE: ${{ env.CORE_API_IMAGE }}
@@ -370,7 +372,7 @@ jobs:
                 if [ -d "$HOME/app" ]; then mv "$HOME/app" "$HOME/app.bak" || true; fi
                 mv "$HOME/app_new" "$HOME/app"
                 cd "$HOME/app" && chmod +x scripts/local-containers-run.sh
-                MIGRATIONS_RUN=${{ inputs.migrations_run }} CERTBOT_TEST_MODE=${{ inputs.certbot_test_mode }} CERTBOT_EMAIL=${{ inputs.certbot_email }} REDIS_ENABLED=$REDIS_ENABLED METRICS_ENABLED=$METRICS_ENABLED MONGO_ENABLED=$MONGO_ENABLED ./scripts/local-containers-run.sh https ${{ inputs.api_env }} -d ${{ inputs.domain }}
+                MIGRATIONS_RUN=${{ inputs.migrations_run }} CERTBOT_TEST_MODE=${{ inputs.certbot_test_mode }} CERTBOT_EMAIL=${{ secrets.certbot_email || inputs.certbot_email }} REDIS_ENABLED=$REDIS_ENABLED METRICS_ENABLED=$METRICS_ENABLED MONGO_ENABLED=$MONGO_ENABLED ./scripts/local-containers-run.sh https ${{ inputs.api_env }} -d ${{ inputs.domain }}
               fi
             else
               echo "Cold deploy path..."
@@ -385,7 +387,7 @@ jobs:
               fi
               cd "$HOME/app"
               chmod +x scripts/local-containers-run.sh
-              MIGRATIONS_RUN=${{ inputs.migrations_run }} CERTBOT_TEST_MODE=${{ inputs.certbot_test_mode }} CERTBOT_EMAIL=${{ inputs.certbot_email }} REDIS_ENABLED=$REDIS_ENABLED METRICS_ENABLED=$METRICS_ENABLED MONGO_ENABLED=$MONGO_ENABLED ./scripts/local-containers-run.sh https ${{ inputs.api_env }} -d ${{ inputs.domain }}
+              MIGRATIONS_RUN=${{ inputs.migrations_run }} CERTBOT_TEST_MODE=${{ inputs.certbot_test_mode }} CERTBOT_EMAIL=${{ secrets.certbot_email || inputs.certbot_email }} REDIS_ENABLED=$REDIS_ENABLED METRICS_ENABLED=$METRICS_ENABLED MONGO_ENABLED=$MONGO_ENABLED ./scripts/local-containers-run.sh https ${{ inputs.api_env }} -d ${{ inputs.domain }}
               COLD_STOP="$EXTRA_STOP"; [ "$REDIS_ENABLED" = "true" ] && COLD_STOP="$COLD_STOP redis"; [ "$MONGO_ENABLED" = "true" ] && COLD_STOP="$COLD_STOP mongo"
               API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} \
                 docker-compose -f docker-compose.local.yml stop $COLD_STOP || true

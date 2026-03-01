@@ -43,3 +43,4 @@ jobs:
       tg_thread_id: ${{ secrets.TG_THREAD_ID }}
       grafana_admin_user: ${{ secrets.GRAFANA_ADMIN_USER }}
       grafana_admin_password: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+      certbot_email: ${{ secrets.CERTBOT_EMAIL || 'example@example.com' }}

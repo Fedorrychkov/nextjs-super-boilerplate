@@ -11,13 +11,10 @@
 # Dependencies - install inside the image
 node_modules
 
-# Build artifacts and cache
-.next
-out
-build
-dist
-*.tsbuildinfo
+# Build artifacts and cache — do NOT ignore .next, out, build, dist:
+# they are created by `npm run build` in the container and must stay in the image (styles, static assets).
 next-env.d.ts
+*.tsbuildinfo
 
 # Tests and coverage
 coverage
