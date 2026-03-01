@@ -24,6 +24,19 @@ function get_env_file() {
     fi
 }
 
+# Load env file into current shell so docker-compose can substitute ${MONGO_USER} etc.
+# Call this before running docker-compose when compose file uses vars from the env file.
+function load_env_into_shell() {
+    local env_file="${1:-.env}"
+    local project_root="${PROJECT_ROOT:-.}"
+    if [ -f "${project_root}/${env_file}" ]; then
+        set -a
+        # shellcheck source=/dev/null
+        . "${project_root}/${env_file}"
+        set +a
+    fi
+}
+
 function prepare_dirs() {
     local project_root=${PROJECT_ROOT:-$(pwd)}
     local certbot_dir="${project_root}/certbot"

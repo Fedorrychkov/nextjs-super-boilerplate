@@ -15,9 +15,7 @@ export const logger = {
     }
   },
   error: (...args: unknown[]) => {
-    if (isEnabled) {
-      console.error(...args)
-    }
+    console.error(...args)
   },
   info: (...args: unknown[]) => {
     if (isEnabled) {

@@ -335,6 +335,7 @@ jobs:
                   mv "$HOME/app_new" "$HOME/app"
                   cd "$HOME/app"
                   chmod +x scripts/local-containers-run.sh || true
+                  set -a; [ -f "${{ inputs.env_file }}" ] && . "./${{ inputs.env_file }}"; set +a; export ENV_FILE="${{ inputs.env_file }}"
                   API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }} \
                     docker-compose -f docker-compose.local.yml stop $CORE_UP || true
                   API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }} \

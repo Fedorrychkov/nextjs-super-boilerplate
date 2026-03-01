@@ -30,7 +30,7 @@ fi
 function rollback_mode() {
     local env=${1:-stage}
     local env_file=$(get_env_file $env)
-
+    load_env_into_shell "$env_file"
     echo "Starting rollback mode..."
     API_ENV=${env} \
     ENV_FILE=${env_file} \
@@ -86,6 +86,7 @@ function bg_validate_green() {
         export CORE_API_IMAGE
     fi
 
+    load_env_into_shell "$env_file"
     export SUFFIX=-green
     API_ENV=${env} \
     ENV_FILE=${env_file} \
@@ -184,6 +185,7 @@ function start_http() {
     prepare_dirs
 
     local env_file=$(get_env_file $env)
+    load_env_into_shell "$env_file"
 
     DEPLOY_MODE=${DEPLOY_MODE:-default}
     if [ "$DEPLOY_MODE" = "registry" ] && [ -n "${CORE_API_IMAGE:-}" ]; then
@@ -245,6 +247,7 @@ function start_https() {
         echo "DEPLOY_MODE=default: core-api will be built if needed"
     fi
 
+    load_env_into_shell "$env_file"
     echo "Stage 1: Starting API service..."
     docker-compose -f ${COMPOSE_FILE} up -d $CORE_SERVICES
 

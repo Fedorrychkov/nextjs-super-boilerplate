@@ -67,10 +67,12 @@ async function connectDB() {
       bufferCommands: false,
     }
 
-    // Build connection string
+    // Build connection string (encode user/password for special characters in URI)
+    const userPart =
+      MONGODB_CONFIG.user && MONGODB_CONFIG.password ? `${encodeURIComponent(MONGODB_CONFIG.user)}:${encodeURIComponent(MONGODB_CONFIG.password)}@` : ''
     const mongoUri =
       MONGODB_CONFIG.uri ||
-      `mongodb://${MONGODB_CONFIG.user ? `${MONGODB_CONFIG.user}:${MONGODB_CONFIG.password}@` : ''}${MONGODB_CONFIG.host || 'localhost'}:${MONGODB_CONFIG.port || 27017}/${MONGODB_CONFIG.db || 'circle-test'}?authSource=admin`
+      `mongodb://${userPart}${MONGODB_CONFIG.host || 'localhost'}:${MONGODB_CONFIG.port || 27017}/${MONGODB_CONFIG.db || 'app'}?authSource=admin`
 
     cached.promise = mongoose.connect(mongoUri, opts)
   }

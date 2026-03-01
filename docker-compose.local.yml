@@ -225,6 +225,8 @@ services:
       dockerfile: ./.docker/Dockerfile
       args:
         - API_ENV=${API_ENV:-prod}
+    env_file:
+      - ${ENV_FILE:-.env}
     volumes:
       - ${ENV_FILE:-.env}:/usr/src/api/${ENV_FILE:-.env}:ro
       - ./db-certificate.${API_ENV:-prod}.crt:/usr/src/api/db-certificate.${API_ENV:-prod}.crt:ro
@@ -393,6 +395,11 @@ services:
     container_name: mongo${SUFFIX}
     image: mongo:7
     restart: always
+    # MONGO_INITDB_* are substituted on the host; ensure MONGO_USER/MONGO_PASSWORD are in shell (load_env_into_shell / workflow source)
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-password}
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-app}
     networks:
       - api_network
     expose:
