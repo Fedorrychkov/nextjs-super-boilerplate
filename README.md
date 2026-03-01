@@ -4,6 +4,10 @@ Minimal Next.js template with deploy (GitHub Actions), optional Docker stack (ng
 
 **Detailed article:** [RU](https://github.com/Fedorrychkov/fedorrychkov/blob/main/articles/standalone-nextjs-production-ready-boilerplate/ARTICLE_RU.md) · [EN](https://github.com/Fedorrychkov/fedorrychkov/blob/main/articles/standalone-nextjs-production-ready-boilerplate/ARTICLE_EN.md)
 
+## Demo
+
+[View demo](https://nextjs-super-boilerplate.visn-ai.io)
+
 ---
 
 ## Local run
