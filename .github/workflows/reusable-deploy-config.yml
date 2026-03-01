@@ -276,6 +276,7 @@ jobs:
           envs: GH_USERNAME, GITHUB_TOKEN, DEPLOY_MODE, CORE_API_IMAGE, GHCR_USERNAME, GHCR_TOKEN, GRAFANA_ADMIN_USER, GRAFANA_ADMIN_PASSWORD, REDIS_ENABLED, METRICS_ENABLED, MONGO_ENABLED
           command_timeout: 25m
           script: |
+            set -e
             if [ "$DEPLOY_MODE" = "registry" ]; then
               if [ -z "$GHCR_USERNAME" ] || [ -z "$GHCR_TOKEN" ]; then
                 echo "Error: GHCR_USERNAME and GHCR_TOKEN secrets are required when deploy_mode=registry"

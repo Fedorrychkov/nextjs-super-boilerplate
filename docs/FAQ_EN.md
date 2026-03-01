@@ -18,6 +18,29 @@ Answers to typical questions when deploying and configuring the boilerplate.
 
 ---
 
+## Build on server: "no space left on device"
+
+### Service 'core-api' failed to build, write … next-swc.linux-x64-gnu.node: no space left on device
+
+**Cause:** The server has run out of disk space. The build (npm install, Next.js build, copying into the image) writes to temporary dirs and the image; when space is exhausted the write fails with this error.
+
+**Solution:**
+
+1. SSH to the server: `df -h` to check disk usage.
+2. Free space by cleaning Docker: unused images, containers, build cache:
+   ```bash
+   cd ~/app
+   ./scripts/local-containers-run.sh prune-images
+   docker system prune -a -f --volumes
+   ```
+   `prune-images` removes old app images (keeps the one used by api-service). `docker system prune -a` removes all unused images/containers/networks and unused volumes (be careful: do not remove volumes with data you need, e.g. mongo_data, unless they are unused).
+3. Safer option without removing unused volumes: `docker system prune -a -f` (no `--volumes`).
+4. If you keep running out of space: switch to `deploy_mode: registry` in the workflow — build runs in CI, only the built image is pulled on the server, so less disk is needed there.
+
+**Why you got a success notification:** Previously, when the build failed inside the deploy SSH script, the step could still finish successfully (the script kept running). The workflow deploy script now has `set -e`: any failed command (including a failed build) fails the step, so the job is marked failed and success-notify is not sent.
+
+---
+
 ## Nginx: Broken Containers (Naming)
 
 ### Nginx container was created with the wrong name and doesn’t get removed on deploy

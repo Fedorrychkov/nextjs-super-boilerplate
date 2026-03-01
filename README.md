@@ -133,6 +133,7 @@ Common issues and fixes are described in the FAQ (see links above). Summary:
 | **Env vars not in container** | Ensure the GitHub secret for `.env` content (e.g. `WEB_ENV_PROD`) includes all keys; redeploy so `.env.prod` is recreated. |
 | **No styles on prod** | Do not exclude `.next`/`out`/`build` from the image; they are built inside the Dockerfile. |
 | **Disk full: many ghcr.io images** | After each deploy the workflow prunes old app images on the server. To run manually: `./scripts/local-containers-run.sh prune-images`. For GHCR, see [FAQ](./docs/FAQ_EN.md#cleaning-old-docker-images). |
+| **Build: "no space left on device"** | Free disk on the server: `./scripts/local-containers-run.sh prune-images`, then `docker system prune -a -f`. Or use `deploy_mode: registry` to build in CI. See [FAQ](./docs/FAQ_EN.md#build-on-server-no-space-left-on-device). |
 
 For step-by-step instructions (Mongo reset, clean script, certbot email), see [docs/FAQ_RU.md](./docs/FAQ_RU.md) or [docs/FAQ_EN.md](./docs/FAQ_EN.md).
 
