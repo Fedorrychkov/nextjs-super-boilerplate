@@ -1,7 +1,7 @@
 import { MONGODB_CONFIG } from '@config/env'
 import mongoose from 'mongoose'
 
-// Кэшируем соединение для переиспользования
+// Cache connection for reuse
 type MongooseCache = {
   conn: typeof mongoose | null
   promise: Promise<typeof mongoose> | null
@@ -17,7 +17,7 @@ if (!global.mongooseCache) {
   global.mongooseCache = cached
 }
 
-/** Сбрасываем кэш только при ошибках подключения — следующий вызов connectDB() переподключится */
+/** Clear cache on connection errors so the next connectDB() call will reconnect */
 function clearCacheOnConnectionError() {
   cached.conn = null
   cached.promise = null
@@ -67,7 +67,7 @@ async function connectDB() {
       bufferCommands: false,
     }
 
-    // Формируем connection string
+    // Build connection string
     const mongoUri =
       MONGODB_CONFIG.uri ||
       `mongodb://${MONGODB_CONFIG.user ? `${MONGODB_CONFIG.user}:${MONGODB_CONFIG.password}@` : ''}${MONGODB_CONFIG.host || 'localhost'}:${MONGODB_CONFIG.port || 27017}/${MONGODB_CONFIG.db || 'circle-test'}?authSource=admin`

@@ -364,7 +364,7 @@ const MultipleSelector = React.forwardRef<MultipleSelectorRef, MultipleSelectorP
             onChange?.(newOptions)
           }}
         >
-          {`Создать "${inputValue}"`}
+          {`Create "${inputValue}"`}
         </CommandItem>
       )
 
@@ -519,7 +519,7 @@ const MultipleSelector = React.forwardRef<MultipleSelectorRef, MultipleSelectorP
                 'absolute end-0 top-0 flex size-9 items-center justify-center rounded-lg border border-transparent text-muted-foreground/80 transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70',
                 (hideClearAllButton || disabled || selected.length < 1 || selected.filter((s) => s.fixed).length === selected.length) && 'hidden',
               )}
-              aria-label="Очистить"
+              aria-label="Clear"
             >
               <XIcon width={16} height={16} strokeWidth={2} aria-hidden="true" />
             </button>

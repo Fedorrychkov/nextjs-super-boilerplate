@@ -27,4 +27,4 @@ scrape_configs:
     # nginx-prometheus-exporter
       - targets: ['nginx-prometheus-exporter:9113']
     # telegraf
-      - targets: ['telegraf:9273']  # Добавляем Telegraf
+      - targets: ['telegraf:9273']  # Telegraf

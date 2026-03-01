@@ -1,4 +1,4 @@
-// Функция для извлечения домена из URL
+// Extract domain from URL
 const extractDomain = (url: string) => {
   if (!url) return null
 
@@ -11,11 +11,11 @@ const extractDomain = (url: string) => {
   }
 }
 
-// Получаем домены из переменных окружения
+// Get domains from environment
 const apiUrl = process.env.API_URL
 const apiDomain = extractDomain(apiUrl || '')
 
-// Создаем список разрешенных доменов для connect-src
+// Allowed domains for connect-src
 const connectSrcDomains = [
   '\'self\'',
   'https:',
@@ -27,7 +27,7 @@ const connectSrcDomains = [
   'https://analytics.google.com',
 ]
 
-// Добавляем домены из переменных окружения
+// Add env domains to the list
 if (apiDomain) connectSrcDomains.push(apiDomain)
 
 const securityHeaders = [
@@ -68,11 +68,11 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Добавляем security headers
+  // Add security headers
   async headers() {
     return [
       {
-        // Применяем ко всем страницам
+        // Apply to all pages
         source: '/(.*)',
         headers: securityHeaders,
       },

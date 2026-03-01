@@ -16,12 +16,12 @@ export type PageProps<T extends Record<string, unknown> | undefined = undefined>
 
 export type PageCheckAuthProps<T extends Record<string, unknown> | undefined = undefined> = PageProps<T> & {
   /**
-   * В случае отсутствия токенов, перенаправляем на эту страницу
+   * Redirect to this path when tokens are missing
    */
   navigatePath?: string
   /**
-   * В случае отсутствия доступа к странице, перенаправляем на эту страницу
-   * TODO: необходимо переделать проброс урлов по страничному доступу, на основе ролевого отказа, например
+   * Redirect to this path when user has no access to the page
+   * TODO: refactor URL passthrough for page access based on role denial
    */
   fallbackNavigatePath?: string
   fallbackRolesNavigatePath?: {
@@ -111,7 +111,7 @@ export const defaultGuard = async <T extends Record<string, unknown> | undefined
       return true
     } catch (error) {
       if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {
-        throw error // Перебрасываем дальше для Next.js
+        throw error // Re-throw for Next.js
       }
 
       logger.info('defaultGuard error follback to refresh verifyToken', error, nextPath)
@@ -144,7 +144,7 @@ export const defaultGuard = async <T extends Record<string, unknown> | undefined
     }
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {
-      throw error // Перебрасываем дальше для Next.js
+      throw error // Re-throw for Next.js
     }
 
     if (error instanceof AxiosError) {

@@ -34,7 +34,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [isEnabled, isFetched, refetch])
 
   /**
-   * Если пользователь авторизован, то обновляем токен каждые 5 минут
+   * When user is authenticated, refresh token every 5 minutes
    */
   useRefreshTokenQuery(!!profile?.id && isEnabled)
 

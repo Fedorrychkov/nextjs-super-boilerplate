@@ -4,14 +4,14 @@ http {
     include       /etc/nginx/mime.types;
     default_type  application/octet-stream;
 
-    # Увеличиваем размер хеша для имен серверов (исправляет предупреждения)
+    # Larger server names hash (fixes warnings)
     server_names_hash_bucket_size 128;
     server_names_hash_max_size 512;
     proxy_headers_hash_max_size 1024;
     proxy_headers_hash_bucket_size 128;
 
     upstream backend {
-        server api-service:3000;  # Используем новое фиксированное имя контейнера
+        server api-service:3000;  # Fixed container name
     }
 
     # METRICS_GRAFANA_UPSTREAM_START
@@ -20,11 +20,11 @@ http {
     }
     # METRICS_GRAFANA_UPSTREAM_END
 
-    # Обновляем настройки real_ip
-    real_ip_recursive on;  # Включаем рекурсивный поиск реального IP
+    # real_ip settings
+    real_ip_recursive on;  # Recursive real IP lookup
     real_ip_header X-Forwarded-For;
 
-    # Формат логов
+    # Log format
     log_format detailed '$remote_addr - $remote_user [$time_local] '
                         '"$request" $status $body_bytes_sent '
                         '"$http_referer" "$http_user_agent" '
@@ -47,22 +47,22 @@ http {
     server {
         listen 80;
         listen [::]:80;
-        # Определяем переменные здесь
+        # Define variables here
 
         server_name localhost ${DOMAINS};
         root /var/www/certbot;
 
         access_log /var/log/nginx/access.log detailed;
 
-        # Location для метрик NGINX
+        # NGINX metrics location
         location /nginx_status {
             stub_status on;
-            allow 0.0.0.0/0;  # Разрешаем доступ от всех IP-адресов (проверьте безопасность)
-            deny all;         # По умолчанию запрещаем доступ
+            allow 0.0.0.0/0;  # Allow all IPs (check security)
+            deny all;         # Deny by default
         }
 
         # METRICS_GRAFANA_LOCATION_START
-        # Проксирование Grafana (subpath /grafana/)
+        # Proxy Grafana (subpath /grafana/)
         location /grafana/ {
             proxy_pass http://grafana/grafana/;
             proxy_http_version 1.1;
@@ -79,24 +79,24 @@ http {
         }
         # METRICS_GRAFANA_LOCATION_END
 
-        # Конфигурация для Let's Encrypt
+        # Let's Encrypt config
         location ^~ /.well-known/acme-challenge/ {
             allow all;
-            autoindex on;  # Добавим для отладки
+            autoindex on;  # For debugging
             default_type "text/plain";
             add_header Content-Type "text/plain" always;
             add_header X-Debug-Path "$document_root$uri" always;
             add_header X-Real-Path $request_filename always;
         }
 
-        # Проксирование запросов к API
+        # Proxy to API
         location / {
             set $original_client_ip $http_x_forwarded_for;
             if ($http_x_forwarded_for ~ "^(.+),") {
                 set $original_client_ip $1;
             }
 
-            # Обновляем заголовки
+            # Update headers
             proxy_set_header X-Client-IP $original_client_ip;
             proxy_set_header X-Real-IP $original_client_ip;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -107,18 +107,18 @@ http {
             proxy_set_header Connection "upgrade";
             proxy_cache_bypass $http_upgrade;
 
-            # Базовые заголовки (всегда)
+            # Base headers (always)
             proxy_set_header Host $host;
             proxy_set_header X-Forwarded-Proto $scheme;
             proxy_set_header X-Request-ID $request_id;
 
-            # Правильные заголовки времени
-            proxy_set_header X-Request-Time $request_time;        # Время обработки запроса
-            proxy_set_header X-Response-Time $upstream_response_time;  # Время ответа от upstream
+            # Time headers
+            proxy_set_header X-Request-Time $request_time;        # Request processing time
+            proxy_set_header X-Response-Time $upstream_response_time;  # Upstream response time
 
             proxy_pass http://backend;
 
-            # Определяем переменные для заголовков
+            # Header variables
             set $client_ip $realip_remote_addr;
             set $request_source "api";
             set $processed_by "api-nginx";
@@ -139,11 +139,11 @@ http {
             proxy_set_header X-Forwarded-For $x_forwarded_for;
             proxy_set_header X-User-Agent $user_agent;
 
-            # Настройки буферизации
+            # Buffering
             proxy_buffering off;
             proxy_request_buffering off;
 
-            # Увеличенные таймауты для WebSocket
+            # Longer timeouts for WebSocket
             proxy_connect_timeout 60s;
             proxy_send_timeout 300s;
             proxy_read_timeout 300s;

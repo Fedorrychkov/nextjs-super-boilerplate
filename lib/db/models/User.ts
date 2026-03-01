@@ -31,7 +31,7 @@ const UserSchema: Schema<IUser> = new Schema<IUser>(
     password: {
       type: String,
       required: true,
-      select: false, // По умолчанию не возвращаем пароль
+      select: false, // Do not return password by default
     },
     role: {
       type: String,
@@ -57,7 +57,7 @@ const UserSchema: Schema<IUser> = new Schema<IUser>(
   },
 )
 
-// Хешируем пароль перед сохранением (Mongoose 9: async hook, no next)
+// Hash password before save (Mongoose 9: async hook, no next)
 UserSchema.pre('save', async function () {
   if (!this.isModified('password')) return
 
@@ -69,7 +69,7 @@ UserSchema.pre('save', async function () {
   this.password = await bcrypt.hash(this.password, salt)
 })
 
-// Метод для сравнения паролей
+// Compare password with candidate
 UserSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {
   return bcrypt.compare(candidatePassword, this.password)
 }

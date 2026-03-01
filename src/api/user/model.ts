@@ -16,7 +16,7 @@ export enum UserStatus {
 export enum UserRole {
   ADMIN = 'admin',
   /**
-   * Пользователь, по сути не имеет доступа никуда
+   * Regular user, has no admin access
    */
   USER = 'user',
 }

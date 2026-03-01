@@ -57,24 +57,24 @@ function parse_domains() {
     local raw_domains="$1"
     local domains
     
-    # Отладочный вывод перенаправляем в stderr
+    # Debug output to stderr
     echo "Debug: Raw domains input: '$raw_domains'" >&2
     
-    # Проверяем и получаем домены
+    # Parse and get domains
     if [[ "$raw_domains" =~ "-d "* ]]; then
-        domains=$(echo "$raw_domains" | sed 's/^.*-d //')  # Извлекаем всё после -d
-        # Если после -d пусто, используем значение по умолчанию
+        domains=$(echo "$raw_domains" | sed 's/^.*-d //')  # Everything after -d
+        # If empty after -d, use default
         if [[ -z "$domains" ]]; then
             domains="app.example.local,www.app.example.local"
             echo "No domain specified, using default: $domains" >&2
         fi
     else
-        # Если нет флага -d, используем значение по умолчанию
+        # No -d flag, use default
         domains="app.example.local,www.app.example.local"
         echo "No -d flag found, using default: $domains" >&2
     fi
     
-    # Убираем возможные пробелы
+    # Trim whitespace
     domains=$(echo "$domains" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
     echo "$domains"
 }
@@ -110,7 +110,7 @@ function run_migrations_flow() {
     local state_file="${DEPLOY_STATE_DIR}/migrations_${env}.count"
     local delta_file="${DEPLOY_STATE_DIR}/last_new_migrations_${env}.count"
 
-    # По умолчанию миграции отключены, нужно явно включить через MIGRATIONS_RUN=true
+    # Migrations disabled by default; enable with MIGRATIONS_RUN=true
     if [[ "$(parse_bool "$MIGRATIONS_RUN")" != "true" ]]; then
         echo "Migrations are disabled by default (MIGRATIONS_RUN=$MIGRATIONS_RUN). Skipping."
         echo 0
@@ -161,7 +161,7 @@ function rollback_new_migrations() {
     local env=$1
     local count_to_rollback=$2
     
-    # Проверяем, включены ли миграции
+    # Check if migrations are enabled
     if [[ "$(parse_bool "$MIGRATIONS_RUN")" != "true" ]]; then
         echo "Migrations are disabled by default (MIGRATIONS_RUN=$MIGRATIONS_RUN). Skipping rollback."
         return 0

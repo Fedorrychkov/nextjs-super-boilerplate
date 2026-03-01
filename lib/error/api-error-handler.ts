@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { logger } from '~/utils/logger'
 
 /**
- * Метод - обертка, для сокращения кода использования catch и проброса ошибок
+ * Method - wrapper, to reduce the code using catch and passing errors
  */
 export const apiErrorHandlerContainer =
   (req: NextRequest) =>

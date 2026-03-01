@@ -4,14 +4,14 @@ http {
     include       /etc/nginx/mime.types;
     default_type  application/octet-stream;
 
-    # Увеличиваем размер хеша для имен серверов (исправляет предупреждения)
+    # Larger server names hash (fixes warnings)
     server_names_hash_bucket_size 128;
     server_names_hash_max_size 512;
     proxy_headers_hash_max_size 1024;
     proxy_headers_hash_bucket_size 128;
 
     upstream backend {
-        server api-service:3000;  # Используем новое фиксированное имя контейнера
+        server api-service:3000;  # Fixed container name
     }
 
     # METRICS_GRAFANA_UPSTREAM_START
@@ -20,21 +20,21 @@ http {
     }
     # METRICS_GRAFANA_UPSTREAM_END
 
-    # Обновляем настройки real_ip
-    real_ip_recursive on;  # Включаем рекурсивный поиск реального IP
+    # real_ip settings
+    real_ip_recursive on;  # Recursive real IP lookup
     real_ip_header X-Forwarded-For;
     
-    # Общие SSL настройки
+    # SSL settings
     ssl_session_timeout 1d;
     ssl_session_cache shared:SSL:50m;
     ssl_session_tickets off;
 
-    # Современные настройки безопасности
+    # Modern security
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
     ssl_prefer_server_ciphers off;
 
-    # Формат логов
+    # Log format
     log_format detailed '$remote_addr - $remote_user [$time_local] '
                         '"$request" $status $body_bytes_sent '
                         '"$http_referer" "$http_user_agent" '
@@ -54,7 +54,7 @@ http {
                         'scheme="$scheme" '
                         'server_protocol="$server_protocol"';
 
-    # HTTP -> HTTPS редирект
+    # HTTP -> HTTPS redirect
     server {
         listen 80;
         listen [::]:80;
@@ -63,7 +63,7 @@ http {
 
         access_log /var/log/nginx/access.log detailed;
 
-        # Для Let's Encrypt
+        # Let's Encrypt
         location ^~ /.well-known/acme-challenge/ {
             allow all;
             root /var/www/certbot;
@@ -73,7 +73,7 @@ http {
             add_header X-Real-Path $request_filename always;
         }
 
-        # Редирект всех HTTP запросов на HTTPS
+        # Redirect all HTTP to HTTPS
         location / {
             return 301 https://$host$request_uri;
         }
@@ -90,15 +90,15 @@ http {
 
         ssl_reject_handshake off;
 
-        # SSL сертификаты (берем первый домен из списка)
+        # SSL certs (first domain from list)
         ssl_certificate /etc/letsencrypt/live/${FIRST_DOMAIN}/fullchain.pem;
         ssl_certificate_key /etc/letsencrypt/live/${FIRST_DOMAIN}/privkey.pem;
 
-        # Location для метрик NGINX
+        # NGINX metrics location
         location /nginx_status {
             stub_status on;
-            allow 0.0.0.0/0;  # Разрешаем доступ от всех IP-адресов (проверьте безопасность)
-            deny all;         # По умолчанию запрещаем доступ
+            allow 0.0.0.0/0;  # Allow all IPs (check security)
+            deny all;         # Deny by default
         }
 
         location ^~ /.well-known/acme-challenge/ {
@@ -111,7 +111,7 @@ http {
         }
 
         # METRICS_GRAFANA_LOCATION_START
-        # Проксирование Grafana (subpath /grafana/)
+        # Proxy Grafana (subpath /grafana/)
         location /grafana/ {
             proxy_pass http://grafana/grafana/;
             proxy_http_version 1.1;
@@ -136,7 +136,7 @@ http {
 
             proxy_pass http://backend;
 
-            # Обновляем заголовки
+            # Update headers
             proxy_set_header X-Client-IP $original_client_ip;
             proxy_set_header X-Real-IP $original_client_ip;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -147,17 +147,17 @@ http {
             proxy_set_header Connection "upgrade";
             proxy_cache_bypass $http_upgrade;
 
-            # Базовые заголовки (всегда)
+            # Base headers (always)
             proxy_set_header Host $host;
             proxy_set_header X-Forwarded-Proto $scheme;
             proxy_set_header X-Request-ID $request_id;
 
-            # Правильные заголовки времени
-            proxy_set_header X-Request-Time $request_time;        # Время обработки запроса
-            proxy_set_header X-Response-Time $upstream_response_time;  # Время ответа от upstream
+            # Time headers
+            proxy_set_header X-Request-Time $request_time;        # Request processing time
+            proxy_set_header X-Response-Time $upstream_response_time;  # Upstream response time
 
 
-            # Определяем переменные для заголовков
+            # Header variables
             set $client_ip $realip_remote_addr;
             set $request_source "api";
             set $processed_by "api-nginx";
@@ -178,11 +178,11 @@ http {
             proxy_set_header X-Forwarded-For $x_forwarded_for;
             proxy_set_header X-User-Agent $user_agent;
 
-            # Настройки буферизации
+            # Buffering
             proxy_buffering off;
             proxy_request_buffering off;
 
-            # Увеличенные таймауты для WebSocket
+            # Longer timeouts for WebSocket
             proxy_connect_timeout 60s;
             proxy_send_timeout 300s;
             proxy_read_timeout 300s;

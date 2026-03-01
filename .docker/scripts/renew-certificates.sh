@@ -2,16 +2,16 @@
 
 echo "Starting certificate renewal check at $(date)"
 
-# Проверяем доступность docker.sock для deploy-hook
+# Check docker.sock availability for deploy-hook
 if [ ! -S "/var/run/docker.sock" ]; then
     echo "❌ Warning: Docker socket not available, deploy-hook may not work"
 fi
 
-# Гарантируем наличие webroot и health файла для ACME
+# Ensure webroot and health file for ACME
 mkdir -p /var/www/certbot/.well-known/acme-challenge
 echo OK > /var/www/certbot/.well-known/acme-challenge/health
 
-# Безопасный рестарт nginx-контейнера и ожидание готовности
+# Safe nginx container restart and wait for ready
 restart_nginx_container() {
     echo "🔄 Restarting nginx container before certificate operations..."
     docker restart core-nginx-service 2>/dev/null || \
@@ -42,7 +42,7 @@ if ! wait_for_nginx_ready; then
     exit 0
 fi
 
-# Функция для определения типа сертификата
+# Detect certificate type
 is_letsencrypt_cert() {
     local domain=$1
     local cert_path="/etc/letsencrypt/live/${domain}/cert.pem"
@@ -51,29 +51,29 @@ is_letsencrypt_cert() {
         return 1
     fi
     
-    # Проверяем issuer сертификата
+    # Check cert issuer
     local issuer=$(openssl x509 -in "$cert_path" -noout -issuer 2>/dev/null | sed 's/issuer=//')
     
-    # Let's Encrypt сертификаты имеют issuer содержащий "Let's Encrypt" или "R3"
+    # Let's Encrypt certs have issuer containing "Let's Encrypt" or "R3"
     if [[ "$issuer" == *"Let's Encrypt"* ]] || [[ "$issuer" == *"R3"* ]] || [[ "$issuer" == *"E1"* ]]; then
-        return 0  # Это Let's Encrypt сертификат
+        return 0  # Let's Encrypt cert
     else
-        return 1  # Это самоподписанный или другой сертификат
+        return 1  # Self-signed or other
     fi
 }
 
-# Функция для исправления симлинков сертификатов
+# Fix certificate symlinks
 fix_certificate_symlinks() {
     local domain=$1
     echo "🔧 Checking and fixing certificate symlinks for $domain"
     
-    # Ищем папку с любым числовым суффиксом
+    # Find dir with numeric suffix
     new_cert_dir=$(find /etc/letsencrypt/archive -maxdepth 1 -name "${domain}-*" -type d | grep -E "${domain}-[0-9]+$" | head -1)
     if [ -n "$new_cert_dir" ]; then
         new_cert_name=$(basename "$new_cert_dir")
         echo "📁 Found certificate with suffix ${new_cert_name#${domain}-}, reorganizing to main name..."
         
-        # Переименовываем старую папку (если есть) в -old
+        # Rename old dir to -old if present
         if [ -d "/etc/letsencrypt/archive/${domain}" ]; then
             echo "📁 Moving old certificate to -old suffix..."
             mv "/etc/letsencrypt/archive/${domain}" "/etc/letsencrypt/archive/${domain}-old"
@@ -81,13 +81,13 @@ fix_certificate_symlinks() {
             mv "/etc/letsencrypt/renewal/${domain}.conf" "/etc/letsencrypt/renewal/${domain}-old.conf" 2>/dev/null || true
         fi
         
-        # Переименовываем новую папку в основную
+        # Rename new dir to main name
         echo "📁 Moving new certificate to main name..."
         mv "/etc/letsencrypt/archive/${new_cert_name}" "/etc/letsencrypt/archive/${domain}"
         mv "/etc/letsencrypt/live/${new_cert_name}" "/etc/letsencrypt/live/${domain}" 2>/dev/null || true
         mv "/etc/letsencrypt/renewal/${new_cert_name}.conf" "/etc/letsencrypt/renewal/${domain}.conf" 2>/dev/null || true
         
-        # Создаем правильные симлинки
+        # Create correct symlinks
         echo "🔗 Creating correct symlinks..."
         rm -f "/etc/letsencrypt/live/${domain}"/*.pem
         ln -s "../../archive/${domain}/cert1.pem" "/etc/letsencrypt/live/${domain}/cert.pem"
@@ -101,12 +101,12 @@ fix_certificate_symlinks() {
     return 1
 }
 
-# Функция для принудительного перевыпуска сертификата
+# Force reissue certificate
 force_reissue_cert() {
     local domain=$1
     echo "🔄 Force reissuing certificate for $domain (current cert is not Let's Encrypt)"
     
-    # Функция перезагрузки nginx (безопасная)
+    # Safe nginx reload helper
     reload_nginx() {
         echo "🔁 Reloading nginx to apply new certificates..."
         docker kill -s HUP core-nginx-service 2>/dev/null || \
@@ -115,19 +115,19 @@ force_reissue_cert() {
         echo "⚠️ Failed to reload nginx (container may be down)"
     }
 
-    # Не удаляем действующий сертификат заранее; получаем новый и только потом переключаемся
+    # Do not remove current cert first; get new one then switch
     
-    # Вызываем get-certificates.sh для создания нового
+    # Call get-certificates.sh to create new cert
     echo "🆕 Creating new certificate..."
     /scripts/get-certificates.sh --force-renewal
     
-    # Исправляем симлинки после создания нового сертификата (атомарное переключение)
+    # Fix symlinks after new cert is created (atomic switch)
     fix_certificate_symlinks "$domain"
     
     reload_nginx
 }
 
-# Повторная лёгкая проверка доступности nginx (на случай гонок)
+# Re-check nginx availability (in case of race)
 NGINX_OK=false
 for host in nginx core-nginx-service; do
     if curl -s -f http://$host:80/.well-known/acme-challenge/health > /dev/null; then
@@ -137,28 +137,28 @@ for host in nginx core-nginx-service; do
 done
 if [ "$NGINX_OK" != true ]; then
     echo "❌ Warning: Nginx is not available on port 80, skipping renewal for now"
-    # Возвращаем 0, чтобы supervisor не перезапускал задачу по ошибке; cron запустит позже
+    # Return 0 so supervisor does not restart on error; cron will run later
     exit 0
 fi
 
-# Поддержка принудительного обновления: аргумент --force или env FORCE_RENEWAL=true
+# Force renewal: --force arg or env FORCE_RENEWAL=true
 FORCE_RENEWAL_MODE=false
 if [ "${1:-}" = "--force" ] || [ "${FORCE_RENEWAL:-false}" = "true" ]; then
     FORCE_RENEWAL_MODE=true
     echo "⚙️  Force renewal mode enabled"
 fi
 
-# Преобразуем строку с доменами в массив
+# Parse domains string into array
 IFS=',' read -ra DOMAIN_ARRAY <<< "$DOMAINS"
 
-# Флаг для отслеживания общего результата
+# Track overall result
 renewal_failed=false
 
-# Проверяем каждый домен
+# Process each domain
 for domain in "${DOMAIN_ARRAY[@]}"; do
     echo "📝 Processing domain: $domain"
     
-    # Пропускаем обновление для локальных доменов и тестового режима
+    # Skip renewal for local domains and test mode
     if [[ "$domain" == *".127.0.0.1."* ]] || [[ "$domain" == *".localhost"* ]] || [[ "${CERTBOT_TEST_MODE:-false}" = "true" ]]; then
         echo "🔧 Local/Test domain detected, skipping renewal for $domain"
         continue
@@ -166,7 +166,7 @@ for domain in "${DOMAIN_ARRAY[@]}"; do
     
     echo "🔄 Checking renewal for $domain"
 
-    # В режиме принудительного обновления сначала проверяем тип сертификата
+    # In force renewal mode, check cert type first
     if [ "$FORCE_RENEWAL_MODE" = true ]; then
         if ! is_letsencrypt_cert "$domain"; then
             echo "⚠️ Current certificate is not Let's Encrypt. Reissuing by removing existing lineage..."
@@ -189,7 +189,7 @@ for domain in "${DOMAIN_ARRAY[@]}"; do
         fi
         if certbot "${FORCE_ARGS[@]}"; then
             echo "✅ Force renewal completed successfully for $domain"
-            # Перезагружаем nginx после успешного обновления
+            # Reload nginx after successful renewal
             docker kill -s HUP core-nginx-service 2>/dev/null || \
             docker exec core-nginx-service nginx -s reload 2>/dev/null || \
             docker restart core-nginx-service 2>/dev/null || \
@@ -201,18 +201,18 @@ for domain in "${DOMAIN_ARRAY[@]}"; do
         continue
     fi
     
-    # Проверяем, существует ли сертификат
+    # Check if certificate exists
     cert_path="/etc/letsencrypt/live/${domain}/fullchain.pem"
     if [ ! -f "$cert_path" ]; then
         echo "ℹ️ Certificate not found for $domain, will be created by certbot-init"
         continue
     fi
     
-    # Проверяем тип сертификата
+    # Check cert type
     if ! is_letsencrypt_cert "$domain"; then
         echo "⚠️ Current certificate for $domain is not from Let's Encrypt"
         
-        # Сначала попробуем исправить симлинки (возможно, есть новый сертификат с -0001)
+        # Try fixing symlinks first (maybe new cert with -0001 exists)
         if fix_certificate_symlinks "$domain"; then
             echo "✅ Fixed symlinks, certificate should now be Let's Encrypt"
             continue
@@ -224,22 +224,22 @@ for domain in "${DOMAIN_ARRAY[@]}"; do
             continue
         else
             echo "🔄 Attempting to get Let's Encrypt certificate (current is self-signed)"
-            # Пытаемся получить Let's Encrypt сертификат, но не удаляем существующий
-            # Если не получится - оставим самоподписанный
+            # Try to get Let's Encrypt cert without removing existing
+            # If that fails, keep self-signed
             /scripts/get-certificates.sh --force-renewal
-            # После получения нового сертификата исправляем симлинки
+            # Fix symlinks after obtaining new cert
             fix_certificate_symlinks "$domain"
             continue
         fi
     fi
     
-    # Проверяем срок действия сертификата: истечёт ли в ближайшие 30 дней (2592000 сек)
+    # Check if cert expires within 30 days (2592000 sec)
     if openssl x509 -checkend 2592000 -noout -in "$cert_path" > /dev/null 2>&1; then
         echo "✅ Certificate for $domain is valid for more than 30 days"
     else
         echo "🔄 Certificate for $domain will expire within 30 days, attempting renewal"
             
-            # Пробуем обновить сертификат
+            # Try to renew certificate
             RENEW_ARGS=(
                 renew
                 --webroot -w /var/www/certbot
@@ -257,7 +257,7 @@ for domain in "${DOMAIN_ARRAY[@]}"; do
             else
                 echo "❌ Certificate renewal failed for $domain, trying force renewal"
                 
-                # Принудительное обновление
+                # Force renewal
                 FORCE_ARGS=(
                     certonly
                     --domains "$domain"
@@ -281,7 +281,7 @@ for domain in "${DOMAIN_ARRAY[@]}"; do
     fi
 done
 
-# Если обновление не удалось, пробуем получить новые сертификаты
+# If renewal failed, try to obtain new certificates
 if [ "$renewal_failed" = true ]; then
     echo "🔄 Some renewals failed, attempting to get new certificates"
     /scripts/get-certificates.sh --force-renewal

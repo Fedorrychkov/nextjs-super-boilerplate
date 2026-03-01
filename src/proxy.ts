@@ -13,7 +13,7 @@ export async function proxy(request: NextRequest) {
   const customClientInfo = request.headers.get('x-custom-client-info')
   const source = request.headers.get('x-request-source')
 
-  // Создаем объект с информацией о клиенте
+  // Build client info object
   const clientInfo = {
     ip: clientIP,
     requestId,
@@ -28,8 +28,8 @@ export async function proxy(request: NextRequest) {
 
   const response = NextResponse.next()
 
-  // Устанавливаем Authorization заголовок из httpOnly куков
-  // Next.js middleware может читать httpOnly куки, в отличие от клиентского JavaScript
+  // Set Authorization header from httpOnly cookies
+  // Next.js middleware can read httpOnly cookies, unlike client-side JavaScript
   if (request.cookies.has('accessToken')) {
     const accessToken = request.cookies.get('accessToken')?.value
 

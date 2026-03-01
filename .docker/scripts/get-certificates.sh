@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# В начале скрипта
+# At script start
 mkdir -p /var/log/certbot
 chmod 755 /var/log/certbot
 echo "running" > /var/log/certbot/error_status
 chmod 644 /var/log/certbot/error_status
 
-# Безопасный рестарт nginx-контейнера и ожидание готовности
+# Safe nginx container restart and wait for ready
 restart_nginx_container() {
     echo "🔄 Restarting nginx container before certificate issuance..."
     docker restart core-nginx-service 2>/dev/null || \
@@ -34,12 +34,12 @@ wait_for_nginx_ready() {
 restart_nginx_container
 wait_for_nginx_ready || true
 
-# Функция для очистки старых сертификатов с суффиксами
+# Clean up old certificates with numeric suffixes
 cleanup_old_certificates() {
     local domain=$1
     echo "🧹 Cleaning up old certificates with suffixes for $domain"
     
-    # Находим все папки с числовыми суффиксами (кроме -old, который мы сохраняем как бэкап)
+    # Find dirs with numeric suffixes (except -old which we keep as backup)
     old_cert_dirs=$(find /etc/letsencrypt/archive -maxdepth 1 -name "${domain}-*" -type d | grep -E "${domain}-[0-9]+$")
     
     if [ -n "$old_cert_dirs" ]; then
@@ -56,28 +56,28 @@ cleanup_old_certificates() {
     fi
 }
 
-# Проверка наличия существующего сертификата для домена
+# Check if certificate exists for domain
 has_existing_cert() {
     local domain=$1
     [ -f "/etc/letsencrypt/live/${domain}/fullchain.pem" ] && \
     [ -f "/etc/letsencrypt/live/${domain}/privkey.pem" ]
 }
 
-# Функция для создания самоподписанного сертификата
+# Create self-signed certificate
 create_self_signed_cert() {
     local domain=$1
     echo "Creating self-signed certificate for $domain"
     
-    # Создаем все необходимые директории
+    # Create required directories
     mkdir -p "/etc/letsencrypt/live/${domain}"
     mkdir -p "/var/www/certbot/.well-known/acme-challenge"
     
-    # Проверяем существование директорий
+    # Verify directories exist
     echo "Debug: Checking directories..."
     ls -la "/etc/letsencrypt/live/"
     ls -la "/var/www/certbot/.well-known/acme-challenge/"
     
-    # Генерируем сертификаты с подробным выводом
+    # Generate certificates with verbose output
     echo "Debug: Generating private key..."
     openssl genrsa -out "/etc/letsencrypt/live/${domain}/privkey.pem" 2048 || {
         echo "Failed to generate private key"
@@ -94,22 +94,22 @@ create_self_signed_cert() {
         return 1
     }
     
-    # Проверяем созданные файлы
+    # Verify generated files
     echo "Debug: Verifying generated files..."
     openssl x509 -in "/etc/letsencrypt/live/${domain}/fullchain.pem" -text -noout || {
         echo "Invalid certificate generated"
         return 1
     }
     
-    # Копируем сертификаты
+    # Copy cert files
     cp "/etc/letsencrypt/live/${domain}/fullchain.pem" "/etc/letsencrypt/live/${domain}/cert.pem"
     cp "/etc/letsencrypt/live/${domain}/fullchain.pem" "/etc/letsencrypt/live/${domain}/chain.pem"
     
-    # Устанавливаем правильные права
+    # Set permissions
     chmod 644 "/etc/letsencrypt/live/${domain}"/*.pem
     chmod 755 "/etc/letsencrypt/live/${domain}"
     
-    # Создаем ACME challenge
+    # Create ACME challenge
     echo "LOCAL_DOMAIN_VERIFICATION_${domain}" > "/var/www/certbot/.well-known/acme-challenge/health"
     chmod -R 755 /var/www/certbot
     
@@ -118,12 +118,12 @@ create_self_signed_cert() {
     return 0
 }
 
-# Функция для получения Let's Encrypt сертификата
+# Obtain Let's Encrypt certificate
 get_letsencrypt_cert() {
     local domain=$1
     local force_renewal=${2:-false}
     
-    # Функция перезагрузки nginx (безопасная)
+    # Safe nginx reload helper
     reload_nginx() {
         echo "🔁 Reloading nginx to apply new certificates..."
         docker kill -s HUP core-nginx-service 2>/dev/null || \
@@ -132,8 +132,8 @@ get_letsencrypt_cert() {
         echo "⚠️ Failed to reload nginx (container may be down)"
     }
     
-    # Быстрый выход, если файлы уже существуют в персистентном хранилище
-    # НО только если это не принудительное обновление и сертификат валидный
+    # Early exit if cert files already exist in persistent storage
+    # Only when not force-renewal and cert is valid
     if has_existing_cert "$domain" && [ "$force_renewal" != "true" ]; then
         echo "Existing cert files found for $domain, skipping issuance"
         ls -la "/etc/letsencrypt/live/${domain}/"
@@ -142,8 +142,8 @@ get_letsencrypt_cert() {
 
     echo "Requesting Let's Encrypt certificate for $domain (force: $force_renewal)"
     
-    # Проверяем существующий сертификат
-    # Функция для проверки типа сертификата
+    # Check existing cert
+    # Detect certificate type (Let's Encrypt vs self-signed)
     is_letsencrypt_cert() {
         local domain=$1
         local cert_path="/etc/letsencrypt/live/${domain}/cert.pem"
@@ -152,21 +152,21 @@ get_letsencrypt_cert() {
             return 1
         fi
         
-        # Проверяем issuer сертификата
+        # Check cert issuer
         local issuer=$(openssl x509 -in "$cert_path" -noout -issuer 2>/dev/null | sed 's/issuer=//')
         
-        # Let's Encrypt сертификаты имеют issuer содержащий "Let's Encrypt" или "R3"
+        # Let's Encrypt certs have issuer containing "Let's Encrypt" or "R3"
         if [[ "$issuer" == *"Let's Encrypt"* ]] || [[ "$issuer" == *"R3"* ]] || [[ "$issuer" == *"E1"* ]]; then
-            return 0  # Это Let's Encrypt сертификат
+            return 0  # Let's Encrypt cert
         else
-            return 1  # Это самоподписанный или другой сертификат
+            return 1  # Self-signed or other
         fi
     }
 
     if certbot certificates --cert-name "$domain" &>/dev/null; then
         echo "Certificate already exists for $domain"
         
-        # Проверяем наличие файлов сертификата
+        # Check cert files exist
         if [ ! -f "/etc/letsencrypt/live/${domain}/fullchain.pem" ] || \
            [ ! -f "/etc/letsencrypt/live/${domain}/privkey.pem" ]; then
             echo "Certificate files not found, requesting new certificate"
@@ -183,12 +183,12 @@ get_letsencrypt_cert() {
         echo "Force renewal requested and existing certificate is not from Let's Encrypt, will obtain new LE cert without removing current"
     fi
     
-    # Проверяем доступность директории для webroot
+    # Ensure webroot dir exists
     if [ ! -d "/var/www/certbot" ]; then
         mkdir -p /var/www/certbot
     fi
     
-    # Подготавливаем параметры для certbot
+    # Build certbot params
     local certbot_params=(
         "--webroot"
         "-w=/var/www/certbot"
@@ -201,30 +201,30 @@ get_letsencrypt_cert() {
         "--email=${CERTBOT_EMAIL:-example@example.com}"
         "--agree-tos"
     )
-    # Опционально использовать staging CA для отладки
+    # Optional: use staging CA for testing
     if [[ "${CERTBOT_USE_STAGING:-false}" = "true" ]]; then
         certbot_params+=("--server" "https://acme-staging-v02.api.letsencrypt.org/directory")
     fi
     
-    # Добавляем принудительное обновление если нужно
+    # Add force renewal if requested
     if [ "$force_renewal" = "true" ]; then
         certbot_params+=("--force-renewal")
-        # Не трогаем текущий lineage до успешного выпуска нового сертификата
+        # Do not touch current lineage until new cert is issued
     fi
     
-    # Запрашиваем сертификат
+    # Request certificate
     certbot certonly "${certbot_params[@]}"
     rc=$?
     if [ $rc -eq 0 ]; then
         echo "✅ Certificate obtained successfully for $domain"
         
-        # Проверяем, создался ли сертификат с числовым суффиксом
+        # Check if cert was created with numeric suffix
         new_cert_dir=$(find /etc/letsencrypt/archive -maxdepth 1 -name "${domain}-*" -type d | grep -E "${domain}-[0-9]+$" | head -1)
         if [ -n "$new_cert_dir" ]; then
             new_cert_name=$(basename "$new_cert_dir")
             echo "🔄 New certificate created with suffix ${new_cert_name#${domain}-}, reorganizing..."
             
-            # Переименовываем старую папку (если есть) в -old
+            # Rename old dir to -old if present
             if [ -d "/etc/letsencrypt/archive/${domain}" ]; then
                 echo "📁 Moving old certificate to -old suffix..."
                 mv "/etc/letsencrypt/archive/${domain}" "/etc/letsencrypt/archive/${domain}-old"
@@ -232,13 +232,13 @@ get_letsencrypt_cert() {
                 mv "/etc/letsencrypt/renewal/${domain}.conf" "/etc/letsencrypt/renewal/${domain}-old.conf" 2>/dev/null || true
             fi
             
-            # Переименовываем новую папку в основную
+            # Rename new dir to main name
             echo "📁 Moving new certificate to main name..."
             mv "/etc/letsencrypt/archive/${new_cert_name}" "/etc/letsencrypt/archive/${domain}"
             mv "/etc/letsencrypt/live/${new_cert_name}" "/etc/letsencrypt/live/${domain}" 2>/dev/null || true
             mv "/etc/letsencrypt/renewal/${new_cert_name}.conf" "/etc/letsencrypt/renewal/${domain}.conf" 2>/dev/null || true
             
-            # Создаем правильные симлинки
+            # Create correct symlinks
             echo "🔗 Creating correct symlinks..."
             rm -f "/etc/letsencrypt/live/${domain}"/*.pem
             ln -s "../../archive/${domain}/cert1.pem" "/etc/letsencrypt/live/${domain}/cert.pem"
@@ -254,7 +254,7 @@ get_letsencrypt_cert() {
         return 0
     fi
     echo "❌ Failed to obtain certificate for $domain (rc=$rc)"
-    # Если достигнут лимит выпусков, пытаемся использовать уже существующие файлы или fallback
+    # If rate limit hit, try existing files or fallback
     if grep -qi "too many certificates" /var/log/letsencrypt/letsencrypt.log 2>/dev/null; then
         if has_existing_cert "$domain"; then
             echo "Rate limit hit, but existing cert files found — reusing"
@@ -268,7 +268,7 @@ get_letsencrypt_cert() {
     return 1
 }
 
-# Проверяем доступность nginx
+# Check nginx availability
 echo "Checking nginx configuration and availability..."
 for i in {1..3}; do
     echo "Attempt $i: Checking nginx status..."
@@ -285,29 +285,29 @@ for i in {1..3}; do
     sleep 5
 done
 
-# Проверяем, был ли скрипт вызван с флагом принудительного обновления
+# Check if script was called with force-renewal flag
 FORCE_RENEWAL=false
 if [ "$1" = "--force-renewal" ]; then
     FORCE_RENEWAL=true
     echo " Force renewal mode enabled"
 fi
 
-# Преобразуем строку с доменами в массив
+# Parse domains string into array
 IFS=',' read -ra DOMAIN_ARRAY <<< "$DOMAINS"
 for domain in "${DOMAIN_ARRAY[@]}"; do
     echo " Processing domain: $domain"
     
-    # Очищаем старые сертификаты с суффиксами
+    # Clean old certs with suffixes
     cleanup_old_certificates "$domain"
     
-    # Проверяем локальные домены ПЕРЕД тестовым режимом
+    # Check local domains BEFORE test mode
     if [[ "$domain" =~ [.]127[.]0[.]0[.]1[.] ]] || \
        [[ "$domain" =~ [.]localhost ]] || \
        [[ "$domain" =~ [.]local$ ]] || \
        [[ "$domain" =~ [.]local[,]? ]]; then
         echo "🔧 Local domain detected, using self-signed certificate"
         create_self_signed_cert "$domain"
-    # Потом проверяем тестовый режим
+    # Then check test mode
     elif [[ "${CERTBOT_TEST_MODE:-false}" = "true" ]]; then
         echo " Test mode enabled, using self-signed certificate"
         create_self_signed_cert "$domain"
@@ -319,7 +319,7 @@ done
 
 echo "🎉 All certificates have been processed"
 
-# В конце скрипта
+# At script end
 if [ $? -eq 0 ]; then
     echo "success" > /var/log/certbot/error_status
 else

@@ -5,7 +5,7 @@ import { authMiddleware } from '@lib/middleware/auth.middleware'
 import { NextRequest } from 'next/server'
 
 export async function GET(request: NextRequest) {
-  // Проверяем аутентификацию
+  // Check authentication
   const authResult = await authMiddleware(request)
 
   if (!authResult.success) {

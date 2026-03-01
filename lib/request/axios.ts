@@ -4,15 +4,14 @@ export class Request {
   private readonly client: AxiosInstance
   private readonly isServerRequest: boolean
 
-  // Общий флаг и промис для "single-flight" рефреша токена
+  // Shared flag and promise for single-flight token refresh
   private static isRefreshing = false
   private static refreshPromise: Promise<unknown> | null = null
 
   constructor(config?: CreateAxiosDefaults) {
     const { headers, baseURL, ...props } = config || {}
 
-    // Определяем, это серверный запрос или клиентский
-    // Серверные запросы имеют baseURL (к бэкенду), клиентские - нет (к /api)
+    // Detect server vs client request: server has baseURL (to backend), client does not (to /api)
     this.isServerRequest = !!baseURL
 
     this.client = axios.create({
@@ -51,11 +50,11 @@ export class Request {
         }
 
         /**
-         * При 401 ошибке обрабатываем logout по-разному для клиента и сервера
+         * On 401, handle logout differently for client vs server
          */
         if (error?.status === 401 || error?.response?.status === 401) {
           if (this.isServerRequest) {
-            // ВАЖНО: Возвращаем 401 ошибку, чтобы API route мог её обработать
+            // Return 401 so API route can handle it
             return Promise.reject({
               ...error,
               status: 401,
@@ -63,9 +62,9 @@ export class Request {
               cookiesCleared: true,
             })
           } else {
-            // Для клиентских запросов - пытаемся один раз обновить токен и повторить запрос
+            // For client: try once to refresh token and retry
             if (!originalRequest || originalRequest._retry) {
-              // Уже пробовали рефреш для этого запроса — выходим, чтобы не зациклиться
+              // Already tried refresh for this request — exit to avoid loop
               return Promise.reject(error)
             }
 
@@ -88,15 +87,15 @@ export class Request {
                   })
               }
 
-              // Ждем общего рефреша (single-flight для всех 401)
+              // Wait for shared refresh (single-flight for all 401)
               if (Request.refreshPromise) {
                 await Request.refreshPromise
               }
 
-              // После успешного рефреша повторяем оригинальный запрос
+              // After successful refresh, retry original request
               return this.client(originalRequest)
             } catch (refreshError) {
-              // Если рефреш не удался — отдаём оригинальную ошибку, дальше её обработает верхний уровень
+              // If refresh failed, reject with original error for upper layer to handle
               return Promise.reject(refreshError)
             }
           }

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Определяем корень проекта и пути к файлам
+# Define the project root and file paths
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CERTBOT_DIR="${PROJECT_ROOT}/certbot"
 CERTS_DIR="${PROJECT_ROOT}/certs"
@@ -18,7 +18,7 @@ CORE_SERVICES="core-api"
 [ "$MONGO_ENABLED" = "true" ] && CORE_SERVICES="$CORE_SERVICES mongo"
 METRICS_SERVICES="prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana"
 
-# Общие функции
+# Common functions
 if [ -f "${PROJECT_ROOT}/scripts/lib/deploy-utils.sh" ]; then
     # shellcheck source=/dev/null
     . "${PROJECT_ROOT}/scripts/lib/deploy-utils.sh"
@@ -121,7 +121,7 @@ function bg_validate_green() {
 # Blue/Green: stop green stack
 function bg_down_green() {
     echo "Stopping GREEN stack..."
-    # Принудительно останавливаем зеленые контейнеры (docker-compose может не найти их из-за SUFFIX)
+    # Force-stop green containers (docker-compose may not find them due to SUFFIX)
     docker stop api-service-green redis-green mongo-green 2>/dev/null || true
     docker rm -f api-service-green redis-green mongo-green 2>/dev/null || true
 }
@@ -133,7 +133,7 @@ function renew_certificates() {
     
     echo "🔄 Manual certificate renewal for environment: $env"
     
-    # Проверяем, что certbot контейнер запущен
+    # Ensure certbot container is running
     if ! docker ps --format '{{.Names}}' | grep -q "service-api-certbot"; then
         echo "❌ Certbot container is not running. Starting it first..."
         API_ENV=${env} \
@@ -172,9 +172,9 @@ function start_http() {
     check_resources
 
     local env=${1:-stage}
-    local raw_domains="$*"  # Берем все оставшиеся аргументы
+    local raw_domains="$*"  # All remaining arguments as domains
     
-    # Получаем домены через функцию parse_domains
+    # Get domains via parse_domains
     local domains=$(parse_domains "$raw_domains")
     
 
@@ -439,7 +439,7 @@ function start_https() {
         
         if [ $attempts -ge $max_attempts ]; then
             echo "Error: Nginx failed to become healthy after $max_attempts attempts"
-            # Откатим новые миграции, если были применены
+            # Roll back newly applied migrations if any
             if [[ -n "$newly_applied_migs" && "$newly_applied_migs" -gt 0 ]]; then
                 echo "Attempting to rollback $newly_applied_migs migrations due to failure..."
                 rollback_new_migrations "$env" "$newly_applied_migs" || true

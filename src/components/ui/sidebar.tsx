@@ -108,7 +108,7 @@ const Footer = () => {
   return (
     <div className="p-4 border-t border-gray-200">
       <button onClick={handleLogout} className="w-full cursor-pointer font-medium text-sm p-2 text-center bg-blue-100 rounded-xl hover:bg-blue-200">
-        Выйти
+        Sign out
       </button>
     </div>
   )

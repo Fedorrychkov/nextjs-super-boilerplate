@@ -9,16 +9,16 @@ export interface AuthRequest extends NextRequest {
 }
 
 /**
- * Результат проверки аутентификации
+ * Authentication check result
  */
 export type AuthResult = { success: true; payload: JwtPayload; response: NextResponse } | { success: false; response: NextResponse }
 
 /**
- * Middleware для проверки JWT токена
- * Возвращает результат с payload при успехе или ошибку при неудаче
+ * Middleware to verify JWT token
+ * Returns payload on success or error response on failure
  */
 export async function authMiddleware(request: NextRequest): Promise<AuthResult> {
-  // Получаем токен из cookies или Authorization header
+  // Get token from cookies or Authorization header
   const accessToken = request.cookies.get('accessToken')?.value || request.headers.get('Authorization')?.replace('Bearer ', '')
 
   if (!accessToken) {
@@ -61,7 +61,7 @@ export async function authMiddleware(request: NextRequest): Promise<AuthResult> 
 }
 
 /**
- * Middleware для проверки роли пользователя
+ * Middleware to check user role
  */
 export function roleMiddleware(allowedRoles: UserRole[]) {
   return async (request: NextRequest): Promise<AuthResult> => {
@@ -83,8 +83,8 @@ export function roleMiddleware(allowedRoles: UserRole[]) {
 }
 
 /**
- * Получение пользователя из request headers (после authMiddleware)
- * @deprecated Используйте payload из результата authMiddleware напрямую
+ * Get user from request headers (after authMiddleware)
+ * @deprecated Use payload from authMiddleware result directly
  */
 export function getUserFromRequest(request: NextRequest): JwtPayload | null {
   const userId = request.headers.get('x-user-id')

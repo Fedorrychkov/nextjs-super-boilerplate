@@ -13,7 +13,7 @@ export interface CookieOptions {
 }
 
 /**
- * Установка auth cookies через NextResponse (для App Router)
+ * Setting auth cookies through NextResponse (for App Router)
  */
 export function setAuthCookies(response: NextResponse, accessToken: string, refreshToken: string, expiresIn: number): void {
   const secure = !isDevelop
@@ -29,7 +29,7 @@ export function setAuthCookies(response: NextResponse, accessToken: string, refr
   })
 
   // Refresh token cookie
-  const refreshExpiresIn = 7 * 24 * 60 * 60 // 7 дней в секундах
+  const refreshExpiresIn = 7 * 24 * 60 * 60 // 7 days in seconds
   response.cookies.set('refreshToken', refreshToken, {
     httpOnly: true,
     secure,
@@ -49,7 +49,7 @@ export function setAuthCookies(response: NextResponse, accessToken: string, refr
 }
 
 /**
- * Очистка всех auth cookies через NextResponse (для App Router)
+ * Clearing all auth cookies through NextResponse (for App Router)
  */
 export function clearAuthCookies(response: NextResponse): void {
   const secure = !isDevelop
@@ -81,7 +81,7 @@ export function clearAuthCookies(response: NextResponse): void {
 }
 
 /**
- * Очистка всех auth cookies (для Pages Router - обратная совместимость)
+ * Clearing all auth cookies (for Pages Router - backward compatibility)
  */
 export const clearAllAuthCookies = (res: NextApiResponse | GetServerSidePropsContext['res']) => {
   const secure = !isDevelop
@@ -95,7 +95,7 @@ export const clearAllAuthCookies = (res: NextApiResponse | GetServerSidePropsCon
 }
 
 /**
- * Получение токена из cookies (для серверных компонентов)
+ * Getting the token from cookies (for server components)
  */
 export async function getAccessTokenFromCookies(): Promise<string | null> {
   const cookieStore = await cookies()
@@ -104,7 +104,7 @@ export async function getAccessTokenFromCookies(): Promise<string | null> {
 }
 
 /**
- * Получение refresh token из cookies (для серверных компонентов)
+ * Getting the refresh token from cookies (for server components)
  */
 export async function getRefreshTokenFromCookies(): Promise<string | null> {
   const cookieStore = await cookies()

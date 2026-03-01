@@ -1,6 +1,6 @@
 FROM certbot/certbot:latest
 
-# Установка необходимых пакетов
+# Install necessary packages
 RUN apk update && \
     apk add --no-cache \
     curl \
@@ -8,11 +8,11 @@ RUN apk update && \
     openssl \
     docker-cli
 
-# Создаем директории для логов
+# Create directories for logs
 RUN mkdir -p /var/log/certbot && \
     chmod 755 /var/log/certbot
 
-# Копируем только скрипт получения сертификатов
+# Copy only the script for obtaining certificates
 COPY .docker/scripts/get-certificates.sh /scripts/get-certificates.sh
 RUN chmod +x /scripts/*.sh
 

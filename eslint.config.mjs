@@ -98,7 +98,7 @@ const eslintConfig = defineConfig([
     },
   },
   {
-    // Отключаем правило для layout файлов Next.js, где экспорт metadata является стандартной практикой
+    // Disable rule for Next.js layout files where metadata export is standard
     files: ['**/layout.tsx', '**/layout.ts', '**/page.tsx', '**/page.ts', '**/loading.tsx', '**/loading.ts', '**/error.tsx', '**/error.ts', '**/not-found.tsx', '**/not-found.ts'],
     rules: {
       'react-refresh/only-export-components': 'off',

@@ -1,7 +1,7 @@
 FROM node:24.13.1
 WORKDIR /usr/src/api
 
-# Проверка и установка корректного значения API_ENV
+# Validate and set API_ENV
 ARG API_ENV=prod
 RUN if [ "$API_ENV" != "prod" ] && [ "$API_ENV" != "stage" ]; then \
     echo "Error: API_ENV must be either 'prod' or 'stage'" && exit 1; \
@@ -10,11 +10,11 @@ ENV API_ENV=$API_ENV
 
 RUN echo "API_ENV: $API_ENV"
 
-# Копируем только необходимые файлы для установки зависимостей
+# Copy only necessary files for installing dependencies
 COPY package*.json ./
 COPY tsconfig*.json ./
 
-# Проверяем наличие package-lock.json и устанавливаем зависимости
+# Check for package-lock.json and install dependencies
 RUN if [ -f "package-lock.json" ]; then \
         echo 'package-lock.json found, using npm ci...' && \
         HUSKY=0 npm ci --prefer-offline --no-audit --legacy-peer-deps; \
@@ -23,15 +23,23 @@ RUN if [ -f "package-lock.json" ]; then \
         HUSKY=0 npm install --prefer-offline --no-audit --legacy-peer-deps; \
     fi
 
-# Копируем исходники и собираем приложение
+# Copy source files and build the application
 COPY . .
+
+# Minimum .env for build step (without secrets). Secrets are substituted when running from mounted file.
+RUN if [ "$API_ENV" = "stage" ]; then \
+      echo "NODE_ENV=production" > .env.stage && echo "APP_ENV=stage" >> .env.stage && echo "NEXT_PUBLIC_APP_ENV=stage" >> .env.stage; \
+    else \
+      echo "NODE_ENV=production" > .env.prod && echo "APP_ENV=production" >> .env.prod && echo "NEXT_PUBLIC_APP_ENV=production" >> .env.prod; \
+    fi
+
 RUN npm run build:${API_ENV}
 
-# Очистка dev зависимостей с флагом --legacy-peer-deps
+# Clean up dev dependencies with --legacy-peer-deps flag
 RUN npm prune --production --legacy-peer-deps
 
 HEALTHCHECK --interval=30s --timeout=3s \
     CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/v1/healthcheck || exit 1
 
-# Запуск приложения в соответствии с окружением
+# Run the application according to the environment
 CMD ["sh", "-c", "npm run start:${API_ENV}"]

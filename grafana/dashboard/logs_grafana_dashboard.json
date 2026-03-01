@@ -194,7 +194,7 @@
       },
       "id": 14,
       "panels": [],
-      "title": "Web services RAW LOGS",
+      "title": "Service RAW LOGS",
       "type": "row"
     },
     {
@@ -202,7 +202,7 @@
         "type": "loki",
         "uid": "P8E80F9AEF21F6940"
       },
-      "description": "Логи кор бэкенда, без мерчант АПИ и schedule",
+      "description": "Core logs",
       "fieldConfig": {
         "defaults": {},
         "overrides": []
@@ -247,7 +247,7 @@
         "type": "loki",
         "uid": "P8E80F9AEF21F6940"
       },
-      "description": "Merchant Api, логи без кор бэка и шедула",
+      "description": "Merchant API logs, excluding core backend and schedule",
       "fieldConfig": {
         "defaults": {},
         "overrides": []

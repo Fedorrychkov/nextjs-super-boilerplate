@@ -175,7 +175,7 @@ services:
     networks:
       - api_network
     expose:
-      - 9273 # Порт для экспорта метрик Telegraf в Prometheus
+      - 9273 # Telegraf metrics export port for Prometheus
     depends_on:
       - prometheus
       - nginx-prometheus-exporter
@@ -216,7 +216,7 @@ services:
         max-size: "2g"
         max-file: "3"
 
-  # Основной API сервис (может быть переименован в blue/green)
+  # Main API service (may be renamed in blue/green)
   core-api:
     container_name: api-service${SUFFIX}
     image: ${CORE_API_IMAGE:-app_core-api:latest}
@@ -317,7 +317,7 @@ services:
       core-api:
         condition: service_started
 
-  # Сервис для первоначального получения сертификатов
+  # Initial certificate issuance service
   certbot-init:
     container_name: service-api-certbot-init
     environment:
@@ -344,7 +344,7 @@ services:
         condition: service_healthy
     restart: "no"
 
-  # Сервис для автоматического обновления сертификатов
+  # Automatic certificate renewal service
   certbot:
     container_name: service-api-certbot
     build:

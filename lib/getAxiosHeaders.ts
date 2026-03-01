@@ -1,10 +1,10 @@
 import { AxiosHeaders } from 'axios'
 
 /**
- * Метод нужен для максимального проксирования 1 в 1 запросов от клиента на бэкенд
- * Если трубется сделать отличный от клиентского запроса в BFF, то лучше не использовать этот метод
- * @param values - объект с заголовками
- * @returns объект с заголовками
+ * Build headers for 1:1 proxying of client requests to backend.
+ * For BFF requests that differ from the client request, prefer not using this helper.
+ * @param values - header key-value object
+ * @returns AxiosHeaders instance
  */
 export const getAxiosHeaders = (values: Record<string, unknown>) => {
   const parsedHeaders = Object.entries(values)
@@ -14,8 +14,8 @@ export const getAxiosHeaders = (values: Record<string, unknown>) => {
   const headers: AxiosHeaders = new AxiosHeaders(parsedHeaders)
 
   /**
-   * Добавлено приведение типа из-за внезапный проблем со строгим стравнением типов данных
-   * Ранее такого не возникало, видимо что-то обновилось в axios
+   * Type assertion added due to strict type comparison issues with AxiosHeaders.
+   * May have been introduced by an axios update.
    */
   return headers
 }

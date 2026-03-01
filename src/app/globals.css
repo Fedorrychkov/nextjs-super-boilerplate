@@ -3,11 +3,11 @@
 
 @theme {
   /*
-   * Safe area: device (вырез/навбар) + content (UI Telegram).
-   * Дефолты для --tg-* заданы ниже в :root — в Mini App их переопределит WebView.
+   * Safe area: device (notch/navbar) + content (Telegram UI).
+   * Defaults for --tg-* are set below in :root; Mini App WebView overrides them.
    * https://core.telegram.org/bots/webapps#contentsafeareainset
    */
-  /* Поддержка Bot API (--tg-*) и SDK (--tg-viewport-*) */
+  /* Bot API (--tg-*) and SDK (--tg-viewport-*) support */
   --top-safe-with-tg: calc(
     var(--tg-safe-area-inset-top, var(--tg-viewport-safe-area-inset-top, env(safe-area-inset-top, 0px)))
     + var(--tg-content-safe-area-inset-top, var(--tg-viewport-content-safe-area-inset-top, 0px))
@@ -55,7 +55,7 @@
 }
 
 @layer utilities {
-  /* Safe area: device + content (TG) или env() (браузер), через --*-safe-with-tg */
+  /* Safe area: device + content (TG) or env() (browser), via --*-safe-with-tg */
   .safe-area-top {
     padding-top: var(--safe-area-inset-top);
   }
@@ -121,8 +121,8 @@
 
 @layer base {
   /*
-   * Дефолты для переменных Telegram — всегда "defined", DevTools без "not defined".
-   * В Mini App WebView клиент переопределит их своими значениями.
+   * Defaults for Telegram variables — always "defined", DevTools won't show "not defined".
+   * In Mini App WebView the client overrides these with its own values.
    */
   :root {
     --tg-safe-area-inset-top: 0px;

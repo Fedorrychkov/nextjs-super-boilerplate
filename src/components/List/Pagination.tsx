@@ -39,7 +39,7 @@ export const Pagination = ({ currentPage, pages: totalPages, onChange }: Props) 
       <PaginationContent>
         <PaginationItem>
           <Button variant="ghost" onClick={handlePrev} disabled={currentPage === 1}>
-            <ChevronLeft className="rtl:rotate-180" /> Назад
+            <ChevronLeft className="rtl:rotate-180" /> Prev
           </Button>
         </PaginationItem>
         {firstThreePages.map((page) => (
@@ -63,7 +63,7 @@ export const Pagination = ({ currentPage, pages: totalPages, onChange }: Props) 
         ))}
         <PaginationItem>
           <Button variant="ghost" onClick={handleNext} disabled={currentPage === totalPages}>
-            Вперед <ChevronRight className="rtl:rotate-180" />
+            Next <ChevronRight className="rtl:rotate-180" />
           </Button>
         </PaginationItem>
       </PaginationContent>

@@ -10,19 +10,17 @@ import { UserRole, UserStatus } from '~/api/user'
 
 export class AuthService {
   /**
-   * Регистрация пользователя
+   * Registration of a user
    */
   async register(data: RegisterDto): Promise<AuthResponse> {
     await connectDB()
 
-    // Проверяем, существует ли пользователь
     const existingUser = await User.findOne({ email: data.email.toLowerCase() })
 
     if (existingUser) {
       throw new Error('User with this email already exists')
     }
 
-    // Создаем пользователя
     const user = await User.create({
       email: data.email.toLowerCase(),
       role: UserRole.USER,
@@ -36,19 +34,16 @@ export class AuthService {
   async login(data: LoginEmailDto): Promise<AuthResponse> {
     await connectDB()
 
-    // Находим пользователя с паролем
     const user = await User.findOne({ email: data.email.toLowerCase() }).select('+password')
 
     if (!user) {
       throw new Error('Invalid email or password')
     }
 
-    // Проверяем статус
     if (user.status !== UserStatus.ACTIVE) {
       throw new Error('User account is blocked')
     }
 
-    // Проверяем пароль
     const isPasswordValid = await user.comparePassword(data.password)
 
     if (!isPasswordValid) {
@@ -61,10 +56,8 @@ export class AuthService {
   async refreshTokens(refreshTokenString: string): Promise<AuthResponse> {
     await connectDB()
 
-    // Верифицируем refresh token
     const payload = verifyRefreshToken(refreshTokenString)
 
-    // Проверяем, существует ли токен в БД
     const storedToken = await RefreshToken.findOne({
       token: refreshTokenString,
       userId: payload.sub,
@@ -74,33 +67,25 @@ export class AuthService {
       throw new Error('Invalid refresh token')
     }
 
-    // Проверяем, не истек ли токен
     if (storedToken.expiresAt < new Date()) {
       await RefreshToken.deleteOne({ _id: storedToken._id })
       throw new Error('Refresh token expired')
     }
 
-    // Находим пользователя
     const user = await User.findById(payload.sub)
 
     if (!user || user.status !== UserStatus.ACTIVE) {
       throw new Error('User not found or inactive')
     }
 
-    // Удаляем старый refresh token
     await RefreshToken.deleteOne({ _id: storedToken._id })
 
-    // Генерируем новые токены
     return this.generateAuthResponse(user)
   }
 
-  /**
-   * Выход из системы
-   */
   async logout(refreshTokenString: string, userId: string): Promise<void> {
     await connectDB()
 
-    // Удаляем refresh token из БД
     await RefreshToken.deleteOne({
       token: refreshTokenString,
       userId,

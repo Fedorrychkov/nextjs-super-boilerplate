@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-# Обязательные переменные:
+# Required variables:
 # TG_TOKEN, TG_CHAT_ID
 # TG_THREAD_ID — optional; if not set, reply_to_message_id is not sent (normal group or personal chat)
 # TG_STATUS: start|success|error

@@ -12,7 +12,7 @@ import { useLoginMutation, useLogoutQuery, useSignUpMutation } from '~/query/aut
 const SignInBlock = React.lazy(() => import('~/components/Views/Auth/Blocks/SignInBlock').then((module) => ({ default: module.SignInBlock })))
 const SignUpBlock = React.lazy(() => import('~/components/Views/Auth/Blocks/SignUpBlock').then((module) => ({ default: module.SignUpBlock })))
 
-// Компонент для работы с searchParams
+// Component for handling searchParams
 const LoginWithParams = () => {
   const searchParams = useSearchParams()
   const nextPath = searchParams.get('nextPath')
@@ -100,7 +100,7 @@ const LoginWithParams = () => {
   console.log('isLoading', isLoading)
   console.log('isLogoutLoading', isLogoutLoading)
 
-  // Показываем loading до определения клиентского состояния
+  // Show loading until client state is determined
   if (!isClient || isLoading || isLogoutLoading) {
     return <SpinnerScreen />
   }

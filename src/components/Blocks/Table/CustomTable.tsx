@@ -52,7 +52,7 @@ export function CustomTable<T extends WithId>(props: Props<T>) {
           ) : (
             <TableRow>
               <TableCell colSpan={columnKeys.length} className="text-center py-6">
-                {EmptyPlaceholder ? <EmptyPlaceholder /> : 'Список пуст'}
+                {EmptyPlaceholder ? <EmptyPlaceholder /> : 'No items'}
               </TableCell>
             </TableRow>
           )}

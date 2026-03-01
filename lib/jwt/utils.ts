@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken'
 import { JwtPayload } from '~/api/auth/model'
 
 /**
- * Генерация access token
+ * Generation of an access token
  */
 export function generateAccessToken(payload: Omit<JwtPayload, 'exp'>): string {
   return jwt.sign(payload, JWT_CONFIG.secret, {
@@ -13,7 +13,7 @@ export function generateAccessToken(payload: Omit<JwtPayload, 'exp'>): string {
 }
 
 /**
- * Генерация refresh token
+ * Generation of a refresh token
  */
 export function generateRefreshToken(payload: Omit<JwtPayload, 'exp'>): string {
   return jwt.sign(payload, JWT_CONFIG.secret, {
@@ -22,7 +22,7 @@ export function generateRefreshToken(payload: Omit<JwtPayload, 'exp'>): string {
 }
 
 /**
- * Верификация access token
+ * Verification of an access token
  */
 export function verifyAccessToken(token: string): JwtPayload {
   try {
@@ -37,7 +37,7 @@ export function verifyAccessToken(token: string): JwtPayload {
 }
 
 /**
- * Верификация refresh token
+ * Verification of a refresh token
  */
 export function verifyRefreshToken(token: string): JwtPayload {
   try {
@@ -52,14 +52,14 @@ export function verifyRefreshToken(token: string): JwtPayload {
 }
 
 /**
- * Декодирование токена без верификации (для отладки)
+ * Decoding a token without verification (for debugging)
  */
 export function decodeToken(token: string): JwtPayload | null {
   return jwt.decode(token) as JwtPayload | null
 }
 
 /**
- * Получение времени истечения токена в секундах
+ * Getting the token expiration time in seconds
  */
 export function getTokenExpiration(expiresIn: number): number {
   return expiresIn
