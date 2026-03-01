@@ -347,14 +347,8 @@ jobs:
                       docker-compose -f docker-compose.local.yml build --no-cache core-api
                   fi
                   ( set -a; [ -f "${{ inputs.env_file }}" ] && . "./${{ inputs.env_file }}"; set +a; export ENV_FILE="${{ inputs.env_file }}" API_ENV=${{ inputs.api_env }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }} CORE_API_IMAGE="$CORE_API_IMAGE"; docker-compose -f docker-compose.local.yml up -d $CORE_UP )
-                  docker kill -s HUP core-nginx-service || ( \
-                    API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} \
-                      docker-compose -f docker-compose.local.yml stop nginx || true; \
-                    API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} \
-                      docker-compose -f docker-compose.local.yml rm -f nginx || true; \
-                    API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} \
-                      docker-compose -f docker-compose.local.yml up -d nginx \
-                  ) || true
+                  # Restart nginx container so it picks up new upstream
+                  ( set -a; [ -f "${{ inputs.env_file }}" ] && . "./${{ inputs.env_file }}"; set +a; export ENV_FILE="${{ inputs.env_file }}" API_ENV=${{ inputs.api_env }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }}; docker-compose -f docker-compose.local.yml stop nginx || true; docker-compose -f docker-compose.local.yml rm -f nginx || true; docker-compose -f docker-compose.local.yml up -d nginx )
                   MIGRATIONS_RUN=${{ inputs.migrations_run }} ./scripts/local-containers-run.sh bg-down ${{ inputs.api_env }} || true
                   API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} \
                     docker-compose -f docker-compose.local.yml stop $EXTRA_STOP || true
