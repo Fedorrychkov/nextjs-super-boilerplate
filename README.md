@@ -120,6 +120,21 @@ sudo ufw enable
 sudo ufw status
 ```
 
+
+## Troubleshooting
+
+Common issues and fixes are described in the FAQ (see links above). Summary:
+
+| Problem | What to do |
+|--------|------------|
+| **Certbot:** "example@example.com is an invalid email" | Use a real email: set GitHub secret `CERTBOT_EMAIL` or `certbot_email` in the workflow. |
+| **Nginx:** Broken or leftover containers, wrong names | On the server run `./scripts/local-containers-run.sh clean`, then redeploy or run `https` again. |
+| **MongoDB:** Registration fails, "Access control is not enabled", wrong user/password | Mongo init runs only on first start with empty data. Remove mongo volume, fix `MONGO_USER`/`MONGO_PASSWORD` in the GitHub `env` secret, then redeploy. See [FAQ](./docs/FAQ_EN.md#mongodb-wrong-init-data). |
+| **Env vars not in container** | Ensure the GitHub secret for `.env` content (e.g. `WEB_ENV_PROD`) includes all keys; redeploy so `.env.prod` is recreated. |
+| **No styles on prod** | Do not exclude `.next`/`out`/`build` from the image; they are built inside the Dockerfile. |
+
+For step-by-step instructions (Mongo reset, clean script, certbot email), see [docs/FAQ_RU.md](./docs/FAQ_RU.md) or [docs/FAQ_EN.md](./docs/FAQ_EN.md).
+
 ---
 
 ## License

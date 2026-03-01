@@ -492,12 +492,14 @@ function start_https() {
 
 # Full rebuild
 function rebuild() {
+    local env=${1:-stage}
     cd ${PROJECT_ROOT}
     prepare_dirs
-    local env_file=$(get_env_file $env)
+    local env_file=$(get_env_file "$env")
+    load_env_into_shell "$env_file"
     docker-compose -f ${COMPOSE_FILE} down
     docker system prune -f
-    API_ENV=${1:-stage} \
+    API_ENV=$env \
     ENV_FILE=$env_file \
     NGINX_MODE=http \
     docker-compose -f ${COMPOSE_FILE} build --no-cache && \
