@@ -3,7 +3,6 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import React, { Suspense, useCallback, useEffect, useState } from 'react'
 
-import { UserRole } from '~/api/user'
 import { SpinnerScreen } from '~/components/Loaders'
 import { useAuth } from '~/providers'
 import { useNotify } from '~/providers/notify'
@@ -47,16 +46,12 @@ const LoginWithParams = () => {
       })
 
       if (response.success) {
-        const result = await refetch?.()
+        await refetch?.()
 
         if (nextPath) {
           router.replace(nextPath)
         } else {
-          if (result?.data?.role === UserRole.ADMIN) {
-            router.replace('/admin')
-          } else {
-            router.replace('/')
-          }
+          router.replace('/')
         }
       } else {
         console.error('Login failed')

@@ -2,10 +2,11 @@
 
 import { usePathname } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
+import { useQueryClient } from 'react-query'
 
 import { UserRole } from '~/api/user'
 import { routes } from '~/constants'
-import { useProfileQuery, useRefreshTokenQuery } from '~/query/auth'
+import { PROFILE_QUERY_KEY, useProfileQuery } from '~/query/auth'
 import { logger } from '~/utils/logger'
 
 import { AuthUserContext } from './useAuth'
@@ -14,6 +15,7 @@ const expectedRoutes = [routes.home.path, routes.login.path, routes.logout.path,
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isClient, setIsClient] = useState(false)
+  const queryClient = useQueryClient()
 
   useEffect(() => {
     queueMicrotask(() => setIsClient(true))
@@ -28,15 +30,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   logger.info('AuthProvider profile', { profile, isEnabled, isFetched, isLoading, pathname })
 
   useEffect(() => {
+    if (!isEnabled) {
+      queryClient.cancelQueries(PROFILE_QUERY_KEY)
+    }
+  }, [isEnabled, queryClient])
+
+  useEffect(() => {
     if (isEnabled && !isFetched) {
       refetch()
     }
   }, [isEnabled, isFetched, refetch])
-
-  /**
-   * When user is authenticated, refresh token every 5 minutes
-   */
-  useRefreshTokenQuery(!!profile?.id && isEnabled)
 
   const values = useMemo(() => {
     return {

@@ -1,5 +1,7 @@
 import axios, { AxiosInstance, CreateAxiosDefaults } from 'axios'
 
+import { logger } from '~/utils/logger'
+
 export class Request {
   private readonly client: AxiosInstance
   private readonly isServerRequest: boolean
@@ -24,13 +26,25 @@ export class Request {
       ...props,
     })
 
+    this.client.interceptors.request.use(
+      (config) => {
+        logger.info('axios interceptor request', config.url, config.method, config.headers)
+
+        return config
+      },
+      (error) => {
+        logger.error('axios interceptor request error', error)
+
+        return Promise.reject(error)
+      },
+    )
+
     this.client.interceptors.response.use(
       (response) => {
         return response
       },
       async (error) => {
-        console.error('error', error)
-
+        logger.error('axios interceptor error', { data: error.response?.data, status: error.response?.status })
         const originalRequest = error.config
 
         let nextPath = ''
@@ -40,7 +54,7 @@ export class Request {
         }
 
         if (error?.response?.status === 400 && error?.response?.data?.message === 'No refresh token') {
-          if (!this.isServerRequest) {
+          if (!this.isServerRequest && typeof window !== 'undefined') {
             window.location.href = `/logout?nextPath=${nextPath ?? '/'}`
           } else {
             return Promise.reject(error)
@@ -53,7 +67,7 @@ export class Request {
          * On 401, handle logout differently for client vs server
          */
         if (error?.status === 401 || error?.response?.status === 401) {
-          if (this.isServerRequest) {
+          if (this.isServerRequest || typeof window === 'undefined' || error.config.url?.includes('v1/auth')) {
             // Return 401 so API route can handle it
             return Promise.reject({
               ...error,
@@ -71,9 +85,10 @@ export class Request {
             originalRequest._retry = true
 
             try {
-              console.log('Try to refresh token...')
+              logger.info('Try to refresh token...')
 
               if (!Request.isRefreshing) {
+                logger.info('Start refreshing token...')
                 Request.isRefreshing = true
                 Request.refreshPromise = this.client
                   .post('/api/v1/auth/refresh')
@@ -89,6 +104,7 @@ export class Request {
 
               // Wait for shared refresh (single-flight for all 401)
               if (Request.refreshPromise) {
+                logger.debug('Wait for shared refresh (single-flight for all 401)')
                 await Request.refreshPromise
               }
 

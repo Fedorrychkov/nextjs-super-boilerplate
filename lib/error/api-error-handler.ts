@@ -12,6 +12,12 @@ export const apiErrorHandlerContainer =
     const res = NextResponse
 
     try {
+      logger.info('apiErrorHandlerContainer start', {
+        url: req.nextUrl.toString(),
+        method: req.method,
+        headers: Object.fromEntries(req.headers.entries()),
+      })
+
       return await handler(res, req)
     } catch (error: unknown) {
       if (error instanceof AxiosError) {

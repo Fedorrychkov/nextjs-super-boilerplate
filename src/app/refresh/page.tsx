@@ -40,8 +40,6 @@ const RefreshWithParams = () => {
 }
 
 const Refresh = () => {
-  logger.info('RefreshScreen')
-
   return (
     <div className="w-full h-full flex items-center justify-center flex-col flex-1">
       <Suspense fallback={<SpinnerScreen />}>

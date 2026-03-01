@@ -1,30 +1,27 @@
-// Universal logger: works on server and client (no 'use client' — safe to import from RSC and client components).
-// NEXT_PUBLIC_APP_ENV is inlined at build time on client and available on server.
-const isDevelopment = process.env.NEXT_PUBLIC_APP_ENV === 'development'
-const isStage = process.env.NEXT_PUBLIC_APP_ENV === 'stage'
-const isEnabled = isDevelopment || isStage
+import { createConsola } from 'consola'
 
 /**
- * Universal logger (server + client).
- * Logs only when NEXT_PUBLIC_APP_ENV is development or stage.
+ * Универсальный логгер (сервер + клиент).
+ * На проде: только серверные логи; клиентские в консоль браузера не выводятся.
  */
+
+const isClient = typeof window !== 'undefined'
+const isProd = process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_APP_ENV === 'production'
+const silentClient = isClient && isProd
+
+const consolaInstance = silentClient ? createConsola({ level: -999 }) : createConsola()
+
 export const logger = {
   debug: (...args: unknown[]) => {
-    if (isEnabled) {
-      console.log(...args)
-    }
-  },
-  error: (...args: unknown[]) => {
-    console.error(...args)
+    consolaInstance.debug({ date: new Date().toISOString() }, ...args)
   },
   info: (...args: unknown[]) => {
-    if (isEnabled) {
-      console.info(...args)
-    }
+    consolaInstance.info({ date: new Date().toISOString() }, ...args)
   },
   warn: (...args: unknown[]) => {
-    if (isEnabled) {
-      console.warn(...args)
-    }
+    consolaInstance.warn({ date: new Date().toISOString() }, ...args)
+  },
+  error: (...args: unknown[]) => {
+    consolaInstance.error({ date: new Date().toISOString() }, ...args)
   },
 }
