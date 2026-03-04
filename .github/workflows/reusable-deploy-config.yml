@@ -263,8 +263,8 @@ jobs:
           CORE_API_IMAGE: ${{ env.CORE_API_IMAGE }}
           GHCR_USERNAME: ${{ secrets.ghcr_username }}
           GHCR_TOKEN: ${{ secrets.ghcr_token }}
-          GRAFANA_ADMIN_USER: ${{ inputs.grafana_admin_user }}
-          GRAFANA_ADMIN_PASSWORD: ${{ inputs.grafana_admin_password }}
+          GRAFANA_ADMIN_USER: ${{ secrets.grafana_admin_user }}
+          GRAFANA_ADMIN_PASSWORD: ${{ secrets.grafana_admin_password }}
           REDIS_ENABLED: ${{ inputs.redis_enabled }}
           METRICS_ENABLED: ${{ inputs.metrics_enabled }}
           MONGO_ENABLED: ${{ inputs.mongo_enabled }}
@@ -296,7 +296,6 @@ jobs:
 
             docker volume create letsencrypt_certs || true
             docker volume create certbot_logs || true
-            docker volume create mongo_data || true
 
             USE_BG=false
             if [ "${{ inputs.blue_green_enabled }}" = "true" ]; then
@@ -426,6 +425,8 @@ jobs:
             echo "🧹 Starting Docker cleanup..."
             docker images --filter "reference=app_new_*" --format "table {{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.Size}}" || true
             docker rmi $(docker images --filter "reference=app_new_*" --format "{{.ID}}") 2>/dev/null || true
+            echo "Removing app_new volumes (if exist)..."
+            docker volume rm app_new_mongo_data app_new_redis_data 2>/dev/null || true
 
             # Remove old registry images (ghcr.io/owner/name:*): keep only the image used by api-service
             CURRENT_IMAGE=$(docker inspect api-service --format '{{.Config.Image}}' 2>/dev/null || true)
