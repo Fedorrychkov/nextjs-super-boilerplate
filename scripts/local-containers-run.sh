@@ -187,6 +187,13 @@ function start_http() {
     local env_file=$(get_env_file $env)
     load_env_into_shell "$env_file"
 
+    # When metrics are enabled, start metrics stack (including grafana)
+    # before nginx so upstream names are resolvable in nginx config.
+    if [ "$METRICS_ENABLED" = "true" ]; then
+        echo "HTTP mode: starting metrics stack (prometheus, grafana, loki, etc.) before nginx..."
+        docker-compose -f ${COMPOSE_FILE} up -d $METRICS_SERVICES
+    fi
+
     DEPLOY_MODE=${DEPLOY_MODE:-default}
     if [ "$DEPLOY_MODE" = "registry" ] && [ -n "${CORE_API_IMAGE:-}" ]; then
         echo "DEPLOY_MODE=registry: pulling core-api image $CORE_API_IMAGE"
@@ -275,6 +282,14 @@ function start_https() {
     if [[ $migs_rc -ne 0 ]]; then
         echo "Error: migrations failed. Stopping deploy."
         exit 1
+    fi
+
+    # When metrics are enabled, start metrics stack (including grafana)
+    # before the first nginx start so upstream names like 'grafana'
+    # are resolvable and nginx -t does not fail.
+    if [ "$METRICS_ENABLED" = "true" ]; then
+        echo "Stage 1.2: Starting metrics stack (prometheus, grafana, loki, etc.) before nginx..."
+        docker-compose -f ${COMPOSE_FILE} up -d $METRICS_SERVICES
     fi
 
     echo "Stage 2: Starting nginx in HTTP mode..."
