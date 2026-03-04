@@ -92,6 +92,69 @@ Example: to serve the app at `app.myproject.com`, create A record `app` → `203
 - **Docker & Docker Compose:** Required on the **server** for deploy. Install: [Docker Engine](https://docs.docker.com/engine/install/ubuntu/), [Docker Compose](https://docs.docker.com/compose/install/).
 - **Local machine:** For running full stack or scripts that use Docker (e.g. `make up-local`, or deploy scripts if you run them locally), you need **Docker** and **docker-compose** installed and the Docker daemon running.
 
+### Manual monitoring on the server
+
+On a running VPS (after deploy), you can quickly check CPU, memory, disk, and Docker containers with standard Linux tools.
+
+- **CPU usage**
+
+  ```bash
+  # Overall usage (press q to exit)
+  top
+
+  # Nicer, grouped view (if installed)
+  htop
+
+  # Very compact per‑CPU stats
+  mpstat 1 10        # from sysstat package
+  ```
+
+- **Memory usage**
+
+  ```bash
+  free -h            # total / used / free RAM and swap
+  cat /proc/meminfo  # detailed breakdown (advanced)
+  ```
+
+- **Disk usage and I/O**
+
+  ```bash
+  df -h              # disk usage per filesystem
+  df -h /            # quickly check root filesystem
+
+  # Find heavy directories under /var/lib/docker (Docker data)
+  sudo du -h /var/lib/docker | sort -h | tail
+
+  # Realtime disk I/O per device (if installed)
+  iostat -xz 1       # from sysstat package
+  ```
+
+- **Docker containers and their resources**
+
+  ```bash
+  docker ps -a                       # list all containers
+  docker stats                       # live CPU/memory/IO for containers
+  docker stats api-service grafana   # stats for specific containers
+
+  docker logs -f core-nginx-service  # stream nginx logs
+  docker logs -f app_grafana_1       # stream Grafana logs
+  ```
+
+- **System logs (Ubuntu)**
+
+  ```bash
+  # Journal (systemd)
+  sudo journalctl -xe                # last errors with context
+  sudo journalctl -u docker          # Docker daemon logs
+
+  # Classic log files
+  ls -lh /var/log
+  tail -n 200 /var/log/syslog
+  tail -n 200 /var/log/auth.log
+  ```
+
+For more advanced monitoring, you can enable the built‑in metrics stack (`metrics_enabled: true` in the deploy workflow) to get Prometheus + Grafana + Loki with dashboards for CPU, memory, disk, nginx, and application logs.
+
 ### Docker Hub rate limits
 
 When the server (or CI) pulls many images, you can hit Docker Hub rate limits. To avoid that:
