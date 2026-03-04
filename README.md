@@ -4,6 +4,18 @@ Minimal Next.js template with deploy (GitHub Actions), optional Docker stack (ng
 
 **Detailed article:** [RU](https://github.com/Fedorrychkov/fedorrychkov/blob/main/articles/standalone-nextjs-production-ready-boilerplate/ARTICLE_RU.md) · [EN](https://github.com/Fedorrychkov/fedorrychkov/blob/main/articles/standalone-nextjs-production-ready-boilerplate/ARTICLE_EN.md)
 
+## Table of contents
+
+- [Demo](#demo)
+- [Local run](#local-run)
+- [Development](#development)
+- [Deploy](#deploy)
+- [Domain and DNS](#domain-and-dns-a-record)
+- [VPS requirements and setup](#vps-requirements-and-setup)
+- [Bundle optimization and monitoring](#bundle-optimization-and-monitoring)
+- [Troubleshooting](#troubleshooting)
+- [License](#license)
+
 ## Demo
 
 [View demo](https://nextjs-super-boilerplate.visn-ai.io)
@@ -182,6 +194,63 @@ sudo ufw allow 443
 sudo ufw enable
 sudo ufw status
 ```
+
+---
+
+## Bundle optimization and monitoring
+
+The template includes sensible defaults for bundle size, but you can further optimize and inspect what ships to the browser.
+
+- **Analyze the bundle locally**
+
+  ```bash
+  # Build with Webpack + bundle analyzer
+  pnpm run analyze     # or: npm run analyze
+  ```
+
+  This runs `next build --webpack` with `@next/bundle-analyzer` enabled (`ANALYZE=true`) and generates a report under `.next/diagnostics/analyze/`.  
+  Open `index.html` from that folder in a browser to see a treemap of client and server bundles.
+
+- **What to look for in the analyzer**
+
+  - Large third‑party libraries (`framer-motion`, `cmdk`, `react-json-pretty`, `lucide-react`, etc.).
+  - Components that pull many icons or demo UI into common chunks.
+  - Pages that import heavy modules in layouts or shared providers.
+
+- **Recommended techniques**
+
+  - **Lazy‑load heavy, rarely used components** with `next/dynamic`:
+
+    ```ts
+    import dynamic from 'next/dynamic'
+
+    const HeavyComponent = dynamic(() => import('./HeavyComponent'), {
+      ssr: false,
+    })
+    ```
+
+  - **Keep heavy libs local to pages that need them** (e.g. `ui-kit` demo), instead of importing them in root layouts or global providers.
+  - Use Next 16 `optimizePackageImports` (already enabled) to avoid importing entire packages when only a few exports are used:
+
+    ```ts
+    // next.config.ts (already configured)
+    experimental: {
+      optimizePackageImports: ['framer-motion', 'cmdk', 'lucide-react'],
+    }
+    ```
+
+  - Prefer native JS or small utilities over pulling full `lodash` when possible.
+
+- **HTTP‑level optimizations (already wired)**
+
+  - Nginx configs enable **gzip** for JS/CSS/HTML/fonts.
+  - Static Next.js assets under `/_next/static/` are served with:
+
+    ```text
+    Cache-Control: public, max-age=2592000, immutable
+    ```
+
+    which leverages hashed filenames for long‑lived browser caching.
 
 
 ## Troubleshooting

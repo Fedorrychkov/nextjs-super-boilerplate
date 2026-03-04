@@ -79,7 +79,7 @@ const nextConfig = {
     ]
   },
   experimental: {
-    optimizePackageImports: ['framer-motion'],
+    optimizePackageImports: ['framer-motion', 'cmdk', 'lucide-react'],
   },
 }
 
