@@ -10,6 +10,7 @@ Minimal Next.js template with deploy (GitHub Actions), optional Docker stack (ng
 - [Local run](#local-run)
 - [Development](#development)
 - [Deploy](#deploy)
+- [Infrastructure roadmap](#infrastructure-roadmap)
 - [Domain and DNS](#domain-and-dns-a-record)
 - [VPS requirements and setup](#vps-requirements-and-setup)
 - [Bundle optimization and monitoring](#bundle-optimization-and-monitoring)
@@ -279,6 +280,20 @@ Common issues and fixes are described in the FAQ (see links above). Summary:
 | **Metrics stack overloads 1‑core VPS (CPU 100%, 502 on Grafana)** | Either disable metrics (`metrics_enabled: false`) and use only core services, or move to a VPS with 2+ vCPUs. If metrics must run on 1 vCPU, keep Prometheus scrape intervals high, limit Promtail/Telegraf inputs, and keep Grafana queries short and filtered. |
 
 For step-by-step instructions (Mongo reset, clean script, certbot email), see [docs/FAQ_RU.md](./docs/FAQ_RU.md) or [docs/FAQ_EN.md](./docs/FAQ_EN.md).
+
+---
+
+## Infrastructure roadmap
+
+For a high-level overview of the current deployment approach and two evolution paths:
+
+- **Plan A – Hardened single-server stack (Terraform + better ops)**
+- **Plan B – Cluster-ready Kubernetes stack (K8s + ingress + GitOps)**
+
+see:
+
+- English: [`INFRASTRUCTURE_PLAN.md`](./INFRASTRUCTURE_PLAN.md)
+- Russian: [`INFRASTRUCTURE_PLAN_RU.md`](./INFRASTRUCTURE_PLAN_RU.md)
 
 ---
 
