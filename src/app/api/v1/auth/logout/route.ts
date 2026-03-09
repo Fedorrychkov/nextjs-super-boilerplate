@@ -1,11 +1,12 @@
 import { clearAuthCookies } from '@lib/cookies'
 import { apiErrorHandlerContainer } from '@lib/error/api-error-handler'
 import { decodeToken } from '@lib/jwt/utils'
+import { withGlobalRateLimit } from '@lib/rate-limit'
 import { authService } from '@lib/services/auth.service'
 import { cookies } from 'next/headers'
 import { NextRequest } from 'next/server'
 
-export async function POST(request: NextRequest) {
+const handler = (request: NextRequest) => {
   return apiErrorHandlerContainer(request)(async (res, _req) => {
     const cookieStore = await cookies()
     const refreshToken = cookieStore.get('refreshToken')?.value ?? null
@@ -24,3 +25,5 @@ export async function POST(request: NextRequest) {
     return response
   })
 }
+
+export const POST = withGlobalRateLimit(handler)

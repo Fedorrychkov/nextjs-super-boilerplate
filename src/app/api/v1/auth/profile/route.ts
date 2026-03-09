@@ -2,9 +2,10 @@ import connectDB from '@lib/db/client'
 import User from '@lib/db/models/User'
 import { apiErrorHandlerContainer } from '@lib/error/api-error-handler'
 import { authMiddleware } from '@lib/middleware/auth.middleware'
+import { withGlobalRateLimit } from '@lib/rate-limit'
 import { NextRequest } from 'next/server'
 
-export async function GET(request: NextRequest) {
+const handler = async (request: NextRequest) => {
   // Check authentication
   const authResult = await authMiddleware(request)
 
@@ -33,3 +34,5 @@ export async function GET(request: NextRequest) {
     )
   })
 }
+
+export const GET = withGlobalRateLimit(handler)

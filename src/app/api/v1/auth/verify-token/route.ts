@@ -2,11 +2,12 @@ import connectDB from '@lib/db/client'
 import User from '@lib/db/models/User'
 import { apiErrorHandlerContainer } from '@lib/error/api-error-handler'
 import { verifyAccessToken } from '@lib/jwt/utils'
+import { withGlobalRateLimit } from '@lib/rate-limit'
 import { NextRequest } from 'next/server'
 
 import { UserStatus } from '~/api/user'
 
-export async function POST(request: NextRequest) {
+const handler = (request: NextRequest) => {
   return apiErrorHandlerContainer(request)(async (res, req) => {
     const body = await req.json().catch(() => ({}))
     const accessToken = (body?.accessToken ?? '') as string
@@ -41,3 +42,5 @@ export async function POST(request: NextRequest) {
     }
   })
 }
+
+export const POST = withGlobalRateLimit(handler)

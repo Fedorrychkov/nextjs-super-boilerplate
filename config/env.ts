@@ -11,6 +11,8 @@ const {
   MONGO_USER = process.env.MONGO_USER || '',
   MONGO_PASSWORD = process.env.MONGO_PASSWORD || '',
   MONGO_DB = process.env.MONGO_DB || 'app',
+  RATE_LIMIT_POINTS = Number(process.env.RATE_LIMIT_POINTS || 100),
+  REDIS_URL = process.env.REDIS_URL,
 } = process.env
 
 const isDevelop = APP_ENV === 'development'
@@ -34,4 +36,9 @@ const MONGODB_CONFIG = {
   db: MONGO_DB,
 }
 
-export { APP_ENV, APP_INTERNAL_ORIGIN, isDevelop, isProd, isStage, JWT_CONFIG, MONGODB_CONFIG, NEXT_PUBLIC_APP_ENV }
+const RATE_LIMIT_CONFIG = {
+  points: Number(RATE_LIMIT_POINTS || 400),
+  duration: 60,
+}
+
+export { APP_ENV, APP_INTERNAL_ORIGIN, isDevelop, isProd, isStage, JWT_CONFIG, MONGODB_CONFIG, NEXT_PUBLIC_APP_ENV, RATE_LIMIT_CONFIG, REDIS_URL }

@@ -26,7 +26,7 @@ jobs:
       registry_subname: 'registry.example'
       notigy_enabled: true
       tag: 'tag.example'
-      redis_enabled: false
+      redis_enabled: true
       metrics_enabled: false
       mongo_enabled: true
       certbot_email: example@example.com

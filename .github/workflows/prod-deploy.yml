@@ -26,7 +26,7 @@ jobs:
       registry_subname: 'nextjs-super-boilerplate'
       notigy_enabled: true
       tag: 'nextjs-super-boilerplate'
-      redis_enabled: false
+      redis_enabled: true
       metrics_enabled: false
       mongo_enabled: true
 

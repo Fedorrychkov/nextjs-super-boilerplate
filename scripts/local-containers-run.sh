@@ -158,6 +158,54 @@ function renew_certificates() {
     echo "✅ Certificate renewal process completed!"
 }
 
+#
+# Local self-signed certificate generation (no Docker/Certbot, for dev only)
+#
+function generate_local_self_signed_cert() {
+    local env=${1:-stage}
+    local raw_domains="$*"  # All remaining arguments as domains / flags
+
+    # Reuse existing domain parsing logic
+    local domains
+    domains=$(parse_domains "$raw_domains")
+    local FIRST_DOMAIN
+    FIRST_DOMAIN=$(echo "$domains" | cut -d',' -f1)
+
+    cd "${PROJECT_ROOT}"
+    prepare_dirs
+
+    local target_dir="${CERTS_DIR}/self-signed/${FIRST_DOMAIN}"
+    mkdir -p "${target_dir}"
+
+    local cert_path="${target_dir}/fullchain.pem"
+    local key_path="${target_dir}/privkey.pem"
+
+    if [ -f "${cert_path}" ] && [ -f "${key_path}" ]; then
+        echo "Self-signed certificate already exists for ${FIRST_DOMAIN}:"
+        echo "  cert: ${cert_path}"
+        echo "  key : ${key_path}"
+        return 0
+    fi
+
+    echo "Generating self-signed certificate for domain: ${FIRST_DOMAIN}"
+    echo "Target directory: ${target_dir}"
+
+    # Generate self-signed cert (365 days)
+    if ! openssl req -x509 -nodes -days 365 \
+        -newkey rsa:2048 \
+        -keyout "${key_path}" \
+        -out "${cert_path}" \
+        -subj "/CN=${FIRST_DOMAIN}"; then
+        echo "Error: openssl failed to generate self-signed certificate."
+        return 1
+    fi
+
+    echo "✅ Self-signed certificate created:"
+    echo "  cert: ${cert_path}"
+    echo "  key : ${key_path}"
+    echo "You can mount this folder into an nginx container and point ssl_certificate/ssl_certificate_key to these files for local HTTPS."
+}
+
 
 # Get additional docker-compose parameters
 DOCKER_OPTS="${@:3}"
@@ -597,6 +645,9 @@ case "$1" in
     "renew-certs")
         shift
         renew_certificates "$@" ;;
+    "generate-local-cert")
+        shift
+        generate_local_self_signed_cert "$@" ;;
     "clean")
         clean ;;
     "prune-images")
@@ -612,11 +663,14 @@ case "$1" in
         echo "  CORE_API_IMAGE=<image>     - When DEPLOY_MODE=registry, image to pull (e.g. ghcr.io/owner/sapian-web-core-api:sha)"
         echo "Commands:"
         echo "  renew-certs [stage|prod]    - Manually renew certificates (force reissue non-Let's Encrypt certs)"
+        echo "  generate-local-cert [env] -d domain1.com,domain2.com"
+        echo "                           - Generate self-signed cert for FIRST_DOMAIN into ./certs/self-signed/<domain>/"
         echo "Examples:"
         echo "  ./scripts/local-containers-run.sh https prod -d example.com"
         echo "  MIGRATIONS_RUN=true ./scripts/local-containers-run.sh https prod -d example.com"
         echo "  ./scripts/local-containers-run.sh https prod -d example.com,www.example.com"
         echo "  ./scripts/local-containers-run.sh renew-certs stage  # Renew certificates for stage environment"
+        echo "  ./scripts/local-containers-run.sh generate-local-cert stage -d tg-mini-app.local,www.tg-mini-app.local"
         echo "  ./scripts/local-containers-run.sh prune-images        # Remove old ghcr.io images, keep current api-service image"
         ;;
 esac

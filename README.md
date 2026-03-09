@@ -40,6 +40,49 @@ To use an external MongoDB instead of local, set `MONGO_URI` in `.env.local` and
 - **Typecheck:** `pnpm run typecheck`
 - **Format:** `pnpm run format`
 
+### Local HTTPS via nginx (self-signed certificate)
+
+For local development you can run Next.js on the host (`pnpm run dev:local`) and put nginx in front of it with HTTPS and a self-signed certificate.
+
+1. **Map local domain to localhost** (on your dev machine):
+
+   ```bash
+   # macOS / Linux
+   sudo sh -c 'echo "127.0.0.1 tg-mini-app.local" >> /etc/hosts'
+   ```
+
+2. **Generate a self-signed certificate** for the local domain:
+
+   ```bash
+   ./scripts/local-containers-run.sh generate-local-cert stage -d tg-mini-app.local
+   ```
+
+   This will create:
+
+   - `certs/self-signed/tg-mini-app.local/fullchain.pem`
+   - `certs/self-signed/tg-mini-app.local/privkey.pem`
+
+3. **Start local MongoDB (and nginx proxy) via Docker**:
+
+   ```bash
+   make up-local
+   ```
+
+   - `docker-compose.dev.yml` will:
+     - run `mongo` for local development;
+     - run `nextjs-nginx` which proxies requests to `host.docker.internal:3000`.
+
+4. **Run the Next.js dev server on the host**:
+
+   ```bash
+   pnpm run dev:local
+   ```
+
+   You can now open:
+
+   - `http://tg-mini-app.local` (HTTP)
+   - `https://tg-mini-app.local` (HTTPS with self-signed cert — your browser will show a warning once, accept it).
+
 Requires **Node.js 22+** (see `package.json` engines). Lockfile in repo: `pnpm-lock.yaml` (no `package-lock.json`).
 
 ---

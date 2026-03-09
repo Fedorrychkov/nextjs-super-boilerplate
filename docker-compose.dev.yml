@@ -5,6 +5,52 @@
 version: '3.8'
 
 services:
+  nextjs-nginx:
+    image: nginx:latest
+    build:
+      context: .
+      dockerfile: ./.docker/Dockerfile.nginx
+    healthcheck:
+      test: |
+        /bin/sh -c '
+        if [ "${NGINX_MODE}" = "https" ]; then
+          curl -k https://localhost/.well-known/acme-challenge/health || exit 1;
+        else
+          curl -f http://localhost/.well-known/acme-challenge/health || exit 1;
+        fi'
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    command: >
+      /bin/sh -c "
+      mkdir -p /var/www/certbot/.well-known/acme-challenge && 
+      echo 'OK' > /var/www/certbot/.well-known/acme-challenge/health && 
+      export DOMAINS='${DOMAINS}' &&
+      export FIRST_DOMAIN='${FIRST_DOMAIN}' &&
+      echo 'Using domains: '$DOMAINS &&
+      echo 'Using first domain: '$FIRST_DOMAIN &&
+      envsubst '$${DOMAINS} $${FIRST_DOMAIN}' < /etc/nginx/nginx.conf.template.${NGINX_MODE} > /etc/nginx/nginx.conf && 
+      nginx -t && 
+      nginx -g 'daemon off;'"
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - NGINX_MODE=${NGINX_MODE:-http}
+      - DOMAINS=${DOMAINS:-tg-mini-app.local,www.tg-mini-app.local}
+      - FIRST_DOMAIN=${FIRST_DOMAIN:-tg-mini-app.local}
+    volumes:
+      - ./.docker/nginx/nginx.conf.local.template.https:/etc/nginx/nginx.conf.template.http:ro
+      - ./.docker/nginx/nginx.conf.local.template.https:/etc/nginx/nginx.conf.template.https:ro
+      - ./certbot/www:/var/www/certbot/:rw
+      # Self-signed certificates for local HTTPS:
+      # ./scripts/local-containers-run.sh generate-local-cert stage -d tg-mini-app.local
+      # will create certs under ./certs/self-signed/<domain> which are mounted here.
+      - ./certs/self-signed:/etc/letsencrypt/live:ro
+    networks:
+      - local_network
+
   mongo:
     container_name: mongo-dev
     image: mongo:7
@@ -14,6 +60,8 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: "123123"
+    networks:
+      - local_network
     volumes:
       - mongo_data_dev:/data/db
     logging:
@@ -22,5 +70,26 @@ services:
         max-size: "100m"
         max-file: "2"
 
+  redis:
+    image: redis:7.2-alpine
+    container_name: nextjs-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - local_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
+  redis_data:
   mongo_data_dev:
+
+networks:
+  local_network:
+    name: internal-network
+    driver: bridge

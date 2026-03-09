@@ -1,7 +1,10 @@
+import { getClientKey, rateLimit } from '@lib/rate-limit'
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 
 import { time } from '~/utils/time'
+
+import { logger } from './utils/logger'
 
 export async function proxy(request: NextRequest) {
   const clientIP = request.headers.get('x-client-ip')
@@ -13,9 +16,31 @@ export async function proxy(request: NextRequest) {
   const customClientInfo = request.headers.get('x-custom-client-info')
   const source = request.headers.get('x-request-source')
 
+  if (
+    !request.nextUrl.pathname.includes('/api/') &&
+    !request.nextUrl.pathname.includes('/_next/') &&
+    !request.nextUrl.pathname.includes('/static/') &&
+    !request.nextUrl.pathname.includes('429-too-many-requests')
+  ) {
+    try {
+      const key = getClientKey(request)
+
+      logger.warn('[proxy] consumed key', key)
+
+      if (key) {
+        const consumed = await rateLimit.consume(key)
+
+        logger.warn('[proxy] consumed', consumed)
+      }
+    } catch {
+      return NextResponse.redirect(new URL('/429-too-many-requests', request.url))
+    }
+  }
+
   // Build client info object
   const clientInfo = {
     ip: clientIP,
+    path: request.nextUrl.pathname,
     requestId,
     responseTime,
     requestTime,
