@@ -169,6 +169,9 @@ services:
       resources:
         limits:
           memory: 512M
+    environment:
+      - MONGO_METRICS_USER=${MONGO_USER:-admin}
+      - MONGO_METRICS_PASSWORD=${MONGO_PASSWORD:-password}
     volumes:
       - ./grafana/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf
     networks:
