@@ -3,7 +3,9 @@
 import { defaultGuard, PageProps } from '@lib/page'
 import { getServerProfile } from '@lib/server-auth'
 
+import { Block } from '~/components/Containers'
 import { Typography } from '~/components/ui'
+import { NotificationBlock } from '~/components/Views/Notification'
 
 const ProfileRoot = async (props: PageProps) => {
   await defaultGuard({ ...props, segments: ['profile'], fallbackNavigatePath: '/' })
@@ -22,6 +24,9 @@ const ProfileRoot = async (props: PageProps) => {
     <div className="w-full h-full flex justify-center flex-col flex-1">
       Protected route example
       <Typography variant="Body/L/Regular">{profile.email}</Typography>
+      <Block>
+        <NotificationBlock />
+      </Block>
     </div>
   )
 }

@@ -11,4 +11,7 @@ export type NotifyContextType = {
       closable?: boolean
     },
   ) => void
+  unlockAudio: () => Promise<void>
+  audioUnlocked: boolean
+  soundEnabled: boolean
 }

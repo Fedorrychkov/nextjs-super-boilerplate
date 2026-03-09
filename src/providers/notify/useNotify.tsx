@@ -6,6 +6,9 @@ import { NotifyContextType } from './types'
 
 export const NotifyContext = createContext<NotifyContextType>({
   notify: () => {},
+  unlockAudio: async () => {},
+  audioUnlocked: false,
+  soundEnabled: true,
 })
 
 export const useNotify = () => {

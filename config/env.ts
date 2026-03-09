@@ -13,6 +13,9 @@ const {
   MONGO_DB = process.env.MONGO_DB || 'app',
   RATE_LIMIT_POINTS = Number(process.env.RATE_LIMIT_POINTS || 100),
   REDIS_URL = process.env.REDIS_URL,
+  VAPID_SUBJECT = process.env.VAPID_SUBJECT,
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+  VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY,
 } = process.env
 
 const isDevelop = APP_ENV === 'development'
@@ -41,4 +44,10 @@ const RATE_LIMIT_CONFIG = {
   duration: 60,
 }
 
-export { APP_ENV, APP_INTERNAL_ORIGIN, isDevelop, isProd, isStage, JWT_CONFIG, MONGODB_CONFIG, NEXT_PUBLIC_APP_ENV, RATE_LIMIT_CONFIG, REDIS_URL }
+const PUSH_CONFIG = {
+  subject: VAPID_SUBJECT,
+  publicKey: NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+  privateKey: VAPID_PRIVATE_KEY,
+}
+
+export { APP_ENV, APP_INTERNAL_ORIGIN, isDevelop, isProd, isStage, JWT_CONFIG, MONGODB_CONFIG, NEXT_PUBLIC_APP_ENV, PUSH_CONFIG, RATE_LIMIT_CONFIG, REDIS_URL }
