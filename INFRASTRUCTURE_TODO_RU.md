@@ -182,17 +182,47 @@
 
 3. Описать **локальное подключение с сервера**:
    - `mongo mongodb://MONGO_USER:MONGO_PASSWORD@mongo:27017/MONGO_DB` внутри сети Docker.
-4. Описать **удалённое подключение с dev‑машины**:
-   - подключение через SSH‑туннель:
-     - `ssh -L 27017:localhost:27017 user@server`,
-     - затем `mongodb://MONGO_USER:MONGO_PASSWORD@localhost:27017/MONGO_DB`.
+4. Описать **удалённое подключение с dev‑машины** (порт Mongo наружу не пробрасывается):
+   - подключение через SSH‑туннель до IP контейнера Mongo:
+     1. На сервере получить IP контейнера Mongo в сети `service-api-network`:
+
+        ```bash
+        docker inspect mongo | jq -r '.[0].NetworkSettings.Networks["service-api-network"].IPAddress'
+        # пример: 172.18.0.2
+        ```
+
+     2. На dev‑машине открыть SSH‑туннель:
+
+        ```bash
+        ssh -L 27017:172.18.0.2:27017 user@server
+        ```
+
+        где `172.18.0.2` — IP контейнера из шага 1.
+
+     3. Подключаться к Mongo локально по адресу:
+
+        ```text
+        mongodb://MONGO_USER:MONGO_PASSWORD@localhost:27017/MONGO_DB?authSource=admin
+        ```
 5. Если порт пробрасывается наружу (по необходимости) — явно описать риски безопасности и рекомендованный вариант (предпочтительно через туннель).
 
 ### 4.3. Примеры для инструментов
 
 6. Дать примеры строк подключения:
-   - для CLI (`mongosh`),
-   - для GUI‑клиентов (MongoDB Compass, VS Code plugins).
+   - для CLI (`mongosh`):
+     - локальная Mongo в docker‑compose на сервере:
+       - `mongosh "mongodb://MONGO_USER:MONGO_PASSWORD@mongo:27017/MONGO_DB"`
+     - через SSH‑туннель (как описано выше, через IP контейнера):
+       - `mongosh "mongodb://MONGO_USER:MONGO_PASSWORD@localhost:27017/MONGO_DB?authSource=admin"`
+   - для GUI‑клиентов (MongoDB Compass, VS Code plugins):
+     - **шаги для Compass**:
+       1. Открыть MongoDB Compass → `New Connection`.
+       2. Ввести строку подключения:
+          - при работе через SSH‑туннель:
+            - `mongodb://MONGO_USER:MONGO_PASSWORD@localhost:27017/MONGO_DB?authSource=admin`
+          - при локальном docker‑compose (dev‑машина):
+            - если порт проброшен как `27017:27017` → `mongodb://MONGO_USER:MONGO_PASSWORD@localhost:27017/MONGO_DB?authSource=admin`.
+       3. Нажать `Connect` и убедиться, что видна база `MONGO_DB`.
 7. Добавить раздел “частые ошибки”:
    - неверный пользователь/пароль,
    - неправильный хост (mongo vs localhost),

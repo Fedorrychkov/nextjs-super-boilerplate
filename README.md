@@ -40,6 +40,51 @@ To use an external MongoDB instead of local, set `MONGO_URI` in `.env.local` and
 - **Typecheck:** `pnpm run typecheck`
 - **Format:** `pnpm run format`
 
+### Connecting to MongoDB from your dev machine
+
+When MongoDB runs inside Docker on the server (or locally via `docker-compose`), you can connect to it from your dev machine using either CLI or GUI tools.
+
+- **From the server shell (inside Docker network)**:
+
+  ```bash
+  mongosh "mongodb://MONGO_USER:MONGO_PASSWORD@mongo:27017/MONGO_DB"
+  ```
+
+- **From your dev machine via SSH tunnel to the Mongo container IP (recommended when the port is not published)**:
+
+  1. On the server, get the Mongo container IP in the `service-api-network`:
+
+     ```bash
+     docker inspect mongo | jq -r '.[0].NetworkSettings.Networks["service-api-network"].IPAddress'
+     # example: 172.18.0.2
+     ```
+
+  2. On your dev machine, open an SSH tunnel:
+
+     ```bash
+     ssh -L 27017:172.18.0.2:27017 user@your-server
+     ```
+
+     where `172.18.0.2` is the IP from step 1.
+
+  3. Then connect locally (CLI or GUI) using:
+
+     ```text
+     mongodb://MONGO_USER:MONGO_PASSWORD@localhost:27017/MONGO_DB?authSource=admin
+     ```
+
+- **MongoDB Compass example**:
+
+  1. Open MongoDB Compass → `New Connection`.
+  2. In the connection string field, paste:
+
+     ```text
+     mongodb://MONGO_USER:MONGO_PASSWORD@localhost:27017/MONGO_DB?authSource=admin
+     ```
+
+     (works if you have an SSH tunnel as above; for local docker-compose with published port `27017:27017` you can use the same string).
+  3. Click `Connect` and verify that the `MONGO_DB` database is visible.
+
 ### Local HTTPS via nginx (self-signed certificate)
 
 For local development you can run Next.js on the host (`pnpm run dev:local`) and put nginx in front of it with HTTPS and a self-signed certificate.
