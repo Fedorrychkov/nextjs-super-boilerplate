@@ -19,4 +19,8 @@ export enum UserRole {
    * Regular user, has no admin access
    */
   USER = 'user',
+  /**
+   * Like admin, but has no access to all admin features, only articles and other
+   */
+  EDITOR = 'editor',
 }
