@@ -200,9 +200,20 @@ jobs:
 
       - name: Create env and service-account.json files
         run: |
-          if [ -n "${{ secrets.env }}" ]; then echo '${{ secrets.env }}' >> ${{ inputs.env_file }}; fi
-          echo "NODE_ENV=${{ inputs.api_env }}" >> ${{ inputs.env_file }}
-          if [ -n "${{ secrets.database_certificate }}" ]; then echo '${{ secrets.database_certificate }}' >> db-certificate.${{ inputs.api_env }}.crt; fi
+          # Write env from GitHub secret into env_file (supports multiline, quotes, etc.)
+          cat <<'ENV_EOF' >> "${{ inputs.env_file }}"
+          ${{ secrets.env }}
+          ENV_EOF
+
+          # NODE_ENV: production for prod, api_env for others
+          if [ "${{ inputs.api_env }}" = "prod" ]; then
+            echo "NODE_ENV=production" >> "${{ inputs.env_file }}"
+          else
+            echo "NODE_ENV=${{ inputs.api_env }}" >> "${{ inputs.env_file }}"
+          fi
+
+          # Optional DB certificate
+          if [ -n "${{ secrets.database_certificate }}" ]; then echo '${{ secrets.database_certificate }}' >> "db-certificate.${{ inputs.api_env }}.crt"; fi
 
       - name: 🔐 Login to GHCR and build core-api image (registry mode)
         if: inputs.deploy_mode == 'registry'
