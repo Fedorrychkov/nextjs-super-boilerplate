@@ -2,6 +2,7 @@ import { JWT_CONFIG } from '@config/env'
 import connectDB from '@lib/db/client'
 import RefreshToken from '@lib/db/models/RefreshToken'
 import User, { IUser } from '@lib/db/models/User'
+import { ForbiddenError, NotFoundError, UnauthorizedError, ValidationError } from '@lib/error/custom-errors'
 import { generateAccessToken, generateRefreshToken, getTokenExpiration, verifyRefreshToken } from '@lib/jwt/utils'
 
 import { AuthResponse } from '~/api/auth/model'
@@ -18,7 +19,7 @@ export class AuthService {
     const existingUser = await User.findOne({ email: data.email.toLowerCase() })
 
     if (existingUser) {
-      throw new Error('User with this email already exists')
+      throw new ValidationError('User with this email already exists')
     }
 
     const user = await User.create({
@@ -37,17 +38,17 @@ export class AuthService {
     const user = await User.findOne({ email: data.email.toLowerCase() }).select('+password')
 
     if (!user) {
-      throw new Error('Invalid email or password')
+      throw new ValidationError('Invalid email or password')
     }
 
     if (user.status !== UserStatus.ACTIVE) {
-      throw new Error('User account is blocked')
+      throw new ForbiddenError('User account is blocked')
     }
 
     const isPasswordValid = await user.comparePassword(data.password)
 
     if (!isPasswordValid) {
-      throw new Error('Invalid email or password')
+      throw new ValidationError('Invalid email or password')
     }
 
     return this.generateAuthResponse(user)
@@ -64,18 +65,18 @@ export class AuthService {
     })
 
     if (!storedToken) {
-      throw new Error('Invalid refresh token')
+      throw new UnauthorizedError('Invalid refresh token')
     }
 
     if (storedToken.expiresAt < new Date()) {
       await RefreshToken.deleteOne({ _id: storedToken._id })
-      throw new Error('Refresh token expired')
+      throw new UnauthorizedError('Refresh token expired')
     }
 
     const user = await User.findById(payload.sub)
 
     if (!user || user.status !== UserStatus.ACTIVE) {
-      throw new Error('User not found or inactive')
+      throw new NotFoundError('User not found or inactive')
     }
 
     await RefreshToken.deleteOne({ _id: storedToken._id })

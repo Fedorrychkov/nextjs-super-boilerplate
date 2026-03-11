@@ -1,3 +1,4 @@
+import { BruteForceError, ForbiddenError, NotFoundError, UnauthorizedError, ValidationError } from '@lib/error/custom-errors'
 import { AxiosError, AxiosResponse } from 'axios'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -38,6 +39,26 @@ export const apiErrorHandlerContainer =
 
       return result
     } catch (error: unknown) {
+      if (error instanceof BruteForceError) {
+        logger.warn(`apiErrorHandlerContainer BruteForceError traceId: ${traceId}`, {
+          message: error.message,
+          retryAfterSeconds: error.retryAfterSeconds,
+        })
+
+        const retryAfter = error.retryAfterSeconds && error.retryAfterSeconds > 0 ? Math.ceil(error.retryAfterSeconds) : undefined
+
+        return res.json(
+          {
+            message: error.message,
+            retryAfterSeconds: error.retryAfterSeconds,
+          },
+          {
+            status: error.statusCode,
+            headers: retryAfter ? { 'Retry-After': String(retryAfter) } : undefined,
+          },
+        )
+      }
+
       if (error instanceof AxiosError) {
         logger.error(`apiErrorHandlerContainer AxiosError traceId: ${traceId}`, error.response?.data, error.response?.status)
 
@@ -50,6 +71,38 @@ export const apiErrorHandlerContainer =
             status: error.response?.status,
           },
         )
+      }
+
+      if (error instanceof ValidationError) {
+        logger.error(`apiErrorHandlerContainer ValidationError traceId: ${traceId}`, {
+          message: error.message,
+        })
+
+        return res.json({ message: error.message }, { status: error.statusCode })
+      }
+
+      if (error instanceof NotFoundError) {
+        logger.error(`apiErrorHandlerContainer NotFoundError traceId: ${traceId}`, {
+          message: error.message,
+        })
+
+        return res.json({ message: error.message }, { status: error.statusCode })
+      }
+
+      if (error instanceof UnauthorizedError) {
+        logger.error(`apiErrorHandlerContainer UnauthorizedError traceId: ${traceId}`, {
+          message: error.message,
+        })
+
+        return res.json({ message: error.message }, { status: error.statusCode })
+      }
+
+      if (error instanceof ForbiddenError) {
+        logger.error(`apiErrorHandlerContainer ForbiddenError traceId: ${traceId}`, {
+          message: error.message,
+        })
+
+        return res.json({ message: error.message }, { status: error.statusCode })
       }
 
       logger.error(`apiErrorHandlerContainer traceId: ${traceId}`, (error as Error)?.message)

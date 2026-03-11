@@ -3,7 +3,8 @@ import { NextRequest } from 'next/server'
 
 import { setAuthCookies } from '@lib/cookies'
 import { apiErrorHandlerContainer } from '@lib/error/api-error-handler'
-import { withGlobalRateLimit } from '@lib/rate-limit'
+import { getClientKey, withGlobalRateLimit } from '@lib/rate-limit'
+import { assertLoginNotBlocked, recordLoginFailure } from '@lib/security/bruteforce'
 import { authService } from '@lib/services/auth.service'
 
 import { LoginEmailDto } from '~/api/auth/types'
@@ -11,20 +12,29 @@ import { LoginEmailDto } from '~/api/auth/types'
 const handler = (request: NextRequest) => {
   return apiErrorHandlerContainer(request)(async (res, req) => {
     const body: LoginEmailDto = await req.json()
+    const ip = getClientKey(req)
 
-    const authResponse = await authService.login(body)
+    await assertLoginNotBlocked(ip, body.email)
 
-    const response = res.json(
-      {
-        success: true,
-        user: authResponse.user,
-      },
-      { status: 200 },
-    )
+    try {
+      const authResponse = await authService.login(body)
 
-    setAuthCookies(response, authResponse.accessToken, authResponse.refreshToken, authResponse.expiresIn)
+      const response = res.json(
+        {
+          success: true,
+          user: authResponse.user,
+        },
+        { status: 200 },
+      )
 
-    return response
+      setAuthCookies(response, authResponse.accessToken, authResponse.refreshToken, authResponse.expiresIn)
+
+      return response
+    } catch (error) {
+      await recordLoginFailure(ip, body.email)
+
+      throw error
+    }
   })
 }
 

@@ -1,3 +1,4 @@
+import { ValidationError } from '@lib/error/custom-errors'
 import bcrypt from 'bcryptjs'
 import mongoose, { Document, Model, Schema } from 'mongoose'
 
@@ -62,7 +63,7 @@ UserSchema.pre('save', async function () {
   if (!this.isModified('password')) return
 
   if (!this.password) {
-    throw new Error('Password is required')
+    throw new ValidationError('Password is required')
   }
 
   const salt = await bcrypt.genSalt(10)

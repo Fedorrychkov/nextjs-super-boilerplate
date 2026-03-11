@@ -22,11 +22,12 @@ export const NotifyProvider = ({ children }: { children: React.ReactNode }) => {
       options?: {
         delay?: number
         closable?: boolean
+        soundEnabled?: boolean
       },
     ) => {
-      const { delay = 3000, closable = true } = options ?? {}
+      const { delay = 3000, closable = true, soundEnabled = false } = options ?? {}
 
-      if (audioRef.current) {
+      if (audioRef.current && soundEnabled) {
         audioRef.current.currentTime = 0
         audioRef.current.play().catch((e) => logger.error('Audio play failed:', e))
       }
@@ -52,7 +53,7 @@ export const NotifyProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         if (document.visibilityState === 'visible') {
-          handleNotify(event.data.payload.body, 'info')
+          handleNotify(event.data.payload.body, 'info', { soundEnabled: true })
         }
       }
     }

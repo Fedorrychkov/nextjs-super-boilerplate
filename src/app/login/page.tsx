@@ -1,5 +1,6 @@
 'use client'
 
+import { AxiosError } from 'axios'
 import { useRouter, useSearchParams } from 'next/navigation'
 import React, { Suspense, useCallback, useEffect, useState } from 'react'
 
@@ -7,6 +8,8 @@ import { SpinnerScreen } from '~/components/Loaders'
 import { useAuth } from '~/providers'
 import { useNotify } from '~/providers/notify'
 import { useLoginMutation, useLogoutQuery, useSignUpMutation } from '~/query/auth'
+import { logger } from '~/utils/logger'
+import { time } from '~/utils/time'
 
 const SignInBlock = React.lazy(() => import('~/components/Views/Auth/Blocks/SignInBlock').then((module) => ({ default: module.SignInBlock })))
 const SignUpBlock = React.lazy(() => import('~/components/Views/Auth/Blocks/SignUpBlock').then((module) => ({ default: module.SignUpBlock })))
@@ -27,10 +30,10 @@ const LoginWithParams = () => {
     if (isClient) {
       refetchLogout()
         .catch((error) => {
-          console.error(error)
+          logger.error(error)
         })
         .catch((error) => {
-          console.error(error)
+          logger.error(error)
         })
     }
   }, [refetchLogout, isClient])
@@ -54,11 +57,19 @@ const LoginWithParams = () => {
           router.replace('/')
         }
       } else {
-        console.error('Login failed')
+        logger.error('Login failed')
       }
     } catch (error) {
-      notify('Sign in failed, please check your data and try again', 'warning')
-      console.error(error)
+      if (error instanceof AxiosError) {
+        const after = error.response?.data?.retryAfterSeconds
+
+        const duration = time().add(after, 'seconds')
+
+        notify(`Too many login attempts. Please try again after ${after ? `${duration.format('HH:mm:ss')}.` : 'later.'}`, 'destructive')
+      } else {
+        notify('Sign in failed, please check your data and try again', 'warning')
+      }
+      logger.error(error)
     }
   }
 
@@ -76,11 +87,11 @@ const LoginWithParams = () => {
           router.replace('/')
         }
       } else {
-        console.error('SignUp failed')
+        logger.error('SignUp failed')
       }
     } catch (error) {
       notify('Sign up failed, please check your data and try again', 'warning')
-      console.error(error)
+      logger.error(error)
     }
   }
 
