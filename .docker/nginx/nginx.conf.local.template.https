@@ -100,6 +100,13 @@ http {
 
         ssl_reject_handshake off;
 
+        # Security headers
+        add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+        add_header Cross-Origin-Opener-Policy "same-origin" always;
+
+        # Enable if you use your self domain for cdn and etc.
+        # add_header Cross-Origin-Embedder-Policy "require-corp" always;
+
         # SSL certs (first domain from list)
         ssl_certificate /etc/letsencrypt/live/${FIRST_DOMAIN}/fullchain.pem;
         ssl_certificate_key /etc/letsencrypt/live/${FIRST_DOMAIN}/privkey.pem;

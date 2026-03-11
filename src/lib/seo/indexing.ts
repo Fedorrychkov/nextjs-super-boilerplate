@@ -1,3 +1,6 @@
+import { INDEXNOW_API_KEY, INDEXNOW_KEY_LOCATION } from '@config/env'
+
+import { getUniqueId } from '~/utils/getUniqueId'
 import { logger } from '~/utils/logger'
 
 import { seoConfig } from './config'
@@ -5,11 +8,20 @@ import { seoConfig } from './config'
 const INDEXNOW_ENDPOINT = 'https://api.indexnow.org/indexnow'
 
 export const pingIndexNow = async (urls: string[]) => {
-  const key = process.env.INDEXNOW_API_KEY
-  const keyLocation = process.env.INDEXNOW_KEY_LOCATION ?? `${seoConfig.siteUrl}/indexnow.txt`
+  const traceId = getUniqueId()
+
+  logger.info('[seo] IndexNow ping start', {
+    traceId,
+    urls,
+  })
+
+  const key = INDEXNOW_API_KEY
+  const keyLocation = INDEXNOW_KEY_LOCATION ?? `${seoConfig.siteUrl}/indexnow.txt`
 
   if (!key) {
-    logger.warn('[seo] INDEXNOW_API_KEY is not configured, skipping IndexNow ping')
+    logger.warn('[seo] INDEXNOW_API_KEY is not configured, skipping IndexNow ping', {
+      traceId,
+    })
 
     return
   }
@@ -21,18 +33,26 @@ export const pingIndexNow = async (urls: string[]) => {
     urlList: urls,
   }
 
-  const response = await fetch(INDEXNOW_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8',
-    },
-    body: JSON.stringify(body),
-  })
+  try {
+    const response = await fetch(INDEXNOW_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+      },
+      body: JSON.stringify(body),
+    })
 
-  if (!response.ok) {
-    logger.warn('[seo] IndexNow ping failed', {
-      status: response.status,
-      statusText: response.statusText,
+    if (!response.ok) {
+      logger.warn('[seo] IndexNow ping failed', {
+        status: response.status,
+        statusText: response.statusText,
+        traceId,
+      })
+    }
+  } catch (error) {
+    logger.error('[seo] IndexNow ping error', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      traceId,
     })
   }
 }

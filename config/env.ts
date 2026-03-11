@@ -17,6 +17,8 @@ const {
   VAPID_SUBJECT = process.env.VAPID_SUBJECT,
   NEXT_PUBLIC_VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
   VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY,
+  INDEXNOW_API_KEY = process.env.INDEXNOW_API_KEY,
+  INDEXNOW_KEY_LOCATION = process.env.INDEXNOW_KEY_LOCATION,
 } = process.env
 
 const isDevelop = APP_ENV === 'development'
@@ -54,6 +56,8 @@ const PUSH_CONFIG = {
 export {
   APP_ENV,
   APP_INTERNAL_ORIGIN,
+  INDEXNOW_API_KEY,
+  INDEXNOW_KEY_LOCATION,
   isDevelop,
   isProd,
   isStage,
