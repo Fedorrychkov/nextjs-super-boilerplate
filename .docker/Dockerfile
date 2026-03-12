@@ -3,12 +3,15 @@ WORKDIR /usr/src/api
 
 # Validate and set API_ENV
 ARG API_ENV=prod
+ARG PUBLIC_ENV
+
 RUN if [ "$API_ENV" != "prod" ] && [ "$API_ENV" != "stage" ]; then \
     echo "Error: API_ENV must be either 'prod' or 'stage'" && exit 1; \
     fi
 ENV API_ENV=$API_ENV
 
 RUN echo "API_ENV: $API_ENV"
+RUN echo "PUBLIC_ENV: $PUBLIC_ENV"
 
 # Copy only necessary files for installing dependencies
 COPY package*.json ./
@@ -26,11 +29,17 @@ RUN if [ -f "package-lock.json" ]; then \
 # Copy source files and build the application
 COPY . .
 
-# Minimum .env for build step (without secrets). Secrets are substituted when running from mounted file.
+# Minimum .env for build step (без секретов). PUBLIC_ENV содержит только NEXT_PUBLIC_*
 RUN if [ "$API_ENV" = "stage" ]; then \
-      echo "NODE_ENV=production" > .env.stage && echo "APP_ENV=stage" >> .env.stage && echo "NEXT_PUBLIC_APP_ENV=stage" >> .env.stage; \
+      echo "NODE_ENV=production" > .env.stage && \
+      echo "APP_ENV=stage" >> .env.stage && \
+      echo "NEXT_PUBLIC_APP_ENV=stage" >> .env.stage && \
+      if [ -n "$PUBLIC_ENV" ]; then printf '%s\n' "$PUBLIC_ENV" >> .env.stage; fi; \
     else \
-      echo "NODE_ENV=production" > .env.prod && echo "APP_ENV=production" >> .env.prod && echo "NEXT_PUBLIC_APP_ENV=production" >> .env.prod; \
+      echo "NODE_ENV=production" > .env.prod && \
+      echo "APP_ENV=production" >> .env.prod && \
+      echo "NEXT_PUBLIC_APP_ENV=production" >> .env.prod && \
+      if [ -n "$PUBLIC_ENV" ]; then printf '%s\n' "$PUBLIC_ENV" >> .env.prod; fi; \
     fi
 
 RUN npm run build:${API_ENV}

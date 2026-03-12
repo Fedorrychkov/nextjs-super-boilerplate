@@ -221,7 +221,18 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           IMAGE="ghcr.io/${OWNER}/${{ inputs.registry_subname || 'service-image' }}:${{ github.sha }}"
-          docker build -f .docker/Dockerfile --build-arg API_ENV=${{ inputs.api_env }} -t "$IMAGE" .
+
+          # Вытащить только публичные переменные (NEXT_PUBLIC_*, VAPID_SUBJECT) из соответствующего env-файла в репозитории
+          PUBLIC_ENV=$(grep -E '^(NEXT_PUBLIC_|VAPID_SUBJECT=)' "${{ inputs.env_file }}" || true)
+
+          echo "Public env for build:"
+          echo "$PUBLIC_ENV"
+
+          docker build \
+            -f .docker/Dockerfile \
+            --build-arg API_ENV=${{ inputs.api_env }} \
+            --build-arg PUBLIC_ENV="$PUBLIC_ENV" \
+            -t "$IMAGE" .
           docker push "$IMAGE"
           echo "CORE_API_IMAGE=$IMAGE" >> $GITHUB_ENV
 
