@@ -1,4 +1,4 @@
-import { getClientKey, rateLimit } from '@lib/rate-limit'
+import { getClientKey, rateLimit } from '@lib/security/rate-limit'
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 

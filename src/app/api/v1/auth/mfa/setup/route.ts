@@ -2,16 +2,15 @@
 import connectDB from '@lib/db/client'
 import User from '@lib/db/models/User'
 import UserSettings from '@lib/db/models/UserSettings'
-import { apiErrorHandlerContainer } from '@lib/error/api-error-handler'
-import { withGlobalRateLimit } from '@lib/rate-limit'
+import { withGlobalRateLimit, apiErrorHandlerContainer } from '@lib/middleware'
 import { encryptSecret, generateBackupCodes, generateTotpSecret, getOtpauthUrl, hashBackupCodes } from '@lib/security/totp'
 import { NextRequest } from 'next/server'
 
 import { ValidationError } from '@lib/error/custom-errors'
-import { authMiddleware } from '@lib/middleware/auth.middleware'
+import { authMiddleware } from '@lib/security/auth'
 
 const handler = (request: NextRequest) => {
-  return apiErrorHandlerContainer(request)(async (res, req) => {
+  return apiErrorHandlerContainer(request)(async (res) => {
     const authResult = await authMiddleware(request)
 
     if (!authResult.success) {

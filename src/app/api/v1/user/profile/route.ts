@@ -1,19 +1,17 @@
 import connectDB from '@lib/db/client'
 import User from '@lib/db/models/User'
-import { apiErrorHandlerContainer } from '@lib/error/api-error-handler'
-import { authMiddleware } from '@lib/middleware/auth.middleware'
-import { withGlobalRateLimit } from '@lib/rate-limit'
+import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
+import { authMiddleware } from '@lib/security/auth'
 import { NextRequest } from 'next/server'
 
 const handler = async (request: NextRequest) => {
-  // Check authentication
-  const authResult = await authMiddleware(request)
-
-  if (!authResult.success) {
-    return authResult.response
-  }
-
   return apiErrorHandlerContainer(request)(async (res) => {
+    const authResult = await authMiddleware(request)
+
+    if (!authResult.success) {
+      return authResult.response
+    }
+
     const user = authResult.payload
 
     await connectDB()

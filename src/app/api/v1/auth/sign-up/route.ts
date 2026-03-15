@@ -1,7 +1,7 @@
 import { setAuthCookies } from '@lib/cookies'
-import { apiErrorHandlerContainer } from '@lib/error/api-error-handler'
-import { getClientKey, withGlobalRateLimit } from '@lib/rate-limit'
+import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
 import { ensureCanRegister } from '@lib/security/bruteforce'
+import { getClientKey } from '@lib/security/rate-limit'
 import { authService } from '@lib/services/auth.service'
 import { NextRequest } from 'next/server'
 

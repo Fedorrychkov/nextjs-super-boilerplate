@@ -1,10 +1,8 @@
 import { RATE_LIMIT_CONFIG } from '@config/env'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { RateLimiterMemory, RateLimiterRedis } from 'rate-limiter-flexible'
 
-import { Logger } from '~/utils/logger'
-
-import { redisClient } from './redis'
+import { redisClient } from '../redis'
 
 class RateLimit {
   private readonly limiter: RateLimiterMemory | RateLimiterRedis
@@ -41,30 +39,3 @@ export const getClientKey = (request: NextRequest): string | undefined => {
 
   return ip
 }
-
-export const withGlobalRateLimit = <T extends (request: NextRequest) => Promise<NextResponse>>(handler: T): T =>
-  (async (request: NextRequest) => {
-    const key = getClientKey(request)
-    const logger = new Logger(['withGlobalRateLimit', '[lib/rate-limit.ts]', `consumed key: ${key}`])
-
-    logger.warn('start')
-
-    if (!key) {
-      return handler(request)
-    }
-
-    try {
-      const consumed = await rateLimit.consume(key)
-
-      logger.warn({ consumed })
-    } catch {
-      return NextResponse.json(
-        {
-          message: 'Too many requests. Please try again later.',
-        },
-        { status: 429 },
-      )
-    }
-
-    return handler(request)
-  }) as T

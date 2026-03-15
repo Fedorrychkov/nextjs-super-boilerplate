@@ -1,9 +1,8 @@
 'use server'
 
 import { defaultGuard, PageProps } from '@lib/page'
-import { getServerProfile } from '@lib/server-auth'
+import { getServerProfile } from '@lib/server-action/server-auth'
 
-import { Block } from '~/components/Containers'
 import { Typography } from '~/components/ui'
 import { NotificationBlock } from '~/components/Views/Notification'
 import { ProfileMfaBlock } from '~/components/Views/Profile/ProfileMfaBlock'

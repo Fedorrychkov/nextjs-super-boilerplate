@@ -3,22 +3,18 @@ import connectDB from '@lib/db/client'
 import User from '@lib/db/models/User'
 import UserSettings from '@lib/db/models/UserSettings'
 import { setAuthCookies } from '@lib/cookies'
-import { apiErrorHandlerContainer } from '@lib/error/api-error-handler'
-import { withGlobalRateLimit } from '@lib/rate-limit'
+import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
 import { consumeLoginChallenge } from '@lib/security/login-challenge'
 import { consumeBackupCode, decryptSecret, verifyTotpCode } from '@lib/security/totp'
 import { authService } from '@lib/services/auth.service'
 import { NextRequest } from 'next/server'
 
 import { ValidationError } from '@lib/error/custom-errors'
-import { Logger } from '~/utils/logger'
 
 type MfaLoginDto = {
   challengeId: string
   code: string
 }
-
-const logger = new Logger(['LoginMfa', '[API/v1/auth/login/mfa]'])
 
 const handler = (request: NextRequest) => {
   return apiErrorHandlerContainer(request)(async (res, req) => {

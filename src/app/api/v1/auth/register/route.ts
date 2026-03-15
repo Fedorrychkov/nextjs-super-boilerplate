@@ -1,6 +1,5 @@
 import { setAuthCookies } from '@lib/cookies'
-import { apiErrorHandlerContainer } from '@lib/error/api-error-handler'
-import { withGlobalRateLimit } from '@lib/rate-limit'
+import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
 import { authService } from '@lib/services/auth.service'
 import { NextRequest } from 'next/server'
 

@@ -1,6 +1,5 @@
 import { isDevelop } from '@config/env'
-import { apiErrorHandlerContainer } from '@lib/error'
-import { withGlobalRateLimit } from '@lib/rate-limit'
+import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
 import { NextRequest, NextResponse } from 'next/server'
 
 const handler = (request: NextRequest) =>

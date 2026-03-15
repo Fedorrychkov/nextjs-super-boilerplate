@@ -1,8 +1,7 @@
 import connectDB from '@lib/db/client'
 import User from '@lib/db/models/User'
-import { apiErrorHandlerContainer } from '@lib/error/api-error-handler'
 import { verifyAccessToken } from '@lib/jwt/utils'
-import { withGlobalRateLimit } from '@lib/rate-limit'
+import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
 import { NextRequest } from 'next/server'
 
 import { UserStatus } from '~/api/user'

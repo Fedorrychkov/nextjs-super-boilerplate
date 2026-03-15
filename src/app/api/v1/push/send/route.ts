@@ -1,6 +1,5 @@
-import { apiErrorHandlerContainer } from '@lib/error/api-error-handler'
-import { authMiddleware } from '@lib/middleware/auth.middleware'
-import { withGlobalRateLimit } from '@lib/rate-limit'
+import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
+import { authMiddleware } from '@lib/security/auth'
 import { webPushService } from '@lib/services/web-push.service'
 import { NextRequest } from 'next/server'
 

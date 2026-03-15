@@ -2,8 +2,8 @@
 import { NextRequest } from 'next/server'
 
 import { setAuthCookies } from '@lib/cookies'
-import { apiErrorHandlerContainer } from '@lib/error/api-error-handler'
-import { getClientKey, withGlobalRateLimit } from '@lib/rate-limit'
+import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
+import { getClientKey } from '@lib/security/rate-limit'
 import { assertLoginNotBlocked, recordLoginFailure } from '@lib/security/bruteforce'
 import { createLoginChallenge } from '@lib/security/login-challenge'
 import UserSettings from '@lib/db/models/UserSettings'

@@ -1,1 +1,1 @@
-pnpm run lint-staged && pnpm run lint:fix
+pnpm run typecheck && pnpm run lint-staged && pnpm run lint:fix

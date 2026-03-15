@@ -1,17 +1,16 @@
-import { apiErrorHandlerContainer } from '@lib/error'
-import { authMiddleware } from '@lib/middleware/auth.middleware'
-import { withGlobalRateLimit } from '@lib/rate-limit'
+import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
+import { authMiddleware } from '@lib/security/auth'
 import { pushSubscriptionService } from '@lib/services/push-subscription.service'
 import { NextRequest, NextResponse } from 'next/server'
 
 const handlerPost = async (request: NextRequest) => {
-  const authResult = await authMiddleware(request)
-
-  if (!authResult.success) {
-    return authResult.response
-  }
-
   return apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
+    const authResult = await authMiddleware(request)
+
+    if (!authResult.success) {
+      return authResult.response
+    }
+
     const body = await request.json()
     const { subscription } = body || {}
 
@@ -36,13 +35,13 @@ const handlerPost = async (request: NextRequest) => {
 }
 
 const handlerDelete = async (request: NextRequest) => {
-  const authResult = await authMiddleware(request)
-
-  if (!authResult.success) {
-    return authResult.response
-  }
-
   return apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
+    const authResult = await authMiddleware(request)
+
+    if (!authResult.success) {
+      return authResult.response
+    }
+
     const body = await request.json()
     const { endpoint } = body || {}
 
@@ -58,13 +57,13 @@ const handlerDelete = async (request: NextRequest) => {
 }
 
 const handlerGet = async (request: NextRequest) => {
-  const authResult = await authMiddleware(request)
-
-  if (!authResult.success) {
-    return authResult.response
-  }
-
   return apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
+    const authResult = await authMiddleware(request)
+
+    if (!authResult.success) {
+      return authResult.response
+    }
+
     const endpoint = request.nextUrl.searchParams.get('endpoint')
 
     if (!endpoint) {
