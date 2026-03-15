@@ -2,10 +2,12 @@ import { HorizontalContainer } from '~/components/Containers'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '~/components/ui'
 import { AnyString } from '~/types'
 import { cn } from '~/utils/cn'
-import { logger } from '~/utils/logger'
+import { Logger } from '~/utils/logger'
 
 import { Column } from './table.types'
 import { TableDefaultSkeleton } from './TableDefaultSkeleton'
+
+const logger = new Logger(['CustomTable', '[src/components/Blocks/Table/CustomTable.tsx]'])
 
 type WithId = { id: string | number }
 

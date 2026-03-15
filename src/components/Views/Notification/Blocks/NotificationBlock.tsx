@@ -1,5 +1,6 @@
 'use client'
 
+import { isProd } from '@config/env'
 import { Bell } from 'lucide-react'
 
 import { ClientSubscriptionApi } from '~/api/subscription'
@@ -59,7 +60,7 @@ export const NotificationBlock = () => {
           }}
         />
       )}
-      {subscribed && (
+      {subscribed && !isProd && (
         <div className="flex flex-row gap-2 justify-between flex-wrap">
           <Button variant="outline" onClick={handleTest}>
             Try send test notification NOW

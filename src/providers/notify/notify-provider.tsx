@@ -4,10 +4,12 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { AlertBlock } from '~/components/ui'
 import { cn } from '~/utils/cn'
-import { logger } from '~/utils/logger'
+import { Logger } from '~/utils/logger'
 
 import { NotifyType } from './types'
 import { NotifyContext } from './useNotify'
+
+const logger = new Logger(['NotifyProvider', '[src/providers/notify/notify-provider.tsx]'])
 
 export const NotifyProvider = ({ children }: { children: React.ReactNode }) => {
   const [notifies, setNotifies] = useState<{ message: React.ReactNode; type: NotifyType; id: number; delay: number; closable: boolean }[] | null>(null)

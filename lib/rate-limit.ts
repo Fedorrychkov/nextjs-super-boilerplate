@@ -2,7 +2,7 @@ import { RATE_LIMIT_CONFIG } from '@config/env'
 import { NextRequest, NextResponse } from 'next/server'
 import { RateLimiterMemory, RateLimiterRedis } from 'rate-limiter-flexible'
 
-import { logger } from '~/utils/logger'
+import { Logger } from '~/utils/logger'
 
 import { redisClient } from './redis'
 
@@ -45,8 +45,9 @@ export const getClientKey = (request: NextRequest): string | undefined => {
 export const withGlobalRateLimit = <T extends (request: NextRequest) => Promise<NextResponse>>(handler: T): T =>
   (async (request: NextRequest) => {
     const key = getClientKey(request)
+    const logger = new Logger(['withGlobalRateLimit', '[lib/rate-limit.ts]', `consumed key: ${key}`])
 
-    logger.warn('[withGlobalRateLimit] consumed key', key)
+    logger.warn('start')
 
     if (!key) {
       return handler(request)
@@ -55,7 +56,7 @@ export const withGlobalRateLimit = <T extends (request: NextRequest) => Promise<
     try {
       const consumed = await rateLimit.consume(key)
 
-      logger.warn('[withGlobalRateLimit] consumed', consumed)
+      logger.warn({ consumed })
     } catch {
       return NextResponse.json(
         {

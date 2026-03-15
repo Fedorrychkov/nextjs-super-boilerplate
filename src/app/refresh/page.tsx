@@ -6,7 +6,9 @@ import { Suspense, useEffect } from 'react'
 import { SpinnerScreen } from '~/components/Loaders'
 import { routes } from '~/constants'
 import { useRefreshTokenQuery } from '~/query/auth'
-import { logger } from '~/utils/logger'
+import { Logger } from '~/utils/logger'
+
+const logger = new Logger(['RefreshWithParams', '[src/app/refresh/page.tsx]'])
 
 const RefreshWithParams = () => {
   const searchParams = useSearchParams()

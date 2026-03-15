@@ -7,9 +7,11 @@ import { useQueryClient } from 'react-query'
 import { UserRole } from '~/api/user'
 import { routes } from '~/constants'
 import { PROFILE_QUERY_KEY, useProfileQuery } from '~/query/auth'
-import { logger } from '~/utils/logger'
+import { Logger } from '~/utils/logger'
 
 import { AuthUserContext } from './useAuth'
+
+const logger = new Logger(['AuthProvider', '[src/providers/auth/auth-provider.tsx]'])
 
 const expectedRoutes = [routes.home.path, routes.login.path, routes.logout.path, routes.refresh.path, routes.uiKit.path]
 

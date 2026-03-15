@@ -1,13 +1,15 @@
 import { INDEXNOW_API_KEY, INDEXNOW_KEY_LOCATION } from '@config/env'
 
 import { getUniqueId } from '~/utils/getUniqueId'
-import { logger } from '~/utils/logger'
+import { Logger } from '~/utils/logger'
 
 import { seoConfig } from './config'
 
 const INDEXNOW_ENDPOINT = 'https://api.indexnow.org/indexnow'
 
 export const pingIndexNow = async (urls: string[]) => {
+  const logger = new Logger(['pingIndexNow', '[lib/seo/indexing.ts]'])
+
   const traceId = getUniqueId()
 
   logger.info('[seo] IndexNow ping start', {
@@ -58,5 +60,7 @@ export const pingIndexNow = async (urls: string[]) => {
 }
 
 export const notifyGoogleIndexing = async (_urls: string[]) => {
+  const logger = new Logger(['notifyGoogleIndexing', '[lib/seo/indexing.ts]'])
+
   logger.warn('[seo] Google Indexing API is not configured in boilerplate, skipping')
 }

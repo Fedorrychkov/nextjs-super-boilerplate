@@ -5,7 +5,7 @@ import { Suspense, useEffect } from 'react'
 
 import { SpinnerScreen } from '~/components/Loaders'
 import { useLogoutQuery } from '~/query/auth'
-import { logger } from '~/utils/logger'
+import { Logger } from '~/utils/logger'
 
 const LogoutWithParams = () => {
   const searchParams = useSearchParams()
@@ -27,6 +27,8 @@ const LogoutWithParams = () => {
 }
 
 const Logout = () => {
+  const logger = new Logger(['Logout', '[src/app/logout/page.tsx]'])
+
   logger.info('LogoutScreen')
 
   return (

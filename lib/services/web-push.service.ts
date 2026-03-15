@@ -2,7 +2,7 @@ import { PUSH_CONFIG } from '@config/env'
 import * as webpush from 'web-push'
 
 import { AnyString } from '~/types'
-import { logger } from '~/utils/logger'
+import { Logger } from '~/utils/logger'
 
 import { pushSubscriptionService } from './push-subscription.service'
 
@@ -19,13 +19,15 @@ type WebPushPayload = {
 }
 
 export class WebPushService {
+  private readonly logger = new Logger(['WebPushService', '[lib/services/web-push.service.ts]'])
+
   constructor() {
     const publicKey = PUSH_CONFIG.publicKey
     const privateKey = PUSH_CONFIG.privateKey
     const subject = PUSH_CONFIG.subject || 'mailto:notify@example.com'
 
     if (!publicKey || !privateKey) {
-      logger.warn('VAPID keys are not set. Web Push will not work until configured.')
+      this.logger.warn('VAPID keys are not set. Web Push will not work until configured.')
     } else {
       webpush.setVapidDetails(subject, publicKey, privateKey)
     }
@@ -51,12 +53,12 @@ export class WebPushService {
           const statusCode = err?.statusCode
 
           if (statusCode === 404 || statusCode === 410) {
-            logger.warn(`Removing dead subscription for user ${userId}`)
+            this.logger.warn(`Removing dead subscription for user ${userId}`)
             await pushSubscriptionService.unsubscribe(userId, s.endpoint)
 
             return { ok: false, removed: true }
           }
-          logger.error('WebPush error', err)
+          this.logger.error('WebPush error', err)
 
           return { ok: false }
         }

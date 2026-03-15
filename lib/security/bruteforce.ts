@@ -1,7 +1,7 @@
 import { cacheClient } from '@lib/cache'
 import { BruteForceError } from '@lib/error/custom-errors'
 
-import { logger } from '~/utils/logger'
+import { Logger } from '~/utils/logger'
 
 const LOGIN_MAX_ATTEMPTS = 3
 const LOGIN_WINDOW_SECONDS = 15 * 60
@@ -17,6 +17,7 @@ const buildRegisterIpKey = (ip: string) => `auth:register:ip:${ip}`
 export const ensureCanRegister = async (ip?: string | null) => {
   if (!ip) return
 
+  const logger = new Logger(['ensureCanRegister', '[lib/security/bruteforce.ts]'])
   const key = buildRegisterIpKey(ip)
   const attempts = await cacheClient.incr(key, REGISTER_WINDOW_SECONDS)
   const ttl = await cacheClient.ttl(key)
@@ -30,6 +31,7 @@ export const ensureCanRegister = async (ip?: string | null) => {
 
 export const assertLoginNotBlocked = async (ip: string | null | undefined, email: string) => {
   const keys: string[] = []
+  const logger = new Logger(['assertLoginNotBlocked', '[lib/security/bruteforce.ts]'])
 
   if (ip) {
     keys.push(buildLoginIpKey(ip))
@@ -60,6 +62,7 @@ export const assertLoginNotBlocked = async (ip: string | null | undefined, email
 
 export const recordLoginFailure = async (ip: string | null | undefined, email: string) => {
   const keys: string[] = []
+  const logger = new Logger(['recordLoginFailure', '[lib/security/bruteforce.ts]'])
 
   if (ip) {
     keys.push(buildLoginIpKey(ip))

@@ -1,3 +1,4 @@
+import { isProd as isProduction } from '@config/env'
 import { createConsola } from 'consola'
 
 /**
@@ -6,7 +7,7 @@ import { createConsola } from 'consola'
  */
 
 const isClient = typeof window !== 'undefined'
-const isProd = process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_APP_ENV === 'production'
+const isProd = process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_APP_ENV === 'production' || isProduction
 const silentClient = isClient && isProd
 
 const consolaInstance = silentClient ? createConsola({ level: -999 }) : createConsola()

@@ -22,9 +22,9 @@ const {
   MFA_ENCRYPTION_KEY = process.env.MFA_ENCRYPTION_KEY || '',
 } = process.env
 
-const isDevelop = APP_ENV === 'development'
-const isStage = APP_ENV === 'stage'
-const isProd = APP_ENV === 'production'
+const isDevelop = [APP_ENV, NEXT_PUBLIC_APP_ENV].includes('development')
+const isStage = [APP_ENV, NEXT_PUBLIC_APP_ENV].includes('stage')
+const isProd = [APP_ENV, NEXT_PUBLIC_APP_ENV].includes('production')
 
 // JWT config
 const JWT_CONFIG = {
@@ -69,7 +69,6 @@ export {
   JWT_CONFIG,
   MFA_CONFIG,
   MONGODB_CONFIG,
-  NEXT_PUBLIC_APP_ENV,
   NEXT_PUBLIC_SITE_URL,
   PUSH_CONFIG,
   RATE_LIMIT_CONFIG,

@@ -8,8 +8,10 @@ import { SpinnerScreen } from '~/components/Loaders'
 import { useAuth } from '~/providers'
 import { useNotify } from '~/providers/notify'
 import { useLoginMfaMutation, useLoginMutation, useLogoutQuery, useSignUpMutation } from '~/query/auth'
-import { logger } from '~/utils/logger'
+import { Logger } from '~/utils/logger'
 import { time } from '~/utils/time'
+
+const logger = new Logger(['LoginWithParams', '[src/app/login/page.tsx]'])
 
 const SignInBlock = React.lazy(() => import('~/components/Views/Auth/Blocks/SignInBlock').then((module) => ({ default: module.SignInBlock })))
 const SignUpBlock = React.lazy(() => import('~/components/Views/Auth/Blocks/SignUpBlock').then((module) => ({ default: module.SignUpBlock })))

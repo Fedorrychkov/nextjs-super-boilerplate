@@ -2,11 +2,12 @@ import { getClientKey, rateLimit } from '@lib/rate-limit'
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 
+import { Logger } from '~/utils/logger'
 import { time } from '~/utils/time'
 
-import { logger } from './utils/logger'
-
 export async function proxy(request: NextRequest) {
+  const logger = new Logger(['proxy', '[src/proxy.ts]'])
+
   const clientIP = request.headers.get('x-client-ip')
   const processedBy = request.headers.get('x-processed-by')
   const requestId = request.headers.get('x-request-id')

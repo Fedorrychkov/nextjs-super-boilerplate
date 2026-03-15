@@ -1,6 +1,8 @@
 import axios, { AxiosInstance, CreateAxiosDefaults } from 'axios'
 
-import { logger } from '~/utils/logger'
+import { Logger } from '~/utils/logger'
+
+const logger = new Logger(['Request', '[lib/request/axios.ts]'])
 
 export class Request {
   private readonly client: AxiosInstance

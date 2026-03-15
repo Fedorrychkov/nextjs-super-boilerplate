@@ -4,7 +4,9 @@ import { headers } from 'next/headers'
 
 import { ClientAuthApi } from '~/api/auth'
 import { UserModel } from '~/api/user'
-import { logger } from '~/utils/logger'
+import { Logger } from '~/utils/logger'
+
+const logger = new Logger(['getServerProfile', '[lib/server-auth.ts]'])
 
 export async function getServerProfile(): Promise<Pick<UserModel, 'id' | 'email' | 'role' | 'status'> | null> {
   try {

@@ -6,7 +6,7 @@ import { redirect, RedirectType } from 'next/navigation'
 import { ClientAuthApi } from '~/api/auth'
 import { UserRole } from '~/api/user'
 import { routes } from '~/constants'
-import { logger } from '~/utils/logger'
+import { Logger } from '~/utils/logger'
 
 import { getAxiosHeaders } from './getAxiosHeaders'
 
@@ -51,6 +51,8 @@ const buildPathnameBySegments = (segments?: string[], params?: Record<string, un
  */
 export const defaultGuard = async <T extends Record<string, unknown> | undefined = undefined>(props: PageCheckAuthProps<T>): Promise<boolean> => {
   const { navigatePath = '/login', fallbackNavigatePath = '/', fallbackRolesNavigatePath = {}, roles, segments, params: paramsPromise } = props
+
+  const logger = new Logger(['defaultGuard', '[lib/page.ts]'])
 
   const params = await paramsPromise
 
