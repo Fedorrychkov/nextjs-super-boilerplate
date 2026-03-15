@@ -19,8 +19,50 @@ export class ClientAuthApi {
     return response.data
   }
 
-  async login(body: LoginEmailDto): Promise<{ success: boolean; message?: string }> {
+  async login(
+    body: LoginEmailDto,
+  ): Promise<
+    { success: true; user: Pick<UserModel, 'id' | 'email' | 'role' | 'status'> } | { success: true; requiresMfa: true; mfaType: string; challengeId: string }
+  > {
     const response = await this.client.post('/api/v1/auth/login', body)
+
+    return response.data
+  }
+
+  async loginMfa(body: { challengeId: string; code: string }): Promise<{
+    success: boolean
+    user: Pick<UserModel, 'id' | 'email' | 'role' | 'status'>
+    mfa?: { usedBackupCode: boolean }
+  }> {
+    const response = await this.client.post('/api/v1/auth/login/mfa', body)
+
+    return response.data
+  }
+
+  async mfaStatus(): Promise<{ mfaEnabled: boolean }> {
+    const response = await this.client.get('/api/v1/auth/mfa/status')
+
+    return response.data
+  }
+
+  async mfaSetup(): Promise<{
+    otpauthUrl: string
+    secret: string
+    backupCodes: string[]
+  }> {
+    const response = await this.client.post('/api/v1/auth/mfa/setup')
+
+    return response.data
+  }
+
+  async mfaConfirm(body: { code: string }): Promise<{ success: boolean }> {
+    const response = await this.client.post('/api/v1/auth/mfa/confirm', body)
+
+    return response.data
+  }
+
+  async mfaDisable(body: { password: string; code?: string }): Promise<{ success: boolean }> {
+    const response = await this.client.post('/api/v1/auth/mfa/disable', body)
 
     return response.data
   }

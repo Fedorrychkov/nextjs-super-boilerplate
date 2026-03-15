@@ -1,8 +1,8 @@
 import { createConsola } from 'consola'
 
 /**
- * Универсальный логгер (сервер + клиент).
- * На проде: только серверные логи; клиентские в консоль браузера не выводятся.
+ * Universal logger (server + client).
+ * On production: only server logs; client logs are not displayed in the browser console.
  */
 
 const isClient = typeof window !== 'undefined'
@@ -24,4 +24,32 @@ export const logger = {
   error: (...args: unknown[]) => {
     consolaInstance.error({ date: new Date().toISOString() }, ...args)
   },
+}
+
+export class Logger {
+  private readonly startedString: string
+
+  constructor(
+    private readonly _startedString: string[] | string,
+    private readonly log?: typeof logger,
+  ) {
+    this.startedString = Array.isArray(this._startedString) ? this._startedString.join(' | ') : this._startedString
+    this.log = log || logger
+  }
+
+  warn(...args: unknown[]) {
+    this.log?.warn(this.startedString, ...args)
+  }
+
+  error(...args: unknown[]) {
+    this.log?.error(this.startedString, ...args)
+  }
+
+  info(...args: unknown[]) {
+    this.log?.info(this.startedString, ...args)
+  }
+
+  debug(...args: unknown[]) {
+    this.log?.debug(this.startedString, ...args)
+  }
 }

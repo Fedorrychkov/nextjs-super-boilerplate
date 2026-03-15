@@ -33,23 +33,7 @@ export class AuthService {
   }
 
   async login(data: LoginEmailDto): Promise<AuthResponse> {
-    await connectDB()
-
-    const user = await User.findOne({ email: data.email.toLowerCase() }).select('+password')
-
-    if (!user) {
-      throw new ValidationError('Invalid email or password')
-    }
-
-    if (user.status !== UserStatus.ACTIVE) {
-      throw new ForbiddenError('User account is blocked')
-    }
-
-    const isPasswordValid = await user.comparePassword(data.password)
-
-    if (!isPasswordValid) {
-      throw new ValidationError('Invalid email or password')
-    }
+    const user = await this.validateUserCredentials(data)
 
     return this.generateAuthResponse(user)
   }
@@ -99,6 +83,28 @@ export class AuthService {
     await RefreshToken.deleteMany({ userId })
   }
 
+  async validateUserCredentials(data: LoginEmailDto): Promise<IUser> {
+    await connectDB()
+
+    const user = await User.findOne({ email: data.email.toLowerCase() }).select('+password')
+
+    if (!user) {
+      throw new ValidationError('Invalid email or password')
+    }
+
+    if (user.status !== UserStatus.ACTIVE) {
+      throw new ForbiddenError('User account is blocked')
+    }
+
+    const isPasswordValid = await user.comparePassword(data.password)
+
+    if (!isPasswordValid) {
+      throw new ValidationError('Invalid email or password')
+    }
+
+    return user
+  }
+
   private async generateAuthResponse(user: IUser): Promise<AuthResponse> {
     await connectDB()
 
@@ -135,6 +141,10 @@ export class AuthService {
         status: user.status,
       },
     }
+  }
+
+  async createAuthTokensForUser(user: IUser): Promise<AuthResponse> {
+    return this.generateAuthResponse(user)
   }
 }
 

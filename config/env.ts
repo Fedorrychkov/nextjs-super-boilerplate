@@ -19,6 +19,7 @@ const {
   VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY,
   INDEXNOW_API_KEY = process.env.INDEXNOW_API_KEY,
   INDEXNOW_KEY_LOCATION = process.env.INDEXNOW_KEY_LOCATION,
+  MFA_ENCRYPTION_KEY = process.env.MFA_ENCRYPTION_KEY || '',
 } = process.env
 
 const isDevelop = APP_ENV === 'development'
@@ -53,6 +54,10 @@ const PUSH_CONFIG = {
   privateKey: VAPID_PRIVATE_KEY,
 }
 
+const MFA_CONFIG = {
+  encryptionKey: MFA_ENCRYPTION_KEY,
+}
+
 export {
   APP_ENV,
   APP_INTERNAL_ORIGIN,
@@ -62,6 +67,7 @@ export {
   isProd,
   isStage,
   JWT_CONFIG,
+  MFA_CONFIG,
   MONGODB_CONFIG,
   NEXT_PUBLIC_APP_ENV,
   NEXT_PUBLIC_SITE_URL,

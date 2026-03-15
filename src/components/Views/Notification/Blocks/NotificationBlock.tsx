@@ -1,5 +1,7 @@
 'use client'
 
+import { Bell } from 'lucide-react'
+
 import { ClientSubscriptionApi } from '~/api/subscription'
 import { AlertBlock, Button, Typography } from '~/components/ui'
 import { useNotify } from '~/providers/notify'
@@ -24,8 +26,11 @@ export const NotificationBlock = () => {
   }
 
   return (
-    <div className="flex flex-col gap-4 bg-slate-100 rounded-lg p-4">
-      <Typography variant="heading-3">Push Notifications</Typography>
+    <div className="flex flex-col rounded-lg border bg-card p-4 space-y-4">
+      <div className="flex items-center gap-2">
+        <Bell className="h-5 w-5 text-muted-foreground shrink-0" />
+        <Typography variant="heading-3">Push Notifications</Typography>
+      </div>
       <div className="flex flex-col gap-4">
         <Typography variant="Body/S/Regular">
           {subscribed

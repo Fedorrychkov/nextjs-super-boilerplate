@@ -6,6 +6,7 @@ import { getServerProfile } from '@lib/server-auth'
 import { Block } from '~/components/Containers'
 import { Typography } from '~/components/ui'
 import { NotificationBlock } from '~/components/Views/Notification'
+import { ProfileMfaBlock } from '~/components/Views/Profile/ProfileMfaBlock'
 
 const ProfileRoot = async (props: PageProps) => {
   await defaultGuard({ ...props, segments: ['profile'], fallbackNavigatePath: '/' })
@@ -21,12 +22,12 @@ const ProfileRoot = async (props: PageProps) => {
   }
 
   return (
-    <div className="w-full h-full flex justify-center flex-col flex-1">
-      Protected route example
+    <div className="w-full h-full flex justify-center flex-col flex-1 gap-6">
       <Typography variant="Body/L/Regular">{profile.email}</Typography>
-      <Block>
-        <NotificationBlock />
-      </Block>
+
+      <NotificationBlock />
+
+      <ProfileMfaBlock />
     </div>
   )
 }

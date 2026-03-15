@@ -7,12 +7,13 @@ import React, { Suspense, useCallback, useEffect, useState } from 'react'
 import { SpinnerScreen } from '~/components/Loaders'
 import { useAuth } from '~/providers'
 import { useNotify } from '~/providers/notify'
-import { useLoginMutation, useLogoutQuery, useSignUpMutation } from '~/query/auth'
+import { useLoginMfaMutation, useLoginMutation, useLogoutQuery, useSignUpMutation } from '~/query/auth'
 import { logger } from '~/utils/logger'
 import { time } from '~/utils/time'
 
 const SignInBlock = React.lazy(() => import('~/components/Views/Auth/Blocks/SignInBlock').then((module) => ({ default: module.SignInBlock })))
 const SignUpBlock = React.lazy(() => import('~/components/Views/Auth/Blocks/SignUpBlock').then((module) => ({ default: module.SignUpBlock })))
+const MfaCodeBlock = React.lazy(() => import('~/components/Views/Auth/Blocks/MfaCodeBlock').then((module) => ({ default: module.MfaCodeBlock })))
 
 // Component for handling searchParams
 const LoginWithParams = () => {
@@ -20,6 +21,8 @@ const LoginWithParams = () => {
   const nextPath = searchParams.get('nextPath')
   const searchVariant = searchParams.get('variant')
   const [variant, setVariant] = useState<'sign-in' | 'sign-up'>(searchVariant === 'sign-up' ? 'sign-up' : 'sign-in')
+  const [loginStep, setLoginStep] = useState<'credentials' | 'mfa'>('credentials')
+  const [mfaChallengeId, setMfaChallengeId] = useState<string | null>(null)
   const { notify } = useNotify()
   const router = useRouter()
   const { refetch, isLoading, isClient } = useAuth()
@@ -39,6 +42,7 @@ const LoginWithParams = () => {
   }, [refetchLogout, isClient])
 
   const { loginMutation } = useLoginMutation()
+  const { loginMfaMutation } = useLoginMfaMutation()
   const { signUpMutation } = useSignUpMutation()
 
   const handleSignIn = async (email: string, password: string) => {
@@ -48,7 +52,14 @@ const LoginWithParams = () => {
         password,
       })
 
-      if (response.success) {
+      if (response.success && 'requiresMfa' in response && response.requiresMfa && response.challengeId) {
+        setMfaChallengeId(response.challengeId)
+        setLoginStep('mfa')
+
+        return
+      }
+
+      if (response.success && 'user' in response) {
         await refetch?.()
 
         if (nextPath) {
@@ -63,12 +74,39 @@ const LoginWithParams = () => {
       if (error instanceof AxiosError) {
         const after = error.response?.data?.retryAfterSeconds
 
-        const duration = time().add(after, 'seconds')
+        if (after) {
+          const duration = time().add(after, 'seconds')
 
-        notify(`Too many login attempts. Please try again after ${after ? `${duration.format('HH:mm:ss')}.` : 'later.'}`, 'destructive')
-      } else {
-        notify('Sign in failed, please check your data and try again', 'warning')
+          notify(`Too many login attempts. Please try again after ${after ? `${duration.format('HH:mm:ss')}.` : 'later.'}`, 'destructive')
+
+          return
+        }
       }
+
+      notify('Sign in failed, please check your data and try again', 'warning')
+
+      logger.error(error)
+    }
+  }
+
+  const handleMfaSubmit = async (code: string) => {
+    if (!mfaChallengeId) return
+    try {
+      const response = await loginMfaMutation.mutateAsync({ challengeId: mfaChallengeId, code })
+
+      if (response.success) {
+        await refetch?.()
+        setLoginStep('credentials')
+        setMfaChallengeId(null)
+
+        if (nextPath) {
+          router.replace(nextPath)
+        } else {
+          router.replace('/')
+        }
+      }
+    } catch (error) {
+      notify('Invalid code. Try again or use a backup code.', 'destructive')
       logger.error(error)
     }
   }
@@ -109,7 +147,20 @@ const LoginWithParams = () => {
 
   return (
     <div className="w-full h-full flex items-center justify-center flex-col flex-1 px-4">
-      {variant === 'sign-in' && (
+      {variant === 'sign-in' && loginStep === 'mfa' && (
+        <Suspense fallback={<SpinnerScreen />}>
+          <MfaCodeBlock
+            onSubmit={handleMfaSubmit}
+            onBack={() => {
+              setLoginStep('credentials')
+              setMfaChallengeId(null)
+            }}
+            isLoading={loginMfaMutation.isLoading}
+          />
+        </Suspense>
+      )}
+
+      {variant === 'sign-in' && loginStep === 'credentials' && (
         <Suspense fallback={<SpinnerScreen />}>
           <SignInBlock isLoading={loginMutation.isLoading || isLoading} onSubmit={handleSignIn} onChange={handleChange('sign-up')} />
         </Suspense>

@@ -43,9 +43,9 @@ export const CopyContainer = (props: Props) => {
       {withIcon && !!content && (
         <>
           {isCopied ? (
-            <CopyCheckIcon data-copy-control="1" className={cn('min-w-[12px] w-[12px]', buttonClassName)} />
+            <CopyCheckIcon data-copy-control="1" className={cn('min-w-[12px] w-[12px] shrink-0', buttonClassName)} />
           ) : (
-            <CopyIcon data-copy-control="1" className={cn('cursor-pointer min-w-[12px] w-[12px]', buttonClassName)} />
+            <CopyIcon data-copy-control="1" className={cn('cursor-pointer min-w-[12px] w-[12px] shrink-0', buttonClassName)} />
           )}
         </>
       )}

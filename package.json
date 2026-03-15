@@ -58,6 +58,7 @@
     "lucide-react": "^0.544.0",
     "mongoose": "^9.2.3",
     "next": "16.1.6",
+    "otplib": "^13.3.0",
     "radix-ui": "^1.4.2",
     "rate-limiter-flexible": "^9.1.1",
     "react": "19.2.3",
