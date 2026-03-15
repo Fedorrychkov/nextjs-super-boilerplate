@@ -209,6 +209,8 @@ const UiKitRoot = async () => {
             <div className="flex flex-col gap-1">
               <Typography variant="Body/M/Semibold">Image Lazy with image</Typography>
               <ImageLoader
+                width={40}
+                height={40}
                 src="https://ucarecdn.com/aa79be7b-dc5d-4d8a-9543-4bcecd75b6af/start_after.png"
                 className="w-10 h-10"
                 defaultPlaceholder={<Skeleton className="w-10 h-10" />}

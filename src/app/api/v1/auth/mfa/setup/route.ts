@@ -2,21 +2,15 @@
 import connectDB from '@lib/db/client'
 import User from '@lib/db/models/User'
 import UserSettings from '@lib/db/models/UserSettings'
-import { withGlobalRateLimit, apiErrorHandlerContainer } from '@lib/middleware'
+import { apiErrorHandlerContainer, withGlobalRateLimit, withAuthMiddleware } from '@lib/middleware'
 import { encryptSecret, generateBackupCodes, generateTotpSecret, getOtpauthUrl, hashBackupCodes } from '@lib/security/totp'
 import { NextRequest } from 'next/server'
 
 import { ValidationError } from '@lib/error/custom-errors'
-import { authMiddleware } from '@lib/security/auth'
+import { AuthSuccessResult } from '@lib/security/auth'
 
-const handler = (request: NextRequest) => {
+const handler = (request: NextRequest, authResult: AuthSuccessResult) => {
   return apiErrorHandlerContainer(request)(async (res) => {
-    const authResult = await authMiddleware(request)
-
-    if (!authResult.success) {
-      return authResult.response
-    }
-
     await connectDB()
 
     const user = await User.findById(authResult.payload.sub)
@@ -55,4 +49,4 @@ const handler = (request: NextRequest) => {
   })
 }
 
-export const POST = withGlobalRateLimit(handler)
+export const POST = withGlobalRateLimit(withAuthMiddleware(handler))

@@ -2,26 +2,20 @@
 import connectDB from '@lib/db/client'
 import User from '@lib/db/models/User'
 import UserSettings from '@lib/db/models/UserSettings'
-import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
+import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
 import { decryptSecret, verifyTotpCode } from '@lib/security/totp'
 import { NextRequest } from 'next/server'
 
 import { ValidationError } from '@lib/error/custom-errors'
-import { authMiddleware } from '@lib/security/auth'
+import { AuthSuccessResult } from '@lib/security/auth'
 
 type DisableMfaDto = {
   code?: string
   password?: string
 }
 
-const handler = (request: NextRequest) => {
+const handler = (request: NextRequest, authResult: AuthSuccessResult) => {
   return apiErrorHandlerContainer(request)(async (res, req) => {
-    const authResult = await authMiddleware(request)
-
-    if (!authResult.success) {
-      return authResult.response
-    }
-
     const body = (await req.json().catch(() => ({}))) as DisableMfaDto
 
     await connectDB()
@@ -51,9 +45,9 @@ const handler = (request: NextRequest) => {
 
     if (body.code && settings.mfaSecret) {
       const secret = decryptSecret(settings.mfaSecret)
-      const valid = verifyTotpCode(secret, body.code)
+      const totpValid = await verifyTotpCode(secret, body.code)
 
-      if (!valid) {
+      if (!totpValid.valid) {
         throw new ValidationError('Invalid MFA code')
       }
     }
@@ -72,4 +66,4 @@ const handler = (request: NextRequest) => {
   })
 }
 
-export const POST = withGlobalRateLimit(handler)
+export const POST = withGlobalRateLimit(withAuthMiddleware(handler))

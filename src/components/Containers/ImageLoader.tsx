@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import React, { ReactNode, useEffect, useRef, useState } from 'react'
 
 import { cn } from '~/utils/cn'
@@ -12,10 +13,17 @@ type Props = React.ImgHTMLAttributes<HTMLImageElement> & {
   spinnerClassName?: string
   src?: string | null
   isLoading?: boolean
+  width?: number
+  height?: number
+  /**
+   * If false, the image will optimized by next.js
+   * If you want to use optimization feature, please set up your next.config.js to use available hostnames
+   */
+  unoptimized?: boolean
 }
 
 export const ImageLoader = (props: Props) => {
-  const { className, defaultPlaceholder, src, isLoading, spinnerClassName, onClick, ...rest } = props || {}
+  const { className, defaultPlaceholder, src, isLoading, spinnerClassName, onClick, unoptimized = true, ...rest } = props || {}
 
   const [isMediaLoading, setIsMediaLoading] = useState(true)
   const [isMediaError, setMediaError] = useState(isLoading ? false : !src || false)
@@ -78,18 +86,26 @@ export const ImageLoader = (props: Props) => {
     return <div className={cn('flex items-center justify-center', className)}>{defaultPlaceholder}</div>
   }
 
+  const isValidEntryProps = rest?.width && rest?.height
+
+  const ImgComponent = isValidEntryProps ? Image : 'img'
+
   return (
     <>
       {(isMediaLoading || isLoading) && (
         <div className={cn('flex items-center justify-center', className)}>
-          <Skeleton className={cn('w-[24px] h-[24px] rounded-full', spinnerClassName)} />
+          {defaultPlaceholder ? (
+            <div className={cn('flex items-center justify-center', className)}>{defaultPlaceholder}</div>
+          ) : (
+            <Skeleton className={cn('w-[24px] h-[24px] rounded-full', spinnerClassName)} />
+          )}
         </div>
       )}
       {!isLoading && src && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <ImgComponent
           src={src}
           alt="Image"
+          {...(isValidEntryProps ? { unoptimized, loading: 'eager' } : {})}
           {...rest}
           className={cn(loadingMediaClassName, className, { 'cursor-pointer': !!onClick })}
           ref={imgRef}

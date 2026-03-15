@@ -109,7 +109,7 @@ export const apiErrorHandlerContainer =
         return res.json({ message: error.message }, { status: error.statusCode })
       }
 
-      logger.error(`traceId: ${traceId}`, (error as Error)?.message)
+      logger.error(`Default error traceId: ${traceId}`, (error as Error)?.message)
 
       const response = error && typeof error === 'object' && 'response' in error ? (error.response as AxiosResponse) : null
 

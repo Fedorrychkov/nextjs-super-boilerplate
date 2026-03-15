@@ -54,7 +54,7 @@ const handler = (request: NextRequest) => {
       const { matched, remainingCodes } = await consumeBackupCode(body.code, settings.mfaBackupCodes)
 
       if (!matched) {
-        throw new ValidationError('Invalid MFA code')
+        throw new ValidationError('Invalid remaining backup code')
       }
 
       settings.mfaBackupCodes = remainingCodes

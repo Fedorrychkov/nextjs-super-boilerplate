@@ -4,6 +4,8 @@ import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 import { generateSecret, generateURI, verify } from 'otplib'
 
+import { Logger } from '~/utils/logger'
+
 const TOTP_ISSUER = NEXT_PUBLIC_SITE_URL.replace(/^https?:\/\//, '') || 'nextjs-super-boilerplate'
 
 const getEncryptionKey = () => {
@@ -27,7 +29,13 @@ export const getOtpauthUrl = (secret: string, email: string) => {
 }
 
 export const verifyTotpCode = (secret: string, code: string) => {
-  return verify({ token: code, secret })
+  const logger = new Logger(['verifyTotpCode', '[lib/security/totp.ts]'])
+
+  return verify({ token: code, secret }).catch((error: Error) => {
+    logger.error('Invalid code', code, error?.message)
+
+    throw new ValidationError('Invalid code')
+  })
 }
 
 export const encryptSecret = (secret: string): string => {

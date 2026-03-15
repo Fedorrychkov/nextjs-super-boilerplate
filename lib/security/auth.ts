@@ -2,16 +2,27 @@ import { verifyAccessToken } from '@lib/jwt/utils'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { JwtPayload } from '~/api/auth/model'
-import { UserRole, UserStatus } from '~/api/user'
+import { UserRole } from '~/api/user'
 
 export interface AuthRequest extends NextRequest {
   user?: JwtPayload
 }
 
+export interface AuthSuccessResult {
+  success: true
+  payload: JwtPayload
+  response: NextResponse
+}
+
+export interface AuthFailureResult {
+  success: false
+  response: NextResponse
+}
+
 /**
  * Authentication check result
  */
-export type AuthResult = { success: true; payload: JwtPayload; response: NextResponse } | { success: false; response: NextResponse }
+export type AuthResult = AuthSuccessResult | AuthFailureResult
 
 /**
  * Middleware to verify JWT token
@@ -79,27 +90,5 @@ export function roleMiddleware(allowedRoles: UserRole[]) {
     }
 
     return authResult
-  }
-}
-
-/**
- * Get user from request headers (after authMiddleware)
- * @deprecated Use payload from authMiddleware result directly
- */
-export function getUserFromRequest(request: NextRequest): JwtPayload | null {
-  const userId = request.headers.get('x-user-id')
-  const email = request.headers.get('x-user-email')
-  const role = request.headers.get('x-user-role') as UserRole | null
-  const status = request.headers.get('x-user-status')
-
-  if (!userId || !email || !role) {
-    return null
-  }
-
-  return {
-    sub: userId,
-    email,
-    role,
-    status: status as UserStatus,
   }
 }

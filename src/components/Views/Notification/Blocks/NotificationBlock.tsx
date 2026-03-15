@@ -7,17 +7,25 @@ import { ClientSubscriptionApi } from '~/api/subscription'
 import { AlertBlock, Button, Typography } from '~/components/ui'
 import { useNotify } from '~/providers/notify'
 import { usePush } from '~/providers/push'
+import { Logger } from '~/utils/logger'
+
+const logger = new Logger(['NotificationBlock', '[src/components/Views/Notification/Blocks/NotificationBlock.tsx]'])
 
 export const NotificationBlock = () => {
-  const { unlockAudio } = useNotify()
+  const { unlockAudio, notify } = useNotify()
   const { subscribed, subscribe, unsubscribe } = usePush()
 
-  const handleSubscribe = () => {
-    if (subscribed) {
-      unsubscribe()
-    } else {
-      subscribe()
-      unlockAudio()
+  const handleSubscribe = async () => {
+    try {
+      if (subscribed) {
+        unsubscribe()
+      } else {
+        subscribe()
+        unlockAudio()
+      }
+    } catch (error) {
+      logger.error('Error subscribing to notifications', error)
+      notify('Error subscribing to notifications', 'destructive')
     }
   }
 

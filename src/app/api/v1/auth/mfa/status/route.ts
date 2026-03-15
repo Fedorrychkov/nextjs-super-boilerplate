@@ -1,18 +1,12 @@
 import connectDB from '@lib/db/client'
 import UserSettings from '@lib/db/models/UserSettings'
-import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
-import { authMiddleware } from '@lib/security/auth'
+import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
+import { AuthSuccessResult } from '@lib/security/auth'
 import { NextRequest, NextResponse } from 'next/server'
 
-const handler = async (request: NextRequest) => {
+const handler = async (request: NextRequest, authResult: AuthSuccessResult) => {
   try {
     return apiErrorHandlerContainer(request)(async (res) => {
-      const authResult = await authMiddleware(request)
-
-      if (!authResult.success) {
-        return authResult.response
-      }
-
       await connectDB()
       const settings = await UserSettings.findOne({ userId: authResult.payload.sub })
 
@@ -28,4 +22,4 @@ const handler = async (request: NextRequest) => {
   }
 }
 
-export const GET = withGlobalRateLimit(handler)
+export const GET = withGlobalRateLimit(withAuthMiddleware(handler))

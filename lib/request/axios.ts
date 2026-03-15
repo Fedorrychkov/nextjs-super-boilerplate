@@ -95,7 +95,12 @@ export class Request {
                 Request.refreshPromise = this.client
                   .post('/api/v1/auth/refresh')
                   .catch((refreshError) => {
-                    console.error('Failed to refresh token:', refreshError)
+                    logger.error('Failed to refresh token:', refreshError)
+                    setTimeout(() => {
+                      if (typeof window !== 'undefined') {
+                        window.location.reload()
+                      }
+                    }, 1000)
                     throw refreshError
                   })
                   .finally(() => {

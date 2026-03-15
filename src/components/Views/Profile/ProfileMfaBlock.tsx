@@ -4,6 +4,8 @@ import { KeyRound, Shield, ShieldOff } from 'lucide-react'
 import { useState } from 'react'
 
 import { CopyContainer } from '~/components/Blocks/CopyContainer'
+import { ImageLoader } from '~/components/Containers'
+import { Skeleton } from '~/components/Loaders'
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Typography } from '~/components/ui'
 import { useNotify } from '~/providers/notify'
 import { useMfaConfirmMutation, useMfaDisableMutation, useMfaSetupMutation, useMfaStatusQuery } from '~/query/auth'
@@ -121,12 +123,12 @@ export function ProfileMfaBlock() {
         <div className="space-y-4">
           <Typography variant="Body/M/Regular">Scan the QR code with your authenticator app, or enter the secret manually.</Typography>
           <div className="flex flex-col sm:flex-row gap-4 items-start">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <ImageLoader
               src={`${QR_API}?size=${QR_SIZE}x${QR_SIZE}&data=${encodeURIComponent(setupData.otpauthUrl)}`}
               alt="QR code for 2FA"
               width={QR_SIZE}
               height={QR_SIZE}
+              defaultPlaceholder={<Skeleton className="w-[200px] h-[200px]" />}
               className="rounded border bg-white"
             />
             <div className="flex-1 min-w-0">
@@ -181,6 +183,11 @@ export function ProfileMfaBlock() {
               maxLength={8}
               placeholder="000000"
               value={confirmCode}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleConfirmMfa()
+                }
+              }}
               onChange={(e) => setConfirmCode(e.target.value.replace(/\D/g, ''))}
               className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
@@ -216,12 +223,22 @@ export function ProfileMfaBlock() {
                 type="password"
                 placeholder="Password"
                 value={disablePassword}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleDisableMfa()
+                  }
+                }}
                 onChange={(e) => setDisablePassword(e.target.value)}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
               <input
                 type="text"
                 inputMode="numeric"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleDisableMfa()
+                  }
+                }}
                 placeholder="2FA code (optional)"
                 value={disableCode}
                 onChange={(e) => setDisableCode(e.target.value.replace(/\D/g, ''))}

@@ -1,18 +1,12 @@
-import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
-import { authMiddleware } from '@lib/security/auth'
+import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
+import { AuthSuccessResult } from '@lib/security/auth'
 import { webPushService } from '@lib/services/web-push.service'
 import { NextRequest } from 'next/server'
 
 import { AnyString } from '~/types'
 
-const handler = (request: NextRequest) => {
+const handler = (request: NextRequest, authResult: AuthSuccessResult) => {
   return apiErrorHandlerContainer(request)(async (res, req) => {
-    const authResult = await authMiddleware(request)
-
-    if (!authResult.success) {
-      return authResult.response
-    }
-
     const user = authResult.payload
 
     const body: { type: 'test' | AnyString } = await req.json()
@@ -31,4 +25,4 @@ const handler = (request: NextRequest) => {
   })
 }
 
-export const POST = withGlobalRateLimit(handler)
+export const POST = withGlobalRateLimit(withAuthMiddleware(handler))

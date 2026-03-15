@@ -1,16 +1,10 @@
-import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
-import { authMiddleware } from '@lib/security/auth'
+import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
+import { AuthSuccessResult } from '@lib/security/auth'
 import { pushSubscriptionService } from '@lib/services/push-subscription.service'
 import { NextRequest, NextResponse } from 'next/server'
 
-const handlerPost = async (request: NextRequest) => {
+const handlerPost = async (request: NextRequest, authResult: AuthSuccessResult) => {
   return apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
-    const authResult = await authMiddleware(request)
-
-    if (!authResult.success) {
-      return authResult.response
-    }
-
     const body = await request.json()
     const { subscription } = body || {}
 
@@ -28,20 +22,15 @@ const handlerPost = async (request: NextRequest) => {
     }
 
     const user = authResult.payload
+
     const sub = await pushSubscriptionService.subscribe(user.sub, dto)
 
     return response.json({ ok: true, id: sub._id.toString() })
   })
 }
 
-const handlerDelete = async (request: NextRequest) => {
+const handlerDelete = async (request: NextRequest, authResult: AuthSuccessResult) => {
   return apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
-    const authResult = await authMiddleware(request)
-
-    if (!authResult.success) {
-      return authResult.response
-    }
-
     const body = await request.json()
     const { endpoint } = body || {}
 
@@ -56,14 +45,8 @@ const handlerDelete = async (request: NextRequest) => {
   })
 }
 
-const handlerGet = async (request: NextRequest) => {
+const handlerGet = async (request: NextRequest, authResult: AuthSuccessResult) => {
   return apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
-    const authResult = await authMiddleware(request)
-
-    if (!authResult.success) {
-      return authResult.response
-    }
-
     const endpoint = request.nextUrl.searchParams.get('endpoint')
 
     if (!endpoint) {
@@ -77,6 +60,6 @@ const handlerGet = async (request: NextRequest) => {
   })
 }
 
-export const GET = withGlobalRateLimit(handlerGet)
-export const POST = withGlobalRateLimit(handlerPost)
-export const DELETE = withGlobalRateLimit(handlerDelete)
+export const GET = withGlobalRateLimit(withAuthMiddleware(handlerGet))
+export const POST = withGlobalRateLimit(withAuthMiddleware(handlerPost))
+export const DELETE = withGlobalRateLimit(withAuthMiddleware(handlerDelete))
