@@ -20,7 +20,7 @@ jobs:
       nginx_mode: https
       certbot_test_mode: false
       migrations_run: false
-      blue_green_enabled: true
+      blue_green_enabled: false
       deploy_mode: 'registry'
       node_version: 24
       registry_subname: 'nextjs-super-boilerplate'
