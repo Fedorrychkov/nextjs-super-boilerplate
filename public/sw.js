@@ -126,6 +126,15 @@ self.addEventListener('fetch', (event) => {
 		return
 	}
 
+	const isLocalhost =
+    self.location.hostname === 'localhost' ||
+    self.location.hostname === '127.0.0.1'
+
+  // In localhost, we don't touch _next at all
+  if (isLocalhost && url.pathname.startsWith('/_next/')) {
+    return
+  }
+
 	// Next static assets и ассеты — cache-first
 	if (
 		url.pathname.startsWith('/_next/static/') ||
