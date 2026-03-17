@@ -90,6 +90,17 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ['framer-motion', 'cmdk', 'lucide-react'],
   },
+  images: {
+    remotePatterns: [
+      /**
+       * This is a saas for images, enable it if you use it
+       */
+      {
+        protocol: 'https',
+        hostname: 'ucarecdn.com',
+      },
+    ],
+  },
 }
 
 const withBundleAnalyzer = require('@next/bundle-analyzer')({
