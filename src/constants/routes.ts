@@ -29,4 +29,14 @@ export const routes = {
     name: 'Refresh',
     needAuth: false,
   },
+  articles: {
+    path: '/admin/articles',
+    name: 'Articles',
+    needAuth: true,
+  },
+  articlesCreate: {
+    path: '/admin/articles/create',
+    name: 'Create Article',
+    needAuth: true,
+  },
 }

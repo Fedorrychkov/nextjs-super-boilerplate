@@ -1,0 +1,17 @@
+export const features = [
+  'bold',
+  'italic',
+  'underline',
+  'strike',
+  'codeBlock',
+  'link',
+  'h1',
+  'h2',
+  'h3',
+  'bulletList',
+  'orderedList',
+  'blockquote',
+  'horizontalRule',
+  'breakLine',
+  'image',
+] as const
