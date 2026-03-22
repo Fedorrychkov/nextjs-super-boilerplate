@@ -14,18 +14,6 @@ export const getStaticRoutes = (): MetadataRoute.Sitemap => [
     changeFrequency: 'daily',
     priority: 1,
   },
-  {
-    url: `${seoConfig.siteUrl}/login`,
-    lastModified: new Date(),
-    changeFrequency: 'yearly',
-    priority: 0.2,
-  },
-  {
-    url: `${seoConfig.siteUrl}/profile`,
-    lastModified: new Date(),
-    changeFrequency: 'weekly',
-    priority: 0.4,
-  },
 ]
 
 export const mapArticlesToSitemap = (articles: ArticleLike[], basePath = '/'): MetadataRoute.Sitemap =>

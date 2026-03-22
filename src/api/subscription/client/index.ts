@@ -3,6 +3,9 @@ import { AxiosInstance } from 'axios'
 
 import { AnyString } from '~/types'
 
+/**
+ * Push Subscriptions
+ */
 export class ClientSubscriptionApi {
   private readonly client: AxiosInstance
 
