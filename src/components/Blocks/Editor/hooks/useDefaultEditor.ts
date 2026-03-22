@@ -1,218 +1,128 @@
-import Blockquote from '@tiptap/extension-blockquote'
-import Bold from '@tiptap/extension-bold'
-import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
-import Document from '@tiptap/extension-document'
-import FileHandler from '@tiptap/extension-file-handler'
-import Highlight from '@tiptap/extension-highlight'
-import Image from '@tiptap/extension-image'
-import Italic from '@tiptap/extension-italic'
-import Link from '@tiptap/extension-link'
-import { ListKit } from '@tiptap/extension-list'
-import Paragraph from '@tiptap/extension-paragraph'
-import Strike from '@tiptap/extension-strike'
-import Subscript from '@tiptap/extension-subscript'
-import Superscript from '@tiptap/extension-superscript'
-import { TableKit } from '@tiptap/extension-table'
-import Text from '@tiptap/extension-text'
-import { TextStyle } from '@tiptap/extension-text-style'
-import Underline from '@tiptap/extension-underline'
-import { CharacterCount } from '@tiptap/extensions'
-import { Markdown } from '@tiptap/markdown'
+import type { EditorView } from '@tiptap/pm/view'
 import { useEditor } from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
-import css from 'highlight.js/lib/languages/css'
-import js from 'highlight.js/lib/languages/javascript'
-import json from 'highlight.js/lib/languages/json'
-import ts from 'highlight.js/lib/languages/typescript'
-import html from 'highlight.js/lib/languages/xml'
-import { all, createLowlight } from 'lowlight'
+import { useCallback, useMemo, useState } from 'react'
 
-// create a lowlight instance with all languages loaded
-const lowlight = createLowlight(all)
+import { useNotify } from '~/providers/notify'
+import { Logger } from '~/utils/logger'
 
-// This is only an example, all supported languages are already loaded above
-// but you can also register only specific languages to reduce bundle-size
-lowlight.register('html', html)
-lowlight.register('json', json)
-lowlight.register('css', css)
-lowlight.register('js', js)
-lowlight.register('ts', ts)
-
-const allowedMimeTypes: string[] = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
+import { defaultExtensions } from '../extensions'
+import { DEFAULT_LINK_URI_CTX, isAllowedHref, normalizeUrlForLink } from '../link/linkPolicy'
 
 type Props = {
   defaultContent?: string | null
   limit?: number | null
+  defaultMode?: 'default' | 'markdown'
+  logger?: Logger
 }
 
 export const useDefaultEditor = (props: Props) => {
-  const { defaultContent = null, limit } = props
+  const { defaultContent = null, limit, defaultMode = 'default', logger: defaultLogger } = props
+
+  const [markdownInput, setMarkdownInput] = useState<string | null>(null)
+  const [mode, setMode] = useState<'default' | 'markdown'>(defaultMode)
+  const { notify } = useNotify()
+
+  const logger = useMemo(() => defaultLogger ?? new Logger(['useDefaultEditor', '[src/components/Blocks/Editor/hooks/useDefaultEditor.ts]']), [defaultLogger])
+  const extensions = useMemo(() => defaultExtensions(limit), [limit])
 
   const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        heading: {
-          levels: [1, 2, 3],
-        },
-        link: false,
-        paragraph: false,
-        italic: false,
-        bold: false,
-        strike: false,
-        underline: false,
-        codeBlock: false,
-        code: false,
-        text: false,
-        document: false,
-        blockquote: false,
-        bulletList: false,
-        orderedList: false,
-        listKeymap: false,
-        listItem: false,
-      }),
-      Image.configure({ inline: false }),
-      TableKit,
-      Text,
-      Document,
-      Paragraph,
-      Strike,
-      Blockquote,
-      Highlight.configure({ multicolor: true }),
-      Italic,
-      Bold,
-      Subscript,
-      Superscript,
-      TextStyle,
-      Underline,
-      CharacterCount.configure({ limit }),
-      CodeBlockLowlight.configure({
-        lowlight,
-      }),
-      Markdown.configure({
-        // GFM ближе к ожидаемому поведению списков/таблиц при round-trip HTML ↔ markdown
-        markedOptions: {
-          gfm: true,
-        },
-      }),
-      ListKit,
-      Link.configure({
-        HTMLAttributes: {
-          class: 'text-secondary-600 underline',
-        },
-        openOnClick: false,
-        autolink: true,
-        defaultProtocol: 'https',
-        protocols: ['http', 'https'],
-        isAllowedUri: (url, ctx) => {
-          try {
-            // construct URL
-            const parsedUrl = url.includes(':') ? new URL(url) : new URL(`${ctx.defaultProtocol}://${url}`)
-
-            // use default validation
-            if (!ctx.defaultValidate(parsedUrl.href)) {
-              return false
-            }
-
-            // disallowed protocols
-            const disallowedProtocols: string[] = ['ftp', 'file']
-            const protocol = parsedUrl.protocol.replace(':', '')
-
-            if (disallowedProtocols.includes(protocol)) {
-              return false
-            }
-
-            // only allow protocols specified in ctx.protocols
-            const allowedProtocols = ctx.protocols.map((p) => (typeof p === 'string' ? p : p.scheme))
-
-            if (!allowedProtocols.includes(protocol)) {
-              return false
-            }
-
-            // disallowed domains
-            const disallowedDomains: string[] = []
-            const domain = parsedUrl.hostname
-
-            if (disallowedDomains.includes(domain)) {
-              return false
-            }
-
-            // all checks have passed
-            return true
-          } catch {
-            return false
-          }
-        },
-        shouldAutoLink: (url) => {
-          try {
-            // construct URL
-            const parsedUrl = url.includes(':') ? new URL(url) : new URL(`https://${url}`)
-
-            // only auto-link if the domain is not in the disallowed list
-            const disallowedDomains: string[] = []
-            const domain = parsedUrl.hostname
-
-            return !disallowedDomains.includes(domain)
-          } catch {
-            return false
-          }
-        },
-      }),
-      FileHandler.configure({
-        allowedMimeTypes,
-        onDrop: (currentEditor, files, pos) => {
-          files.forEach((file) => {
-            const fileReader = new FileReader()
-
-            fileReader.readAsDataURL(file)
-            fileReader.onload = () => {
-              currentEditor
-                .chain()
-                .insertContentAt(pos, {
-                  type: 'image',
-                  attrs: {
-                    src: fileReader.result,
-                  },
-                })
-                .focus()
-                .run()
-            }
-          })
-        },
-        onPaste: (currentEditor, files, htmlContent) => {
-          files.forEach((file) => {
-            if (htmlContent) {
-              // if there is htmlContent, stop manual insertion & let other extensions handle insertion via inputRule
-              // you could extract the pasted file from this url string and upload it to a server for example
-              console.log(htmlContent)
-
-              return false
-            }
-
-            const fileReader = new FileReader()
-
-            fileReader.readAsDataURL(file)
-            fileReader.onload = () => {
-              currentEditor
-                .chain()
-                .insertContentAt(currentEditor.state.selection.anchor, {
-                  type: 'image',
-                  attrs: {
-                    src: fileReader.result,
-                  },
-                })
-                .focus()
-                .run()
-            }
-          })
-        },
-      }),
-    ],
+    extensions,
     content: defaultContent,
     // Don't render immediately on the server to avoid SSR issues
     immediatelyRender: false,
+    editorProps: {
+      handlePaste: (view: EditorView, event: ClipboardEvent) => {
+        const text = event.clipboardData?.getData('text/plain')?.trim()
+
+        if (!text) {
+          return false
+        }
+
+        const { from, to, empty } = view.state.selection
+
+        if (empty) {
+          return false
+        }
+
+        const href = normalizeUrlForLink(text)
+
+        if (!href || !isAllowedHref(href, DEFAULT_LINK_URI_CTX)) {
+          return false
+        }
+
+        const linkMark = view.state.schema.marks.link
+
+        if (!linkMark) {
+          return false
+        }
+
+        view.dispatch(view.state.tr.addMark(from, to, linkMark.create({ href })))
+        event.preventDefault()
+
+        return true
+      },
+    },
   })
+
+  const parseMarkdown = useCallback(() => {
+    if (!editor) {
+      notify('Editor not available', 'destructive')
+
+      return
+    }
+
+    const md = markdownInput ?? ''
+
+    if (!editor.markdown) {
+      notify('MarkdownManager недоступен', 'destructive')
+
+      return
+    }
+
+    try {
+      editor.commands.setContent(md, { contentType: 'markdown' })
+    } catch (err) {
+      logger.error(err)
+      notify(`Error parsing markdown: ${err instanceof Error ? err.message : String(err)}`, 'destructive')
+    }
+  }, [editor, markdownInput, notify, logger])
+
+  const getEditorAsMarkdown = useCallback(() => {
+    if (!editor) {
+      return ''
+    }
+
+    try {
+      const markdown = editor.getMarkdown()
+
+      return markdown
+    } catch (error) {
+      logger.error(error)
+
+      return editor.getText()
+    }
+  }, [editor, logger])
+
+  const handleSetMarkdown = useCallback(
+    (mode: 'default' | 'markdown') => () => {
+      setMode(mode)
+
+      if (mode === 'markdown') {
+        const markdown = getEditorAsMarkdown()
+        setMarkdownInput(markdown)
+      } else {
+        parseMarkdown()
+      }
+    },
+    [getEditorAsMarkdown, parseMarkdown],
+  )
 
   return {
     editor,
+    limit,
+    mode,
+    handleSetMarkdown,
+    markdownInput,
+    setMarkdownInput,
   }
 }

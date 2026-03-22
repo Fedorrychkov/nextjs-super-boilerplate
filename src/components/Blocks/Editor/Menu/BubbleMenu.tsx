@@ -10,15 +10,19 @@ import { useMenuConfigs } from '../hooks/useMenuConfigs'
 
 type Props = {
   editor: Editor
-  /** Не показывать bubble menu, если активен один из этих типов узлов (например, картинка). */
+  /** Do not show bubble menu if one of these node types is active (e.g. image). */
   hideWhenActive?: string[]
+  /** Open link dialog instead of toggleLink */
+  onLinkDialogOpen?: () => void
+  /** Modal to add image by URL */
+  onImageDialogOpen?: () => void
 }
 
 const DEFAULT_HIDE_WHEN_ACTIVE: string[] = ['image']
 
 /**
- * Дефолтная логика показа из @tiptap/extension-bubble-menu + доп. фильтр по типам узлов.
- * Если передать свой shouldShow в BubbleMenu — встроенная логика полностью заменяется, поэтому копируем её здесь.
+ * Default logic from @tiptap/extension-bubble-menu + additional filter by node types.
+ * If you pass your own shouldShow in BubbleMenu — the built-in logic is completely replaced, so we copy it here.
  */
 type BubbleMenuShouldShowProps = Parameters<NonNullable<ComponentProps<typeof BubbleMenu>['shouldShow']>>[0]
 
@@ -43,9 +47,17 @@ function bubbleMenuShouldShow(props: BubbleMenuShouldShowProps, hideWhenActive: 
 }
 
 export const CustomBubbleMenu = (props: Props) => {
-  const { editor, hideWhenActive = DEFAULT_HIDE_WHEN_ACTIVE } = props
+  const { editor, hideWhenActive = DEFAULT_HIDE_WHEN_ACTIVE, onLinkDialogOpen, onImageDialogOpen } = props
 
-  const { buttons } = useMenuConfigs({ editor, enabledFeautures: [...features], disabledFeatures: ['image', 'horizontalRule', 'breakLine'] })
+  const { buttons } = useMenuConfigs({
+    editor,
+    enabledFeautures: [...features],
+    disabledFeatures: ['image', 'horizontalRule', 'breakLine'],
+    featureOptions: {
+      ...(onLinkDialogOpen ? { openLinkDialog: onLinkDialogOpen } : {}),
+      ...(onImageDialogOpen ? { openImageDialog: onImageDialogOpen } : {}),
+    },
+  })
 
   const shouldShow = useCallback((menuProps: BubbleMenuShouldShowProps) => bubbleMenuShouldShow(menuProps, hideWhenActive), [hideWhenActive])
 

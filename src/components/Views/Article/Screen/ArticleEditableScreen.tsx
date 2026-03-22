@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 
 import { DefaultEditor } from '~/components/Blocks/Editor/DefaultEditor'
 import { useDefaultEditor } from '~/components/Blocks/Editor/hooks/useDefaultEditor'
@@ -106,56 +106,9 @@ const logger = new Logger(['ArticleEditableScreen', '[src/components/Views/Artic
 
 export const ArticleEditableScreen = (props: Props) => {
   const { notify } = useNotify()
-  const { articleId = null, className = '', title = 'Article Editor' } = props
-  const [markdownInput, setMarkdownInput] = useState<string | null>(null)
-  const [mode, setMode] = useState<'markdown' | 'default'>('default')
+  const { articleId: _articleId = null, className = '', title = 'Article Editor' } = props
 
-  const { editor } = useDefaultEditor({ defaultContent: DEFAULT_CONTENT, limit: 10_000 })
-
-  const parseMarkdown = useCallback(() => {
-    if (!editor || !editor.markdown) {
-      notify('Editor or MarkdownManager not available', 'destructive')
-
-      return
-    }
-
-    try {
-      editor.commands.setContent(markdownInput, { contentType: 'markdown' })
-    } catch (err) {
-      logger.error(err)
-      notify(`Error parsing markdown: ${err instanceof Error ? err.message : String(err)}`, 'destructive')
-    }
-  }, [editor, markdownInput, notify])
-
-  const getEditorAsMarkdown = useCallback(() => {
-    if (!editor) {
-      return ''
-    }
-
-    try {
-      const markdown = editor.getMarkdown()
-
-      return markdown
-    } catch (error) {
-      logger.error(error)
-
-      return editor.getText()
-    }
-  }, [editor])
-
-  const handleSetMarkdown = useCallback(
-    (mode: 'default' | 'markdown') => () => {
-      setMode(mode)
-
-      if (mode === 'markdown') {
-        const markdown = getEditorAsMarkdown()
-        setMarkdownInput(markdown)
-      } else {
-        parseMarkdown()
-      }
-    },
-    [getEditorAsMarkdown, parseMarkdown],
-  )
+  const { editor, mode, handleSetMarkdown, markdownInput, setMarkdownInput } = useDefaultEditor({ defaultContent: DEFAULT_CONTENT, limit: 10_000 })
 
   const handleSave = useCallback(() => {
     logger.info({

@@ -2,8 +2,16 @@ import { Editor } from '@tiptap/react'
 
 import { features } from './editor.types'
 
+export type FeatureConfigOptions = {
+  /** Открыть UI ввода URL (вместо toggleLink без href) */
+  openLinkDialog?: () => void
+  /** Открыть модалку добавления изображения по URL (режим «с нуля») */
+  openImageDialog?: () => void
+}
+
 export const getFeatureConfig = (
   editor: Editor,
+  options?: FeatureConfigOptions,
 ): Record<
   (typeof features)[number],
   {
@@ -32,12 +40,17 @@ export const getFeatureConfig = (
       label: 'Code Block',
       onClick: () => editor.chain().focus()?.toggleCodeBlock().run(),
     },
-    /**
-     * TODO: Add link validation and settlement
-     */
     link: {
       label: 'Link',
-      onClick: () => editor.chain().focus()?.toggleLink().run(),
+      onClick: () => {
+        if (options?.openLinkDialog) {
+          options.openLinkDialog()
+
+          return
+        }
+
+        editor.chain().focus()?.toggleLink().run()
+      },
     },
     h1: {
       label: 'H1',
@@ -50,6 +63,18 @@ export const getFeatureConfig = (
     h3: {
       label: 'H3',
       onClick: () => editor.chain().focus()?.toggleHeading({ level: 3 }).run(),
+    },
+    alignLeft: {
+      label: '◧ Влево',
+      onClick: () => editor.chain().focus()?.setTextAlign('left').run(),
+    },
+    alignCenter: {
+      label: '▣ Центр',
+      onClick: () => editor.chain().focus()?.setTextAlign('center').run(),
+    },
+    alignRight: {
+      label: '◨ Вправо',
+      onClick: () => editor.chain().focus()?.setTextAlign('right').run(),
     },
     bulletList: {
       label: 'Bullet List',
@@ -71,10 +96,15 @@ export const getFeatureConfig = (
       label: 'Break Line',
       onClick: () => editor.chain().focus()?.enter().run(),
     },
-    // TODO: add image upload
     image: {
       label: 'Image',
-      onClick: () =>
+      onClick: () => {
+        if (options?.openImageDialog) {
+          options.openImageDialog()
+
+          return
+        }
+
         editor
           .chain()
           .focus()
@@ -84,7 +114,8 @@ export const getFeatureConfig = (
               src: 'https://via.placeholder.com/150',
             },
           })
-          .run(),
+          .run()
+      },
     },
   }
 }
