@@ -29,4 +29,34 @@ export const routes = {
     name: 'Refresh',
     needAuth: false,
   },
+  articles: {
+    path: '/admin/articles',
+    name: 'Articles',
+    needAuth: true,
+  },
+  articlesCreate: {
+    path: '/admin/articles/create',
+    name: 'Create Article',
+    needAuth: true,
+  },
+  articlePublic: {
+    path: '/article/:slug',
+    name: 'Article',
+    needAuth: false,
+  },
+  articlesPublic: {
+    path: '/articles',
+    name: 'Articles',
+    needAuth: false,
+  },
+  articlePreview: {
+    path: '/preview/:slug',
+    name: 'Article Preview',
+    needAuth: true,
+  },
+  articlePrivate: {
+    path: '/private-article/:slug',
+    name: 'Article Private',
+    needAuth: true,
+  },
 }

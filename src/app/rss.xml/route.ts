@@ -1,9 +1,28 @@
-import type { NextRequest } from 'next/server'
-
 import { seoConfig } from '~/lib/seo/config'
+import { getPublishedPublicArticlesForSeo } from '~/lib/seo/sitemap'
 
-const generateRss = () => {
-  const items = [] as string[]
+const escapeXml = (input?: string | null) =>
+  (input ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;')
+
+const generateRss = async () => {
+  const articles = await getPublishedPublicArticlesForSeo()
+
+  const items = articles.map((article) => {
+    const url = `${seoConfig.siteUrl}/article/${article.slug}`
+    const title = escapeXml(article.title || article.slug)
+    const description = escapeXml(article.description || '')
+    const pubDate = article.publishedAt ? new Date(article.publishedAt).toUTCString() : undefined
+    const lastUpdated = article.updatedAt ? new Date(article.updatedAt).toUTCString() : undefined
+
+    return `<item>
+      <title>${title}</title>
+      <link>${url}</link>
+      <guid isPermaLink="true">${url}</guid>
+      ${description ? `<description>${description}</description>` : ''}
+      ${pubDate ? `<pubDate>${pubDate}</pubDate>` : ''}
+      ${lastUpdated ? `<lastBuildDate>${lastUpdated}</lastBuildDate>` : ''}
+    </item>`
+  })
 
   return `<?xml version="1.0" encoding="UTF-8" ?>
 <rss version="2.0">
@@ -16,8 +35,8 @@ const generateRss = () => {
 </rss>`
 }
 
-export const GET = async (_request: NextRequest) => {
-  const xml = generateRss()
+export const GET = async () => {
+  const xml = await generateRss()
 
   return new Response(xml, {
     status: 200,

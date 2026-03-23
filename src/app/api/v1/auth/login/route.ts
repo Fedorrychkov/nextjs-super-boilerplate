@@ -1,14 +1,12 @@
-/* eslint-disable simple-import-sort/imports */
-import { NextRequest } from 'next/server'
-
 import { setAuthCookies } from '@lib/cookies'
+import connectDB from '@lib/db/client'
+import UserSettings from '@lib/db/models/UserSettings'
 import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
-import { getClientKey } from '@lib/security/rate-limit'
 import { assertLoginNotBlocked, recordLoginFailure } from '@lib/security/bruteforce'
 import { createLoginChallenge } from '@lib/security/login-challenge'
-import UserSettings from '@lib/db/models/UserSettings'
+import { getClientKey } from '@lib/security/rate-limit'
 import { authService } from '@lib/services/auth.service'
-import connectDB from '@lib/db/client'
+import { NextRequest } from 'next/server'
 
 import { LoginEmailDto } from '~/api/auth/types'
 

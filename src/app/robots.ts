@@ -9,7 +9,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/api/', '/logout', '/login', '/refresh', '/profile', '/admin/'],
+        disallow: ['/api/', '/logout', '/login', '/refresh', '/profile', '/admin/', '/private-article/', '/preview/'],
       },
       {
         userAgent: 'GPTBot',
@@ -24,7 +24,8 @@ export default function robots(): MetadataRoute.Robots {
         allow: '/',
       },
     ],
-    sitemap: [`${siteUrl}/sitemap.xml`, `${siteUrl}/sitemap-news.xml`],
+    /** Обычный sitemap из `app/sitemap.ts`. News sitemap (Google News XML) — отдельный формат; добавь URL сюда только если реализуешь `sitemap-news.xml`. */
+    sitemap: `${siteUrl}/sitemap.xml`,
     host: siteUrl,
   }
 }

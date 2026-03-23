@@ -1,13 +1,11 @@
-/* eslint-disable simple-import-sort/imports */
 import connectDB from '@lib/db/client'
 import User from '@lib/db/models/User'
 import UserSettings from '@lib/db/models/UserSettings'
+import { ValidationError } from '@lib/error/custom-errors'
 import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
+import { AuthSuccessResult } from '@lib/security/auth'
 import { decryptSecret, verifyTotpCode } from '@lib/security/totp'
 import { NextRequest } from 'next/server'
-
-import { ValidationError } from '@lib/error/custom-errors'
-import { AuthSuccessResult } from '@lib/security/auth'
 
 type DisableMfaDto = {
   code?: string

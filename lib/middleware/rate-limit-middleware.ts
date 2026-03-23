@@ -3,15 +3,19 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { Logger } from '~/utils/logger'
 
-export const withGlobalRateLimit = <T extends (request: NextRequest) => Promise<NextResponse>>(handler: T): T =>
-  (async (request: NextRequest) => {
+import type { RouteHandlerContext } from './auth-middleware'
+
+type RouteHandler = (request: NextRequest, context: RouteHandlerContext) => Promise<NextResponse>
+
+export const withGlobalRateLimit = <T extends RouteHandler>(handler: T): T =>
+  (async (request: NextRequest, context: RouteHandlerContext) => {
     const key = getClientKey(request)
     const logger = new Logger(['withGlobalRateLimit', '[lib/rate-limit.ts]', `consumed key: ${key}`])
 
     logger.warn('start')
 
     if (!key) {
-      return handler(request)
+      return handler(request, context)
     }
 
     try {
@@ -27,5 +31,5 @@ export const withGlobalRateLimit = <T extends (request: NextRequest) => Promise<
       )
     }
 
-    return handler(request)
+    return handler(request, context)
   }) as T

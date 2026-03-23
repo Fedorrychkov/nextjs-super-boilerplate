@@ -385,6 +385,25 @@
   --accents-1: #fafafa;
   --accents-2: #eaeaea;
   --destructive-foreground: oklch(1 0 0);
+
+
+  --color-transparent: transparent;
+  --color-primary-600: #602A00;
+  --color-primary-500: #492101;
+  --color-primary-400: #583E32;
+  --color-primary-200: #B2836A;
+  --color-primary-100: #E1824D;
+  --color-secondary-600: #007AFF;
+  --color-secondary-500: #1F83EF;
+  --color-secondary-400: #5AA0ED;
+  --color-secondary-100: #CFE6FF;
+  --color-secondary-50: #EBF5FF;
+  --color-neutral-1000: #000000;
+  --color-neutral-600: #414141;
+  --color-neutral-400: #C1C1C1;
+  --color-neutral-100: #F0F0F0;
+  --color-neutral: #FFFFFF;
+  --color-warning-500: #DD3838;
 }
 
 .dark {

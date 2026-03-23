@@ -1,0 +1,30 @@
+import { Editor } from '@tiptap/react'
+import { useMemo } from 'react'
+
+import { features } from '../editor.types'
+import { type FeatureConfigOptions, getFeatureConfig } from '../util'
+
+type Props = {
+  editor: Editor
+  enabledFeautures?: (typeof features)[number][]
+  disabledFeatures?: (typeof features)[number][]
+  featureOptions?: FeatureConfigOptions
+}
+
+export const useMenuConfigs = (props: Props) => {
+  const { editor, enabledFeautures = [], disabledFeatures = [], featureOptions } = props
+
+  const enabledFeatures = useMemo(() => {
+    const filteredFeatures = features.filter((feature) => enabledFeautures.includes(feature) && !disabledFeatures.includes(feature))
+
+    return filteredFeatures
+  }, [enabledFeautures, disabledFeatures])
+
+  const buttonConfigs = useMemo(() => {
+    return enabledFeatures.map((feature) => getFeatureConfig(editor, featureOptions)?.[feature])
+  }, [enabledFeatures, editor, featureOptions])
+
+  return {
+    buttons: buttonConfigs,
+  }
+}

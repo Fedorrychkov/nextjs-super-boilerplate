@@ -260,7 +260,7 @@ const Sidebar = ({ children, navigation }: SidebarProps) => {
       {/* Mobile Sidebar */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <motion.aside
             initial="hidden"
             animate="visible"
             exit="hidden"
@@ -276,19 +276,19 @@ const Sidebar = ({ children, navigation }: SidebarProps) => {
               {/* Footer / Action Button */}
               <Footer />
             </div>
-          </motion.div>
+          </motion.aside>
         )}
       </AnimatePresence>
 
       {/* Desktop Sidebar */}
-      <div className="hidden md:flex flex-col fixed top-0 left-0 h-full bg-white text-black shadow max-w-[200px] w-full">
+      <aside className="hidden md:flex flex-col fixed top-0 left-0 h-full bg-white text-black shadow max-w-[200px] w-full">
         {/* Profile Section */}
         <ProfileSection />
         {/* Navigation Section */}
         <NavigationSection navigation={navigation || []} toggle={toggleSidebar} />
         {/* Footer / Action Button */}
         <Footer />
-      </div>
+      </aside>
 
       {/* Main Content Area */}
       <div className="flex-1 ml-0 md:ml-[200px] transition-all overflow-hidden duration-300 flex-col flex">
