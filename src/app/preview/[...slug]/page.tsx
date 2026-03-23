@@ -1,5 +1,3 @@
-'use server'
-
 import '../../../components/Blocks/Editor/styles/editor.styles.scss'
 
 import { defaultGuard, PageProps } from '@lib/page'

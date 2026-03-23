@@ -1,4 +1,5 @@
 import { APP_INTERNAL_ORIGIN } from '@config/env'
+import { shouldSkipDbDuringBuild } from '@lib/build-phase'
 import connectDB from '@lib/db/client'
 import Article from '@lib/db/models/Article'
 import ArticleRevision from '@lib/db/models/ArticleRevision'
@@ -47,6 +48,10 @@ export async function getServerForPublicArticle(
   filter?: ArticleFilter,
 ): Promise<{ article: ArticleModel; revision: ArticleRevisionModel } | null> {
   try {
+    if (shouldSkipDbDuringBuild()) {
+      return null
+    }
+
     await connectDB()
     const article = await Article.findOne({ slug: articleSlug, status: ArticleStatus.PUBLISHED, ...filter })
 
@@ -79,6 +84,15 @@ export async function getServerForPublicArticlesPaginated(
   filter: ArticleFilter,
 ): Promise<PaginationMeta<ArticleModel & { thumbnailUrl?: string | null; title?: string | null; description?: string | null }> | null> {
   try {
+    if (shouldSkipDbDuringBuild()) {
+      return {
+        currentPage: 1,
+        pages: 0,
+        list: [],
+        count: 0,
+      }
+    }
+
     await connectDB()
     const maxLimit = 10
     const articles = await Article.findListPaginated({

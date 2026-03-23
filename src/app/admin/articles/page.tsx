@@ -1,5 +1,3 @@
-'use server'
-
 import { defaultGuard, PageProps } from '@lib/page'
 
 import { UserRole } from '~/api/user'

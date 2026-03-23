@@ -1,5 +1,3 @@
-'use server'
-
 import { ArrowLeftIcon, HomeIcon, PlusIcon, SearchIcon, UserIcon } from 'lucide-react'
 
 import { CopyContainer } from '~/components/Blocks/CopyContainer'

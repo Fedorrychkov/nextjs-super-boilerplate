@@ -1,5 +1,3 @@
-'use server'
-
 import '../../../components/Blocks/Editor/styles/editor.styles.scss'
 
 import { PageProps } from '@lib/page'
@@ -16,6 +14,8 @@ import { jsonParseSafety } from '~/utils/jsonSafe'
 import { Logger } from '~/utils/logger'
 
 const logger = new Logger(['ArticlePublicRoot', '[src/app/article/[...slug]/page.tsx]'])
+
+export const dynamic = 'force-dynamic'
 
 export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Promise<Metadata> => {
   const params = await props.params

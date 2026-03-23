@@ -8,6 +8,9 @@ import { Typography } from '~/components/ui/Typography'
 import { ArticleItem } from '~/components/Views/Article/Block/ArticleItem'
 import { getOrganizationJsonLd, getWebSiteJsonLd, JsonLd } from '~/lib/seo/jsonld'
 
+/** List of articles from Mongo — only on request, not on `next build` */
+export const dynamic = 'force-dynamic'
+
 export default async function Home() {
   const organizationJsonLd = getOrganizationJsonLd()
   const webSiteJsonLd = getWebSiteJsonLd()

@@ -1,6 +1,9 @@
 import { seoConfig } from '~/lib/seo/config'
 import { getPublishedPublicArticlesForSeo } from '~/lib/seo/sitemap'
 
+/** Disable prerendering of rss.xml on `next build` without Mongo */
+export const dynamic = 'force-dynamic'
+
 const escapeXml = (input?: string | null) =>
   (input ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;')
 
