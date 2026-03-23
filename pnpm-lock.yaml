@@ -173,9 +173,6 @@ importers:
       lucide-react:
         specifier: ^0.544.0
         version: 0.544.0(react@19.2.3)
-      menus:
-        specifier: link:@tiptap/react/menus
-        version: link:@tiptap/react/menus
       mongoose:
         specifier: ^9.2.3
         version: 9.2.3

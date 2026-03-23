@@ -89,7 +89,6 @@
     "lodash": "^4.17.21",
     "lowlight": "^3.3.0",
     "lucide-react": "^0.544.0",
-    "menus": "link:@tiptap/react/menus",
     "mongoose": "^9.2.3",
     "next": "16.1.6",
     "otplib": "^13.3.0",
