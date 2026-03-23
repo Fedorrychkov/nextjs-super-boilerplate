@@ -42,10 +42,13 @@ export async function getServerArticle(articleSlug: string, revisionId?: string)
   }
 }
 
-export async function getServerForPublicArticle(articleSlug: string): Promise<{ article: ArticleModel; revision: ArticleRevisionModel } | null> {
+export async function getServerForPublicArticle(
+  articleSlug: string,
+  filter?: ArticleFilter,
+): Promise<{ article: ArticleModel; revision: ArticleRevisionModel } | null> {
   try {
     await connectDB()
-    const article = await Article.findOne({ slug: articleSlug, status: ArticleStatus.PUBLISHED, visibility: ArticleVisibility.PUBLIC })
+    const article = await Article.findOne({ slug: articleSlug, status: ArticleStatus.PUBLISHED, ...filter })
 
     if (!article) {
       return null

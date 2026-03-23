@@ -87,13 +87,14 @@ type Props = {
   articleRevision?: ArticleRevisionModel | null
   article?: ArticleModel | null
   isLoading?: boolean
+  isDisabled?: boolean
   onSave?: (payload: ArticleEditableSeoSavePayload) => void
 }
 
 const httpsUrlPattern = /^https:\/\/.+$/i
 
 export const ArticleEditableSeo = (props: Props) => {
-  const { articleRevision, isLoading, onSave, article } = props
+  const { articleRevision, isLoading, onSave, article, isDisabled } = props
 
   const defaultValues = useMemo(() => toFormValues(readSeoFromRevision(articleRevision), article), [articleRevision, article])
 
@@ -141,7 +142,7 @@ export const ArticleEditableSeo = (props: Props) => {
                 }),
                 errors,
               })}
-              disabled={isLoading}
+              disabled={isLoading || isDisabled}
               label="Meta title"
               name="metaTitle"
               hintText="Title in the search (~50–60 characters). If empty, the article title is used."
@@ -154,7 +155,7 @@ export const ArticleEditableSeo = (props: Props) => {
                 }),
                 errors,
               })}
-              disabled={isLoading}
+              disabled={isLoading || isDisabled}
               label="Meta description"
               name="metaDescription"
               hintText="Short description in the search (~150–160 characters)."
@@ -167,7 +168,7 @@ export const ArticleEditableSeo = (props: Props) => {
                 }),
                 errors,
               })}
-              disabled={isLoading}
+              disabled={isLoading || isDisabled}
               label="Canonical URL"
               name="canonicalUrl"
               placeholder={canonicalUrl}
@@ -179,7 +180,7 @@ export const ArticleEditableSeo = (props: Props) => {
                 ...register('keywords', { maxLength: { value: 500, message: 'Not more than 500 characters' } }),
                 errors,
               })}
-              disabled={isLoading}
+              disabled={isLoading || isDisabled}
               label="Meta keywords (optional)"
               name="keywords"
               hintText="Through a comma. For Google almost does not affect, sometimes other systems are used."
@@ -194,7 +195,7 @@ export const ArticleEditableSeo = (props: Props) => {
                 ...register('ogTitle', { maxLength: { value: 100, message: 'Up to ~100 characters' } }),
                 errors,
               })}
-              disabled={isLoading}
+              disabled={isLoading || isDisabled}
               label="OG title"
               name="ogTitle"
               hintText="If empty, the meta title or article title is used."
@@ -205,7 +206,7 @@ export const ArticleEditableSeo = (props: Props) => {
                 ...register('ogDescription', { maxLength: { value: 320, message: 'Up to ~200 characters for the preview' } }),
                 errors,
               })}
-              disabled={isLoading}
+              disabled={isLoading || isDisabled}
               label="OG description"
               name="ogDescription"
               hintText="If empty, the meta description or short description of the article is used."
@@ -218,7 +219,7 @@ export const ArticleEditableSeo = (props: Props) => {
                 }),
                 errors,
               })}
-              disabled={isLoading}
+              disabled={isLoading || isDisabled}
               label="OG image URL"
               name="ogImageUrl"
               hintText="Recommended ~1200×630 px. If empty, the thumbnail of the article is used."
@@ -236,7 +237,7 @@ export const ArticleEditableSeo = (props: Props) => {
                 required: true,
               })}
               updateBySelected
-              disabled={isLoading}
+              disabled={isLoading || isDisabled}
               label="Twitter card type"
               name="twitterCard"
             />
@@ -253,7 +254,9 @@ export const ArticleEditableSeo = (props: Props) => {
               name="noindex"
               label="Hide from search (noindex)"
               description="The page should not be indexed by search engines."
-              disabled={isLoading || [ArticleVisibility.PRIVATE, ArticleVisibility.LINK_ONLY].includes(article?.visibility ?? ArticleVisibility.PUBLIC)}
+              disabled={
+                isDisabled || isLoading || [ArticleVisibility.PRIVATE, ArticleVisibility.LINK_ONLY].includes(article?.visibility ?? ArticleVisibility.PUBLIC)
+              }
             />
 
             <DefaultCheckbox
@@ -269,7 +272,7 @@ export const ArticleEditableSeo = (props: Props) => {
           </section>
 
           <div>
-            <Button type="submit" variant="secondary" size="default" disabled={isLoading}>
+            <Button type="submit" variant="secondary" size="default" disabled={isLoading || isDisabled}>
               Save SEO
             </Button>
           </div>

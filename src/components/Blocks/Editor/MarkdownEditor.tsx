@@ -13,10 +13,11 @@ type Props = {
   value?: string | null
   onChange?: (value: string) => void
   limit?: number | null
+  isDisabled?: boolean
 }
 
 export const MarkdownEditor = (props: Props) => {
-  const { defaultContent = null, limit, editor: defaultEditor, value, onChange } = props
+  const { defaultContent = null, limit, editor: defaultEditor, value, onChange, isDisabled } = props
 
   const { editor: newEditor } = useDefaultEditor({ defaultContent, limit })
 
@@ -46,6 +47,7 @@ export const MarkdownEditor = (props: Props) => {
         ref={textareaRef}
         className="w-full min-h-[8rem] overflow-hidden p-4 rounded-md resize-none border border-neutral-400 shadow-[0_0_10px_0_rgba(0,0,0,0.1)]"
         name="markdown"
+        disabled={isDisabled}
         value={value ?? ''}
         onChange={(e) => onChange?.(e.target.value)}
       />

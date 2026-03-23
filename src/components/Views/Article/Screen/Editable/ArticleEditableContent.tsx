@@ -18,16 +18,17 @@ type Props = {
   title?: string | null
   onUpdate?: (editor: Editor) => void
   articleRevision?: ArticleRevisionModel | null
+  isDisabled?: boolean
 }
 
 export const ArticleEditableContent = (props: Props) => {
-  const { className = '', title = 'Content Editor', onUpdate, articleRevision } = props
+  const { className = '', title = 'Content Editor', onUpdate, articleRevision, isDisabled } = props
 
   const defaultContent = useMemo(() => {
     return articleRevision?.content ? jsonParseSafety<string>(articleRevision.content) : ''
   }, [articleRevision])
 
-  const { editor, mode, handleSetMode, markdownInput, setMarkdownInput } = useDefaultEditor({ defaultContent, limit: 50_000, onUpdate })
+  const { editor, mode, handleSetMode, markdownInput, setMarkdownInput } = useDefaultEditor({ isDisabled, defaultContent, limit: 50_000, onUpdate })
 
   const handleSave = useCallback(() => {
     if (mode === 'markdown') {
@@ -50,7 +51,7 @@ export const ArticleEditableContent = (props: Props) => {
           Markdown Editor
         </Button>
         {mode === 'default' && (
-          <Button variant="outline" size="sm-md" onClick={handleSetExample}>
+          <Button variant="outline" size="sm-md" onClick={handleSetExample} disabled={isDisabled}>
             Set Example
           </Button>
         )}
@@ -63,9 +64,9 @@ export const ArticleEditableContent = (props: Props) => {
       >
         <DefaultEditor editor={editor} limit={50_000} />
       </div>
-      {mode === 'markdown' && <MarkdownEditor value={markdownInput} editor={editor} onChange={setMarkdownInput} limit={50_000} />}
+      {mode === 'markdown' && <MarkdownEditor isDisabled={isDisabled} value={markdownInput} editor={editor} onChange={setMarkdownInput} limit={50_000} />}
       <div>
-        <Button variant="secondary" size="default" onClick={handleSave}>
+        <Button variant="secondary" size="default" onClick={handleSave} disabled={isDisabled}>
           Save
         </Button>
       </div>

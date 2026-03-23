@@ -48,19 +48,23 @@ export const ArticleListTable = ({ isLoading, data }: Props) => {
           )}
           {columnKeys?.includes('slug') && (
             <TableCell className="whitespace-nowrap">
-              <CustomTooltip
-                content={
-                  <Typography variant="Body/XS/Regular">
+              <CopyContainer
+                content={`${process.env.NEXT_PUBLIC_SITE_URL}/${item.visibility === ArticleVisibility.PUBLIC ? 'article/' : 'private-article/'}${item.slug}`}
+              >
+                <CustomTooltip
+                  content={
+                    <Typography variant="Body/XS/Regular">
+                      {process.env.NEXT_PUBLIC_SITE_URL}/{item.visibility === ArticleVisibility.PUBLIC ? 'article/' : 'private-article/'}
+                      {item.slug}
+                    </Typography>
+                  }
+                >
+                  <Typography variant="Body/XS/Semibold" className="max-w-[200px] truncate">
                     {process.env.NEXT_PUBLIC_SITE_URL}/{item.visibility === ArticleVisibility.PUBLIC ? 'article/' : 'private-article/'}
                     {item.slug}
                   </Typography>
-                }
-              >
-                <Typography variant="Body/XS/Semibold" className="max-w-[200px] truncate">
-                  {process.env.NEXT_PUBLIC_SITE_URL}/{item.visibility === ArticleVisibility.PUBLIC ? 'article/' : 'private-article/'}
-                  {item.slug}
-                </Typography>
-              </CustomTooltip>
+                </CustomTooltip>
+              </CopyContainer>
             </TableCell>
           )}
           {columnKeys?.includes('status') && (

@@ -13,11 +13,12 @@ type Props = {
   limit?: number | null
   defaultMode?: 'default' | 'markdown'
   logger?: Logger
+  isDisabled?: boolean
   onUpdate?: (editor: Editor) => void
 }
 
 export const useDefaultEditor = (props: Props) => {
-  const { defaultContent = null, limit, defaultMode = 'default', logger: defaultLogger } = props
+  const { defaultContent = null, limit, defaultMode = 'default', logger: defaultLogger, isDisabled } = props
 
   const [markdownInput, setMarkdownInput] = useState<string | null>(null)
   const [mode, setMode] = useState<'default' | 'markdown'>(defaultMode)
@@ -34,6 +35,7 @@ export const useDefaultEditor = (props: Props) => {
     onUpdate: ({ editor }) => {
       props.onUpdate?.(editor)
     },
+    editable: !isDisabled,
     editorProps: {
       handlePaste: (view: EditorView, event: ClipboardEvent) => {
         const text = event.clipboardData?.getData('text/plain')?.trim()

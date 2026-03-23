@@ -91,7 +91,7 @@ const PrivateArticleRoot = async (props: PageProps<{ slug: string[] }>) => {
       ...props,
       segments: [''],
       fallbackNavigatePath: '/',
-      roles: roles,
+      roles,
       fallbackRolesNavigatePath: { [UserRole.USER]: '/' },
     })
   }

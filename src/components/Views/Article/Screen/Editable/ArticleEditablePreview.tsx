@@ -39,11 +39,12 @@ type Props = {
   articleRevision?: ArticleRevisionModel | null
   isLoading?: boolean
   btnLabel?: string
+  isDisabled?: boolean
   onSave?: (form: SaveForm) => void
 }
 
 export const ArticleEditablePreview = (props: Props) => {
-  const { article, articleRevision, isLoading, btnLabel, onSave } = props
+  const { article, articleRevision, isLoading, btnLabel, onSave, isDisabled } = props
 
   const defaultValues: Form = {
     title: articleRevision?.title ?? null,
@@ -61,6 +62,7 @@ export const ArticleEditablePreview = (props: Props) => {
 
   const { register, formState, handleSubmit: onSubmit, setValue, watch } = form
   const { errors } = formState
+  // eslint-disable-next-line react-hooks/incompatible-library
   const visibility = watch('visibility')
   const slug = watch('slug')
 
@@ -106,7 +108,7 @@ export const ArticleEditablePreview = (props: Props) => {
                 setValue('slug', slugify(e.target.value, { lower: true, strict: true }), { shouldDirty: true })
               }
             }}
-            disabled={isLoading}
+            disabled={isLoading || isDisabled}
             label="Article Title"
             name="title"
             hintText="This text shown in the article preview, search engines and social media. You can change it later in Seo settings."
@@ -120,7 +122,7 @@ export const ArticleEditablePreview = (props: Props) => {
               errors,
               required: true,
             })}
-            disabled={isLoading}
+            disabled={isLoading || isDisabled}
             label="Article Description"
             name="description"
             hintText="This is short description of the article. It is shown in the article preview and search engines."
@@ -130,7 +132,7 @@ export const ArticleEditablePreview = (props: Props) => {
               ...register('thumbnailUrl', { required: false, pattern: { value: /^https:\/\/.+$/, message: 'Article thumbnail URL must be a valid URL' } }),
               errors,
             })}
-            disabled={isLoading}
+            disabled={isLoading || isDisabled}
             label="Article Thumbnail URL"
             name="thumbnailUrl"
             hintText="This is the thumbnail of the article. It is shown in the article preview and search engines."
@@ -144,7 +146,7 @@ export const ArticleEditablePreview = (props: Props) => {
               errors,
               required: true,
             })}
-            disabled={isLoading || !!article?.slug}
+            disabled={isLoading || isDisabled || !!article?.slug}
             label="Article Slug"
             name="slug"
             hintText={`This is the slug of the article. It is used to generate the article URL. ${slug ? `Current slug: ${visibility?.[0]?.value === ArticleVisibility.PUBLIC ? 'article/' : 'private-article/'}${slug}` : ''}`}
@@ -157,7 +159,7 @@ export const ArticleEditablePreview = (props: Props) => {
               required: true,
             })}
             updateBySelected
-            disabled={isLoading}
+            disabled={isLoading || isDisabled}
             label="Article Visibility"
             name="visibility"
           />
@@ -183,18 +185,17 @@ export const ArticleEditablePreview = (props: Props) => {
             <DefaultMultiselectField
               options={allowedRolesOptions}
               {...handleRegister({
-                ...register('allowedRoles', { required: { value: true, message: 'Allowed roles are required for private articles' } }),
+                ...register('allowedRoles'),
                 errors,
-                required: true,
               })}
               maxSelected={10}
-              disabled={isLoading}
+              disabled={isLoading || isDisabled}
               label="Allowed Roles for Private Articles"
               name="allowedRoles"
             />
           )}
           <div>
-            <Button variant="secondary" size="default">
+            <Button variant="secondary" size="default" disabled={isLoading || isDisabled}>
               {btnLabel ?? 'Save Changes'}
             </Button>
           </div>

@@ -28,7 +28,7 @@ export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Pr
     }
   }
 
-  const response = await getServerForPublicArticle(slug ?? '')
+  const response = await getServerForPublicArticle(slug ?? '', { visibility: ArticleVisibility.PUBLIC })
   const title = response?.revision?.title?.trim() || response?.article?.slug || slug
 
   const metadata = response?.revision?.metadata
@@ -74,7 +74,7 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
     return notFound()
   }
 
-  const response = await getServerForPublicArticle(params.slug?.[0] ?? '')
+  const response = await getServerForPublicArticle(params.slug?.[0] ?? '', { visibility: ArticleVisibility.PUBLIC })
 
   if (!response || response?.article?.visibility !== ArticleVisibility.PUBLIC) {
     return notFound()

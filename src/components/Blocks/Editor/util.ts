@@ -3,9 +3,9 @@ import { Editor } from '@tiptap/react'
 import { features } from './editor.types'
 
 export type FeatureConfigOptions = {
-  /** Открыть UI ввода URL (вместо toggleLink без href) */
+  /** Open link dialog (instead of toggleLink without href) */
   openLinkDialog?: () => void
-  /** Открыть модалку добавления изображения по URL (режим «с нуля») */
+  /** Open image dialog (mode "from zero") */
   openImageDialog?: () => void
 }
 
@@ -65,15 +65,15 @@ export const getFeatureConfig = (
       onClick: () => editor.chain().focus()?.toggleHeading({ level: 3 }).run(),
     },
     alignLeft: {
-      label: '◧ Влево',
+      label: '◧ Left',
       onClick: () => editor.chain().focus()?.setTextAlign('left').run(),
     },
     alignCenter: {
-      label: '▣ Центр',
+      label: '▣ Center',
       onClick: () => editor.chain().focus()?.setTextAlign('center').run(),
     },
     alignRight: {
-      label: '◨ Вправо',
+      label: '◨ Right',
       onClick: () => editor.chain().focus()?.setTextAlign('right').run(),
     },
     bulletList: {

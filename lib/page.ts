@@ -101,7 +101,7 @@ export const defaultGuard = async <T extends Record<string, unknown> | undefined
 
       const { user } = await api.verifyToken(newHeaders, accessToken.value)
 
-      if (roles && !roles.includes(user.role)) {
+      if (roles && roles.length > 0 && !roles.includes(user.role)) {
         logger.info('defaultGuard redirect to fallbackNavigatePath to / main page')
 
         const finalPath = fallbackRolesNavigatePath?.[user.role] || fallbackNavigatePath

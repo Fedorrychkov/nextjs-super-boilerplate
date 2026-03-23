@@ -3,7 +3,7 @@
 import type { Editor } from '@tiptap/core'
 import { AxiosError } from 'axios'
 import debounce from 'lodash/debounce'
-import { EyeIcon, FileTextIcon, InfoIcon, SearchIcon, SendIcon } from 'lucide-react'
+import { EyeIcon, FileTextIcon, InfoIcon, LockIcon, SearchIcon, SendIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useState } from 'react'
 import { useQueryClient } from 'react-query'
@@ -12,6 +12,7 @@ import { ArticleModel, ArticleStatus } from '~/api/article'
 import { ArticleRevisionModel, ArticleRevisionStatus, SortOrder } from '~/api/article-revision'
 import { Tab, TabsContainer } from '~/components/Blocks/Tabs/TabsContainer'
 import { SpinnerScreen } from '~/components/Loaders'
+import { AlertBlock, Button, Typography } from '~/components/ui'
 import { useNotify } from '~/providers/notify'
 import {
   useArticleQuery,
@@ -25,6 +26,7 @@ import {
 import { cn } from '~/utils/cn'
 import { jsonStringifySafety } from '~/utils/jsonSafe'
 import { Logger } from '~/utils/logger'
+import { time } from '~/utils/time'
 
 import { ArticleEditableContent } from './ArticleEditableContent'
 import { ArticleEditablePreview, SaveForm } from './ArticleEditablePreview'
@@ -41,6 +43,8 @@ const getSteps = (props: {
   isContentEnabled?: boolean
   isSeoEnabled?: boolean
   isPublishEnabled?: boolean
+  publishLabel?: string
+  isDisabledEditing?: boolean
   onPublish?: () => void
 }): Tab[] => [
   {
@@ -53,6 +57,7 @@ const getSteps = (props: {
         article={props.article}
         articleRevision={props.articleRevision}
         onSave={props.onSavePreview}
+        isDisabled={props.isDisabledEditing}
       />
     ),
   },
@@ -61,14 +66,16 @@ const getSteps = (props: {
     icon: <FileTextIcon />,
     value: 'content',
     isEnabled: props.isContentEnabled,
-    children: <ArticleEditableContent articleRevision={props.articleRevision} onUpdate={props.onUpdateContent} />,
+    children: <ArticleEditableContent isDisabled={props.isDisabledEditing} articleRevision={props.articleRevision} onUpdate={props.onUpdateContent} />,
   },
   {
     label: 'SEO',
     icon: <SearchIcon />,
     value: 'seo',
     isEnabled: props.isSeoEnabled,
-    children: <ArticleEditableSeo articleRevision={props.articleRevision} article={props.article} onSave={props.onSaveSeo} />,
+    children: (
+      <ArticleEditableSeo isDisabled={props.isDisabledEditing} articleRevision={props.articleRevision} article={props.article} onSave={props.onSaveSeo} />
+    ),
   },
   {
     label: 'Preview',
@@ -78,12 +85,12 @@ const getSteps = (props: {
     isEnabled: props.isSeoEnabled,
   },
   {
-    label: 'Publish',
+    label: props.publishLabel ?? 'Publish',
     icon: <SendIcon />,
     value: 'publish',
     onClick: props.onPublish,
     isEnabled: props.isPublishEnabled,
-    children: <ArticleEditablePublish article={props.article} articleRevision={props.articleRevision} onSave={props.onPublish} />,
+    children: <ArticleEditablePublish btnLabel={props.publishLabel} article={props.article} articleRevision={props.articleRevision} onSave={props.onPublish} />,
   },
 ]
 
@@ -146,9 +153,17 @@ export const ArticleEditableEntry = (props: Props) => {
     (articleId && (isArticleLoading || !isArticleFetched)) ||
     (activeRevisionId && (isArticleRevisionLoading || isArticleRevisionsLoading || !isArticleRevisionFetched || !isArticleRevisionsFetched))
 
+  const isDisabledEditing = articleRevision?.status === ArticleRevisionStatus.CONFIRMED
+
   const handleSavePreview = useCallback(
     async (form: SaveForm) => {
       try {
+        if (isDisabledEditing) {
+          notify('You are not allowed to edit this article', 'destructive')
+
+          return
+        }
+
         if (articleId) {
           notify('Updating article...', 'info')
 
@@ -224,6 +239,7 @@ export const ArticleEditableEntry = (props: Props) => {
       }
     },
     [
+      isDisabledEditing,
       activeRevisionId,
       articleId,
       createArticleMutation,
@@ -241,6 +257,12 @@ export const ArticleEditableEntry = (props: Props) => {
   const handleSaveSeo = useCallback(
     async (payload: ArticleEditableSeoSavePayload) => {
       try {
+        if (isDisabledEditing) {
+          notify('You are not allowed to edit this article', 'destructive')
+
+          return
+        }
+
         if (activeRevisionId) {
           notify('Updating article revision SEO...', 'info')
 
@@ -265,12 +287,18 @@ export const ArticleEditableEntry = (props: Props) => {
         notify('Something went wrong', 'destructive')
       }
     },
-    [activeRevisionId, updateArticleRevisionMutation, notify, queryClient, articleRevisionKey],
+    [activeRevisionId, updateArticleRevisionMutation, notify, queryClient, articleRevisionKey, isDisabledEditing],
   )
 
   const handleUpdateContent = useCallback(
     async (editor: Editor) => {
       try {
+        if (isDisabledEditing) {
+          notify('You are not allowed to edit this article', 'destructive')
+
+          return
+        }
+
         if (activeRevisionId) {
           notify('Updating article revision content...', 'info')
 
@@ -293,7 +321,7 @@ export const ArticleEditableEntry = (props: Props) => {
         notify('Something went wrong', 'destructive')
       }
     },
-    [activeRevisionId, updateArticleRevisionMutation, notify],
+    [activeRevisionId, updateArticleRevisionMutation, notify, isDisabledEditing],
   )
 
   const handlePreview = useCallback(() => {
@@ -306,6 +334,14 @@ export const ArticleEditableEntry = (props: Props) => {
 
   const handlePublish = useCallback(async () => {
     try {
+      const isRepublishing = article?.revisionId !== articleRevision?.id
+
+      if (isDisabledEditing && !isRepublishing) {
+        notify('You are not allowed to edit this article', 'destructive')
+
+        return
+      }
+
       if (!articleId || !activeRevisionId || !article || !articleRevision) {
         return
       }
@@ -322,27 +358,16 @@ export const ArticleEditableEntry = (props: Props) => {
       await updateArticleRevisionMutation.mutateAsync({
         id: activeRevisionId,
         status: ArticleRevisionStatus.CONFIRMED,
+        publishedAt: time().toISOString(),
       })
 
       notify('Article published', 'success')
 
-      queryClient.invalidateQueries([articleKey])
-      queryClient.invalidateQueries([articleRevisionKey])
+      window.location.reload()
     } catch (error) {
       logger.error(error)
     }
-  }, [
-    article,
-    articleId,
-    activeRevisionId,
-    articleRevision,
-    updateArticleMutation,
-    updateArticleRevisionMutation,
-    notify,
-    queryClient,
-    articleKey,
-    articleRevisionKey,
-  ])
+  }, [isDisabledEditing, article, articleId, activeRevisionId, articleRevision, updateArticleMutation, updateArticleRevisionMutation, notify])
 
   const steps = useMemo(() => {
     const steps = getSteps({
@@ -354,8 +379,12 @@ export const ArticleEditableEntry = (props: Props) => {
       onPreview: handlePreview,
       isContentEnabled: !!article,
       isSeoEnabled: !!article,
-      isPublishEnabled: articleRevision?.status === ArticleRevisionStatus.DRAFT,
+      isPublishEnabled:
+        articleRevision?.status === ArticleRevisionStatus.DRAFT ||
+        (articleRevision?.status === ArticleRevisionStatus.CONFIRMED && article?.revisionId !== articleRevision?.id),
+      publishLabel: articleRevision?.status === ArticleRevisionStatus.DRAFT ? 'Publish' : 'Republish',
       onPublish: handlePublish,
+      isDisabledEditing,
     })
 
     const filteredSteps = steps.filter((step) => {
@@ -367,7 +396,7 @@ export const ArticleEditableEntry = (props: Props) => {
     })
 
     return filteredSteps
-  }, [articleId, article, articleRevision, handlePublish, handlePreview, handleSavePreview, handleSaveSeo, handleUpdateContent])
+  }, [isDisabledEditing, articleId, article, articleRevision, handlePublish, handlePreview, handleSavePreview, handleSaveSeo, handleUpdateContent])
 
   const finalActiveTab = useMemo(() => {
     const isTabValid = steps.some((step) => step.value === activeTab)
@@ -379,38 +408,51 @@ export const ArticleEditableEntry = (props: Props) => {
     return steps?.[0]?.value ?? ''
   }, [activeTab, steps])
 
-  /**
-   * TODO 1:
-   * Открытие
-   * 1. Если есть артикл - фетчим, если нет - создаем после определенных действий
-   * 2. Id текущей ревизии по сути делаем аналогичное поведение, допом еще можем тянуть список ревизий
-   *
-   * Создание
-   * 1. Создаем артикл после определенных действий и следом артикл ревижн, нужно сразу о определенной логике сделать линковки
-   * 2. Далее уже этот артикл и тд пробрасываем по цепочке, наверное лучше через контекст/провайдер, хотя может достаточно и пропсов?
-   *
-   */
+  const isHasDraftRevision = useMemo(() => {
+    return articleRevisions?.list?.some((item) => item.status === ArticleRevisionStatus.DRAFT)
+  }, [articleRevisions])
 
-  /**
-   * Тут надо сделать логику шагов
-   * 1. Новая статья - шаг заполнения тайтла/дескрипшена и картинки
-   * 2. далее экоран статьи
-   * 3. финальный экран настройки сео и тд
-   *
-   * Шаги SPA, сверху табы чтобы всегда можно было вернуться или вперед убежать и тд
-   */
+  const lastPublishedRevision = useMemo(() => {
+    return articleRevisions?.list?.find((item) => item.status === ArticleRevisionStatus.CONFIRMED)
+  }, [articleRevisions?.list])
 
-  /**
-   * TODO 2: Нужна публикация - отдельная вкладка
-   * При публикации нужно указывать revisionId в статье, мы таким образом жестко привязываемся именно к этой ревизии
-   * Еще заложить установку версии в article
-   * Еще для редактирования нужно заложить выбор ревизии для просмотра, если опубликованная ревизия - то только просмотр, если нужно отредактировать - то:
-   * берем ревизию и создаем ее дубль - даем работу именно в ней - выше логика сбора ревизий при открытии статьи автоматом подтянет последнюю созданную
-   * можно заложить некую историю по ревизиям с их корректными статусами и текущей выбранной ревизией
-   *
-   * Публикация ревизии должно по новой идти по шагам привязки актуальной ревизии и так далее:
-   * slug уже не даем менять, каноникал кажется можно менять в целом (все табы у нас держатся в рамках корректной ревизии кроме слага, он жестко завязан на рутовом артикле)
-   */
+  const handleStartNewVersion = useCallback(async () => {
+    if (!articleId || !activeRevisionId || !article || !articleRevision) {
+      return
+    }
+
+    try {
+      const response = await createArticleRevisionMutation.mutateAsync({
+        articleId: articleId,
+        metadata: lastPublishedRevision?.metadata ?? {},
+        thumbnailUrl: lastPublishedRevision?.thumbnailUrl ?? '',
+        title: lastPublishedRevision?.title ?? '',
+        description: lastPublishedRevision?.description ?? '',
+        content: lastPublishedRevision?.content ?? '',
+        status: ArticleRevisionStatus.DRAFT,
+        createdAt: null,
+        updatedAt: null,
+        publishedAt: null,
+      })
+
+      notify('New version created', 'success')
+
+      setActiveRevisionId(response.id)
+      setActiveTab('preview-information')
+
+      window.location.reload()
+    } catch (error) {
+      logger.error(error)
+
+      if (error instanceof AxiosError) {
+        notify(error.response?.data?.message ?? 'Something went wrong', 'destructive')
+
+        return
+      }
+
+      notify('Something went wrong', 'destructive')
+    }
+  }, [articleId, lastPublishedRevision, activeRevisionId, article, articleRevision, createArticleRevisionMutation, notify])
 
   return (
     <div className={cn('flex flex-col gap-4', className)}>
@@ -418,6 +460,52 @@ export const ArticleEditableEntry = (props: Props) => {
         <SpinnerScreen />
       ) : (
         <>
+          {articleRevisions?.list?.length ? (
+            <div className="flex flex-row gap-2">
+              {articleRevisions?.list?.map((item) => (
+                <Button
+                  key={item.id}
+                  variant={item.id === activeRevisionId ? 'default' : 'secondary'}
+                  size="sm-md"
+                  className="flex flex-row gap-2 items-center"
+                  onClick={() => setActiveRevisionId(item.id)}
+                >
+                  <Typography
+                    variant="Body/S/Regular"
+                    className={cn('whitespace-nowrap text-nowrap', {
+                      'text-neutral-1000': item.id !== activeRevisionId,
+                      'text-neutral': item.id === activeRevisionId,
+                    })}
+                  >
+                    {item.publishedAt ? time(item.publishedAt).format('DD.MM.YYYY HH:mm') : time(item.createdAt).format('DD.MM.YYYY HH:mm')}
+                  </Typography>
+                  {item?.status === ArticleRevisionStatus.CONFIRMED ? <LockIcon className="w-6 h-6 shrink-0 bg-green-500 text-white rounded-md p-1" /> : null}
+                </Button>
+              ))}
+            </div>
+          ) : null}
+          {isDisabledEditing && (
+            <AlertBlock
+              notify={{
+                type: 'info',
+                message: (
+                  <div className="flex flex-col gap-2 items-start">
+                    <Typography variant="Body/S/Regular" className="whitespace-nowrap text-nowrap text-neutral-1000">
+                      You are not allowed to edit the last published article. Please start the new version
+                    </Typography>
+                    {!isHasDraftRevision ? (
+                      <Button variant="default" size="sm-md" onClick={handleStartNewVersion}>
+                        Start new version
+                      </Button>
+                    ) : null}
+                    <Typography variant="Body/S/Regular" className="whitespace-nowrap text-nowrap text-neutral-1000">
+                      or republish early version
+                    </Typography>
+                  </div>
+                ),
+              }}
+            />
+          )}
           <TabsContainer searchMutable tabs={steps} activeTab={finalActiveTab} currentTab={activeTab} onTabChange={setActiveTab} />
         </>
       )}
