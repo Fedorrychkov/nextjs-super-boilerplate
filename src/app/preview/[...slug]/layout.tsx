@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 
-import { ArticleLayout } from '~/components/Layouts/ArticleLayout'
+import { PreviewUniversalLayout } from '~/components/Layouts/PreviewUniversalLayout'
 
 export const metadata: Metadata = {
   title: {
@@ -22,5 +22,5 @@ export default function PreviewLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  return <ArticleLayout>{children}</ArticleLayout>
+  return <PreviewUniversalLayout isNavEnabled>{children}</PreviewUniversalLayout>
 }

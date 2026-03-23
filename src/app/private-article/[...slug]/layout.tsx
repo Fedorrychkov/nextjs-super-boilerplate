@@ -7,10 +7,17 @@ export const metadata: Metadata = {
     default: 'Article',
     template: '%s | Article',
   },
-  description: 'Article page',
+  description: 'Private article',
+  robots: {
+    index: false,
+    follow: false,
+    noarchive: true,
+    nocache: true,
+    noimageindex: true,
+  },
 }
 
-export default function ArticlePublicLayout({
+export default function PreviewLayout({
   children,
 }: Readonly<{
   children: React.ReactNode

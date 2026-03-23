@@ -1,15 +1,13 @@
-/* eslint-disable simple-import-sort/imports */
+import { setAuthCookies } from '@lib/cookies'
 import connectDB from '@lib/db/client'
 import User from '@lib/db/models/User'
 import UserSettings from '@lib/db/models/UserSettings'
-import { setAuthCookies } from '@lib/cookies'
+import { ValidationError } from '@lib/error/custom-errors'
 import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
 import { consumeLoginChallenge } from '@lib/security/login-challenge'
 import { consumeBackupCode, decryptSecret, verifyTotpCode } from '@lib/security/totp'
 import { authService } from '@lib/services/auth.service'
 import { NextRequest } from 'next/server'
-
-import { ValidationError } from '@lib/error/custom-errors'
 
 type MfaLoginDto = {
   challengeId: string

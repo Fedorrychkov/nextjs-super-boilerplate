@@ -1,5 +1,6 @@
 'use server'
-/* eslint-disable simple-import-sort/imports */
+
+import '../../../components/Blocks/Editor/styles/editor.styles.scss'
 
 import { defaultGuard, PageProps } from '@lib/page'
 import { getServerArticle } from '@lib/server-action/server-article'
@@ -7,12 +8,11 @@ import { renderToHTMLString } from '@tiptap/static-renderer/pm/html-string'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
+import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
 import { defaultExtensions } from '~/components/Blocks/Editor/extensions'
 import { jsonParseSafety } from '~/utils/jsonSafe'
 import { Logger } from '~/utils/logger'
-import '../../../components/Blocks/Editor/styles/editor.styles.scss'
-import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 
 const logger = new Logger(['PreviewRoot', '[src/app/preview/[...slug]/page.tsx]'])
 
@@ -98,7 +98,7 @@ const PreviewRoot = async (props: PageProps<{ slug: string[] }>) => {
 
   const generatedPageString = await renderToHTMLString({ content, extensions: defaultExtensions() })
 
-  return <div className="max-w-full" dangerouslySetInnerHTML={{ __html: generatedPageString }} />
+  return <div className="max-w-full tiptap" dangerouslySetInnerHTML={{ __html: generatedPageString }} />
 }
 
 export default PreviewRoot

@@ -1,11 +1,16 @@
 import connectDB from '@lib/db/client'
 import Article from '@lib/db/models/Article'
+import ArticleRevision from '@lib/db/models/ArticleRevision'
 import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
+import { revalidatePath } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 
-import { ArticleModel } from '~/api/article'
+import { ArticleModel, ArticleStatus, ArticleVisibility } from '~/api/article'
+import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
+import { seoConfig } from '~/lib/seo/config'
+import { notifySearchEngines } from '~/lib/seo/indexing'
 
 const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
   apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
@@ -27,22 +32,29 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
 
     await article.updateOne({ ...body, _id: id })
 
-    /**
-     * TODO: Логика публикации
-     * При публикации статьи и если она публичная и с noindex = false
-     * мы должны:
-     * 1. Отправить статью на индекс
-     * 2. При смене версии статьи возможно нужна переиндексация?
-     * 3. При смене состояния публикации статьи так же потребуется переиндексация
-     *
-     * Какие еще шаги? Сайтмапа, роботс и rss?
-     */
-
     const data = await Article.findById(id)
 
     if (!data) {
       return NextResponse.json({ message: 'Article not found' }, { status: 404 })
     }
+
+    const isPublishedPublic = data.status === ArticleStatus.PUBLISHED && data.visibility === ArticleVisibility.PUBLIC
+    const currentRevision = data.revisionId ? await ArticleRevision.findById(data.revisionId) : null
+    const revisionMetadata = currentRevision?.metadata as { seo?: ArticleRevisionSeoMetadata | null } | undefined
+    const seo = revisionMetadata?.seo
+    const shouldIndex = isPublishedPublic && seo?.noindex !== true
+    const articleUrl = data.slug ? `${seoConfig.siteUrl}/article/${data.slug}` : null
+
+    if (shouldIndex && articleUrl) {
+      await notifySearchEngines([articleUrl])
+    }
+
+    if (articleUrl) {
+      revalidatePath(`/article/${data.slug}`)
+    }
+
+    revalidatePath('/sitemap.xml')
+    revalidatePath('/rss.xml')
 
     return response.json({
       ...data.toObject(),

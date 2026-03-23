@@ -24,6 +24,8 @@ import ts from 'highlight.js/lib/languages/typescript'
 import html from 'highlight.js/lib/languages/xml'
 import { all, createLowlight } from 'lowlight'
 
+import { logger } from '~/utils/logger'
+
 import { isAllowedHref } from '../link/linkPolicy'
 import { ArticleImage } from './articleImage'
 import { EditorTextAlign } from './editorTextAlign'
@@ -136,7 +138,7 @@ export const defaultExtensions = (limit?: number | null) => [
         if (htmlContent) {
           // if there is htmlContent, stop manual insertion & let other extensions handle insertion via inputRule
           // you could extract the pasted file from this url string and upload it to a server for example
-          console.log(htmlContent)
+          logger.debug(htmlContent)
 
           return false
         }

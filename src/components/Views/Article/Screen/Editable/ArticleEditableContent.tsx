@@ -10,7 +10,6 @@ import { MarkdownEditor } from '~/components/Blocks/Editor/MarkdownEditor'
 import { AlertBlock, Button, Typography } from '~/components/ui'
 import { cn } from '~/utils/cn'
 import { jsonParseSafety } from '~/utils/jsonSafe'
-import { Logger } from '~/utils/logger'
 
 import { DEFAULT_EXAMPLE } from './example'
 
@@ -20,8 +19,6 @@ type Props = {
   onUpdate?: (editor: Editor) => void
   articleRevision?: ArticleRevisionModel | null
 }
-
-const logger = new Logger(['ArticleEditableScreen', '[src/components/Views/Article/Screen/ArticleEditableScreen.tsx]'])
 
 export const ArticleEditableContent = (props: Props) => {
   const { className = '', title = 'Content Editor', onUpdate, articleRevision } = props
@@ -33,8 +30,6 @@ export const ArticleEditableContent = (props: Props) => {
   const { editor, mode, handleSetMode, markdownInput, setMarkdownInput } = useDefaultEditor({ defaultContent, limit: 50_000, onUpdate })
 
   const handleSave = useCallback(() => {
-    console.log(mode)
-
     if (mode === 'markdown') {
       handleSetMode('default')()
     }

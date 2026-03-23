@@ -2,20 +2,21 @@
 
 import '../../../components/Blocks/Editor/styles/editor.styles.scss'
 
-import { PageProps } from '@lib/page'
+import { defaultGuard, PageProps } from '@lib/page'
 import { getServerForPublicArticle } from '@lib/server-action/server-article'
 import { renderToHTMLString } from '@tiptap/static-renderer/pm/html-string'
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 
 import { ArticleVisibility } from '~/api/article'
 import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
+import { UserRole } from '~/api/user'
 import { defaultExtensions } from '~/components/Blocks/Editor/extensions'
 import { getArticleJsonLd, JsonLd } from '~/lib/seo/jsonld'
 import { jsonParseSafety } from '~/utils/jsonSafe'
 import { Logger } from '~/utils/logger'
 
-const logger = new Logger(['ArticlePublicRoot', '[src/app/article/[...slug]/page.tsx]'])
+const logger = new Logger(['PrivateArticleRoot', '[src/app/private-article/[...slug]/page.tsx]'])
 
 export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Promise<Metadata> => {
   const params = await props.params
@@ -25,6 +26,13 @@ export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Pr
   if (!slug) {
     return {
       title: 'Article',
+      robots: {
+        index: false,
+        follow: false,
+        noarchive: true,
+        nocache: true,
+        noimageindex: true,
+      },
     }
   }
 
@@ -34,40 +42,32 @@ export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Pr
   const metadata = response?.revision?.metadata
 
   const seoData = metadata && 'seo' in metadata ? (metadata.seo as ArticleRevisionSeoMetadata) : {}
-  const description = seoData?.metaDescription || response?.revision?.description?.trim() || 'Article page'
-  const ogTitle = seoData?.ogTitle || seoData?.metaTitle || title
-  const ogDescription = seoData?.ogDescription || description
-  const image = seoData?.ogImageUrl || response?.revision?.thumbnailUrl || undefined
 
   return {
-    title: seoData?.metaTitle || title,
-    description,
-    alternates: {
-      canonical: seoData?.canonicalUrl || undefined,
-    },
+    title: `${title}`,
+    description: response?.revision?.description?.trim() || 'Private article',
     robots: {
-      index: seoData?.noindex !== true,
-      follow: seoData?.nofollow !== true,
-      noarchive: false,
-      nocache: false,
-      noimageindex: false,
+      index: false,
+      follow: false,
+      noarchive: true,
+      nocache: true,
+      noimageindex: true,
     },
     openGraph: {
-      type: 'article',
-      title: ogTitle,
-      description: ogDescription,
-      images: image ? [image] : undefined,
+      title: `${seoData?.metaTitle || title}`,
+      description: seoData?.metaDescription || response?.revision?.description?.trim() || 'Private article preview',
+      images: [seoData?.ogImageUrl || response?.revision?.thumbnailUrl || ''],
     },
     twitter: {
       card: seoData?.twitterCard || 'summary_large_image',
-      title: ogTitle,
-      description: ogDescription,
-      images: image ? [image] : undefined,
+      title: `${seoData?.metaTitle || title} (Preview)`,
+      description: seoData?.metaDescription || response?.revision?.description?.trim() || 'Private article preview',
+      images: [seoData?.ogImageUrl || response?.revision?.thumbnailUrl || ''],
     },
   }
 }
 
-const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
+const PrivateArticleRoot = async (props: PageProps<{ slug: string[] }>) => {
   const params = await props.params
 
   if (!params.slug) {
@@ -76,8 +76,24 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
 
   const response = await getServerForPublicArticle(params.slug?.[0] ?? '')
 
-  if (!response || response?.article?.visibility !== ArticleVisibility.PUBLIC) {
+  if (!response) {
     return notFound()
+  }
+
+  if (response.article.visibility === ArticleVisibility.PUBLIC && response.article.slug) {
+    return redirect(`/article/${response.article.slug}`)
+  }
+
+  if (response.article.visibility === ArticleVisibility.PRIVATE) {
+    const roles = response.article.allowedRoles ?? []
+
+    await defaultGuard({
+      ...props,
+      segments: [''],
+      fallbackNavigatePath: '/',
+      roles: roles,
+      fallbackRolesNavigatePath: { [UserRole.USER]: '/' },
+    })
   }
 
   logger.info({ params, response })
@@ -106,4 +122,4 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
   )
 }
 
-export default ArticlePublicRoot
+export default PrivateArticleRoot

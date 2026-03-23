@@ -4,10 +4,10 @@ import { PreviewUniversalLayout } from '~/components/Layouts/PreviewUniversalLay
 
 export const metadata: Metadata = {
   title: {
-    default: 'Article',
-    template: '%s | Article',
+    default: 'Articles List',
+    template: '%s | Articles List',
   },
-  description: 'Article page',
+  description: 'Articles list page',
 }
 
 export default function ArticlePublicLayout({

@@ -39,4 +39,24 @@ export const routes = {
     name: 'Create Article',
     needAuth: true,
   },
+  articlePublic: {
+    path: '/article/:slug',
+    name: 'Article',
+    needAuth: false,
+  },
+  articlesPublic: {
+    path: '/articles',
+    name: 'Articles',
+    needAuth: false,
+  },
+  articlePreview: {
+    path: '/preview/:slug',
+    name: 'Article Preview',
+    needAuth: true,
+  },
+  articlePrivate: {
+    path: '/private-article/:slug',
+    name: 'Article Private',
+    needAuth: true,
+  },
 }

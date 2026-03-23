@@ -3,13 +3,13 @@
 import type { Editor } from '@tiptap/core'
 import { AxiosError } from 'axios'
 import debounce from 'lodash/debounce'
-import { EyeIcon, FileTextIcon, InfoIcon, SearchIcon } from 'lucide-react'
+import { EyeIcon, FileTextIcon, InfoIcon, SearchIcon, SendIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useState } from 'react'
 import { useQueryClient } from 'react-query'
 
-import { ArticleModel } from '~/api/article'
-import { ArticleRevisionModel, SortOrder } from '~/api/article-revision'
+import { ArticleModel, ArticleStatus } from '~/api/article'
+import { ArticleRevisionModel, ArticleRevisionStatus, SortOrder } from '~/api/article-revision'
 import { Tab, TabsContainer } from '~/components/Blocks/Tabs/TabsContainer'
 import { SpinnerScreen } from '~/components/Loaders'
 import { useNotify } from '~/providers/notify'
@@ -28,6 +28,7 @@ import { Logger } from '~/utils/logger'
 
 import { ArticleEditableContent } from './ArticleEditableContent'
 import { ArticleEditablePreview, SaveForm } from './ArticleEditablePreview'
+import { ArticleEditablePublish } from './ArticleEditablePublish'
 import { ArticleEditableSeo, ArticleEditableSeoSavePayload } from './ArticleEditableSeo'
 
 const getSteps = (props: {
@@ -39,6 +40,8 @@ const getSteps = (props: {
   onUpdateContent?: (editor: Editor) => void
   isContentEnabled?: boolean
   isSeoEnabled?: boolean
+  isPublishEnabled?: boolean
+  onPublish?: () => void
 }): Tab[] => [
   {
     label: 'Preview information',
@@ -73,6 +76,14 @@ const getSteps = (props: {
     value: 'preview',
     onClick: props.onPreview,
     isEnabled: props.isSeoEnabled,
+  },
+  {
+    label: 'Publish',
+    icon: <SendIcon />,
+    value: 'publish',
+    onClick: props.onPublish,
+    isEnabled: props.isPublishEnabled,
+    children: <ArticleEditablePublish article={props.article} articleRevision={props.articleRevision} onSave={props.onPublish} />,
   },
 ]
 
@@ -293,6 +304,46 @@ export const ArticleEditableEntry = (props: Props) => {
     window.open(`/preview/${article?.slug}?revisionId=${activeRevisionId}`, '_blank')
   }, [article, activeRevisionId])
 
+  const handlePublish = useCallback(async () => {
+    try {
+      if (!articleId || !activeRevisionId || !article || !articleRevision) {
+        return
+      }
+
+      notify('Publishing article...', 'info')
+
+      await updateArticleMutation.mutateAsync({
+        id: articleId,
+        revisionId: activeRevisionId,
+        status: ArticleStatus.PUBLISHED,
+        version: (article.version ?? 0) + 1,
+      })
+
+      await updateArticleRevisionMutation.mutateAsync({
+        id: activeRevisionId,
+        status: ArticleRevisionStatus.CONFIRMED,
+      })
+
+      notify('Article published', 'success')
+
+      queryClient.invalidateQueries([articleKey])
+      queryClient.invalidateQueries([articleRevisionKey])
+    } catch (error) {
+      logger.error(error)
+    }
+  }, [
+    article,
+    articleId,
+    activeRevisionId,
+    articleRevision,
+    updateArticleMutation,
+    updateArticleRevisionMutation,
+    notify,
+    queryClient,
+    articleKey,
+    articleRevisionKey,
+  ])
+
   const steps = useMemo(() => {
     const steps = getSteps({
       article,
@@ -303,6 +354,8 @@ export const ArticleEditableEntry = (props: Props) => {
       onPreview: handlePreview,
       isContentEnabled: !!article,
       isSeoEnabled: !!article,
+      isPublishEnabled: articleRevision?.status === ArticleRevisionStatus.DRAFT,
+      onPublish: handlePublish,
     })
 
     const filteredSteps = steps.filter((step) => {
@@ -314,7 +367,7 @@ export const ArticleEditableEntry = (props: Props) => {
     })
 
     return filteredSteps
-  }, [articleId, article, articleRevision, handlePreview, handleSavePreview, handleSaveSeo, handleUpdateContent])
+  }, [articleId, article, articleRevision, handlePublish, handlePreview, handleSavePreview, handleSaveSeo, handleUpdateContent])
 
   const finalActiveTab = useMemo(() => {
     const isTabValid = steps.some((step) => step.value === activeTab)
