@@ -25,11 +25,16 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
 
     const id = body.id
 
-    const data = await articleRevision.updateOne({ ...body, _id: id })
+    await articleRevision.updateOne({ ...body, _id: id })
+
+    const data = await ArticleRevision.findById(id)
+
+    if (!data) {
+      return NextResponse.json({ message: 'Article revision not found' }, { status: 404 })
+    }
 
     return response.json({
       ...data.toObject(),
-      revisionId: data.revisionId?.toString() ?? null,
       id: data._id.toString(),
     })
   })

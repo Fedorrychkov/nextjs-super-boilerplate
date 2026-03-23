@@ -9,7 +9,7 @@ import MultipleSelector, { MultipleSelectorRef } from '~/components/ui/multisele
 import { Spinner } from '~/components/ui/spinner-1'
 import { cn } from '~/utils/cn'
 
-type Props = {
+export type MultiselectFieldProps = {
   options?: Option[]
   value?: Option[] | Option | null
   label?: string
@@ -25,7 +25,7 @@ type Props = {
   onChange?: (options: Option[]) => void
 }
 
-export const MultiselectField = forwardRef<MultipleSelectorRef, Props>(
+export const MultiselectField = forwardRef<MultipleSelectorRef, MultiselectFieldProps>(
   ({ options, onChange, maxSelected = 1, value, className, label, updateBySelected, placeholder, required, error, isLoading, disabled, emptyIndicator }, _) => {
     return (
       <div className={cn('flex flex-col gap-2', className)}>

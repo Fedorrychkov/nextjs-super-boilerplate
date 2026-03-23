@@ -1,22 +1,4 @@
-'use client'
-
-import { useCallback } from 'react'
-
-import { DefaultEditor } from '~/components/Blocks/Editor/DefaultEditor'
-import { useDefaultEditor } from '~/components/Blocks/Editor/hooks/useDefaultEditor'
-import { MarkdownEditor } from '~/components/Blocks/Editor/MarkdownEditor'
-import { Button, Typography } from '~/components/ui'
-import { useNotify } from '~/providers/notify'
-import { cn } from '~/utils/cn'
-import { Logger } from '~/utils/logger'
-
-type Props = {
-  articleId?: string | null
-  className?: string
-  title?: string | null
-}
-
-const DEFAULT_CONTENT = `
+export const DEFAULT_EXAMPLE = `
   <h1>The Complete Guide to Modern Web Development</h1>
   <p>Web development has evolved significantly over the past decade. What once required multiple tools and complex setups can now be accomplished with </p>
 
@@ -101,48 +83,3 @@ const DEFAULT_CONTENT = `
 
   <p>By following these guidelines, you'll create applications that are easier to maintain, test, and extend over time.</p>
 `
-
-const logger = new Logger(['ArticleEditableScreen', '[src/components/Views/Article/Screen/ArticleEditableScreen.tsx]'])
-
-export const ArticleEditableScreen = (props: Props) => {
-  const { notify } = useNotify()
-  const { articleId: _articleId = null, className = '', title = 'Article Editor' } = props
-
-  const { editor, mode, handleSetMarkdown, markdownInput, setMarkdownInput } = useDefaultEditor({ defaultContent: DEFAULT_CONTENT, limit: 10_000 })
-
-  const handleSave = useCallback(() => {
-    logger.info({
-      json: editor?.getJSON(),
-      html: editor?.getHTML(),
-    })
-  }, [editor])
-
-  return (
-    <div className={cn('flex flex-col gap-4', className)}>
-      <div className="flex flex-col gap-4 relative">
-        <Typography variant="heading-3">{title}</Typography>
-        <div className="flex flex-row gap-3 flex-wrap">
-          <Button variant={mode === 'default' ? 'default' : 'secondary'} size="sm-md" onClick={handleSetMarkdown('default')}>
-            Text Editor
-          </Button>
-          <Button variant={mode === 'markdown' ? 'default' : 'secondary'} size="sm-md" onClick={handleSetMarkdown('markdown')}>
-            Markdown Editor
-          </Button>
-        </div>
-        <div
-          className={cn({
-            hidden: mode === 'markdown',
-          })}
-        >
-          <DefaultEditor editor={editor} limit={10_000} />
-        </div>
-        {mode === 'markdown' && <MarkdownEditor value={markdownInput} editor={editor} onChange={setMarkdownInput} limit={10_000} />}
-        <div className="">
-          <Button variant="secondary" size="sm-md" onClick={handleSave}>
-            Save
-          </Button>
-        </div>
-      </div>
-    </div>
-  )
-}

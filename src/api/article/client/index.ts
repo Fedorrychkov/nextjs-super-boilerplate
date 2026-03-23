@@ -19,8 +19,14 @@ export class ClientArticleApi {
     return response.data
   }
 
+  async getArticle(id: string): Promise<ArticleModel> {
+    const response = await this.client.get(`/api/v1/article/get/${id}`)
+
+    return response.data
+  }
+
   async createArticle(dto: Partial<ArticleModel>): Promise<ArticleModel> {
-    const response = await this.client.post('/api/v1/article', dto)
+    const response = await this.client.post('/api/v1/article/create', dto)
 
     return response.data
   }

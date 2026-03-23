@@ -3,7 +3,7 @@
 import { defaultGuard, PageProps } from '@lib/page'
 
 import { UserRole } from '~/api/user'
-import { ArticleEditableScreen } from '~/components/Views/Article/Screen'
+import { ArticleEditableEntry } from '~/components/Views/Article/Screen'
 
 const ArticlesRoot = async (props: PageProps) => {
   await defaultGuard({
@@ -23,7 +23,7 @@ const ArticlesRoot = async (props: PageProps) => {
    */
   return (
     <div className="w-full h-full flex justify-center flex-col flex-1 gap-6">
-      <ArticleEditableScreen title="Article Editor" />
+      <ArticleEditableEntry />
     </div>
   )
 }

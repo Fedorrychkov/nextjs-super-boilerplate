@@ -6,6 +6,9 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { ArticleFilter } from '~/api/article'
 import { UserRole } from '~/api/user'
+import { Logger } from '~/utils/logger'
+
+const logger = new Logger('ArticleListRoute')
 
 const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
   apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
@@ -16,6 +19,8 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     await connectDB()
 
     const filter: ArticleFilter = { ...Object.fromEntries(request.nextUrl.searchParams.entries()) }
+
+    logger.info('filter', filter)
 
     const data = await Article.findListPaginated(filter)
 

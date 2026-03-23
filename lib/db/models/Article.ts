@@ -1,3 +1,4 @@
+import { applyCreatedAtRange } from '@lib/db/utils/applyCreatedAtRange'
 import { buildPaginationMeta, clampLimit } from '@lib/db/utils/buildPaginationMeta'
 import { ValidationError } from '@lib/error/custom-errors'
 import mongoose, { type Document, type HydratedDocument, type Model, type QueryFilter, Schema } from 'mongoose'
@@ -31,14 +32,6 @@ function applyArticleFilterFields(q: QueryFilter<IArticle>, rest: Partial<Articl
     q._id = new mongoose.Types.ObjectId(String(rest.id))
   }
 
-  if (rest.slug !== undefined) {
-    q.slug = rest.slug
-  }
-
-  if (rest.version !== undefined && rest.version !== null) {
-    q.version = rest.version
-  }
-
   if (rest.status !== undefined && rest.status !== null) {
     q.status = rest.status
   }
@@ -53,26 +46,6 @@ function applyArticleFilterFields(q: QueryFilter<IArticle>, rest: Partial<Articl
 
   if (rest.revisionId != null && mongoose.Types.ObjectId.isValid(String(rest.revisionId))) {
     q.revisionId = new mongoose.Types.ObjectId(String(rest.revisionId))
-  }
-
-  if (rest.publishedAt !== undefined) {
-    q.publishedAt = rest.publishedAt
-  }
-}
-
-function applyCreatedAtRange(q: QueryFilter<IArticle>, startOfDateIso?: string | null, endOfDateIso?: string | null) {
-  if (!startOfDateIso && !endOfDateIso) {
-    return
-  }
-
-  q.createdAt = {}
-
-  if (startOfDateIso) {
-    q.createdAt.$gte = startOfDateIso
-  }
-
-  if (endOfDateIso) {
-    q.createdAt.$lte = endOfDateIso
   }
 }
 
@@ -101,7 +74,7 @@ const ArticleSchema: Schema<IArticle> = new Schema<IArticle>(
     },
     visibility: {
       type: String,
-      default: null,
+      default: ArticleVisibility.PUBLIC,
       validate: {
         validator(v: string | null) {
           return v === null || (Object.values(ArticleVisibility) as string[]).includes(v)
@@ -124,15 +97,15 @@ const ArticleSchema: Schema<IArticle> = new Schema<IArticle>(
       index: true,
     },
     publishedAt: {
-      type: String,
+      type: Date,
       default: null,
     },
     createdAt: {
-      type: String,
+      type: Date,
       default: () => time().toISOString(),
     },
     updatedAt: {
-      type: String,
+      type: Date,
       default: null,
     },
   },
@@ -153,7 +126,7 @@ ArticleSchema.index({ slug: 1 }, { unique: true, sparse: true })
 
   const base: QueryFilter<IArticle> = {}
   applyArticleFilterFields(base, rest)
-  applyCreatedAtRange(base, startOfDateIso, endOfDateIso)
+  applyCreatedAtRange<IArticle>(base, startOfDateIso, endOfDateIso)
 
   const findQuery: QueryFilter<IArticle> = { ...base }
 

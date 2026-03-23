@@ -1,5 +1,5 @@
 import type { EditorView } from '@tiptap/pm/view'
-import { useEditor } from '@tiptap/react'
+import { Editor, useEditor } from '@tiptap/react'
 import { useCallback, useMemo, useState } from 'react'
 
 import { useNotify } from '~/providers/notify'
@@ -13,6 +13,7 @@ type Props = {
   limit?: number | null
   defaultMode?: 'default' | 'markdown'
   logger?: Logger
+  onUpdate?: (editor: Editor) => void
 }
 
 export const useDefaultEditor = (props: Props) => {
@@ -30,6 +31,9 @@ export const useDefaultEditor = (props: Props) => {
     content: defaultContent,
     // Don't render immediately on the server to avoid SSR issues
     immediatelyRender: false,
+    onUpdate: ({ editor }) => {
+      props.onUpdate?.(editor)
+    },
     editorProps: {
       handlePaste: (view: EditorView, event: ClipboardEvent) => {
         const text = event.clipboardData?.getData('text/plain')?.trim()

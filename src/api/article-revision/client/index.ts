@@ -19,8 +19,14 @@ export class ClientArticleRevisionApi {
     return response.data
   }
 
+  async getArticleRevision(id: string): Promise<ArticleRevisionModel> {
+    const response = await this.client.get(`/api/v1/article-revision/get/${id}`)
+
+    return response.data
+  }
+
   async createArticleRevision(dto: Partial<ArticleRevisionModel>): Promise<ArticleRevisionModel> {
-    const response = await this.client.post('/api/v1/article-revision', dto)
+    const response = await this.client.post('/api/v1/article-revision/create', dto)
 
     return response.data
   }

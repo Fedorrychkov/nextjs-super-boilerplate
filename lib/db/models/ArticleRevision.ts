@@ -1,3 +1,4 @@
+import { applyCreatedAtRange } from '@lib/db/utils/applyCreatedAtRange'
 import { buildPaginationMeta, clampLimit } from '@lib/db/utils/buildPaginationMeta'
 import { ValidationError } from '@lib/error/custom-errors'
 import mongoose, { type Document, type HydratedDocument, type Model, type QueryFilter, Schema } from 'mongoose'
@@ -37,32 +38,8 @@ function applyArticleRevisionFilterFields(q: QueryFilter<IArticleRevision>, rest
     q.content = rest.content
   }
 
-  if (rest.previewUrl !== undefined) {
-    q.previewUrl = rest.previewUrl
-  }
-
   if (rest.status !== undefined && rest.status !== null) {
     q.status = rest.status
-  }
-
-  if (rest.publishedAt !== undefined) {
-    q.publishedAt = rest.publishedAt
-  }
-}
-
-function applyCreatedAtRange(q: QueryFilter<IArticleRevision>, startOfDateIso?: string | null, endOfDateIso?: string | null) {
-  if (!startOfDateIso && !endOfDateIso) {
-    return
-  }
-
-  q.createdAt = {}
-
-  if (startOfDateIso) {
-    q.createdAt.$gte = startOfDateIso
-  }
-
-  if (endOfDateIso) {
-    q.createdAt.$lte = endOfDateIso
   }
 }
 
@@ -82,11 +59,19 @@ const ArticleRevisionSchema: Schema<IArticleRevision> = new Schema<IArticleRevis
       type: String,
       default: null,
     },
+    title: {
+      type: String,
+      default: null,
+    },
+    description: {
+      type: String,
+      default: null,
+    },
     metadata: {
       type: Schema.Types.Mixed,
       default: () => ({}),
     },
-    previewUrl: {
+    thumbnailUrl: {
       type: String,
       default: null,
     },
@@ -97,15 +82,15 @@ const ArticleRevisionSchema: Schema<IArticleRevision> = new Schema<IArticleRevis
       index: true,
     },
     publishedAt: {
-      type: String,
+      type: Date,
       default: null,
     },
     createdAt: {
-      type: String,
+      type: Date,
       default: () => time().toISOString(),
     },
     updatedAt: {
-      type: String,
+      type: Date,
       default: null,
     },
   },
@@ -126,7 +111,7 @@ ArticleRevisionSchema.index({ articleId: 1, status: 1, updatedAt: -1 })
 
   const base: QueryFilter<IArticleRevision> = {}
   applyArticleRevisionFilterFields(base, rest)
-  applyCreatedAtRange(base, startOfDateIso, endOfDateIso)
+  applyCreatedAtRange<IArticleRevision>(base, startOfDateIso, endOfDateIso)
 
   const findQuery: QueryFilter<IArticleRevision> = { ...base }
 

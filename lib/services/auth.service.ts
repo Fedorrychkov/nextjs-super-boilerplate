@@ -13,7 +13,7 @@ export class AuthService {
   /**
    * Registration of a user
    */
-  async register(data: RegisterDto): Promise<AuthResponse> {
+  async register(data: RegisterDto, isAdmin: boolean = false): Promise<AuthResponse> {
     await connectDB()
 
     const existingUser = await User.findOne({ email: data.email.toLowerCase() })
@@ -24,7 +24,7 @@ export class AuthService {
 
     const user = await User.create({
       email: data.email.toLowerCase(),
-      role: UserRole.USER,
+      role: isAdmin ? UserRole.ADMIN : UserRole.USER,
       status: UserStatus.ACTIVE,
       password: data.password,
     })

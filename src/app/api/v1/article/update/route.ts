@@ -25,7 +25,13 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
 
     const id = body.id
 
-    const data = await article.updateOne({ ...body, _id: id })
+    await article.updateOne({ ...body, _id: id })
+
+    const data = await Article.findById(id)
+
+    if (!data) {
+      return NextResponse.json({ message: 'Article not found' }, { status: 404 })
+    }
 
     return response.json({
       ...data.toObject(),

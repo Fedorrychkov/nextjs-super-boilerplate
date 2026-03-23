@@ -4,14 +4,13 @@ import get from 'lodash/get'
 import { forwardRef } from 'react'
 import { Controller, useFormContext } from 'react-hook-form'
 
-import { Label, Option } from '~/components/ui'
+import { Option } from '~/components/ui'
 import { MultipleSelectorRef } from '~/components/ui/multiselect'
-import { Spinner } from '~/components/ui/spinner-1'
 import { cn } from '~/utils/cn'
 
-import { MultiselectField } from '../Input'
+import { MultiselectField, MultiselectFieldProps } from '../Input'
 
-type Props = {
+type Props = Omit<MultiselectFieldProps, 'onChange'> & {
   options: Option[]
   label?: string
   name: string
@@ -42,12 +41,6 @@ export const DefaultMultiselectField = forwardRef<MultipleSelectorRef, Props>(
 
     return (
       <div className={cn('flex flex-col gap-2', className)}>
-        <Label isError={!!finalError} className="flex flex-row items-start gap-2">
-          <span>
-            {label} {required && <span className="text-destructive">*</span>}
-          </span>
-          {isLoading && <Spinner size={16} />}
-        </Label>
         <Controller
           name={name}
           render={({ field: { onChange: defaultOnChange } }) => (
@@ -67,12 +60,6 @@ export const DefaultMultiselectField = forwardRef<MultipleSelectorRef, Props>(
             />
           )}
         />
-
-        {finalError && (
-          <p className="mt-2 text-xs text-destructive" role="alert" aria-live="polite">
-            {finalError as string}
-          </p>
-        )}
       </div>
     )
   },

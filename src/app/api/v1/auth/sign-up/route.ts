@@ -1,9 +1,10 @@
+import { FIRST_ADMIN_CONFIG } from '@config/env'
 import { setAuthCookies } from '@lib/cookies'
 import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
 import { ensureCanRegister } from '@lib/security/bruteforce'
 import { getClientKey } from '@lib/security/rate-limit'
 import { authService } from '@lib/services/auth.service'
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
 import { RegisterDto } from '~/api/auth/types'
 
@@ -13,7 +14,20 @@ const handler = (request: NextRequest) => {
     const ip = getClientKey(req)
     await ensureCanRegister(ip)
 
-    const authResponse = await authService.register(body)
+    const email = body.email
+    const password = body.password
+
+    /**
+     * If the email is the first admin and the password is not the first admin password, return an error
+     * This is to prevent the first admin from being able to register other admins
+     */
+    if (email === FIRST_ADMIN_CONFIG.login && password !== FIRST_ADMIN_CONFIG.password) {
+      return NextResponse.json({ message: 'Insufficient permissions' }, { status: 403 })
+    }
+
+    const isValidAdmin = email === FIRST_ADMIN_CONFIG.login && password === FIRST_ADMIN_CONFIG.password
+
+    const authResponse = await authService.register(body, isValidAdmin)
 
     const response = res.json(
       {
