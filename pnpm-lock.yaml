@@ -98,6 +98,9 @@ importers:
       '@tiptap/extensions':
         specifier: ^3.20.4
         version: 3.20.4(@tiptap/core@3.20.4(@tiptap/pm@3.20.4))(@tiptap/pm@3.20.4)
+      '@tiptap/html':
+        specifier: ^3.20.4
+        version: 3.20.4(@tiptap/core@3.20.4(@tiptap/pm@3.20.4))(@tiptap/pm@3.20.4)(happy-dom@20.8.4)
       '@tiptap/markdown':
         specifier: ^3.20.4
         version: 3.20.4(@tiptap/core@3.20.4(@tiptap/pm@3.20.4))(@tiptap/pm@3.20.4)
@@ -110,6 +113,9 @@ importers:
       '@tiptap/starter-kit':
         specifier: ^3.20.4
         version: 3.20.4
+      '@tiptap/static-renderer':
+        specifier: ^3.20.4
+        version: 3.20.4(@tiptap/core@3.20.4(@tiptap/pm@3.20.4))(@tiptap/pm@3.20.4)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       axios:
         specifier: ^1.10.0
         version: 1.13.6
@@ -2015,6 +2021,13 @@ packages:
       '@tiptap/core': ^3.20.4
       '@tiptap/pm': ^3.20.4
 
+  '@tiptap/html@3.20.4':
+    resolution: {integrity: sha512-EXysba9tDD2Ay/S+83BhR97rlSiH9gvRMaCVdqx/QuFln28y72A522esCbrIH6JL/k1os4bFriji2egdzZFP+w==}
+    peerDependencies:
+      '@tiptap/core': ^3.20.4
+      '@tiptap/pm': ^3.20.4
+      happy-dom: ^20.0.2
+
   '@tiptap/markdown@3.20.4':
     resolution: {integrity: sha512-1ARtZzJ1skQCZi4LyVSmImgg6JIIMP5dEs0FvHXS3a7M3O+uMOUvY1sWeggVZExg8DXoVyHd7BjRIpm7uNRuSw==}
     peerDependencies:
@@ -2036,6 +2049,14 @@ packages:
 
   '@tiptap/starter-kit@3.20.4':
     resolution: {integrity: sha512-WcyK6hsTl8eBsQhQ+d9Sq8fYZKOYdL+D45MyH3hz583elXqJlW3h3JPFYb0o87gddGxn8Mm57OA/gA1zEdeDMw==}
+
+  '@tiptap/static-renderer@3.20.4':
+    resolution: {integrity: sha512-r/3w0m03ZsX2tEj3lYnViI3glDcZaMSeHkzwSZ9SAj7AhJ5/c3SsKJEFGuM4rTuTQHw7xjhNyaqF8I1e1jOHgQ==}
+    peerDependencies:
+      '@tiptap/core': ^3.20.4
+      '@tiptap/pm': ^3.20.4
+      react: ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^17.0.0 || ^18.0.0 || ^19.0.0
 
   '@tiptap/y-tiptap@3.0.2':
     resolution: {integrity: sha512-flMn/YW6zTbc6cvDaUPh/NfLRTXDIqgpBUkYzM74KA1snqQwhOMjnRcnpu4hDFrTnPO6QGzr99vRyXEA7M44WA==}
@@ -2103,8 +2124,14 @@ packages:
   '@types/webidl-conversions@7.0.3':
     resolution: {integrity: sha512-CiJJvcRtIgzadHCYXw7dqEnMNRjhGZlYK05Mj9OyktqV8uVT8fD2BFOB7S1uwBE3Kj2Z+4UyPmFw/Ixgw/LAlA==}
 
+  '@types/whatwg-mimetype@3.0.2':
+    resolution: {integrity: sha512-c2AKvDT8ToxLIOUlN51gTiHXflsfIFisS4pO7pDPoKouJCESkhZnEy623gwP9laCy5lnLDAw1vAzu2vM2YLOrA==}
+
   '@types/whatwg-url@13.0.0':
     resolution: {integrity: sha512-N8WXpbE6Wgri7KUSvrmQcqrMllKZ9uxkYWMt+mCSGwNc0Hsw9VQTW7ApqI4XNrx6/SaM2QQJCzMPDEXE058s+Q==}
+
+  '@types/ws@8.18.1':
+    resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
 
   '@typescript-eslint/eslint-plugin@8.56.1':
     resolution: {integrity: sha512-Jz9ZztpB37dNC+HU2HI28Bs9QXpzCz+y/twHOwhyrIRdbuVDxSytJNDl6z/aAKlaRIwC7y8wJdkBv7FxYGgi0A==}
@@ -2645,6 +2672,10 @@ packages:
     resolution: {integrity: sha512-V0hjH4dGPh9Ao5p0MoRY6BVqtwCjhz6vI5LT8AJ55H+4g9/4vbHx1I54fS0XuclLhDHArPQCiMjDxjaL8fPxhw==}
     engines: {node: '>=0.12'}
 
+  entities@7.0.1:
+    resolution: {integrity: sha512-TWrgLOFUQTH994YUyl1yT4uyavY5nNB5muff+RtWaqNVCAK408b5ZnnbNAUEWLTCpum9w6arT70i1XdQ4UeOPA==}
+    engines: {node: '>=0.12'}
+
   env-cmd@10.1.0:
     resolution: {integrity: sha512-mMdWTT9XKN7yNth/6N6g2GuKuJTsKMDHlQFUDacb/heQRRWOTIZ42t1rMHnQu4jYxU1ajdTeJM+9eEETlqToMA==}
     engines: {node: '>=8.0.0'}
@@ -3030,6 +3061,10 @@ packages:
   gzip-size@6.0.0:
     resolution: {integrity: sha512-ax7ZYomf6jqPTQ4+XCpUGyXKHk5WweS+e05MBO4/y3WJ5RkmPXNKvX+bx1behVILVwr6JSQvZAku021CHPXG3Q==}
     engines: {node: '>=10'}
+
+  happy-dom@20.8.4:
+    resolution: {integrity: sha512-GKhjq4OQCYB4VLFBzv8mmccUadwlAusOZOI7hC1D9xDIT5HhzkJK17c4el2f6R6C715P9xB4uiMxeKUa2nHMwQ==}
+    engines: {node: '>=20.0.0'}
 
   has-bigints@1.1.0:
     resolution: {integrity: sha512-R3pbpkcIqv2Pm3dUwgjclDRVmWpTJW2DcMzcIhEXEx1oh/CEMObMm3KLmRJOdvhM7o4uQBnwr8pzRK2sJWIqfg==}
@@ -4335,6 +4370,10 @@ packages:
     engines: {node: '>= 10.13.0'}
     hasBin: true
 
+  whatwg-mimetype@3.0.0:
+    resolution: {integrity: sha512-nt+N2dzIutVRxARx1nghPKGv1xHikU7HKdfafKkLNLindmPU/ch3U31NOCGGA/dmPcmb1VlofO0vnKAcsm0o/Q==}
+    engines: {node: '>=12'}
+
   whatwg-url@14.2.0:
     resolution: {integrity: sha512-De72GdQZzNTUBBChsXueQUnPKDkg/5A5zp7pFDuQAj5UFoENpiACU0wlCvzpAGnTkj++ihpKwKyYewn/XNUbKw==}
     engines: {node: '>=18'}
@@ -4377,6 +4416,18 @@ packages:
     peerDependencies:
       bufferutil: ^4.0.1
       utf-8-validate: ^5.0.2
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
+
+  ws@8.20.0:
+    resolution: {integrity: sha512-sAt8BhgNbzCtgGbt2OxmpuryO63ZoDk/sqaB/znQm94T4fCEsy/yV+7CdC1kJhOU9lboAEU7R3kquuycDoibVA==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
     peerDependenciesMeta:
       bufferutil:
         optional: true
@@ -6000,6 +6051,12 @@ snapshots:
       '@tiptap/core': 3.20.4(@tiptap/pm@3.20.4)
       '@tiptap/pm': 3.20.4
 
+  '@tiptap/html@3.20.4(@tiptap/core@3.20.4(@tiptap/pm@3.20.4))(@tiptap/pm@3.20.4)(happy-dom@20.8.4)':
+    dependencies:
+      '@tiptap/core': 3.20.4(@tiptap/pm@3.20.4)
+      '@tiptap/pm': 3.20.4
+      happy-dom: 20.8.4
+
   '@tiptap/markdown@3.20.4(@tiptap/core@3.20.4(@tiptap/pm@3.20.4))(@tiptap/pm@3.20.4)':
     dependencies:
       '@tiptap/core': 3.20.4(@tiptap/pm@3.20.4)
@@ -6071,6 +6128,13 @@ snapshots:
       '@tiptap/extensions': 3.20.4(@tiptap/core@3.20.4(@tiptap/pm@3.20.4))(@tiptap/pm@3.20.4)
       '@tiptap/pm': 3.20.4
 
+  '@tiptap/static-renderer@3.20.4(@tiptap/core@3.20.4(@tiptap/pm@3.20.4))(@tiptap/pm@3.20.4)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+    dependencies:
+      '@tiptap/core': 3.20.4(@tiptap/pm@3.20.4)
+      '@tiptap/pm': 3.20.4
+      react: 19.2.3
+      react-dom: 19.2.3(react@19.2.3)
+
   '@tiptap/y-tiptap@3.0.2(prosemirror-model@1.25.4)(prosemirror-state@1.4.4)(prosemirror-view@1.41.7)(y-protocols@1.0.7(yjs@13.6.30))(yjs@13.6.30)':
     dependencies:
       lib0: 0.2.117
@@ -6135,9 +6199,15 @@ snapshots:
 
   '@types/webidl-conversions@7.0.3': {}
 
+  '@types/whatwg-mimetype@3.0.2': {}
+
   '@types/whatwg-url@13.0.0':
     dependencies:
       '@types/webidl-conversions': 7.0.3
+
+  '@types/ws@8.18.1':
+    dependencies:
+      '@types/node': 20.19.35
 
   '@typescript-eslint/eslint-plugin@8.56.1(@typescript-eslint/parser@8.56.1(eslint@9.39.3(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.3(jiti@2.6.1))(typescript@5.9.3)':
     dependencies:
@@ -6669,6 +6739,8 @@ snapshots:
       tapable: 2.3.0
 
   entities@4.5.0: {}
+
+  entities@7.0.1: {}
 
   env-cmd@10.1.0:
     dependencies:
@@ -7217,6 +7289,18 @@ snapshots:
   gzip-size@6.0.0:
     dependencies:
       duplexer: 0.1.2
+
+  happy-dom@20.8.4:
+    dependencies:
+      '@types/node': 20.19.35
+      '@types/whatwg-mimetype': 3.0.2
+      '@types/ws': 8.18.1
+      entities: 7.0.1
+      whatwg-mimetype: 3.0.0
+      ws: 8.20.0
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
 
   has-bigints@1.1.0: {}
 
@@ -8682,6 +8766,8 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
+  whatwg-mimetype@3.0.0: {}
+
   whatwg-url@14.2.0:
     dependencies:
       tr46: 5.1.1
@@ -8743,6 +8829,8 @@ snapshots:
   wrappy@1.0.2: {}
 
   ws@7.5.10: {}
+
+  ws@8.20.0: {}
 
   y-protocols@1.0.7(yjs@13.6.30):
     dependencies:

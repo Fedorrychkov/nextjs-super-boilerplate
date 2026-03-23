@@ -20,10 +20,6 @@ export type PageCheckAuthProps<T extends Record<string, unknown> | undefined = u
    * Redirect to this path when tokens are missing
    */
   navigatePath?: string
-  /**
-   * Redirect to this path when user has no access to the page
-   * TODO: refactor URL passthrough for page access based on role denial
-   */
   fallbackNavigatePath?: string
   fallbackRolesNavigatePath?: {
     [key in UserRole]?: string

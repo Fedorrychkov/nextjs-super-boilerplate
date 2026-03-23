@@ -10,9 +10,10 @@ export type Tab = {
   label: React.ReactNode
   value: string
   icon?: React.ReactNode
-  children: React.ReactNode
+  children?: React.ReactNode
   className?: string
   isEnabled?: boolean
+  onClick?: () => void
 }
 
 type Props = {
@@ -65,7 +66,15 @@ export const TabsContainer = (props: Props) => {
             disabled={!isEnabled}
             variant={finalActiveTab === tab.value ? 'default' : 'secondary'}
             className="flex flex-row gap-2"
-            onClick={() => handleActivateTab(tab.value)}
+            onClick={() => {
+              if (tab.onClick) {
+                tab.onClick()
+
+                return
+              }
+
+              handleActivateTab(tab.value)
+            }}
           >
             {tab.icon}
             {typeof tab.label === 'string' ? (
@@ -89,7 +98,7 @@ export const TabsContainer = (props: Props) => {
           const isActivated = activatedTabs.includes(tab.value)
           const isActive = finalActiveTab === tab.value
 
-          if (!isActivated) return null
+          if (!isActivated || !tab?.children) return null
 
           return (
             <div

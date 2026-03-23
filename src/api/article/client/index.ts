@@ -9,8 +9,9 @@ import { ArticleFilter } from '../types'
 export class ClientArticleApi {
   private readonly client: AxiosInstance
 
-  constructor() {
-    this.client = new Request().apiClient
+  constructor(origin?: string, options?: { headers?: Record<string, string> }) {
+    const config = origin ? { baseURL: origin, ...(options?.headers && { headers: options.headers }) } : undefined
+    this.client = new Request(config).apiClient
   }
 
   async getArticles(params: ArticleFilter): Promise<PaginationMeta<ArticleModel>> {
@@ -21,6 +22,12 @@ export class ClientArticleApi {
 
   async getArticle(id: string): Promise<ArticleModel> {
     const response = await this.client.get(`/api/v1/article/get/${id}`)
+
+    return response.data
+  }
+
+  async getArticleBySlug(slug: string): Promise<ArticleModel> {
+    const response = await this.client.get(`/api/v1/article/get-by-slug/${slug}`)
 
     return response.data
   }

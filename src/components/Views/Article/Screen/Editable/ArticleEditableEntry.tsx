@@ -3,7 +3,7 @@
 import type { Editor } from '@tiptap/core'
 import { AxiosError } from 'axios'
 import debounce from 'lodash/debounce'
-import { FileTextIcon, InfoIcon, SearchIcon } from 'lucide-react'
+import { EyeIcon, FileTextIcon, InfoIcon, SearchIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useState } from 'react'
 import { useQueryClient } from 'react-query'
@@ -34,6 +34,7 @@ const getSteps = (props: {
   article?: ArticleModel | null
   articleRevision?: ArticleRevisionModel | null
   onSavePreview?: (form: SaveForm) => void
+  onPreview?: () => void
   onSaveSeo?: (payload: ArticleEditableSeoSavePayload) => void
   onUpdateContent?: (editor: Editor) => void
   isContentEnabled?: boolean
@@ -65,6 +66,13 @@ const getSteps = (props: {
     value: 'seo',
     isEnabled: props.isSeoEnabled,
     children: <ArticleEditableSeo articleRevision={props.articleRevision} article={props.article} onSave={props.onSaveSeo} />,
+  },
+  {
+    label: 'Preview',
+    icon: <EyeIcon />,
+    value: 'preview',
+    onClick: props.onPreview,
+    isEnabled: props.isSeoEnabled,
   },
 ]
 
@@ -277,6 +285,14 @@ export const ArticleEditableEntry = (props: Props) => {
     [activeRevisionId, updateArticleRevisionMutation, notify],
   )
 
+  const handlePreview = useCallback(() => {
+    if (!article?.slug || !activeRevisionId) {
+      return
+    }
+
+    window.open(`/preview/${article?.slug}?revisionId=${activeRevisionId}`, '_blank')
+  }, [article, activeRevisionId])
+
   const steps = useMemo(() => {
     const steps = getSteps({
       article,
@@ -284,6 +300,7 @@ export const ArticleEditableEntry = (props: Props) => {
       onSavePreview: handleSavePreview,
       onSaveSeo: handleSaveSeo,
       onUpdateContent: debounce(handleUpdateContent, 1000),
+      onPreview: handlePreview,
       isContentEnabled: !!article,
       isSeoEnabled: !!article,
     })
@@ -297,7 +314,7 @@ export const ArticleEditableEntry = (props: Props) => {
     })
 
     return filteredSteps
-  }, [articleId, article, articleRevision, handleSavePreview, handleSaveSeo, handleUpdateContent])
+  }, [articleId, article, articleRevision, handlePreview, handleSavePreview, handleSaveSeo, handleUpdateContent])
 
   const finalActiveTab = useMemo(() => {
     const isTabValid = steps.some((step) => step.value === activeTab)
@@ -310,6 +327,7 @@ export const ArticleEditableEntry = (props: Props) => {
   }, [activeTab, steps])
 
   /**
+   * TODO 1:
    * Открытие
    * 1. Если есть артикл - фетчим, если нет - создаем после определенных действий
    * 2. Id текущей ревизии по сути делаем аналогичное поведение, допом еще можем тянуть список ревизий
@@ -329,12 +347,26 @@ export const ArticleEditableEntry = (props: Props) => {
    * Шаги SPA, сверху табы чтобы всегда можно было вернуться или вперед убежать и тд
    */
 
+  /**
+   * TODO 2: Нужна публикация - отдельная вкладка
+   * При публикации нужно указывать revisionId в статье, мы таким образом жестко привязываемся именно к этой ревизии
+   * Еще заложить установку версии в article
+   * Еще для редактирования нужно заложить выбор ревизии для просмотра, если опубликованная ревизия - то только просмотр, если нужно отредактировать - то:
+   * берем ревизию и создаем ее дубль - даем работу именно в ней - выше логика сбора ревизий при открытии статьи автоматом подтянет последнюю созданную
+   * можно заложить некую историю по ревизиям с их корректными статусами и текущей выбранной ревизией
+   *
+   * Публикация ревизии должно по новой идти по шагам привязки актуальной ревизии и так далее:
+   * slug уже не даем менять, каноникал кажется можно менять в целом (все табы у нас держатся в рамках корректной ревизии кроме слага, он жестко завязан на рутовом артикле)
+   */
+
   return (
     <div className={cn('flex flex-col gap-4', className)}>
       {isGlobalLoading ? (
         <SpinnerScreen />
       ) : (
-        <TabsContainer searchMutable tabs={steps} activeTab={finalActiveTab} currentTab={activeTab} onTabChange={setActiveTab} />
+        <>
+          <TabsContainer searchMutable tabs={steps} activeTab={finalActiveTab} currentTab={activeTab} onTabChange={setActiveTab} />
+        </>
       )}
     </div>
   )

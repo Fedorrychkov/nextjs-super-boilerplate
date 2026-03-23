@@ -9,8 +9,9 @@ import { ArticleRevisionFilter } from '../types'
 export class ClientArticleRevisionApi {
   private readonly client: AxiosInstance
 
-  constructor() {
-    this.client = new Request().apiClient
+  constructor(origin?: string, options?: { headers?: Record<string, string> }) {
+    const config = origin ? { baseURL: origin, ...(options?.headers && { headers: options.headers }) } : undefined
+    this.client = new Request(config).apiClient
   }
 
   async getArticleRevisions(params: ArticleRevisionFilter): Promise<PaginationMeta<ArticleRevisionModel>> {

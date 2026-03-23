@@ -30,14 +30,15 @@ export const ArticleEditableContent = (props: Props) => {
     return articleRevision?.content ? jsonParseSafety<string>(articleRevision.content) : ''
   }, [articleRevision])
 
-  const { editor, mode, handleSetMarkdown, markdownInput, setMarkdownInput } = useDefaultEditor({ defaultContent, limit: 50_000, onUpdate })
+  const { editor, mode, handleSetMode, markdownInput, setMarkdownInput } = useDefaultEditor({ defaultContent, limit: 50_000, onUpdate })
 
   const handleSave = useCallback(() => {
-    logger.info({
-      json: editor?.getJSON(),
-      html: editor?.getHTML(),
-    })
-  }, [editor])
+    console.log(mode)
+
+    if (mode === 'markdown') {
+      handleSetMode('default')()
+    }
+  }, [mode, handleSetMode])
 
   const handleSetExample = useCallback(() => {
     editor?.commands.setContent(DEFAULT_EXAMPLE)
@@ -47,10 +48,10 @@ export const ArticleEditableContent = (props: Props) => {
     <div className={cn('flex flex-col gap-4', className)}>
       <Typography variant="heading-3">{title}</Typography>
       <div className="flex flex-row gap-3 flex-wrap">
-        <Button variant={mode === 'default' ? 'default' : 'secondary'} size="sm-md" onClick={handleSetMarkdown('default')}>
+        <Button variant={mode === 'default' ? 'default' : 'secondary'} size="sm-md" onClick={handleSetMode('default')}>
           Text Editor
         </Button>
-        <Button variant={mode === 'markdown' ? 'default' : 'secondary'} size="sm-md" onClick={handleSetMarkdown('markdown')}>
+        <Button variant={mode === 'markdown' ? 'default' : 'secondary'} size="sm-md" onClick={handleSetMode('markdown')}>
           Markdown Editor
         </Button>
         {mode === 'default' && (

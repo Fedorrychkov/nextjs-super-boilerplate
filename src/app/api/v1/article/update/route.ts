@@ -27,6 +27,17 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
 
     await article.updateOne({ ...body, _id: id })
 
+    /**
+     * TODO: Логика публикации
+     * При публикации статьи и если она публичная и с noindex = false
+     * мы должны:
+     * 1. Отправить статью на индекс
+     * 2. При смене версии статьи возможно нужна переиндексация?
+     * 3. При смене состояния публикации статьи так же потребуется переиндексация
+     *
+     * Какие еще шаги? Сайтмапа, роботс и rss?
+     */
+
     const data = await Article.findById(id)
 
     if (!data) {
