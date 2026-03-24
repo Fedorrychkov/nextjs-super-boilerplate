@@ -1,4 +1,7 @@
+import { MarkdownToken } from '@tiptap/core'
 import Paragraph from '@tiptap/extension-paragraph'
+
+import { markedInlineTokensForTiptap } from '../markdownInlineRetokenize'
 
 const EMPTY_PARAGRAPH_MARKDOWN = '&nbsp;'
 const NBSP_CHAR = '\xA0'
@@ -19,6 +22,10 @@ export const ParagraphMarkdownBody = Paragraph.extend({
 
     let content = helpers.parseInline(tokens)
     const t = token as MarkedParagraphToken
+
+    if ((!Array.isArray(content) || content.length === 0) && typeof t.text === 'string' && t.text.trim().length > 0) {
+      content = helpers.parseInline(markedInlineTokensForTiptap(t.text) as MarkdownToken[])
+    }
 
     if ((!Array.isArray(content) || content.length === 0) && typeof t.text === 'string' && t.text.trim().length > 0) {
       content = [{ type: 'text', text: t.text.trim() }]
