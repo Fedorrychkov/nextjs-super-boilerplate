@@ -10,6 +10,7 @@ import { ArticleVisibility } from '~/api/article'
 import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
 import { defaultExtensions } from '~/components/Blocks/Editor/extensions'
+import { makeTaskCheckboxesReadonly } from '~/lib/editor/readonlyTaskCheckboxes'
 import { getArticleJsonLd, JsonLd } from '~/lib/seo/jsonld'
 import { jsonParseSafety } from '~/utils/jsonSafe'
 import { Logger } from '~/utils/logger'
@@ -104,7 +105,7 @@ const PrivateArticleRoot = async (props: PageProps<{ slug: string[] }>) => {
     return notFound()
   }
 
-  const generatedPageString = await renderToHTMLString({ content, extensions: defaultExtensions() })
+  const generatedPageString = makeTaskCheckboxesReadonly(await renderToHTMLString({ content, extensions: defaultExtensions() }))
   const articleJsonLd = getArticleJsonLd({
     slug: response.article.slug ?? params.slug?.[0] ?? '',
     title: response.revision.title ?? response.article.slug ?? 'Article',
@@ -117,7 +118,7 @@ const PrivateArticleRoot = async (props: PageProps<{ slug: string[] }>) => {
   return (
     <>
       <JsonLd data={articleJsonLd} />
-      <div className="max-w-full tiptap" dangerouslySetInnerHTML={{ __html: generatedPageString }} />
+      <div className="max-w-full tiptap readonly" dangerouslySetInnerHTML={{ __html: generatedPageString }} />
     </>
   )
 }

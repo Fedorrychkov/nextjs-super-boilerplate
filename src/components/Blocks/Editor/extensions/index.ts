@@ -6,6 +6,7 @@ import FileHandler from '@tiptap/extension-file-handler'
 import Highlight from '@tiptap/extension-highlight'
 import Italic from '@tiptap/extension-italic'
 import Link from '@tiptap/extension-link'
+import { TaskItem, TaskList } from '@tiptap/extension-list'
 import Paragraph from '@tiptap/extension-paragraph'
 import Strike from '@tiptap/extension-strike'
 import Subscript from '@tiptap/extension-subscript'
@@ -62,6 +63,10 @@ export const defaultExtensions = (limit?: number | null) => [
     blockquote: false,
     /** see OrderedListPlain — without custom markdownTokenizer */
     orderedList: false,
+  }),
+  TaskList,
+  TaskItem.configure({
+    nested: true,
   }),
   OrderedListPlain,
   ArticleImage.configure({ inline: false }),

@@ -10,6 +10,15 @@ This roadmap tracks the remaining work for the article platform and related qual
 - Sitemap and RSS now include published public articles from DB.
 - Publish flow already triggers search engine notifications for indexable public articles.
 
+## Immediate Execution (Can Start Now)
+
+- [ ] Add security test fixtures with common XSS payloads and run them in CI.
+- [ ] Document canonical policy (`default from article URL + optional manual override in SEO step`).
+- [ ] Add canonical URL normalization utility (protocol/host/trailing slash rules).
+- [ ] Define publishing state-transition matrix (draft/confirmed/published/unpublished/republished).
+- [ ] Add minimal publish pipeline logs (`publish_started`, `publish_succeeded`, `publish_failed`).
+- [ ] Define initial Web Vitals SLO targets (p75 by route/device) before alert tuning.
+
 ---
 
 ## Phase 1 — Security and Content Safety (Highest Priority)
@@ -21,12 +30,14 @@ This roadmap tracks the remaining work for the article platform and related qual
 - [ ] Enforce safe URL policy (`http/https`, block `javascript:` and inline event handlers).
 - [ ] Add defense-in-depth sanitization before any `dangerouslySetInnerHTML` rendering.
 - [ ] Add unit tests with XSS payload fixtures.
+- [ ] Add security regression suite for known payloads in CI.
 
 ### 2. Safe rendering policy
 
 - [ ] Document one canonical rendering path for article content (JSON -> static renderer -> sanitized HTML).
 - [ ] Ensure preview/public rendering behavior is consistent.
 - [ ] Add fallback behavior for malformed content payloads.
+- [ ] Introduce baseline Content Security Policy for public article pages.
 
 ---
 
@@ -38,6 +49,7 @@ This roadmap tracks the remaining work for the article platform and related qual
 - [ ] Make confirmed/published revisions read-only in UI.
 - [ ] Add “create draft from published revision” action.
 - [ ] Prevent editing of immutable revisions through backend validation.
+- [ ] Define and document allowed state transitions as a single source of truth (state machine table).
 
 ### 2. Publishing side-effects robustness
 
@@ -45,6 +57,7 @@ This roadmap tracks the remaining work for the article platform and related qual
 - [ ] Add retry-safe notification logic for search engines.
 - [ ] Add observability logs around publishing pipeline steps.
 - [ ] Add integration tests for publish/unpublish/indexable/non-indexable scenarios.
+- [ ] Add idempotency key handling for publish/unpublish operations to prevent duplicate side-effects.
 
 ### 3. Editor UX and media authoring
 
@@ -62,6 +75,8 @@ This roadmap tracks the remaining work for the article platform and related qual
 - [ ] Validate canonical URL format and domain policy.
 - [ ] Ensure private/link-only content cannot leak to indexable metadata.
 - [ ] Add article language support in metadata (e.g., `lang`, `inLanguage`, locale-aware alternates where applicable).
+- [ ] Keep canonical defaults derived from article URL while allowing explicit SEO-step override with validation.
+- [ ] Use one canonical generation/normalization utility for metadata, sitemap, and sharing tags to avoid URL drift.
 
 ### 2. Structured data improvements
 
@@ -90,6 +105,7 @@ This roadmap tracks the remaining work for the article platform and related qual
 - [ ] Implement `reportWebVitals` pipeline (App Router compatible).
 - [ ] Store RUM events (`LCP`, `INP`, `CLS`, `TTFB`, `FCP`) with route/device/build metadata.
 - [ ] Build p75 dashboards by route and device segment.
+- [ ] Define target SLO thresholds per metric and route group for consistent alerting.
 
 ### 2. Alerting
 
@@ -113,6 +129,7 @@ This roadmap tracks the remaining work for the article platform and related qual
 - [ ] Improve semantic structure and ARIA usage where needed.
 - [ ] Add automated a11y checks (axe + lint rules in CI).
 - [ ] Add manual accessibility QA checklist.
+- [ ] Assign owner and audit cadence for recurring accessibility validation.
 
 ### 2. Privacy and consent
 
@@ -153,6 +170,7 @@ For each roadmap item:
 - [ ] Docs updated (`README` or `docs/`).
 - [ ] Error handling and logs included.
 - [ ] Backward compatibility considered.
+- [ ] Owner and target review date assigned.
 
 ---
 

@@ -299,6 +299,8 @@ export const ArticleEditableEntry = (props: Props) => {
           return
         }
 
+        logger.info('Updating article revision content...', { content: editor.getJSON() })
+
         if (activeRevisionId) {
           notify('Updating article revision content...', 'info')
 

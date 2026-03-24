@@ -9,6 +9,7 @@ import { notFound } from 'next/navigation'
 import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
 import { defaultExtensions } from '~/components/Blocks/Editor/extensions'
+import { makeTaskCheckboxesReadonly } from '~/lib/editor/readonlyTaskCheckboxes'
 import { jsonParseSafety } from '~/utils/jsonSafe'
 import { Logger } from '~/utils/logger'
 
@@ -94,9 +95,9 @@ const PreviewRoot = async (props: PageProps<{ slug: string[] }>) => {
     return notFound()
   }
 
-  const generatedPageString = await renderToHTMLString({ content, extensions: defaultExtensions() })
+  const generatedPageString = makeTaskCheckboxesReadonly(await renderToHTMLString({ content, extensions: defaultExtensions() }))
 
-  return <div className="max-w-full tiptap" dangerouslySetInnerHTML={{ __html: generatedPageString }} />
+  return <div className="max-w-full tiptap readonly" dangerouslySetInnerHTML={{ __html: generatedPageString }} />
 }
 
 export default PreviewRoot

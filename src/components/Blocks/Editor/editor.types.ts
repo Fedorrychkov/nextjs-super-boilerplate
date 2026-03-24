@@ -1,4 +1,5 @@
 export const features = [
+  'taskList',
   'bold',
   'italic',
   'underline',
