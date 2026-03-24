@@ -34,6 +34,31 @@ import { OrderedListPlain } from './orderedListPlain'
 
 const allowedMimeTypes: string[] = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
 
+async function uploadImageFile(file: File): Promise<{ proxyUrl: string; assetId: string } | null> {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('resourceType', 'image')
+
+  const response = await fetch('/api/v1/media/upload', {
+    method: 'POST',
+    body: formData,
+  })
+
+  if (!response.ok) {
+    logger.error('Failed to upload image', { status: response.status })
+
+    return null
+  }
+
+  const data = (await response.json()) as { proxyUrl?: string; asset?: { id?: string } }
+
+  if (!data.proxyUrl || !data.asset?.id) {
+    return null
+  }
+
+  return { proxyUrl: data.proxyUrl, assetId: data.asset.id }
+}
+
 // create a lowlight instance with all languages loaded
 const lowlight = createLowlight(all)
 
@@ -121,21 +146,28 @@ export const defaultExtensions = (limit?: number | null) => [
     allowedMimeTypes,
     onDrop: (currentEditor, files, pos) => {
       files.forEach((file) => {
-        const fileReader = new FileReader()
+        uploadImageFile(file)
+          .then((uploaded) => {
+            if (!uploaded) {
+              return
+            }
 
-        fileReader.readAsDataURL(file)
-        fileReader.onload = () => {
-          currentEditor
-            .chain()
-            .insertContentAt(pos, {
-              type: 'image',
-              attrs: {
-                src: fileReader.result,
-              },
-            })
-            .focus()
-            .run()
-        }
+            currentEditor
+              .chain()
+              .insertContentAt(pos, {
+                type: 'image',
+                attrs: {
+                  src: `${uploaded.proxyUrl}/inline`,
+                  assetId: uploaded.assetId,
+                  resourceType: 'image',
+                },
+              })
+              .focus()
+              .run()
+          })
+          .catch((error) => {
+            logger.error(error)
+          })
       })
     },
     onPaste: (currentEditor, files, htmlContent) => {
@@ -148,21 +180,28 @@ export const defaultExtensions = (limit?: number | null) => [
           return false
         }
 
-        const fileReader = new FileReader()
+        uploadImageFile(file)
+          .then((uploaded) => {
+            if (!uploaded) {
+              return
+            }
 
-        fileReader.readAsDataURL(file)
-        fileReader.onload = () => {
-          currentEditor
-            .chain()
-            .insertContentAt(currentEditor.state.selection.anchor, {
-              type: 'image',
-              attrs: {
-                src: fileReader.result,
-              },
-            })
-            .focus()
-            .run()
-        }
+            currentEditor
+              .chain()
+              .insertContentAt(currentEditor.state.selection.anchor, {
+                type: 'image',
+                attrs: {
+                  src: `${uploaded.proxyUrl}/inline`,
+                  assetId: uploaded.assetId,
+                  resourceType: 'image',
+                },
+              })
+              .focus()
+              .run()
+          })
+          .catch((error) => {
+            logger.error(error)
+          })
       })
     },
   }),

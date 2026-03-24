@@ -9,6 +9,7 @@ This roadmap tracks the remaining work for the article platform and related qual
 - Preview page is `noindex/nofollow`.
 - Sitemap and RSS now include published public articles from DB.
 - Publish flow already triggers search engine notifications for indexable public articles.
+- Media pipeline: Uploadcare via own API (`/api/v1/media`), `MediaAsset` in DB, proxy delivery (`/cdn/...`), editor paste/drop + Preview/SEO image fields, responsive `<picture>` / `srcset` on public article HTML.
 
 ## Immediate Execution (Can Start Now)
 
@@ -46,8 +47,8 @@ This roadmap tracks the remaining work for the article platform and related qual
 ### 1. Revision lifecycle and publishing states
 
 - [ ] Finalize “publish specific revision” contract (`article.revisionId`, `version`, statuses, timestamps).
-- [ ] Make confirmed/published revisions read-only in UI.
-- [ ] Add “create draft from published revision” action.
+- [x] Make confirmed/published revisions read-only in UI.
+- [x] Add “create draft from published revision” action.
 - [ ] Prevent editing of immutable revisions through backend validation.
 - [ ] Define and document allowed state transitions as a single source of truth (state machine table).
 
@@ -61,8 +62,8 @@ This roadmap tracks the remaining work for the article platform and related qual
 
 ### 3. Editor UX and media authoring
 
-- [ ] Add image paste/drop upload flow in editor (auto-upload and replace local blobs with CDN links).
-- [ ] Add thumbnail upload action in step 1 (Preview) and/or SEO step (alongside URL input).
+- [x] Add image paste/drop upload flow in editor (auto-upload and replace local blobs with CDN links).
+- [x] Add thumbnail upload action in step 1 (Preview) and/or SEO step (alongside URL input).
 - [ ] Define upload error/retry UX and validation (size/type) for author-facing media actions.
 
 ---
@@ -117,7 +118,7 @@ This roadmap tracks the remaining work for the article platform and related qual
 
 - [ ] Track critical JS budget and keep under target.
 - [ ] Reduce editor/admin payload impact on public pages.
-- [ ] Review image loading strategy (`sizes`, `srcset`, lazy boundaries).
+- [x] Review image loading strategy (`sizes`, `srcset`, lazy boundaries).
 
 ---
 

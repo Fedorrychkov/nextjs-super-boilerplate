@@ -109,6 +109,9 @@ export const useDefaultEditor = (props: Props) => {
     }
   }, [editor, logger])
 
+  /**
+   * Method for set value and mode
+   */
   const handleSetMode = useCallback(
     (mode: 'default' | 'markdown') => () => {
       setMode(mode)
@@ -128,6 +131,7 @@ export const useDefaultEditor = (props: Props) => {
     limit,
     mode,
     handleSetMode,
+    setMode,
     markdownInput,
     setMarkdownInput,
   }

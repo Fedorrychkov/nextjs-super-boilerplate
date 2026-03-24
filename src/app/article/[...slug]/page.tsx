@@ -10,6 +10,7 @@ import { ArticleVisibility } from '~/api/article'
 import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { defaultExtensions } from '~/components/Blocks/Editor/extensions'
 import { makeTaskCheckboxesReadonly } from '~/lib/editor/readonlyTaskCheckboxes'
+import { makeArticleImagesResponsive } from '~/lib/editor/responsiveArticleImages'
 import { getArticleJsonLd, JsonLd } from '~/lib/seo/jsonld'
 import { jsonParseSafety } from '~/utils/jsonSafe'
 import { Logger } from '~/utils/logger'
@@ -89,7 +90,7 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
     return notFound()
   }
 
-  const generatedPageString = makeTaskCheckboxesReadonly(await renderToHTMLString({ content, extensions: defaultExtensions() }))
+  const generatedPageString = makeArticleImagesResponsive(makeTaskCheckboxesReadonly(await renderToHTMLString({ content, extensions: defaultExtensions() })))
   const articleJsonLd = getArticleJsonLd({
     slug: response.article.slug ?? params.slug?.[0] ?? '',
     title: response.revision.title ?? response.article.slug ?? 'Article',

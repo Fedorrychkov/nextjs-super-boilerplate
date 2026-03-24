@@ -4,8 +4,9 @@ import { useCallback, useMemo } from 'react'
 import { FormProvider, useForm } from 'react-hook-form'
 
 import { ArticleModel, ArticleVisibility } from '~/api/article'
-import { ArticleRevisionModel, ArticleRevisionSeoMetadata } from '~/api/article-revision'
-import { DefaultCheckbox, DefaultFieldContainer, DefaultMultiselectField, DefaultTextAreaContainer } from '~/components/Fields'
+import { ArticleRevisionMediaMetadata, ArticleRevisionModel, ArticleRevisionSeoMetadata } from '~/api/article-revision'
+import { MediaProvider, MediaResourceType } from '~/api/media'
+import { DefaultCheckbox, DefaultFieldContainer, DefaultMultiselectField, DefaultTextAreaContainer, MediaUrlUploadField } from '~/components/Fields'
 import { Button, Option, Typography } from '~/components/ui'
 import { handleRegister } from '~/hooks/useRegister'
 
@@ -16,6 +17,7 @@ type SeoForm = {
   ogTitle: string
   ogDescription: string
   ogImageUrl: string
+  ogImageAssetId: string
   twitterCard: Option[] | null
   noindex: boolean
   nofollow: boolean
@@ -53,6 +55,7 @@ const toFormValues = (seo: ArticleRevisionSeoMetadata, article?: ArticleModel | 
   ogTitle: seo.ogTitle ?? '',
   ogDescription: seo.ogDescription ?? '',
   ogImageUrl: seo.ogImageUrl ?? '',
+  ogImageAssetId: seo.ogImageAssetId ?? '',
   twitterCard: seo.twitterCard
     ? [{ value: seo.twitterCard, label: twitterCardOptions.find((o) => o.value === seo.twitterCard)?.label ?? String(seo.twitterCard) }]
     : [{ value: 'summary_large_image', label: twitterCardOptions[0].label }],
@@ -68,6 +71,7 @@ const formToSeoPayload = (data: SeoForm): ArticleRevisionSeoMetadata => ({
   ogTitle: data.ogTitle.trim() || null,
   ogDescription: data.ogDescription.trim() || null,
   ogImageUrl: data.ogImageUrl.trim() || null,
+  ogImageAssetId: data.ogImageAssetId.trim() || null,
   twitterCard: (data.twitterCard?.[0]?.value as ArticleRevisionSeoMetadata['twitterCard']) ?? 'summary_large_image',
   noindex: data.noindex,
   nofollow: data.nofollow,
@@ -81,6 +85,7 @@ export type ArticleEditableSeoSavePayload = {
 /** Патч для merge с существующим `revision.metadata` на бэке */
 export type ArticleRevisionMetadataPatch = {
   seo: ArticleRevisionSeoMetadata
+  media?: ArticleRevisionMediaMetadata
 }
 
 type Props = {
@@ -104,6 +109,7 @@ export const ArticleEditableSeo = (props: Props) => {
   })
 
   const { register, formState, handleSubmit: onSubmit } = form
+  const { setValue, watch } = form
   const { errors } = formState
 
   const canonicalUrl = useMemo(() => {
@@ -117,6 +123,16 @@ export const ArticleEditableSeo = (props: Props) => {
           seo: {
             ...formToSeoPayload(data),
             canonicalUrl: data.canonicalUrl.trim() || canonicalUrl || null,
+          },
+          media: {
+            seoOgImage: data.ogImageAssetId
+              ? {
+                  assetId: data.ogImageAssetId,
+                  provider: MediaProvider.UPLOADCARE,
+                  resourceType: MediaResourceType.IMAGE,
+                  url: data.ogImageUrl.trim() || null,
+                }
+              : null,
           },
         },
       })
@@ -214,15 +230,27 @@ export const ArticleEditableSeo = (props: Props) => {
 
             <DefaultFieldContainer
               {...handleRegister({
-                ...register('ogImageUrl', {
-                  validate: (v) => !v?.trim() || httpsUrlPattern.test(v.trim()) || 'Specify the https:// URL of the image',
-                }),
+                ...register('ogImageAssetId'),
                 errors,
               })}
-              disabled={isLoading || isDisabled}
+              classNames={{ root: 'hidden' }}
+              disabled
+              label=""
+              name="ogImageAssetId"
+            />
+            <MediaUrlUploadField
               label="OG image URL"
-              name="ogImageUrl"
-              hintText="Recommended ~1200×630 px. If empty, the thumbnail of the article is used."
+              value={(watch('ogImageUrl') as string) ?? ''}
+              assetId={(watch('ogImageAssetId') as string) ?? null}
+              articleRevisionId={articleRevision?.id ?? null}
+              disabled={isLoading || isDisabled}
+              resourceType={MediaResourceType.IMAGE}
+              variant="seo"
+              onChange={(next) => {
+                setValue('ogImageUrl', next.value ?? '', { shouldDirty: true })
+                setValue('ogImageAssetId', next.assetId ?? '', { shouldDirty: true })
+              }}
+              hintText="Recommended ~1200x630. Upload/paste/drop image and keep proxy URL."
             />
           </section>
 

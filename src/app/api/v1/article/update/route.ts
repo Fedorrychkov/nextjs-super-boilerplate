@@ -11,6 +11,7 @@ import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
 import { seoConfig } from '~/lib/seo/config'
 import { notifySearchEngines } from '~/lib/seo/indexing'
+import { time } from '~/utils/time'
 
 const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
   apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
@@ -30,7 +31,10 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
 
     const id = body.id
 
-    await article.updateOne({ ...body, _id: id })
+    const updatedAt = time().toISOString()
+    const isPublishing = body.status === ArticleStatus.PUBLISHED && !article.publishedAt
+
+    await article.updateOne({ ...body, _id: id, updatedAt, publishedAt: isPublishing ? updatedAt : article.publishedAt })
 
     const data = await Article.findById(id)
 
@@ -60,6 +64,9 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
       ...data.toObject(),
       revisionId: data.revisionId?.toString() ?? null,
       id: data._id.toString(),
+      publishedAt: data?.publishedAt ? time(data.publishedAt).toISOString() : null,
+      updatedAt: data?.updatedAt ? time(data.updatedAt).toISOString() : null,
+      createdAt: data?.createdAt ? time(data.createdAt).toISOString() : null,
     })
   })
 

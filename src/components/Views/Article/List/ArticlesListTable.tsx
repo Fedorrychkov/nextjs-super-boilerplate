@@ -11,6 +11,7 @@ import { Badge, TableCell, TableRow, Typography } from '~/components/ui'
 import { cn } from '~/utils/cn'
 import { time } from '~/utils/time'
 
+import { ArticleRevisions } from '../Block/ArticleRevisions'
 import { ARTICLES_PARAM_NAMES, ARTICLES_STATUS_NAMES, ARTICLES_VISIBILITY_NAMES } from '../paramNames'
 import { columns } from './constants'
 
@@ -65,6 +66,7 @@ export const ArticleListTable = ({ isLoading, data }: Props) => {
                   </Typography>
                 </CustomTooltip>
               </CopyContainer>
+              <ArticleRevisions article={item} />
             </TableCell>
           )}
           {columnKeys?.includes('status') && (
