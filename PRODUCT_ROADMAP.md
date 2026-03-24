@@ -10,6 +10,7 @@ This roadmap tracks the remaining work for the article platform and related qual
 - Sitemap and RSS now include published public articles from DB.
 - Publish flow already triggers search engine notifications for indexable public articles.
 - Media pipeline: Uploadcare via own API (`/api/v1/media`), `MediaAsset` in DB, proxy delivery (`/cdn/...`), editor paste/drop + Preview/SEO image fields, responsive `<picture>` / `srcset` on public article HTML.
+- Public article HTML path: **`unstable_cache`** + **`revalidateTag`** on publish/revision update (`src/lib/cache/publicArticlePageCache.ts`). RUM (Phase 4) + optional analytics cookie consent.
 
 ## Immediate Execution (Can Start Now)
 
@@ -74,17 +75,17 @@ This roadmap tracks the remaining work for the article platform and related qual
 
 ### 1. Metadata consistency
 
-- [ ] Enforce consistent fallback strategy for title/description/OG/Twitter/canonical.
-- [ ] Validate canonical URL format and domain policy.
-- [ ] Ensure private/link-only content cannot leak to indexable metadata.
-- [ ] Add article language support in metadata (e.g., `lang`, `inLanguage`, locale-aware alternates where applicable).
-- [ ] Keep canonical defaults derived from article URL while allowing explicit SEO-step override with validation.
-- [ ] Use one canonical generation/normalization utility for metadata, sitemap, and sharing tags to avoid URL drift.
+- [x] Enforce consistent fallback strategy for title/description/OG/Twitter/canonical (`resolvePublicArticlePageMeta` for `/article/[slug]`).
+- [x] Validate canonical URL format and domain policy (same origin as `NEXT_PUBLIC_SITE_URL` / `seoConfig.siteUrl`; API + SEO form).
+- [x] Ensure private/link-only content cannot leak to indexable metadata (sitemap/RSS unchanged — public + `noindex` filter; private/preview `robots` unchanged).
+- [ ] Article / site locale in metadata and markup (see **Phase 7**).
+- [x] Keep canonical defaults derived from article URL while allowing explicit SEO-step override with validation (`articleCanonical.ts`).
+- [x] Use one canonical generation/normalization utility for metadata, sitemap, RSS, IndexNow URL, and JSON-LD (`buildDefaultArticleUrl` / `resolveArticleCanonicalUrl`).
 
 ### 2. Structured data improvements
 
-- [ ] Expand article JSON-LD with optional fields (`keywords`, `articleSection`, `isAccessibleForFree`).
-- [ ] Add schema validation checks in CI (JSON-LD shape sanity checks).
+- [x] Expand article JSON-LD with optional fields (`keywords`, `isAccessibleForFree`; `articleSection` not yet in revision metadata).
+- [x] Add schema validation checks in CI (JSON-LD shape sanity checks — `src/lib/seo/jsonld.test.ts`, run via `npm run test` / pre-push).
 
 ### 3. Search platform setup
 
@@ -105,9 +106,10 @@ This roadmap tracks the remaining work for the article platform and related qual
 
 ### 1. Core Web Vitals instrumentation
 
-- [ ] Implement `reportWebVitals` pipeline (App Router compatible).
-- [ ] Store RUM events (`LCP`, `INP`, `CLS`, `TTFB`, `FCP`) with route/device/build metadata.
-- [ ] Build p75 dashboards by route and device segment.
+- [x] Implement `reportWebVitals` pipeline (App Router compatible — `web-vitals` + `WebVitalsReporter` in root layout).
+- [x] Store RUM events (`LCP`, `INP`, `CLS`, `TTFB`, `FCP`) in Mongo (`RumWebVital`, TTL 14d, **client session sample** `NEXT_PUBLIC_RUM_SAMPLE_RATE` default 20%, server persists all received beacons, `COMMIT_HASH` on ingest only).
+- [x] Admin RUM dashboard: `GET /api/v1/rum/dashboard` + `/admin/rum` — aggregate **p75**/avg/min/max per metric, total samples, top pathnames by volume (window 1–14d).
+- [ ] Extend dashboards: **p75 by route** (per pathname or route group) and **by device / connection** segment (needs stable client fields + aggregation).
 - [ ] Define target SLO thresholds per metric and route group for consistent alerting.
 
 ### 2. Alerting
@@ -121,6 +123,14 @@ This roadmap tracks the remaining work for the article platform and related qual
 - [ ] Track critical JS budget and keep under target.
 - [ ] Reduce editor/admin payload impact on public pages.
 - [x] Review image loading strategy (`sizes`, `srcset`, lazy boundaries).
+
+### 4. Caching, CDN, and origin load
+
+- [x] **Data cache (Next):** `unstable_cache` for public `/article/[slug]` payload (HTML body + revision metadata path); tag `public-article:{slug}`; `revalidateTag` from article and revision update routes.
+- [ ] **Invalidation coverage:** any future mutation of published content (slug swap, revision switch, bulk jobs) must call the same tag/path revalidation — document or centralize in one service.
+- [ ] **Multi-instance:** if self-hosted replicas do not share Next Data Cache, validate `revalidateTag` behavior or add external cache (Redis) for hot HTML.
+- [ ] **Images / Uploadcare:** `/cdn/...` redirect to CDN — traffic still billed upstream; optional: stricter presets, `next/image`, or self-proxy only if egress economics justify it.
+- [ ] **Optional Redis** for article JSON/HTML beyond Next cache if profiling shows DB+render still hot at scale.
 
 ---
 
@@ -137,7 +147,7 @@ This roadmap tracks the remaining work for the article platform and related qual
 ### 2. Privacy and consent
 
 - [ ] Define GDPR/CCPA data collection policy for analytics and telemetry.
-- [ ] Implement cookie consent flow if non-essential tracking is enabled.
+- [x] Implement cookie consent flow if non-essential tracking is enabled.
 - [ ] Document data retention and user opt-out behavior.
 
 ---
@@ -152,15 +162,38 @@ This roadmap tracks the remaining work for the article platform and related qual
 
 ### 2. Public article listing UX
 
-- [ ] Keep SSR first page for SEO.
-- [ ] Add client continuation pagination (“Load more” or infinite scroll) from SSR cursor.
-- [ ] Add filter/sort state persistence in URL.
+- [x] Keep SSR first page for SEO.
+- [x] Add client continuation pagination (“Load more” or infinite scroll) from SSR cursor.
+- [x] Add filter/sort state persistence in URL.
 
 ### 3. Internationalization readiness
 
 - [ ] Introduce key-based UI translations and local locale files for author/public pages.
 - [ ] Add i18n conventions for content-related labels, validation messages, and notifications.
 - [ ] Define migration plan for replacing hardcoded UI strings with translation keys.
+
+---
+
+## Phase 7 — Locale, content language, and user-facing language
+
+**Goal:** one coherent story for **document `lang`**, **user/session locale**, **formatting (`Intl`)**, and **article content language** (SEO/a11y). Multilingual UI string catalogs stay aligned with **Phase 6 §3**; this phase focuses on locale negotiation and content-level language.
+
+### 1. Site default and user locale
+
+- [ ] Single source of truth for default locale (e.g. `NEXT_PUBLIC_DEFAULT_LOCALE` / `seoConfig`) driving root `<html lang>` and server-side `Intl` defaults.
+- [ ] Optional: read `Accept-Language` in middleware + persist choice (cookie or user profile) for first-time visitors.
+- [ ] Optional later: `app/[locale]` URL segment and redirects; document trade-offs (SEO, caching) before implementation.
+
+### 2. Article content language (optional field; powers metadata + rendering)
+
+- [ ] Optional field on revision or SEO step: **primary language of the article** (BCP 47, e.g. `ru`, `en-US`).
+- [ ] Public (and preview/private) article markup: set `lang` on article wrapper when known; fallback to site default.
+- [ ] Metadata + JSON-LD: `inLanguage`; dates/numbers use article locale when set, else site default.
+- [ ] When/if translations exist: `hreflang` and locale-aware alternates (sitemap + `<head>`); until then, single-language sites can ship without alternates.
+
+### 3. Consistency and docs
+
+- [ ] Short doc: relationship between site locale, user preference, article language, and UI translations (Phase 6).
 
 ---
 
@@ -181,4 +214,5 @@ For each roadmap item:
 
 - [ ] Lighthouse CI quality gate (warn mode first, then fail mode).
 - [ ] Advanced media management abstraction (Uploadcare adapter + provider interface).
+- [x] Web Push + basic offline/cache support via service worker (`public/sw.js`).
 - [ ] Offline-first strategy beyond push service worker.

@@ -25,15 +25,24 @@ export const getArticleJsonLd = (props: {
   image?: string | null
   datePublished?: string | null
   dateModified?: string | null
+  /** Absolute canonical URL — must match `alternates.canonical` / metadata. */
+  canonicalUrl: string
+  keywords?: string | null
+  /** Public articles: true; private / restricted: false. */
+  isAccessibleForFree?: boolean
 }): WithContext<Article> => ({
   '@context': 'https://schema.org',
   '@type': 'Article',
-  mainEntityOfPage: `${seoConfig.siteUrl}/article/${props.slug}`,
+  '@id': `${props.canonicalUrl}#article`,
+  url: props.canonicalUrl,
+  mainEntityOfPage: props.canonicalUrl,
   headline: props.title,
   description: props.description ?? undefined,
   image: props.image ?? undefined,
   datePublished: props.datePublished ?? undefined,
   dateModified: props.dateModified ?? undefined,
+  ...(props.keywords?.trim() ? { keywords: props.keywords.trim() } : {}),
+  ...(props.isAccessibleForFree !== undefined ? { isAccessibleForFree: props.isAccessibleForFree } : {}),
   author: {
     '@type': 'Organization',
     name: seoConfig.siteName,

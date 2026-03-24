@@ -9,6 +9,7 @@ import { MediaProvider, MediaResourceType } from '~/api/media'
 import { DefaultCheckbox, DefaultFieldContainer, DefaultMultiselectField, DefaultTextAreaContainer, MediaUrlUploadField } from '~/components/Fields'
 import { Button, Option, Typography } from '~/components/ui'
 import { handleRegister } from '~/hooks/useRegister'
+import { validateCanonicalUrlForStorage } from '~/lib/seo/articleCanonical'
 
 type SeoForm = {
   metaTitle: string
@@ -96,8 +97,6 @@ type Props = {
   onSave?: (payload: ArticleEditableSeoSavePayload) => void
 }
 
-const httpsUrlPattern = /^https:\/\/.+$/i
-
 export const ArticleEditableSeo = (props: Props) => {
   const { articleRevision, isLoading, onSave, article, isDisabled } = props
 
@@ -113,7 +112,14 @@ export const ArticleEditableSeo = (props: Props) => {
   const { errors } = formState
 
   const canonicalUrl = useMemo(() => {
-    return `${process.env.NEXT_PUBLIC_SITE_URL}/${article?.visibility === ArticleVisibility.PUBLIC ? 'article' : 'private-article'}/${article?.slug}`
+    const site = process.env.NEXT_PUBLIC_SITE_URL ?? ''
+    const slug = article?.slug
+
+    if (!site || !slug) {
+      return ''
+    }
+
+    return `${site.replace(/\/+$/, '')}/${article?.visibility === ArticleVisibility.PUBLIC ? 'article' : 'private-article'}/${encodeURIComponent(slug)}`
   }, [article])
 
   const handleSubmit = useCallback(
@@ -180,7 +186,17 @@ export const ArticleEditableSeo = (props: Props) => {
             <DefaultFieldContainer
               {...handleRegister({
                 ...register('canonicalUrl', {
-                  validate: (v) => !v?.trim() || httpsUrlPattern.test(v.trim()) || 'Specify the full URL with https://',
+                  validate: (v) => {
+                    const site = process.env.NEXT_PUBLIC_SITE_URL ?? ''
+
+                    if (!v?.trim()) {
+                      return true
+                    }
+
+                    const result = validateCanonicalUrlForStorage(v.trim(), site)
+
+                    return result.ok ? true : result.message
+                  },
                 }),
                 errors,
               })}

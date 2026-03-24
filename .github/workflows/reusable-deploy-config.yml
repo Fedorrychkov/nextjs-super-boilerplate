@@ -216,6 +216,9 @@ jobs:
             echo "NODE_ENV=${{ inputs.api_env }}" >> "${{ inputs.env_file }}"
           fi
 
+          # Server-only: correlate RUM / deploys (not NEXT_PUBLIC_* — never sent to the client bundle)
+          echo "COMMIT_HASH=${{ github.sha }}" >> "${{ inputs.env_file }}"
+
           # Optional DB certificate
           if [ -n "${{ secrets.database_certificate }}" ]; then echo '${{ secrets.database_certificate }}' >> "db-certificate.${{ inputs.api_env }}.crt"; fi
 

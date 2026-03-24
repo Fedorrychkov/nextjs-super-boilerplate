@@ -26,6 +26,10 @@ const {
   FIRST_ADMIN_PASSWORD = process.env.FIRST_ADMIN_PASSWORD || '',
   UPLOADCARE_PUBLIC_KEY = process.env.UPLOADCARE_PUBLIC_KEY || '',
   UPLOADCARE_SECRET_KEY = process.env.UPLOADCARE_SECRET_KEY || '',
+  /** Server-only deploy revision (CI injects `COMMIT_HASH` into env; not exposed to the client). */
+  COMMIT_HASH = process.env.COMMIT_HASH || process.env.VERCEL_GIT_COMMIT_SHA || '',
+  RUM_ENABLED = process.env.RUM_ENABLED !== 'false',
+  NEXT_PUBLIC_RUM_ENABLED = process.env.NEXT_PUBLIC_RUM_ENABLED !== 'false',
 } = process.env
 
 const isDevelop = [APP_ENV, NEXT_PUBLIC_APP_ENV].includes('development')
@@ -74,10 +78,17 @@ const CDN_CONFIG = {
   secretKey: UPLOADCARE_SECRET_KEY,
 }
 
+/** RUM ingest: sampling is client-side (`NEXT_PUBLIC_RUM_SAMPLE_RATE`) so all vitals from a sampled session are stored. */
+const RUM_CONFIG = {
+  enabled: RUM_ENABLED,
+  publicEnabled: NEXT_PUBLIC_RUM_ENABLED,
+}
+
 export {
   APP_ENV,
   APP_INTERNAL_ORIGIN,
   CDN_CONFIG,
+  COMMIT_HASH,
   FIRST_ADMIN_CONFIG,
   GOOGLE_INDEXING_CLIENT_EMAIL,
   GOOGLE_INDEXING_PRIVATE_KEY,
@@ -93,4 +104,5 @@ export {
   PUSH_CONFIG,
   RATE_LIMIT_CONFIG,
   REDIS_URL,
+  RUM_CONFIG,
 }

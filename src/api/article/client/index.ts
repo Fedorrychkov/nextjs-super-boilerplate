@@ -6,6 +6,8 @@ import { PaginationMeta } from '~/types'
 import { ArticleModel } from '../model'
 import { ArticleFilter } from '../types'
 
+export * from './publicArticleList'
+
 export class ClientArticleApi {
   private readonly client: AxiosInstance
 
