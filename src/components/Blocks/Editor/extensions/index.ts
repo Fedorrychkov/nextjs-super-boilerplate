@@ -1,5 +1,6 @@
 import Blockquote from '@tiptap/extension-blockquote'
 import Bold from '@tiptap/extension-bold'
+import Code from '@tiptap/extension-code'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import Document from '@tiptap/extension-document'
 import FileHandler from '@tiptap/extension-file-handler'
@@ -7,7 +8,6 @@ import Highlight from '@tiptap/extension-highlight'
 import Italic from '@tiptap/extension-italic'
 import Link from '@tiptap/extension-link'
 import { TaskItem, TaskList } from '@tiptap/extension-list'
-import Paragraph from '@tiptap/extension-paragraph'
 import Strike from '@tiptap/extension-strike'
 import Subscript from '@tiptap/extension-subscript'
 import Superscript from '@tiptap/extension-superscript'
@@ -30,7 +30,9 @@ import { logger } from '~/utils/logger'
 import { isAllowedHref } from '../link/linkPolicy'
 import { ArticleImage } from './articleImage'
 import { EditorTextAlign } from './editorTextAlign'
+import { HeadingMarkdownBody } from './headingMarkdownBody'
 import { OrderedListPlain } from './orderedListPlain'
+import { ParagraphMarkdownBody } from './paragraphMarkdownBody'
 
 const allowedMimeTypes: string[] = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
 
@@ -72,9 +74,7 @@ lowlight.register('ts', ts)
 
 export const defaultExtensions = (limit?: number | null) => [
   StarterKit.configure({
-    heading: {
-      levels: [1, 2, 3],
-    },
+    heading: false,
     link: false,
     paragraph: false,
     italic: false,
@@ -89,6 +89,9 @@ export const defaultExtensions = (limit?: number | null) => [
     /** see OrderedListPlain — without custom markdownTokenizer */
     orderedList: false,
   }),
+  HeadingMarkdownBody.configure({
+    levels: [1, 2, 3, 4, 5, 6],
+  }),
   TaskList,
   TaskItem.configure({
     nested: true,
@@ -99,7 +102,7 @@ export const defaultExtensions = (limit?: number | null) => [
   TableKit,
   Text,
   Document,
-  Paragraph,
+  ParagraphMarkdownBody,
   Strike,
   Blockquote,
   Highlight.configure({ multicolor: true }),
@@ -109,6 +112,7 @@ export const defaultExtensions = (limit?: number | null) => [
   Superscript,
   TextStyle,
   Underline,
+  Code,
   CharacterCount.configure({ limit }),
   CodeBlockLowlight.configure({
     lowlight,
