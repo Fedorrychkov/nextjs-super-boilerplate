@@ -188,6 +188,9 @@ importers:
       lucide-react:
         specifier: ^0.544.0
         version: 0.544.0(react@19.2.3)
+      marked:
+        specifier: ^17.0.5
+        version: 17.0.5
       mongoose:
         specifier: ^9.2.3
         version: 9.2.3
