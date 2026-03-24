@@ -74,17 +74,17 @@ This roadmap tracks the remaining work for the article platform and related qual
 
 ### 1. Metadata consistency
 
-- [ ] Enforce consistent fallback strategy for title/description/OG/Twitter/canonical.
-- [ ] Validate canonical URL format and domain policy.
-- [ ] Ensure private/link-only content cannot leak to indexable metadata.
+- [x] Enforce consistent fallback strategy for title/description/OG/Twitter/canonical (`resolvePublicArticlePageMeta` for `/article/[slug]`).
+- [x] Validate canonical URL format and domain policy (same origin as `NEXT_PUBLIC_SITE_URL` / `seoConfig.siteUrl`; API + SEO form).
+- [x] Ensure private/link-only content cannot leak to indexable metadata (sitemap/RSS unchanged — public + `noindex` filter; private/preview `robots` unchanged).
 - [ ] Add article language support in metadata (e.g., `lang`, `inLanguage`, locale-aware alternates where applicable).
-- [ ] Keep canonical defaults derived from article URL while allowing explicit SEO-step override with validation.
-- [ ] Use one canonical generation/normalization utility for metadata, sitemap, and sharing tags to avoid URL drift.
+- [x] Keep canonical defaults derived from article URL while allowing explicit SEO-step override with validation (`articleCanonical.ts`).
+- [x] Use one canonical generation/normalization utility for metadata, sitemap, RSS, IndexNow URL, and JSON-LD (`buildDefaultArticleUrl` / `resolveArticleCanonicalUrl`).
 
 ### 2. Structured data improvements
 
-- [ ] Expand article JSON-LD with optional fields (`keywords`, `articleSection`, `isAccessibleForFree`).
-- [ ] Add schema validation checks in CI (JSON-LD shape sanity checks).
+- [x] Expand article JSON-LD with optional fields (`keywords`, `isAccessibleForFree`; `articleSection` not yet in revision metadata).
+- [x] Add schema validation checks in CI (JSON-LD shape sanity checks — `src/lib/seo/jsonld.test.ts`, run via `npm run test` / pre-push).
 
 ### 3. Search platform setup
 

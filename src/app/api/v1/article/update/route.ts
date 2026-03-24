@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ArticleModel, ArticleStatus, ArticleVisibility } from '~/api/article'
 import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
+import { resolveArticleCanonicalUrl } from '~/lib/seo/articleCanonical'
 import { seoConfig } from '~/lib/seo/config'
 import { notifySearchEngines } from '~/lib/seo/indexing'
 import { time } from '~/utils/time'
@@ -47,7 +48,9 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     const revisionMetadata = currentRevision?.metadata as { seo?: ArticleRevisionSeoMetadata | null } | undefined
     const seo = revisionMetadata?.seo
     const shouldIndex = isPublishedPublic && seo?.noindex !== true
-    const articleUrl = data.slug ? `${seoConfig.siteUrl}/article/${data.slug}` : null
+    const articleUrl = data.slug
+      ? resolveArticleCanonicalUrl(seoConfig.siteUrl, data.slug, data.visibility ?? ArticleVisibility.PUBLIC, seo?.canonicalUrl)
+      : null
 
     if (shouldIndex && articleUrl) {
       await notifySearchEngines([articleUrl])

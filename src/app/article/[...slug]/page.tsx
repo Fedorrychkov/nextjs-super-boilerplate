@@ -10,6 +10,7 @@ import { ArticleVisibility } from '~/api/article'
 import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { defaultExtensions } from '~/components/Blocks/Editor/extensions'
 import { finalizeArticleBodyHtml } from '~/lib/editor/finalizeArticleBodyHtml'
+import { resolvePublicArticlePageMeta } from '~/lib/seo/articleMeta'
 import { getArticleJsonLd, JsonLd } from '~/lib/seo/jsonld'
 import { jsonParseSafety } from '~/utils/jsonSafe'
 import { Logger } from '~/utils/logger'
@@ -30,21 +31,23 @@ export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Pr
   }
 
   const response = await getServerForPublicArticle(slug ?? '', { visibility: ArticleVisibility.PUBLIC })
-  const title = response?.revision?.title?.trim() || response?.article?.slug || slug
 
   const metadata = response?.revision?.metadata
 
   const seoData = metadata && 'seo' in metadata ? (metadata.seo as ArticleRevisionSeoMetadata) : {}
-  const description = seoData?.metaDescription || response?.revision?.description?.trim() || 'Article page'
-  const ogTitle = seoData?.ogTitle || seoData?.metaTitle || title
-  const ogDescription = seoData?.ogDescription || description
-  const image = seoData?.ogImageUrl || response?.revision?.thumbnailUrl || undefined
+
+  const meta = resolvePublicArticlePageMeta({
+    slug,
+    revision: response?.revision ?? {},
+    article: response?.article ?? { slug, visibility: ArticleVisibility.PUBLIC },
+    seo: seoData,
+  })
 
   return {
-    title: seoData?.metaTitle || title,
-    description,
+    title: meta.title,
+    description: meta.description,
     alternates: {
-      canonical: seoData?.canonicalUrl || undefined,
+      canonical: meta.canonical,
     },
     robots: {
       index: seoData?.noindex !== true,
@@ -55,15 +58,15 @@ export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Pr
     },
     openGraph: {
       type: 'article',
-      title: ogTitle,
-      description: ogDescription,
-      images: image ? [image] : undefined,
+      title: meta.ogTitle,
+      description: meta.ogDescription,
+      images: meta.image ? [meta.image] : undefined,
     },
     twitter: {
       card: seoData?.twitterCard || 'summary_large_image',
-      title: ogTitle,
-      description: ogDescription,
-      images: image ? [image] : undefined,
+      title: meta.ogTitle,
+      description: meta.ogDescription,
+      images: meta.image ? [meta.image] : undefined,
     },
   }
 }
@@ -90,13 +93,26 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
   }
 
   const generatedPageString = finalizeArticleBodyHtml(await renderToHTMLString({ content, extensions: defaultExtensions() }))
+  const articleMetadata = response.revision.metadata as { seo?: ArticleRevisionSeoMetadata } | undefined
+  const seoJson = articleMetadata?.seo ?? {}
+  const slugResolved = response.article.slug ?? params.slug?.[0] ?? ''
+  const pageMeta = resolvePublicArticlePageMeta({
+    slug: slugResolved,
+    revision: response.revision,
+    article: response.article,
+    seo: seoJson,
+  })
+
   const articleJsonLd = getArticleJsonLd({
-    slug: response.article.slug ?? params.slug?.[0] ?? '',
+    slug: slugResolved,
     title: response.revision.title ?? response.article.slug ?? 'Article',
     description: response.revision.description,
     image: response.revision.thumbnailUrl,
     datePublished: response.revision.publishedAt ?? response.article.publishedAt,
     dateModified: response.revision.updatedAt ?? response.article.updatedAt,
+    canonicalUrl: pageMeta.canonical,
+    keywords: seoJson.keywords,
+    isAccessibleForFree: true,
   })
 
   return (

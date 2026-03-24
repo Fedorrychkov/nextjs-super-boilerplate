@@ -11,6 +11,8 @@ import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
 import { defaultExtensions } from '~/components/Blocks/Editor/extensions'
 import { finalizeArticleBodyHtml } from '~/lib/editor/finalizeArticleBodyHtml'
+import { resolveArticleCanonicalUrl } from '~/lib/seo/articleCanonical'
+import { seoConfig } from '~/lib/seo/config'
 import { getArticleJsonLd, JsonLd } from '~/lib/seo/jsonld'
 import { jsonParseSafety } from '~/utils/jsonSafe'
 import { Logger } from '~/utils/logger'
@@ -43,10 +45,16 @@ export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Pr
   const metadata = response?.revision?.metadata
 
   const seoData = metadata && 'seo' in metadata ? (metadata.seo as ArticleRevisionSeoMetadata) : {}
+  const slugResolved = response?.article?.slug ?? slug
+  const canonical =
+    slugResolved && response?.article
+      ? resolveArticleCanonicalUrl(seoConfig.siteUrl, slugResolved, response.article.visibility, seoData.canonicalUrl)
+      : undefined
 
   return {
     title: `${title}`,
     description: response?.revision?.description?.trim() || 'Private article',
+    alternates: canonical ? { canonical } : undefined,
     robots: {
       index: false,
       follow: false,
@@ -106,13 +114,21 @@ const PrivateArticleRoot = async (props: PageProps<{ slug: string[] }>) => {
   }
 
   const generatedPageString = finalizeArticleBodyHtml(await renderToHTMLString({ content, extensions: defaultExtensions() }))
+  const articleMetadata = response.revision.metadata as { seo?: ArticleRevisionSeoMetadata } | undefined
+  const seoJson = articleMetadata?.seo ?? {}
+  const slugResolved = response.article.slug ?? params.slug?.[0] ?? ''
+  const canonicalForJson = resolveArticleCanonicalUrl(seoConfig.siteUrl, slugResolved, response.article.visibility, seoJson.canonicalUrl)
+
   const articleJsonLd = getArticleJsonLd({
-    slug: response.article.slug ?? params.slug?.[0] ?? '',
+    slug: slugResolved,
     title: response.revision.title ?? response.article.slug ?? 'Article',
     description: response.revision.description,
     image: response.revision.thumbnailUrl,
     datePublished: response.revision.publishedAt ?? response.article.publishedAt,
     dateModified: response.revision.updatedAt ?? response.article.updatedAt,
+    canonicalUrl: canonicalForJson,
+    keywords: seoJson.keywords,
+    isAccessibleForFree: false,
   })
 
   return (

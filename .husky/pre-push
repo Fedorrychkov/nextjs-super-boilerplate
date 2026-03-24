@@ -1,1 +1,1 @@
-pnpm run test
+pnpm run typecheck && pnpm run test

@@ -1,3 +1,5 @@
+import { ArticleVisibility } from '~/api/article'
+import { buildDefaultArticleUrl } from '~/lib/seo/articleCanonical'
 import { seoConfig } from '~/lib/seo/config'
 import { getPublishedPublicArticlesForSeo } from '~/lib/seo/sitemap'
 
@@ -11,7 +13,7 @@ const generateRss = async () => {
   const articles = await getPublishedPublicArticlesForSeo()
 
   const items = articles.map((article) => {
-    const url = `${seoConfig.siteUrl}/article/${article.slug}`
+    const url = buildDefaultArticleUrl(seoConfig.siteUrl, article.slug, ArticleVisibility.PUBLIC)
     const title = escapeXml(article.title || article.slug)
     const description = escapeXml(article.description || '')
     const pubDate = article.publishedAt ? new Date(article.publishedAt).toUTCString() : undefined

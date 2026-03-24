@@ -4,8 +4,10 @@ import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } fro
 import { AuthSuccessResult } from '@lib/security/auth'
 import { NextRequest, NextResponse } from 'next/server'
 
-import { ArticleRevisionModel, ArticleRevisionStatus } from '~/api/article-revision'
+import { ArticleRevisionMetadata, ArticleRevisionModel, ArticleRevisionStatus } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
+import { validateCanonicalUrlForStorage } from '~/lib/seo/articleCanonical'
+import { seoConfig } from '~/lib/seo/config'
 import { time } from '~/utils/time'
 
 const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
@@ -29,7 +31,30 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     const updatedAt = time().toISOString()
     const isPublishing = body.status === ArticleRevisionStatus.CONFIRMED && !articleRevision.publishedAt
 
-    await articleRevision.updateOne({ ...body, _id: id, updatedAt, publishedAt: isPublishing ? updatedAt : articleRevision.publishedAt })
+    const existingMeta = (articleRevision.metadata as ArticleRevisionMetadata | null | undefined) ?? {}
+    const mergedSeo = { ...(existingMeta.seo ?? {}), ...(body.metadata?.seo ?? {}) }
+    const canonicalValidation = validateCanonicalUrlForStorage(mergedSeo.canonicalUrl, seoConfig.siteUrl)
+
+    if (!canonicalValidation.ok) {
+      return NextResponse.json({ message: canonicalValidation.message }, { status: 400 })
+    }
+
+    const mergedMetadata: ArticleRevisionMetadata = {
+      ...existingMeta,
+      ...body.metadata,
+      seo: {
+        ...mergedSeo,
+        canonicalUrl: canonicalValidation.value,
+      },
+    }
+
+    await articleRevision.updateOne({
+      ...body,
+      _id: id,
+      updatedAt,
+      publishedAt: isPublishing ? updatedAt : articleRevision.publishedAt,
+      metadata: mergedMetadata,
+    })
 
     const data = await ArticleRevision.findById(id)
 
