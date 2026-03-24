@@ -105,9 +105,10 @@ This roadmap tracks the remaining work for the article platform and related qual
 
 ### 1. Core Web Vitals instrumentation
 
-- [ ] Implement `reportWebVitals` pipeline (App Router compatible).
-- [ ] Store RUM events (`LCP`, `INP`, `CLS`, `TTFB`, `FCP`) with route/device/build metadata.
-- [ ] Build p75 dashboards by route and device segment.
+- [x] Implement `reportWebVitals` pipeline (App Router compatible — `web-vitals` + `WebVitalsReporter` in root layout).
+- [x] Store RUM events (`LCP`, `INP`, `CLS`, `TTFB`, `FCP`) in Mongo (`RumWebVital`, TTL 14d, **client session sample** `NEXT_PUBLIC_RUM_SAMPLE_RATE` default 20%, server persists all received beacons, `COMMIT_HASH` on ingest only).
+- [x] Admin RUM dashboard: `GET /api/v1/rum/dashboard` + `/admin/rum` — aggregate **p75**/avg/min/max per metric, total samples, top pathnames by volume (window 1–14d).
+- [ ] Extend dashboards: **p75 by route** (per pathname or route group) and **by device / connection** segment (needs stable client fields + aggregation).
 - [ ] Define target SLO thresholds per metric and route group for consistent alerting.
 
 ### 2. Alerting
@@ -137,7 +138,7 @@ This roadmap tracks the remaining work for the article platform and related qual
 ### 2. Privacy and consent
 
 - [ ] Define GDPR/CCPA data collection policy for analytics and telemetry.
-- [ ] Implement cookie consent flow if non-essential tracking is enabled.
+- [x] Implement cookie consent flow if non-essential tracking is enabled.
 - [ ] Document data retention and user opt-out behavior.
 
 ---
@@ -152,7 +153,7 @@ This roadmap tracks the remaining work for the article platform and related qual
 
 ### 2. Public article listing UX
 
-- [ ] Keep SSR first page for SEO.
+- [x] Keep SSR first page for SEO.
 - [ ] Add client continuation pagination (“Load more” or infinite scroll) from SSR cursor.
 - [ ] Add filter/sort state persistence in URL.
 
@@ -181,4 +182,5 @@ For each roadmap item:
 
 - [ ] Lighthouse CI quality gate (warn mode first, then fail mode).
 - [ ] Advanced media management abstraction (Uploadcare adapter + provider interface).
+- [x] Web Push + basic offline/cache support via service worker (`public/sw.js`).
 - [ ] Offline-first strategy beyond push service worker.

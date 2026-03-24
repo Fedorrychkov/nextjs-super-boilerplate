@@ -29,6 +29,11 @@ export const routes = {
     name: 'Refresh',
     needAuth: false,
   },
+  rumDashboard: {
+    path: '/admin/rum',
+    name: 'RUM',
+    needAuth: true,
+  },
   articles: {
     path: '/admin/articles',
     name: 'Articles',

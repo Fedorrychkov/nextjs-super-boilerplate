@@ -6,7 +6,9 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { seoConfig } from '~/lib/seo/config'
 import { QueryProvider } from '~/providers'
 import { AuthProvider } from '~/providers/auth'
+import { CookieConsentBanner, CookieConsentProvider } from '~/providers/cookie-consent'
 import { NotifyProvider } from '~/providers/notify'
+import { WebVitalsReporter } from '~/providers/Rum/WebVitalsReporter'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -59,7 +61,13 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <QueryProvider>
           <AuthProvider>
-            <NotifyProvider>{children}</NotifyProvider>
+            <NotifyProvider>
+              <CookieConsentProvider>
+                <WebVitalsReporter />
+                <CookieConsentBanner />
+                {children}
+              </CookieConsentProvider>
+            </NotifyProvider>
           </AuthProvider>
         </QueryProvider>
       </body>
