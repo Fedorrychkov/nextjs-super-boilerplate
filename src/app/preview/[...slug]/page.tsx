@@ -9,8 +9,7 @@ import { notFound } from 'next/navigation'
 import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
 import { defaultExtensions } from '~/components/Blocks/Editor/extensions'
-import { makeTaskCheckboxesReadonly } from '~/lib/editor/readonlyTaskCheckboxes'
-import { makeArticleImagesResponsive } from '~/lib/editor/responsiveArticleImages'
+import { finalizeArticleBodyHtml } from '~/lib/editor/finalizeArticleBodyHtml'
 import { jsonParseSafety } from '~/utils/jsonSafe'
 import { Logger } from '~/utils/logger'
 
@@ -96,7 +95,7 @@ const PreviewRoot = async (props: PageProps<{ slug: string[] }>) => {
     return notFound()
   }
 
-  const generatedPageString = makeArticleImagesResponsive(makeTaskCheckboxesReadonly(await renderToHTMLString({ content, extensions: defaultExtensions() })))
+  const generatedPageString = finalizeArticleBodyHtml(await renderToHTMLString({ content, extensions: defaultExtensions() }))
 
   return <div className="max-w-full tiptap readonly" dangerouslySetInnerHTML={{ __html: generatedPageString }} />
 }

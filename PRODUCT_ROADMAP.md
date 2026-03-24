@@ -26,11 +26,13 @@ This roadmap tracks the remaining work for the article platform and related qual
 
 ### 1. UGC sanitization pipeline
 
-- [ ] Add server-side sanitization for user-generated HTML (DOMPurify + JSDOM or isomorphic variant).
-- [ ] Define allowlist for tags/attributes based on current Tiptap extensions.
-- [ ] Enforce safe URL policy (`http/https`, block `javascript:` and inline event handlers).
-- [ ] Add defense-in-depth sanitization before any `dangerouslySetInnerHTML` rendering.
-- [ ] Add unit tests with XSS payload fixtures.
+**Done for read-only HTML output only:** sanitization runs on the server after Tiptap static render (`finalizeArticleBodyHtml` → DOMPurify in `src/lib/sanitize/articleHtml.ts`) on public article, preview, and private article pages. **The TipTap editor surface is not passed through this pipeline** (authoring uses the live document; hardening there remains a separate decision).
+
+- [x] Add server-side sanitization for user-generated HTML (DOMPurify via `isomorphic-dompurify` on the render path).
+- [x] Define allowlist for tags/attributes based on current Tiptap extensions.
+- [x] Enforce safe URL policy (`http/https`, safe relative paths, block `javascript:` / `data:` / protocol-relative URLs where enforced, strip inline event handlers via allowlist).
+- [x] Add defense-in-depth sanitization before any `dangerouslySetInnerHTML` rendering (article + preview + private-article bodies).
+- [x] Add unit tests with XSS payload fixtures (`npm run test`).
 - [ ] Add security regression suite for known payloads in CI.
 
 ### 2. Safe rendering policy

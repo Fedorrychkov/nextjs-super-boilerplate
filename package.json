@@ -19,6 +19,7 @@
     "lint:src": "eslint src --fix",
     "lint-staged": "lint-staged --allow-empty",
     "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test *.test.ts src/**/*.test.ts",
     "prepare": "husky"
   },
   "engines": {
@@ -88,6 +89,7 @@
     "highlight.js": "^11.11.1",
     "husky": "^9.1.7",
     "ioredis": "^5.10.0",
+    "isomorphic-dompurify": "^3.7.1",
     "jsonwebtoken": "^9.0.3",
     "lodash": "^4.17.21",
     "lowlight": "^3.3.0",
