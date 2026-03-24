@@ -1,5 +1,3 @@
-'use server'
-
 import { defaultGuard, PageProps } from '@lib/page'
 import { getServerProfile } from '@lib/server-action/server-auth'
 

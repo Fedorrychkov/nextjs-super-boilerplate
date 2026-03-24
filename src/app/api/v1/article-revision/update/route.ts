@@ -4,8 +4,9 @@ import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } fro
 import { AuthSuccessResult } from '@lib/security/auth'
 import { NextRequest, NextResponse } from 'next/server'
 
-import { ArticleRevisionModel } from '~/api/article-revision'
+import { ArticleRevisionModel, ArticleRevisionStatus } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
+import { time } from '~/utils/time'
 
 const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
   apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
@@ -25,7 +26,10 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
 
     const id = body.id
 
-    await articleRevision.updateOne({ ...body, _id: id })
+    const updatedAt = time().toISOString()
+    const isPublishing = body.status === ArticleRevisionStatus.CONFIRMED && !articleRevision.publishedAt
+
+    await articleRevision.updateOne({ ...body, _id: id, updatedAt, publishedAt: isPublishing ? updatedAt : articleRevision.publishedAt })
 
     const data = await ArticleRevision.findById(id)
 
@@ -36,6 +40,9 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     return response.json({
       ...data.toObject(),
       id: data._id.toString(),
+      publishedAt: data?.publishedAt ? time(data.publishedAt).toISOString() : null,
+      updatedAt: data?.updatedAt ? time(data.updatedAt).toISOString() : null,
+      createdAt: data?.createdAt ? time(data.createdAt).toISOString() : null,
     })
   })
 

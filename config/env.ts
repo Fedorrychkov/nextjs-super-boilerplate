@@ -24,6 +24,8 @@ const {
   MFA_ENCRYPTION_KEY = process.env.MFA_ENCRYPTION_KEY || '',
   FIRST_ADMIN_LOGIN = process.env.FIRST_ADMIN_LOGIN || '',
   FIRST_ADMIN_PASSWORD = process.env.FIRST_ADMIN_PASSWORD || '',
+  UPLOADCARE_PUBLIC_KEY = process.env.UPLOADCARE_PUBLIC_KEY || '',
+  UPLOADCARE_SECRET_KEY = process.env.UPLOADCARE_SECRET_KEY || '',
 } = process.env
 
 const isDevelop = [APP_ENV, NEXT_PUBLIC_APP_ENV].includes('development')
@@ -67,9 +69,15 @@ const FIRST_ADMIN_CONFIG = {
   password: FIRST_ADMIN_PASSWORD,
 }
 
+const CDN_CONFIG = {
+  publicKey: UPLOADCARE_PUBLIC_KEY,
+  secretKey: UPLOADCARE_SECRET_KEY,
+}
+
 export {
   APP_ENV,
   APP_INTERNAL_ORIGIN,
+  CDN_CONFIG,
   FIRST_ADMIN_CONFIG,
   GOOGLE_INDEXING_CLIENT_EMAIL,
   GOOGLE_INDEXING_PRIVATE_KEY,

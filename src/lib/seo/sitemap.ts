@@ -1,3 +1,4 @@
+import { shouldSkipDbDuringBuild } from '@lib/build-phase'
 import connectDB from '@lib/db/client'
 import Article from '@lib/db/models/Article'
 import ArticleRevision from '@lib/db/models/ArticleRevision'
@@ -39,6 +40,10 @@ export const mapArticlesToSitemap = (articles: ArticleLike[], basePath = '/'): M
   }))
 
 export const getPublishedPublicArticlesForSeo = async (): Promise<PublicSeoArticle[]> => {
+  if (shouldSkipDbDuringBuild()) {
+    return []
+  }
+
   await connectDB()
 
   const articles = await Article.find({

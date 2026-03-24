@@ -6,9 +6,10 @@ import { FormProvider, useForm } from 'react-hook-form'
 import slugify from 'slugify'
 
 import { ArticleModel, ArticleVisibility } from '~/api/article'
-import { ArticleRevisionModel } from '~/api/article-revision'
+import { ArticleRevisionMediaMetadata, ArticleRevisionModel } from '~/api/article-revision'
+import { MediaResourceType } from '~/api/media'
 import { UserRole } from '~/api/user'
-import { DefaultFieldContainer, DefaultMultiselectField, DefaultTextAreaContainer } from '~/components/Fields'
+import { DefaultFieldContainer, DefaultMultiselectField, DefaultTextAreaContainer, MediaUrlUploadField } from '~/components/Fields'
 import { AlertBlock, Button, Option, Typography } from '~/components/ui'
 import { handleRegister } from '~/hooks/useRegister'
 
@@ -18,6 +19,7 @@ type Form = {
   title?: string | null
   description?: string | null
   thumbnailUrl?: string | null
+  thumbnailAssetId?: string | null
   slug?: string | null
   visibility?: Option[] | null
   /**
@@ -50,6 +52,7 @@ export const ArticleEditablePreview = (props: Props) => {
     title: articleRevision?.title ?? null,
     description: articleRevision?.description ?? null,
     thumbnailUrl: articleRevision?.thumbnailUrl ?? null,
+    thumbnailAssetId: ((articleRevision?.metadata as { media?: ArticleRevisionMediaMetadata | null } | undefined)?.media?.thumbnail?.assetId as string) ?? null,
     slug: article?.slug ?? null,
     visibility: article?.visibility ? [{ value: article.visibility, label: article.visibility }] : [{ value: ArticleVisibility.PUBLIC, label: 'Public' }],
     allowedRoles: article?.allowedRoles ? article.allowedRoles.map((role) => ({ value: role, label: role })) : [],
@@ -85,6 +88,7 @@ export const ArticleEditablePreview = (props: Props) => {
         slug: finalSlug,
         allowedRoles: allowedRoles?.length ? allowedRoles : null,
         visibility: data.visibility?.[0]?.value as ArticleVisibility,
+        thumbnailAssetId: data.thumbnailAssetId ?? null,
       })
     },
     [onSave],
@@ -127,15 +131,19 @@ export const ArticleEditablePreview = (props: Props) => {
             name="description"
             hintText="This is short description of the article. It is shown in the article preview and search engines."
           />
-          <DefaultFieldContainer
-            {...handleRegister({
-              ...register('thumbnailUrl', { required: false, pattern: { value: /^https:\/\/.+$/, message: 'Article thumbnail URL must be a valid URL' } }),
-              errors,
-            })}
-            disabled={isLoading || isDisabled}
+          <MediaUrlUploadField
             label="Article Thumbnail URL"
-            name="thumbnailUrl"
-            hintText="This is the thumbnail of the article. It is shown in the article preview and search engines."
+            value={(watch('thumbnailUrl') as string) ?? ''}
+            assetId={(watch('thumbnailAssetId') as string) ?? null}
+            articleRevisionId={articleRevision?.id ?? null}
+            disabled={isLoading || isDisabled}
+            resourceType={MediaResourceType.IMAGE}
+            variant="thumb"
+            onChange={(next) => {
+              setValue('thumbnailUrl', next.value || null, { shouldDirty: true })
+              setValue('thumbnailAssetId', next.assetId || null, { shouldDirty: true })
+            }}
+            hintText="Upload/paste/drop image and store CDN proxy URL for article thumbnail."
           />
           <DefaultFieldContainer
             {...handleRegister({

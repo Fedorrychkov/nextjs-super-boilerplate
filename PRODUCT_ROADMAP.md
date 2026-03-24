@@ -9,6 +9,16 @@ This roadmap tracks the remaining work for the article platform and related qual
 - Preview page is `noindex/nofollow`.
 - Sitemap and RSS now include published public articles from DB.
 - Publish flow already triggers search engine notifications for indexable public articles.
+- Media pipeline: Uploadcare via own API (`/api/v1/media`), `MediaAsset` in DB, proxy delivery (`/cdn/...`), editor paste/drop + Preview/SEO image fields, responsive `<picture>` / `srcset` on public article HTML.
+
+## Immediate Execution (Can Start Now)
+
+- [ ] Add security test fixtures with common XSS payloads and run them in CI.
+- [ ] Document canonical policy (`default from article URL + optional manual override in SEO step`).
+- [ ] Add canonical URL normalization utility (protocol/host/trailing slash rules).
+- [ ] Define publishing state-transition matrix (draft/confirmed/published/unpublished/republished).
+- [ ] Add minimal publish pipeline logs (`publish_started`, `publish_succeeded`, `publish_failed`).
+- [ ] Define initial Web Vitals SLO targets (p75 by route/device) before alert tuning.
 
 ---
 
@@ -16,17 +26,21 @@ This roadmap tracks the remaining work for the article platform and related qual
 
 ### 1. UGC sanitization pipeline
 
-- [ ] Add server-side sanitization for user-generated HTML (DOMPurify + JSDOM or isomorphic variant).
-- [ ] Define allowlist for tags/attributes based on current Tiptap extensions.
-- [ ] Enforce safe URL policy (`http/https`, block `javascript:` and inline event handlers).
-- [ ] Add defense-in-depth sanitization before any `dangerouslySetInnerHTML` rendering.
-- [ ] Add unit tests with XSS payload fixtures.
+**Done for read-only HTML output only:** sanitization runs on the server after Tiptap static render (`finalizeArticleBodyHtml` → DOMPurify in `src/lib/sanitize/articleHtml.ts`) on public article, preview, and private article pages. **The TipTap editor surface is not passed through this pipeline** (authoring uses the live document; hardening there remains a separate decision).
+
+- [x] Add server-side sanitization for user-generated HTML (DOMPurify via `isomorphic-dompurify` on the render path).
+- [x] Define allowlist for tags/attributes based on current Tiptap extensions.
+- [x] Enforce safe URL policy (`http/https`, safe relative paths, block `javascript:` / `data:` / protocol-relative URLs where enforced, strip inline event handlers via allowlist).
+- [x] Add defense-in-depth sanitization before any `dangerouslySetInnerHTML` rendering (article + preview + private-article bodies).
+- [x] Add unit tests with XSS payload fixtures (`npm run test`).
+- [ ] Add security regression suite for known payloads in CI.
 
 ### 2. Safe rendering policy
 
 - [ ] Document one canonical rendering path for article content (JSON -> static renderer -> sanitized HTML).
 - [ ] Ensure preview/public rendering behavior is consistent.
 - [ ] Add fallback behavior for malformed content payloads.
+- [ ] Introduce baseline Content Security Policy for public article pages.
 
 ---
 
@@ -35,9 +49,10 @@ This roadmap tracks the remaining work for the article platform and related qual
 ### 1. Revision lifecycle and publishing states
 
 - [ ] Finalize “publish specific revision” contract (`article.revisionId`, `version`, statuses, timestamps).
-- [ ] Make confirmed/published revisions read-only in UI.
-- [ ] Add “create draft from published revision” action.
+- [x] Make confirmed/published revisions read-only in UI.
+- [x] Add “create draft from published revision” action.
 - [ ] Prevent editing of immutable revisions through backend validation.
+- [ ] Define and document allowed state transitions as a single source of truth (state machine table).
 
 ### 2. Publishing side-effects robustness
 
@@ -45,11 +60,12 @@ This roadmap tracks the remaining work for the article platform and related qual
 - [ ] Add retry-safe notification logic for search engines.
 - [ ] Add observability logs around publishing pipeline steps.
 - [ ] Add integration tests for publish/unpublish/indexable/non-indexable scenarios.
+- [ ] Add idempotency key handling for publish/unpublish operations to prevent duplicate side-effects.
 
 ### 3. Editor UX and media authoring
 
-- [ ] Add image paste/drop upload flow in editor (auto-upload and replace local blobs with CDN links).
-- [ ] Add thumbnail upload action in step 1 (Preview) and/or SEO step (alongside URL input).
+- [x] Add image paste/drop upload flow in editor (auto-upload and replace local blobs with CDN links).
+- [x] Add thumbnail upload action in step 1 (Preview) and/or SEO step (alongside URL input).
 - [ ] Define upload error/retry UX and validation (size/type) for author-facing media actions.
 
 ---
@@ -62,6 +78,8 @@ This roadmap tracks the remaining work for the article platform and related qual
 - [ ] Validate canonical URL format and domain policy.
 - [ ] Ensure private/link-only content cannot leak to indexable metadata.
 - [ ] Add article language support in metadata (e.g., `lang`, `inLanguage`, locale-aware alternates where applicable).
+- [ ] Keep canonical defaults derived from article URL while allowing explicit SEO-step override with validation.
+- [ ] Use one canonical generation/normalization utility for metadata, sitemap, and sharing tags to avoid URL drift.
 
 ### 2. Structured data improvements
 
@@ -90,6 +108,7 @@ This roadmap tracks the remaining work for the article platform and related qual
 - [ ] Implement `reportWebVitals` pipeline (App Router compatible).
 - [ ] Store RUM events (`LCP`, `INP`, `CLS`, `TTFB`, `FCP`) with route/device/build metadata.
 - [ ] Build p75 dashboards by route and device segment.
+- [ ] Define target SLO thresholds per metric and route group for consistent alerting.
 
 ### 2. Alerting
 
@@ -101,7 +120,7 @@ This roadmap tracks the remaining work for the article platform and related qual
 
 - [ ] Track critical JS budget and keep under target.
 - [ ] Reduce editor/admin payload impact on public pages.
-- [ ] Review image loading strategy (`sizes`, `srcset`, lazy boundaries).
+- [x] Review image loading strategy (`sizes`, `srcset`, lazy boundaries).
 
 ---
 
@@ -113,6 +132,7 @@ This roadmap tracks the remaining work for the article platform and related qual
 - [ ] Improve semantic structure and ARIA usage where needed.
 - [ ] Add automated a11y checks (axe + lint rules in CI).
 - [ ] Add manual accessibility QA checklist.
+- [ ] Assign owner and audit cadence for recurring accessibility validation.
 
 ### 2. Privacy and consent
 
@@ -153,6 +173,7 @@ For each roadmap item:
 - [ ] Docs updated (`README` or `docs/`).
 - [ ] Error handling and logs included.
 - [ ] Backward compatibility considered.
+- [ ] Owner and target review date assigned.
 
 ---
 

@@ -76,6 +76,10 @@ export const getFeatureConfig = (
       label: '◨ Right',
       onClick: () => editor.chain().focus()?.setTextAlign('right').run(),
     },
+    taskList: {
+      label: 'Task List',
+      onClick: () => editor.chain().focus()?.toggleTaskList().run(),
+    },
     bulletList: {
       label: 'Bullet List',
       onClick: () => editor.chain().focus()?.toggleBulletList().run(),

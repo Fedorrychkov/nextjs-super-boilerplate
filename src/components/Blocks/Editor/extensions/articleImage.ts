@@ -120,6 +120,16 @@ export const ArticleImage = Image.extend({
         default: null,
         parseHTML: () => null,
       },
+      assetId: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-asset-id') || null,
+        renderHTML: (attrs) => (attrs.assetId ? { 'data-asset-id': attrs.assetId } : {}),
+      },
+      resourceType: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-resource-type') || null,
+        renderHTML: (attrs) => (attrs.resourceType ? { 'data-resource-type': attrs.resourceType } : {}),
+      },
     }
   },
 
@@ -162,6 +172,8 @@ export const ArticleImage = Image.extend({
             maxHeightPx: frame ? parsePx(frame.style.maxHeight) : null,
             minWidthPx: frame ? parsePx(frame.style.minWidth) : null,
             minHeightPx: frame ? parsePx(frame.style.minHeight) : null,
+            assetId: img.getAttribute('data-asset-id') || null,
+            resourceType: img.getAttribute('data-resource-type') || null,
           }
         },
       },

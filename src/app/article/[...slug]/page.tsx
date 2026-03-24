@@ -1,5 +1,3 @@
-'use server'
-
 import '../../../components/Blocks/Editor/styles/editor.styles.scss'
 
 import { PageProps } from '@lib/page'
@@ -11,11 +9,14 @@ import { notFound } from 'next/navigation'
 import { ArticleVisibility } from '~/api/article'
 import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { defaultExtensions } from '~/components/Blocks/Editor/extensions'
+import { finalizeArticleBodyHtml } from '~/lib/editor/finalizeArticleBodyHtml'
 import { getArticleJsonLd, JsonLd } from '~/lib/seo/jsonld'
 import { jsonParseSafety } from '~/utils/jsonSafe'
 import { Logger } from '~/utils/logger'
 
 const logger = new Logger(['ArticlePublicRoot', '[src/app/article/[...slug]/page.tsx]'])
+
+export const dynamic = 'force-dynamic'
 
 export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Promise<Metadata> => {
   const params = await props.params
@@ -88,7 +89,7 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
     return notFound()
   }
 
-  const generatedPageString = await renderToHTMLString({ content, extensions: defaultExtensions() })
+  const generatedPageString = finalizeArticleBodyHtml(await renderToHTMLString({ content, extensions: defaultExtensions() }))
   const articleJsonLd = getArticleJsonLd({
     slug: response.article.slug ?? params.slug?.[0] ?? '',
     title: response.revision.title ?? response.article.slug ?? 'Article',
@@ -101,7 +102,7 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
   return (
     <>
       <JsonLd data={articleJsonLd} />
-      <div className="max-w-full tiptap" dangerouslySetInnerHTML={{ __html: generatedPageString }} />
+      <div className="max-w-full tiptap readonly" dangerouslySetInnerHTML={{ __html: generatedPageString }} />
     </>
   )
 }

@@ -2,6 +2,8 @@ import { getServerForPublicArticlesPaginated } from '@lib/server-action/server-a
 
 import { ArticleItem } from '~/components/Views/Article/Block/ArticleItem'
 
+export const dynamic = 'force-dynamic'
+
 export default async function ArticlePage() {
   const articles = await getServerForPublicArticlesPaginated({ limit: 20, offset: 0 })
 

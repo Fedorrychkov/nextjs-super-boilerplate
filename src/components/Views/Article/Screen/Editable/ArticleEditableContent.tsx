@@ -28,7 +28,7 @@ export const ArticleEditableContent = (props: Props) => {
     return articleRevision?.content ? jsonParseSafety<string>(articleRevision.content) : ''
   }, [articleRevision])
 
-  const { editor, mode, handleSetMode, markdownInput, setMarkdownInput } = useDefaultEditor({ isDisabled, defaultContent, limit: 50_000, onUpdate })
+  const { editor, mode, handleSetMode, setMode, markdownInput, setMarkdownInput } = useDefaultEditor({ isDisabled, defaultContent, limit: 50_000, onUpdate })
 
   const handleSave = useCallback(() => {
     if (mode === 'markdown') {
@@ -44,7 +44,7 @@ export const ArticleEditableContent = (props: Props) => {
     <div className={cn('flex flex-col gap-4', className)}>
       <Typography variant="heading-3">{title}</Typography>
       <div className="flex flex-row gap-3 flex-wrap">
-        <Button variant={mode === 'default' ? 'default' : 'secondary'} size="sm-md" onClick={handleSetMode('default')}>
+        <Button variant={mode === 'default' ? 'default' : 'secondary'} size="sm-md" onClick={() => setMode('default')}>
           Text Editor
         </Button>
         <Button variant={mode === 'markdown' ? 'default' : 'secondary'} size="sm-md" onClick={handleSetMode('markdown')}>
@@ -62,7 +62,7 @@ export const ArticleEditableContent = (props: Props) => {
           hidden: mode === 'markdown',
         })}
       >
-        <DefaultEditor editor={editor} limit={50_000} />
+        <DefaultEditor editor={editor} limit={50_000} articleRevisionId={articleRevision?.id} />
       </div>
       {mode === 'markdown' && <MarkdownEditor isDisabled={isDisabled} value={markdownInput} editor={editor} onChange={setMarkdownInput} limit={50_000} />}
       <div>
