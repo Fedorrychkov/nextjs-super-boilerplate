@@ -97,14 +97,14 @@ const getSteps = (props: {
 
 const logger = new Logger(['ArticleEditableEntry', '[src/components/Views/Article/Screen/Editable/ArticleEditableEntry.tsx]'])
 
-type Props = {
+export type ArticleEditableEntryProps = {
   articleId?: string | null
   className?: string
   revisionId?: string | null
   activeTab?: string | null
 }
 
-export const ArticleEditableEntry = (props: Props) => {
+export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
   const { articleId, revisionId, className = '', activeTab: activeTabProp } = props
   const [activeTab, setActiveTab] = useState<string | null>(activeTabProp ?? null)
   const router = useRouter()

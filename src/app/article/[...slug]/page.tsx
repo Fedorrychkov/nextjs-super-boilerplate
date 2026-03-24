@@ -9,6 +9,7 @@ import { notFound } from 'next/navigation'
 import { ArticleVisibility } from '~/api/article'
 import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { defaultExtensions } from '~/components/Blocks/Editor/extensions'
+import { ArticlePublishedDate } from '~/components/Views/Article/Block/ArticlePublishedDate'
 import { finalizeArticleBodyHtml } from '~/lib/editor/finalizeArticleBodyHtml'
 import { resolvePublicArticlePageMeta } from '~/lib/seo/articleMeta'
 import { getArticleJsonLd, JsonLd } from '~/lib/seo/jsonld'
@@ -115,9 +116,12 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
     isAccessibleForFree: true,
   })
 
+  const publishedAt = response.revision.publishedAt ?? response.article.publishedAt
+
   return (
     <>
       <JsonLd data={articleJsonLd} />
+      <ArticlePublishedDate publishedAt={publishedAt} className="mb-4 text-muted-foreground" />
       <div className="max-w-full tiptap readonly" dangerouslySetInnerHTML={{ __html: generatedPageString }} />
     </>
   )

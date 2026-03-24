@@ -1,19 +1,27 @@
+import type { PageProps } from '@lib/page'
 import { getServerForPublicArticlesPaginated } from '@lib/server-action/server-article'
 
-import { ArticleItem } from '~/components/Views/Article/Block/ArticleItem'
+import { articleFilterFromPublicSearchParams, PUBLIC_ARTICLES_PAGE_SIZE } from '~/api/article/publicListQuery'
+import { Typography } from '~/components/ui/Typography/Typography'
+import { ArticlesPublicFeed } from '~/components/Views/Article/Public'
 
 export const dynamic = 'force-dynamic'
 
-export default async function ArticlePage() {
-  const articles = await getServerForPublicArticlesPaginated({ limit: 20, offset: 0 })
+export default async function ArticlePage(props: PageProps) {
+  const sp = await props.searchParams
+  const listQuery = articleFilterFromPublicSearchParams(sp)
+  listQuery.limit = PUBLIC_ARTICLES_PAGE_SIZE
+  listQuery.offset = 0
 
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
-        {articles?.list?.map((article) => (
-          <ArticleItem key={article.id} article={article} />
-        ))}
-      </div>
-    </div>
-  )
+  const initial = await getServerForPublicArticlesPaginated(listQuery)
+
+  if (!initial) {
+    return (
+      <Typography variant="Body/M/Regular" className="text-destructive">
+        Could not load articles.
+      </Typography>
+    )
+  }
+
+  return <ArticlesPublicFeed initial={initial} listQuery={listQuery} />
 }

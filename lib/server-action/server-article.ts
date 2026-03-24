@@ -3,10 +3,12 @@ import { shouldSkipDbDuringBuild } from '@lib/build-phase'
 import connectDB from '@lib/db/client'
 import Article from '@lib/db/models/Article'
 import ArticleRevision from '@lib/db/models/ArticleRevision'
+import { emptyPublicArticlesList, getPublicArticlesListEnriched } from '@lib/services/public-articles-list.service'
 import { AxiosError } from 'axios'
 import { headers } from 'next/headers'
 
-import { ArticleFilter, ArticleModel, ArticleStatus, ArticleVisibility, ClientArticleApi, SortBy, SortOrder } from '~/api/article'
+import { ArticleFilter, ArticleModel, ArticleStatus, ClientArticleApi } from '~/api/article'
+import type { PublicArticleListItem } from '~/api/article/publicListQuery'
 import { ArticleRevisionModel, ClientArticleRevisionApi } from '~/api/article-revision'
 import { PaginationMeta } from '~/types'
 import { Logger } from '~/utils/logger'
@@ -80,49 +82,13 @@ export async function getServerForPublicArticle(
   }
 }
 
-export async function getServerForPublicArticlesPaginated(
-  filter: ArticleFilter,
-): Promise<PaginationMeta<ArticleModel & { thumbnailUrl?: string | null; title?: string | null; description?: string | null }> | null> {
+export async function getServerForPublicArticlesPaginated(filter: ArticleFilter): Promise<PaginationMeta<PublicArticleListItem> | null> {
   try {
     if (shouldSkipDbDuringBuild()) {
-      return {
-        currentPage: 1,
-        pages: 0,
-        list: [],
-        count: 0,
-      }
+      return emptyPublicArticlesList()
     }
 
-    await connectDB()
-    const maxLimit = 10
-    const articles = await Article.findListPaginated({
-      sortBy: SortBy.publishedAt,
-      sortOrder: SortOrder.desc,
-      ...filter,
-      status: ArticleStatus.PUBLISHED,
-      visibility: ArticleVisibility.PUBLIC,
-      limit: filter?.limit && filter.limit > maxLimit ? maxLimit : (filter.limit ?? maxLimit),
-    })
-
-    const revisionIds = Array.from(new Set(articles.list.map((item) => String(item.revisionId)).filter(Boolean)))
-
-    const revisions = await ArticleRevision.find({ _id: { $in: revisionIds } })
-      .select('thumbnailUrl title description')
-      .lean()
-
-    const revisionById = new Map(revisions.map((rev) => [String(rev._id), rev]))
-
-    return {
-      ...articles,
-      list: articles.list.map((article) => ({
-        ...article.toObject(),
-        id: article._id.toString(),
-        revisionId: article.revisionId?.toString() ?? null,
-        title: revisionById.get(String(article.revisionId))?.title ?? null,
-        description: revisionById.get(String(article.revisionId))?.description ?? null,
-        thumbnailUrl: revisionById.get(String(article.revisionId))?.thumbnailUrl ?? null,
-      })),
-    }
+    return await getPublicArticlesListEnriched(filter)
   } catch (error) {
     if (error instanceof AxiosError) {
       logger.error('getServerArticle', error.response?.data, error.response?.status)

@@ -10,6 +10,7 @@ import { ArticleVisibility } from '~/api/article'
 import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
 import { defaultExtensions } from '~/components/Blocks/Editor/extensions'
+import { ArticlePublishedDate } from '~/components/Views/Article/Block/ArticlePublishedDate'
 import { finalizeArticleBodyHtml } from '~/lib/editor/finalizeArticleBodyHtml'
 import { resolveArticleCanonicalUrl } from '~/lib/seo/articleCanonical'
 import { seoConfig } from '~/lib/seo/config'
@@ -131,9 +132,12 @@ const PrivateArticleRoot = async (props: PageProps<{ slug: string[] }>) => {
     isAccessibleForFree: false,
   })
 
+  const publishedAt = response.revision.publishedAt ?? response.article.publishedAt
+
   return (
     <>
       <JsonLd data={articleJsonLd} />
+      <ArticlePublishedDate publishedAt={publishedAt} className="mb-4 text-muted-foreground" />
       <div className="max-w-full tiptap readonly" dangerouslySetInnerHTML={{ __html: generatedPageString }} />
     </>
   )

@@ -77,7 +77,7 @@ This roadmap tracks the remaining work for the article platform and related qual
 - [x] Enforce consistent fallback strategy for title/description/OG/Twitter/canonical (`resolvePublicArticlePageMeta` for `/article/[slug]`).
 - [x] Validate canonical URL format and domain policy (same origin as `NEXT_PUBLIC_SITE_URL` / `seoConfig.siteUrl`; API + SEO form).
 - [x] Ensure private/link-only content cannot leak to indexable metadata (sitemap/RSS unchanged — public + `noindex` filter; private/preview `robots` unchanged).
-- [ ] Add article language support in metadata (e.g., `lang`, `inLanguage`, locale-aware alternates where applicable).
+- [ ] Article / site locale in metadata and markup (see **Phase 7**).
 - [x] Keep canonical defaults derived from article URL while allowing explicit SEO-step override with validation (`articleCanonical.ts`).
 - [x] Use one canonical generation/normalization utility for metadata, sitemap, RSS, IndexNow URL, and JSON-LD (`buildDefaultArticleUrl` / `resolveArticleCanonicalUrl`).
 
@@ -154,14 +154,37 @@ This roadmap tracks the remaining work for the article platform and related qual
 ### 2. Public article listing UX
 
 - [x] Keep SSR first page for SEO.
-- [ ] Add client continuation pagination (“Load more” or infinite scroll) from SSR cursor.
-- [ ] Add filter/sort state persistence in URL.
+- [x] Add client continuation pagination (“Load more” or infinite scroll) from SSR cursor.
+- [x] Add filter/sort state persistence in URL.
 
 ### 3. Internationalization readiness
 
 - [ ] Introduce key-based UI translations and local locale files for author/public pages.
 - [ ] Add i18n conventions for content-related labels, validation messages, and notifications.
 - [ ] Define migration plan for replacing hardcoded UI strings with translation keys.
+
+---
+
+## Phase 7 — Locale, content language, and user-facing language
+
+**Goal:** one coherent story for **document `lang`**, **user/session locale**, **formatting (`Intl`)**, and **article content language** (SEO/a11y). Multilingual UI string catalogs stay aligned with **Phase 6 §3**; this phase focuses on locale negotiation and content-level language.
+
+### 1. Site default and user locale
+
+- [ ] Single source of truth for default locale (e.g. `NEXT_PUBLIC_DEFAULT_LOCALE` / `seoConfig`) driving root `<html lang>` and server-side `Intl` defaults.
+- [ ] Optional: read `Accept-Language` in middleware + persist choice (cookie or user profile) for first-time visitors.
+- [ ] Optional later: `app/[locale]` URL segment and redirects; document trade-offs (SEO, caching) before implementation.
+
+### 2. Article content language (optional field; powers metadata + rendering)
+
+- [ ] Optional field on revision or SEO step: **primary language of the article** (BCP 47, e.g. `ru`, `en-US`).
+- [ ] Public (and preview/private) article markup: set `lang` on article wrapper when known; fallback to site default.
+- [ ] Metadata + JSON-LD: `inLanguage`; dates/numbers use article locale when set, else site default.
+- [ ] When/if translations exist: `hreflang` and locale-aware alternates (sitemap + `<head>`); until then, single-language sites can ship without alternates.
+
+### 3. Consistency and docs
+
+- [ ] Short doc: relationship between site locale, user preference, article language, and UI translations (Phase 6).
 
 ---
 
