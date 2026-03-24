@@ -3,12 +3,13 @@ import Article from '@lib/db/models/Article'
 import ArticleRevision from '@lib/db/models/ArticleRevision'
 import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { ArticleModel, ArticleStatus, ArticleVisibility } from '~/api/article'
 import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
+import { publicArticleCacheTag } from '~/lib/cache/publicArticlePageCache'
 import { resolveArticleCanonicalUrl } from '~/lib/seo/articleCanonical'
 import { seoConfig } from '~/lib/seo/config'
 import { notifySearchEngines } from '~/lib/seo/indexing'
@@ -29,6 +30,8 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     if (!article) {
       return NextResponse.json({ message: 'Article not found' }, { status: 404 })
     }
+
+    const previousSlug = article.slug ?? undefined
 
     const id = body.id
 
@@ -58,6 +61,16 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
 
     if (articleUrl) {
       revalidatePath(`/article/${data.slug}`)
+    }
+
+    const nextSlug = data.slug ?? undefined
+
+    if (previousSlug) {
+      revalidateTag(publicArticleCacheTag(previousSlug), 'max')
+    }
+
+    if (nextSlug && nextSlug !== previousSlug) {
+      revalidateTag(publicArticleCacheTag(nextSlug), 'max')
     }
 
     revalidatePath('/sitemap.xml')

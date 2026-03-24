@@ -1,19 +1,15 @@
 import '../../../components/Blocks/Editor/styles/editor.styles.scss'
 
 import { PageProps } from '@lib/page'
-import { getServerForPublicArticle } from '@lib/server-action/server-article'
-import { renderToHTMLString } from '@tiptap/static-renderer/pm/html-string'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
 import { ArticleVisibility } from '~/api/article'
 import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
-import { defaultExtensions } from '~/components/Blocks/Editor/extensions'
 import { ArticlePublishedDate } from '~/components/Views/Article/Block/ArticlePublishedDate'
-import { finalizeArticleBodyHtml } from '~/lib/editor/finalizeArticleBodyHtml'
+import { getCachedPublicArticlePagePayload } from '~/lib/cache/publicArticlePageCache'
 import { resolvePublicArticlePageMeta } from '~/lib/seo/articleMeta'
 import { getArticleJsonLd, JsonLd } from '~/lib/seo/jsonld'
-import { jsonParseSafety } from '~/utils/jsonSafe'
 import { Logger } from '~/utils/logger'
 
 const logger = new Logger(['ArticlePublicRoot', '[src/app/article/[...slug]/page.tsx]'])
@@ -31,16 +27,23 @@ export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Pr
     }
   }
 
-  const response = await getServerForPublicArticle(slug ?? '', { visibility: ArticleVisibility.PUBLIC })
+  const payload = await getCachedPublicArticlePagePayload(slug)
 
-  const metadata = response?.revision?.metadata
+  if (!payload) {
+    return {
+      title: 'Article',
+    }
+  }
+
+  const { response } = payload
+  const metadata = response.revision.metadata
 
   const seoData = metadata && 'seo' in metadata ? (metadata.seo as ArticleRevisionSeoMetadata) : {}
 
   const meta = resolvePublicArticlePageMeta({
     slug,
-    revision: response?.revision ?? {},
-    article: response?.article ?? { slug, visibility: ArticleVisibility.PUBLIC },
+    revision: response.revision ?? {},
+    article: response.article ?? { slug, visibility: ArticleVisibility.PUBLIC },
     seo: seoData,
   })
 
@@ -79,24 +82,19 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
     return notFound()
   }
 
-  const response = await getServerForPublicArticle(params.slug?.[0] ?? '', { visibility: ArticleVisibility.PUBLIC })
+  const slug = params.slug[0] ?? ''
+  const payload = await getCachedPublicArticlePagePayload(slug)
 
-  if (!response || response?.article?.visibility !== ArticleVisibility.PUBLIC) {
+  if (!payload) {
     return notFound()
   }
+
+  const { response, bodyHtml, slugResolved } = payload
 
   logger.info({ params, response })
 
-  const content = jsonParseSafety<any[]>(response.revision.content ?? '')
-
-  if (!content) {
-    return notFound()
-  }
-
-  const generatedPageString = finalizeArticleBodyHtml(await renderToHTMLString({ content, extensions: defaultExtensions() }))
   const articleMetadata = response.revision.metadata as { seo?: ArticleRevisionSeoMetadata } | undefined
   const seoJson = articleMetadata?.seo ?? {}
-  const slugResolved = response.article.slug ?? params.slug?.[0] ?? ''
   const pageMeta = resolvePublicArticlePageMeta({
     slug: slugResolved,
     revision: response.revision,
@@ -122,7 +120,7 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
     <>
       <JsonLd data={articleJsonLd} />
       <ArticlePublishedDate publishedAt={publishedAt} className="mb-4 text-muted-foreground" />
-      <div className="max-w-full tiptap readonly" dangerouslySetInnerHTML={{ __html: generatedPageString }} />
+      <div className="max-w-full tiptap readonly" dangerouslySetInnerHTML={{ __html: bodyHtml }} />
     </>
   )
 }

@@ -1,11 +1,14 @@
 import connectDB from '@lib/db/client'
+import Article from '@lib/db/models/Article'
 import ArticleRevision from '@lib/db/models/ArticleRevision'
 import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { ArticleRevisionMetadata, ArticleRevisionModel, ArticleRevisionStatus } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
+import { publicArticleCacheTag } from '~/lib/cache/publicArticlePageCache'
 import { validateCanonicalUrlForStorage } from '~/lib/seo/articleCanonical'
 import { seoConfig } from '~/lib/seo/config'
 import { time } from '~/utils/time'
@@ -61,6 +64,16 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     if (!data) {
       return NextResponse.json({ message: 'Article revision not found' }, { status: 404 })
     }
+
+    const parentArticle = await Article.findById(data.articleId)
+
+    if (parentArticle?.slug && String(parentArticle.revisionId) === String(data._id)) {
+      revalidateTag(publicArticleCacheTag(parentArticle.slug), 'max')
+      revalidatePath(`/article/${parentArticle.slug}`)
+    }
+
+    revalidatePath('/sitemap.xml')
+    revalidatePath('/rss.xml')
 
     return response.json({
       ...data.toObject(),

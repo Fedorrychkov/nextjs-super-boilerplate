@@ -10,6 +10,7 @@ This roadmap tracks the remaining work for the article platform and related qual
 - Sitemap and RSS now include published public articles from DB.
 - Publish flow already triggers search engine notifications for indexable public articles.
 - Media pipeline: Uploadcare via own API (`/api/v1/media`), `MediaAsset` in DB, proxy delivery (`/cdn/...`), editor paste/drop + Preview/SEO image fields, responsive `<picture>` / `srcset` on public article HTML.
+- Public article HTML path: **`unstable_cache`** + **`revalidateTag`** on publish/revision update (`src/lib/cache/publicArticlePageCache.ts`). RUM (Phase 4) + optional analytics cookie consent.
 
 ## Immediate Execution (Can Start Now)
 
@@ -122,6 +123,14 @@ This roadmap tracks the remaining work for the article platform and related qual
 - [ ] Track critical JS budget and keep under target.
 - [ ] Reduce editor/admin payload impact on public pages.
 - [x] Review image loading strategy (`sizes`, `srcset`, lazy boundaries).
+
+### 4. Caching, CDN, and origin load
+
+- [x] **Data cache (Next):** `unstable_cache` for public `/article/[slug]` payload (HTML body + revision metadata path); tag `public-article:{slug}`; `revalidateTag` from article and revision update routes.
+- [ ] **Invalidation coverage:** any future mutation of published content (slug swap, revision switch, bulk jobs) must call the same tag/path revalidation — document or centralize in one service.
+- [ ] **Multi-instance:** if self-hosted replicas do not share Next Data Cache, validate `revalidateTag` behavior or add external cache (Redis) for hot HTML.
+- [ ] **Images / Uploadcare:** `/cdn/...` redirect to CDN — traffic still billed upstream; optional: stricter presets, `next/image`, or self-proxy only if egress economics justify it.
+- [ ] **Optional Redis** for article JSON/HTML beyond Next cache if profiling shows DB+render still hot at scale.
 
 ---
 
