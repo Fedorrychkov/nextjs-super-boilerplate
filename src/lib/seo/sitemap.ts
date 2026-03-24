@@ -7,6 +7,7 @@ import type { MetadataRoute } from 'next'
 import { ArticleStatus, ArticleVisibility } from '~/api/article'
 import type { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 
+import { buildDefaultArticleUrl } from './articleCanonical'
 import { seoConfig } from './config'
 
 type ArticleLike = {
@@ -31,9 +32,9 @@ export const getStaticRoutes = (): MetadataRoute.Sitemap => [
   },
 ]
 
-export const mapArticlesToSitemap = (articles: ArticleLike[], basePath = '/'): MetadataRoute.Sitemap =>
+export const mapArticlesToSitemap = (articles: ArticleLike[]): MetadataRoute.Sitemap =>
   articles.map((article) => ({
-    url: `${seoConfig.siteUrl}${basePath}${article.slug}`,
+    url: buildDefaultArticleUrl(seoConfig.siteUrl, article.slug, ArticleVisibility.PUBLIC),
     lastModified: article.updatedAt ? new Date(article.updatedAt) : new Date(),
     changeFrequency: 'daily',
     priority: 0.8,
@@ -93,5 +94,5 @@ export const getPublishedPublicArticlesForSeo = async (): Promise<PublicSeoArtic
 export const getPublishedPublicSitemapRoutes = async (): Promise<MetadataRoute.Sitemap> => {
   const articles = await getPublishedPublicArticlesForSeo()
 
-  return mapArticlesToSitemap(articles, '/article/')
+  return mapArticlesToSitemap(articles)
 }

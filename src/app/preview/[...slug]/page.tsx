@@ -9,6 +9,9 @@ import { notFound } from 'next/navigation'
 import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
 import { defaultExtensions } from '~/components/Blocks/Editor/extensions'
+import { finalizeArticleBodyHtml } from '~/lib/editor/finalizeArticleBodyHtml'
+import { resolveArticleCanonicalUrl } from '~/lib/seo/articleCanonical'
+import { seoConfig } from '~/lib/seo/config'
 import { jsonParseSafety } from '~/utils/jsonSafe'
 import { Logger } from '~/utils/logger'
 
@@ -39,10 +42,16 @@ export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Pr
   const metadata = response?.revision?.metadata
 
   const seoData = metadata && 'seo' in metadata ? (metadata.seo as ArticleRevisionSeoMetadata) : {}
+  const slugResolved = response?.article?.slug ?? slug
+  const canonical =
+    slugResolved && response?.article
+      ? resolveArticleCanonicalUrl(seoConfig.siteUrl, slugResolved, response.article.visibility, seoData.canonicalUrl)
+      : undefined
 
   return {
     title: `${title} (Preview)`,
     description: response?.revision?.description?.trim() || 'Private article preview',
+    alternates: canonical ? { canonical } : undefined,
     robots: {
       index: false,
       follow: false,
@@ -94,9 +103,9 @@ const PreviewRoot = async (props: PageProps<{ slug: string[] }>) => {
     return notFound()
   }
 
-  const generatedPageString = await renderToHTMLString({ content, extensions: defaultExtensions() })
+  const generatedPageString = finalizeArticleBodyHtml(await renderToHTMLString({ content, extensions: defaultExtensions() }))
 
-  return <div className="max-w-full tiptap" dangerouslySetInnerHTML={{ __html: generatedPageString }} />
+  return <div className="max-w-full tiptap readonly" dangerouslySetInnerHTML={{ __html: generatedPageString }} />
 }
 
 export default PreviewRoot

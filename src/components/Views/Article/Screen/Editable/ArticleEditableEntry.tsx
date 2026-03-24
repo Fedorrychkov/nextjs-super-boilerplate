@@ -9,7 +9,8 @@ import { useCallback, useMemo, useState } from 'react'
 import { useQueryClient } from 'react-query'
 
 import { ArticleModel, ArticleStatus } from '~/api/article'
-import { ArticleRevisionModel, ArticleRevisionStatus, SortOrder } from '~/api/article-revision'
+import { ArticleRevisionMediaMetadata, ArticleRevisionMetadata, ArticleRevisionModel, ArticleRevisionStatus, SortOrder } from '~/api/article-revision'
+import { MediaProvider, MediaResourceType } from '~/api/media'
 import { Tab, TabsContainer } from '~/components/Blocks/Tabs/TabsContainer'
 import { SpinnerScreen } from '~/components/Loaders'
 import { AlertBlock, Button, Typography } from '~/components/ui'
@@ -96,14 +97,14 @@ const getSteps = (props: {
 
 const logger = new Logger(['ArticleEditableEntry', '[src/components/Views/Article/Screen/Editable/ArticleEditableEntry.tsx]'])
 
-type Props = {
+export type ArticleEditableEntryProps = {
   articleId?: string | null
   className?: string
   revisionId?: string | null
   activeTab?: string | null
 }
 
-export const ArticleEditableEntry = (props: Props) => {
+export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
   const { articleId, revisionId, className = '', activeTab: activeTabProp } = props
   const [activeTab, setActiveTab] = useState<string | null>(activeTabProp ?? null)
   const router = useRouter()
@@ -181,11 +182,28 @@ export const ArticleEditableEntry = (props: Props) => {
         if (activeRevisionId) {
           notify('Updating article revision...', 'info')
 
+          const currentMetadata = (articleRevision?.metadata as ArticleRevisionMetadata | undefined) ?? {}
+          const nextMedia: ArticleRevisionMediaMetadata = {
+            ...(currentMetadata.media ?? {}),
+            thumbnail: form.thumbnailAssetId
+              ? {
+                  assetId: form.thumbnailAssetId,
+                  provider: MediaProvider.UPLOADCARE,
+                  resourceType: MediaResourceType.IMAGE,
+                  url: form.thumbnailUrl ?? null,
+                }
+              : null,
+          }
+
           await updateArticleRevisionMutation.mutateAsync({
             id: activeRevisionId,
             thumbnailUrl: form.thumbnailUrl,
             title: form.title,
             description: form.description,
+            metadata: {
+              ...currentMetadata,
+              media: nextMedia,
+            },
           })
 
           notify('Article revision updated', 'success')
@@ -209,6 +227,18 @@ export const ArticleEditableEntry = (props: Props) => {
               thumbnailUrl: form.thumbnailUrl,
               title: form.title,
               description: form.description,
+              metadata: {
+                media: {
+                  thumbnail: form.thumbnailAssetId
+                    ? {
+                        assetId: form.thumbnailAssetId,
+                        provider: 'uploadcare',
+                        resourceType: 'image',
+                        url: form.thumbnailUrl ?? null,
+                      }
+                    : null,
+                },
+              },
             })
 
             notify('Draft revision created', 'success')
@@ -251,6 +281,7 @@ export const ArticleEditableEntry = (props: Props) => {
       queryClient,
       articleKey,
       articleRevisionKey,
+      articleRevision,
     ],
   )
 
@@ -266,9 +297,23 @@ export const ArticleEditableEntry = (props: Props) => {
         if (activeRevisionId) {
           notify('Updating article revision SEO...', 'info')
 
+          const currentMetadata = (articleRevision?.metadata as ArticleRevisionMetadata | undefined) ?? {}
+          const mergedMetadata: ArticleRevisionMetadata = {
+            ...currentMetadata,
+            ...payload.metadata,
+            seo: {
+              ...(currentMetadata.seo ?? {}),
+              ...(payload.metadata.seo ?? {}),
+            },
+            media: {
+              ...(currentMetadata.media ?? {}),
+              ...(payload.metadata.media ?? {}),
+            },
+          }
+
           await updateArticleRevisionMutation.mutateAsync({
             id: activeRevisionId,
-            ...payload,
+            metadata: mergedMetadata,
           })
 
           notify('Article revision SEO updated', 'success')
@@ -287,7 +332,7 @@ export const ArticleEditableEntry = (props: Props) => {
         notify('Something went wrong', 'destructive')
       }
     },
-    [activeRevisionId, updateArticleRevisionMutation, notify, queryClient, articleRevisionKey, isDisabledEditing],
+    [activeRevisionId, articleRevision, updateArticleRevisionMutation, notify, queryClient, articleRevisionKey, isDisabledEditing],
   )
 
   const handleUpdateContent = useCallback(
@@ -298,6 +343,8 @@ export const ArticleEditableEntry = (props: Props) => {
 
           return
         }
+
+        logger.info('Updating article revision content...', { content: editor.getJSON() })
 
         if (activeRevisionId) {
           notify('Updating article revision content...', 'info')

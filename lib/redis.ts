@@ -3,6 +3,8 @@ import Redis from 'ioredis'
 
 import { Logger } from '~/utils/logger'
 
+import { shouldSkipDbDuringBuild } from './build-phase'
+
 class RedisClient {
   private redis: Redis | null = null
 
@@ -13,6 +15,10 @@ class RedisClient {
       return this.redis
     }
 
+    if (shouldSkipDbDuringBuild()) {
+      return null
+    }
+
     if (!REDIS_URL) {
       this.logger.warn('REDIS_URL is not set')
 
@@ -21,12 +27,13 @@ class RedisClient {
 
     this.redis = new Redis(REDIS_URL, {
       /**
-       * Important for build phase:
-       * do not connect to Redis on import-time.
+       * `next build`: no client (see shouldSkipDbDuringBuild) — no connection spam.
+       * Runtime: lazy TCP connect; allow queue until ready — `enableOfflineQueue: false` caused
+       * "Stream isn't writeable" on first rate-limit / cache commands with ioredis.
        */
       lazyConnect: true,
       maxRetriesPerRequest: 1,
-      enableOfflineQueue: false,
+      enableOfflineQueue: true,
     })
 
     this.redis.on('error', (error) => {

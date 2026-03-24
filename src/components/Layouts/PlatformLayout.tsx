@@ -1,6 +1,6 @@
 'use client'
 
-import { HomeIcon, TextQuoteIcon, UserIcon, WrenchIcon } from 'lucide-react'
+import { ActivityIcon, HomeIcon, TextQuoteIcon, UserIcon, WrenchIcon } from 'lucide-react'
 import { useMemo } from 'react'
 
 import { UserRole } from '~/api/user'
@@ -42,6 +42,11 @@ export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
               defaultOpen: true,
               title: 'Admin Panel',
               items: [
+                {
+                  label: routes.rumDashboard.name,
+                  icon: <ActivityIcon width={16} height={16} />,
+                  href: routes.rumDashboard.path,
+                },
                 {
                   label: routes.articles.name,
                   icon: <TextQuoteIcon width={16} height={16} />,

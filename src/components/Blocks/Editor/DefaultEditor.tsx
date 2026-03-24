@@ -20,10 +20,11 @@ type Props = {
   editor?: Editor | null
   defaultContent?: string | null
   limit?: number | null
+  articleRevisionId?: string | null
 }
 
 export const DefaultEditor = (props: Props) => {
-  const { defaultContent = null, limit, editor: defaultEditor } = props
+  const { defaultContent = null, limit, editor: defaultEditor, articleRevisionId } = props
 
   const { editor: newEditor } = useDefaultEditor({ defaultContent, limit })
 
@@ -73,7 +74,13 @@ export const DefaultEditor = (props: Props) => {
       <ImageBubbleMenu editor={editor} onOpenSettings={openImageDialogEdit} />
       <CustomFloatingMenu editor={editor} onImageDialogOpen={openImageDialogCreate} onLinkDialogOpen={openLinkDialog} />
       <LinkEditorDialog editor={editor} open={linkDialogOpen} onOpenChange={setLinkDialogOpen} />
-      <ImageEditorDialog editor={editor} mode={imageDialogMode} open={imageDialogOpen} onOpenChange={onImageDialogOpenChange} />
+      <ImageEditorDialog
+        editor={editor}
+        mode={imageDialogMode}
+        open={imageDialogOpen}
+        onOpenChange={onImageDialogOpenChange}
+        articleRevisionId={articleRevisionId}
+      />
       <EditorContent editor={editor} />
       <CharacterCount editor={editor} limit={limit} />
     </>

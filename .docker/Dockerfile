@@ -42,6 +42,9 @@ RUN if [ "$API_ENV" = "stage" ]; then \
       if [ -n "$PUBLIC_ENV" ]; then printf '%s\n' "$PUBLIC_ENV" >> .env.prod; fi; \
     fi
 
+# Defense-in-depth HTML sanitizer tests (also run in CI when deploy_mode != registry)
+RUN npm run test
+
 RUN npm run build:${API_ENV}
 
 # Clean up dev dependencies with --legacy-peer-deps flag

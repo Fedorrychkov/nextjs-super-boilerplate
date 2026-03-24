@@ -198,6 +198,10 @@ jobs:
         run: |
           npm install --legacy-peer-deps
 
+      - name: 🧪 Unit tests (sanitize)
+        if: inputs.deploy_mode != 'registry'
+        run: npm run test
+
       - name: Create env and service-account.json files
         run: |
           # Write env from GitHub secret into env_file (supports multiline, quotes, etc.)
@@ -211,6 +215,9 @@ jobs:
           else
             echo "NODE_ENV=${{ inputs.api_env }}" >> "${{ inputs.env_file }}"
           fi
+
+          # Server-only: correlate RUM / deploys (not NEXT_PUBLIC_* — never sent to the client bundle)
+          echo "COMMIT_HASH=${{ github.sha }}" >> "${{ inputs.env_file }}"
 
           # Optional DB certificate
           if [ -n "${{ secrets.database_certificate }}" ]; then echo '${{ secrets.database_certificate }}' >> "db-certificate.${{ inputs.api_env }}.crt"; fi

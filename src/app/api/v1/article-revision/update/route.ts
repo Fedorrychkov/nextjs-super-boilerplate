@@ -1,11 +1,17 @@
 import connectDB from '@lib/db/client'
+import Article from '@lib/db/models/Article'
 import ArticleRevision from '@lib/db/models/ArticleRevision'
 import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 
-import { ArticleRevisionModel } from '~/api/article-revision'
+import { ArticleRevisionMetadata, ArticleRevisionModel, ArticleRevisionStatus } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
+import { publicArticleCacheTag } from '~/lib/cache/publicArticlePageCache'
+import { validateCanonicalUrlForStorage } from '~/lib/seo/articleCanonical'
+import { seoConfig } from '~/lib/seo/config'
+import { time } from '~/utils/time'
 
 const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
   apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
@@ -25,7 +31,33 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
 
     const id = body.id
 
-    await articleRevision.updateOne({ ...body, _id: id })
+    const updatedAt = time().toISOString()
+    const isPublishing = body.status === ArticleRevisionStatus.CONFIRMED && !articleRevision.publishedAt
+
+    const existingMeta = (articleRevision.metadata as ArticleRevisionMetadata | null | undefined) ?? {}
+    const mergedSeo = { ...(existingMeta.seo ?? {}), ...(body.metadata?.seo ?? {}) }
+    const canonicalValidation = validateCanonicalUrlForStorage(mergedSeo.canonicalUrl, seoConfig.siteUrl)
+
+    if (!canonicalValidation.ok) {
+      return NextResponse.json({ message: canonicalValidation.message }, { status: 400 })
+    }
+
+    const mergedMetadata: ArticleRevisionMetadata = {
+      ...existingMeta,
+      ...body.metadata,
+      seo: {
+        ...mergedSeo,
+        canonicalUrl: canonicalValidation.value,
+      },
+    }
+
+    await articleRevision.updateOne({
+      ...body,
+      _id: id,
+      updatedAt,
+      publishedAt: isPublishing ? updatedAt : articleRevision.publishedAt,
+      metadata: mergedMetadata,
+    })
 
     const data = await ArticleRevision.findById(id)
 
@@ -33,9 +65,22 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
       return NextResponse.json({ message: 'Article revision not found' }, { status: 404 })
     }
 
+    const parentArticle = await Article.findById(data.articleId)
+
+    if (parentArticle?.slug && String(parentArticle.revisionId) === String(data._id)) {
+      revalidateTag(publicArticleCacheTag(parentArticle.slug), 'max')
+      revalidatePath(`/article/${parentArticle.slug}`)
+    }
+
+    revalidatePath('/sitemap.xml')
+    revalidatePath('/rss.xml')
+
     return response.json({
       ...data.toObject(),
       id: data._id.toString(),
+      publishedAt: data?.publishedAt ? time(data.publishedAt).toISOString() : null,
+      updatedAt: data?.updatedAt ? time(data.updatedAt).toISOString() : null,
+      createdAt: data?.createdAt ? time(data.createdAt).toISOString() : null,
     })
   })
 

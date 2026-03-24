@@ -3,6 +3,8 @@
 import type { Editor } from '@tiptap/react'
 import { useCallback, useEffect, useState } from 'react'
 
+import { MediaResourceType } from '~/api/media'
+import { MediaUrlUploadField } from '~/components/Fields'
 import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '~/components/ui'
 import { Textarea } from '~/components/ui/fields/textarea'
 import { Input } from '~/components/ui/input'
@@ -15,6 +17,7 @@ export type ImageEditorDialogMode = 'create' | 'edit'
 
 type FormState = {
   src: string
+  assetId: string
   alt: string
   caption: string
   objectFit: ArticleImageObjectFit
@@ -27,6 +30,7 @@ type FormState = {
 
 const emptyForm: FormState = {
   src: '',
+  assetId: '',
   alt: '',
   caption: '',
   objectFit: 'contain',
@@ -54,12 +58,13 @@ type Props = {
   open: boolean
   mode: ImageEditorDialogMode
   onOpenChange: (open: boolean) => void
+  articleRevisionId?: string | null
 }
 
 export const ImageEditorDialog = (props: Props) => {
-  const { editor, open, mode, onOpenChange } = props
+  const { editor, open, mode, onOpenChange, articleRevisionId } = props
   const [form, setForm] = useState<FormState>(emptyForm)
-  /** В режиме edit: для внешнего URL можно менять src; для data: — нельзя */
+  /** In edit mode: for external URL you can change src; for data: — not allowed */
   const [srcEditable, setSrcEditable] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -98,6 +103,7 @@ export const ImageEditorDialog = (props: Props) => {
       setForm({
         ...emptyForm,
         src: embedded ? '' : rawSrc,
+        assetId: (a.assetId as string) ?? '',
         alt: (a.alt as string) ?? '',
         caption: (a.caption as string) ?? '',
         objectFit: (a.objectFit as ArticleImageObjectFit) || 'contain',
@@ -134,7 +140,7 @@ export const ImageEditorDialog = (props: Props) => {
       const src = resolveExternalImageSrc(form.src)
 
       if (!src) {
-        setError('Укажите URL (https://…) или путь от корня сайта (/…). Вставка base64 — через копипаст/дроп в текст.')
+        setError('Specify a valid URL (https://…) or path from the root of the site (/…). Inserting base64 — through copy/paste/drop in the text.')
 
         return
       }
@@ -146,6 +152,8 @@ export const ImageEditorDialog = (props: Props) => {
           type: 'image',
           attrs: {
             src,
+            assetId: form.assetId || null,
+            resourceType: MediaResourceType.IMAGE,
             ...commonAttrs(),
           },
         })
@@ -159,7 +167,7 @@ export const ImageEditorDialog = (props: Props) => {
     const pos = getSelectedImagePosition(editor)
 
     if (pos == null) {
-      setError('Выделите изображение в тексте.')
+      setError('Select an image in the text.')
 
       return
     }
@@ -167,7 +175,7 @@ export const ImageEditorDialog = (props: Props) => {
     const node = editor.state.doc.nodeAt(pos)
 
     if (!node || node.type.name !== 'image') {
-      setError('Узел изображения не найден.')
+      setError('Image node not found.')
 
       return
     }
@@ -179,7 +187,7 @@ export const ImageEditorDialog = (props: Props) => {
       const src = resolveExternalImageSrc(form.src)
 
       if (!src) {
-        setError('Укажите корректный URL (https://…) или путь /…')
+        setError('Specify a valid URL (https://…) or path /…')
 
         return
       }
@@ -187,12 +195,17 @@ export const ImageEditorDialog = (props: Props) => {
       Object.assign(attrs, { src })
     }
 
+    Object.assign(attrs, {
+      assetId: form.assetId || null,
+      resourceType: MediaResourceType.IMAGE,
+    })
+
     editor.chain().focus().setNodeSelection(pos).updateAttributes('image', attrs).run()
 
     onOpenChange(false)
   }, [editor, form, mode, onOpenChange, commonAttrs])
 
-  const title = mode === 'create' ? 'Добавить изображение' : 'Изображение'
+  const title = mode === 'create' ? 'Add image' : 'Image'
   const description =
     mode === 'create'
       ? 'Specify the image address (https or path /…). The rest is up to you. Base64 is inserted by copying or dragging.'
@@ -219,11 +232,37 @@ export const ImageEditorDialog = (props: Props) => {
           ) : null}
 
           {showUrlField ? (
-            <Input
-              label="URL изображения"
+            <MediaUrlUploadField
+              label="Image URL"
               value={form.src}
-              onChange={(v) => setForm((s) => ({ ...s, src: v }))}
-              placeholder="https://… или /uploads/photo.png"
+              assetId={form.assetId || null}
+              resourceType={MediaResourceType.IMAGE}
+              variant="inline"
+              articleRevisionId={articleRevisionId}
+              onChange={(next) => {
+                if (!next?.value && next?.removed) {
+                  if (mode === 'edit' && editor) {
+                    const pos = getSelectedImagePosition(editor)
+
+                    if (pos != null) {
+                      editor.chain().focus().setNodeSelection(pos).deleteSelection().run()
+                    }
+
+                    onOpenChange(false)
+                  }
+
+                  setForm((s) => ({ ...s, src: '', assetId: '' }))
+
+                  return
+                }
+
+                setForm((s) => ({
+                  ...s,
+                  src: next.value,
+                  assetId: next.assetId ?? '',
+                }))
+              }}
+              hintText="Upload/paste/drop image or provide a URL."
             />
           ) : null}
 
@@ -258,15 +297,10 @@ export const ImageEditorDialog = (props: Props) => {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Min ширина (px)" value={form.minWidthPx} onChange={(v) => setForm((s) => ({ ...s, minWidthPx: v }))} placeholder="64" />
-            <Input label="Min высота (px)" value={form.minHeightPx} onChange={(v) => setForm((s) => ({ ...s, minHeightPx: v }))} placeholder="64" />
-            <Input label="Max ширина рамки (px)" value={form.maxWidthPx} onChange={(v) => setForm((s) => ({ ...s, maxWidthPx: v }))} placeholder="напр. 800" />
-            <Input
-              label="Max высота рамки (px)"
-              value={form.maxHeightPx}
-              onChange={(v) => setForm((s) => ({ ...s, maxHeightPx: v }))}
-              placeholder="необязательно"
-            />
+            <Input label="Min width (px)" value={form.minWidthPx} onChange={(v) => setForm((s) => ({ ...s, minWidthPx: v }))} placeholder="auto" />
+            <Input label="Min height (px)" value={form.minHeightPx} onChange={(v) => setForm((s) => ({ ...s, minHeightPx: v }))} placeholder="auto" />
+            <Input label="Max width (px)" value={form.maxWidthPx} onChange={(v) => setForm((s) => ({ ...s, maxWidthPx: v }))} placeholder="auto" />
+            <Input label="Max height (px)" value={form.maxHeightPx} onChange={(v) => setForm((s) => ({ ...s, maxHeightPx: v }))} placeholder="optional" />
           </div>
         </div>
         <DialogFooter>

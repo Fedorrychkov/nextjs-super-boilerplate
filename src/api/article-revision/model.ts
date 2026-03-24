@@ -1,3 +1,5 @@
+import { MediaProvider, MediaResourceType } from '../media/model'
+
 /**
  * Ручные SEO-поля ревизии — кладём в `metadata.seo` (см. ArticleEditableSeo).
  */
@@ -22,10 +24,24 @@ export type ArticleRevisionSeoMetadata = {
   nofollow?: boolean | null
   /** meta keywords (опционально, слабая ценность для Google) */
   keywords?: string | null
+  ogImageAssetId?: string | null
+}
+
+export type ArticleRevisionMediaField = {
+  assetId?: string | null
+  resourceType?: MediaResourceType | null
+  provider?: MediaProvider | null
+  url?: string | null
+}
+
+export type ArticleRevisionMediaMetadata = {
+  thumbnail?: ArticleRevisionMediaField | null
+  seoOgImage?: ArticleRevisionMediaField | null
 }
 
 export type ArticleRevisionMetadata = {
   seo?: ArticleRevisionSeoMetadata | null
+  media?: ArticleRevisionMediaMetadata | null
 } & Record<string, unknown>
 
 export type ArticleRevisionModel = {

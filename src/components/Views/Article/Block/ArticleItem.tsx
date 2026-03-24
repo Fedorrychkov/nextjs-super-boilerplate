@@ -6,6 +6,8 @@ import { Skeleton } from '~/components/Loaders'
 import { Typography } from '~/components/ui/Typography'
 import { routes } from '~/constants'
 
+import { ArticlePublishedDate } from './ArticlePublishedDate'
+
 type Props = {
   article: Partial<
     ArticleModel & {
@@ -29,8 +31,11 @@ export const ArticleItem = (props: Props) => {
           defaultPlaceholder={<Skeleton className="w-full h-full object-cover max-h-[200px]" />}
         />
       ) : null}
-      <Typography variant="heading-3">{article.title}</Typography>
-      <Typography variant="Body/M/Regular">{article.description}</Typography>
+      <ArticlePublishedDate publishedAt={article.publishedAt} />
+      <div className="flex flex-col gap-2">
+        <Typography variant="heading-3">{article.title}</Typography>
+        <Typography variant="Body/M/Regular">{article.description}</Typography>
+      </div>
       <div>
         <Link
           href={

@@ -4,8 +4,10 @@ import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } fro
 import { AuthSuccessResult } from '@lib/security/auth'
 import { NextRequest, NextResponse } from 'next/server'
 
-import { ArticleRevisionModel } from '~/api/article-revision'
+import { ArticleRevisionMetadata, ArticleRevisionModel } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
+import { validateCanonicalUrlForStorage } from '~/lib/seo/articleCanonical'
+import { seoConfig } from '~/lib/seo/config'
 
 const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
   apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
@@ -19,7 +21,24 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
 
     delete body.id
 
-    const data = await ArticleRevision.create(body)
+    const metadataBase = (body.metadata as ArticleRevisionMetadata | undefined) ?? {}
+    const mergedSeo = { ...(metadataBase.seo ?? {}) }
+    const canonicalValidation = validateCanonicalUrlForStorage(mergedSeo.canonicalUrl, seoConfig.siteUrl)
+
+    if (!canonicalValidation.ok) {
+      return NextResponse.json({ message: canonicalValidation.message }, { status: 400 })
+    }
+
+    const data = await ArticleRevision.create({
+      ...body,
+      metadata: {
+        ...metadataBase,
+        seo: {
+          ...mergedSeo,
+          canonicalUrl: canonicalValidation.value,
+        },
+      },
+    })
 
     return response.json({
       ...data.toObject(),
