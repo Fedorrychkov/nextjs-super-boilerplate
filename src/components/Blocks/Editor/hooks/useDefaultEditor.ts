@@ -7,6 +7,7 @@ import { Logger } from '~/utils/logger'
 
 import { defaultExtensions } from '../extensions'
 import { DEFAULT_LINK_URI_CTX, isAllowedHref, normalizeUrlForLink } from '../link/linkPolicy'
+import { normalizeMarkdownForTiptap } from '../markdownNormalize'
 
 type Props = {
   defaultContent?: string | null
@@ -77,7 +78,7 @@ export const useDefaultEditor = (props: Props) => {
       return
     }
 
-    const md = markdownInput ?? ''
+    const md = normalizeMarkdownForTiptap(markdownInput ?? '')
 
     if (!editor.markdown) {
       notify('MarkdownManager недоступен', 'destructive')

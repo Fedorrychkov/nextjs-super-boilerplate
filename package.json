@@ -51,6 +51,7 @@
     "@tiptap/extension-drag-handle": "^3.20.4",
     "@tiptap/extension-drag-handle-react": "^3.20.4",
     "@tiptap/extension-file-handler": "^3.20.4",
+    "@tiptap/extension-heading": "^3.20.5",
     "@tiptap/extension-highlight": "^3.20.4",
     "@tiptap/extension-image": "^3.20.4",
     "@tiptap/extension-italic": "^3.20.4",
@@ -110,8 +111,8 @@
     "tailwind-merge": "^3.3.1",
     "typescript": "^5.9.3",
     "uuid": "^13.0.0",
-    "web-vitals": "^4.2.4",
     "web-push": "^3.6.7",
+    "web-vitals": "^4.2.4",
     "y-protocols": "^1.0.7",
     "yjs": "^13.6.30"
   },
