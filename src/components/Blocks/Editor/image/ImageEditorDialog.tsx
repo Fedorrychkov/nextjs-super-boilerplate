@@ -266,10 +266,10 @@ export const ImageEditorDialog = (props: Props) => {
             />
           ) : null}
 
-          <Input label="Alt" value={form.alt} onChange={(v) => setForm((s) => ({ ...s, alt: v }))} placeholder="Описание для доступности" />
+          <Input label="Alt" value={form.alt} onChange={(v) => setForm((s) => ({ ...s, alt: v }))} placeholder="Description for accessibility" />
           <div className="flex flex-col gap-1">
             <span className="text-[13px] text-gray-900 capitalize">Caption under the image</span>
-            <Textarea value={form.caption} onChange={(e) => setForm((s) => ({ ...s, caption: e.target.value }))} placeholder="Текст под картинкой" rows={3} />
+            <Textarea value={form.caption} onChange={(e) => setForm((s) => ({ ...s, caption: e.target.value }))} placeholder="Text under the image" rows={3} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1">
@@ -305,7 +305,7 @@ export const ImageEditorDialog = (props: Props) => {
         </div>
         <DialogFooter>
           <Button type="button" variant="secondary" size="sm-md" onClick={() => onOpenChange(false)}>
-            Отмена
+            Cancel
           </Button>
           <Button type="button" size="sm-md" onClick={apply}>
             {submitLabel}

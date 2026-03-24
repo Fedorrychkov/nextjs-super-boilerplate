@@ -4,7 +4,7 @@ const STATIC_CACHE = 'static-v1'
 const HTML_CACHE = 'html-v1'
 const API_PUBLIC_CACHE = 'api-public-v1'
 
-// Shell-pages, for precache (можно расширить под свой проект)
+// Shell-pages, for precache (can be expanded to your project)
 const PRECACHE_URLS = ['/',]
 
 self.addEventListener('push', (event) => {
@@ -135,7 +135,7 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-	// Next static assets и ассеты — cache-first
+	// Next static assets and assets — cache-first
 	if (
 		url.pathname.startsWith('/_next/static/') ||
 		url.pathname.startsWith('/_next/image') ||

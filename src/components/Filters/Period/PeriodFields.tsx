@@ -158,7 +158,7 @@ export const PeriodFields = (props: Props) => {
             <div className="flex flex-row flex-wrap gap-2">
               <Input
                 id="datetime-from"
-                label="От"
+                label="From"
                 type={fieldType}
                 defaultValue={customFromDate ? undefined : defaultFromDate.format(dateFormat) || undefined}
                 value={customFromDate?.format(dateFormat) || ''}
@@ -171,7 +171,7 @@ export const PeriodFields = (props: Props) => {
               />
               <Input
                 id="datetime-to"
-                label="До"
+                label="To"
                 type={fieldType}
                 defaultValue={customToDate ? undefined : defaultToDate.format(dateFormat) || undefined}
                 value={customToDate?.format(dateFormat) || ''}

@@ -81,7 +81,7 @@ export const useDefaultEditor = (props: Props) => {
     const md = normalizeMarkdownForTiptap(markdownInput ?? '')
 
     if (!editor.markdown) {
-      notify('MarkdownManager недоступен', 'destructive')
+      notify('MarkdownManager not available', 'destructive')
 
       return
     }

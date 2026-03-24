@@ -229,7 +229,7 @@ jobs:
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           IMAGE="ghcr.io/${OWNER}/${{ inputs.registry_subname || 'service-image' }}:${{ github.sha }}"
 
-          # Вытащить только публичные переменные (NEXT_PUBLIC_*, VAPID_SUBJECT) из соответствующего env-файла в репозитории
+          # Extract only public variables (NEXT_PUBLIC_*, VAPID_SUBJECT) from the corresponding env file in the repository
           PUBLIC_ENV=$(grep -E '^(NEXT_PUBLIC_|VAPID_SUBJECT=)' "${{ inputs.env_file }}" || true)
 
           echo "Public env for build:"

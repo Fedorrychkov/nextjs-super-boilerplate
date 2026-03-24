@@ -29,7 +29,7 @@ RUN if [ -f "package-lock.json" ]; then \
 # Copy source files and build the application
 COPY . .
 
-# Minimum .env for build step (без секретов). PUBLIC_ENV содержит только NEXT_PUBLIC_*
+# Minimum .env for build step (without secrets). PUBLIC_ENV contains only NEXT_PUBLIC_*
 RUN if [ "$API_ENV" = "stage" ]; then \
       echo "NODE_ENV=production" > .env.stage && \
       echo "APP_ENV=stage" >> .env.stage && \

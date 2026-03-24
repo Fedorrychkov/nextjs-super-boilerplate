@@ -83,7 +83,7 @@ export type ArticleEditableSeoSavePayload = {
   metadata: ArticleRevisionMetadataPatch
 }
 
-/** Патч для merge с существующим `revision.metadata` на бэке */
+/** Patch to merge with existing `revision.metadata` on the backend */
 export type ArticleRevisionMetadataPatch = {
   seo: ArticleRevisionSeoMetadata
   media?: ArticleRevisionMediaMetadata
