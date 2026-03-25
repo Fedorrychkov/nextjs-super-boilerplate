@@ -4,7 +4,11 @@ import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } fro
 import { AuthSuccessResult } from '@lib/security/auth'
 import { NextRequest, NextResponse } from 'next/server'
 
+import { getServerTFromNextRequest } from '~/lib/i18n'
+
 const handler = async (request: NextRequest, authResult: AuthSuccessResult) => {
+  const { t } = getServerTFromNextRequest(request)
+
   try {
     return apiErrorHandlerContainer(request)(async (res) => {
       await connectDB()
@@ -18,7 +22,7 @@ const handler = async (request: NextRequest, authResult: AuthSuccessResult) => {
       )
     })
   } catch {
-    return NextResponse.json({ message: 'Invalid or expired token' }, { status: 401 })
+    return NextResponse.json({ message: t('auth.errors.invalidToken') }, { status: 401 })
   }
 }
 

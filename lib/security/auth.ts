@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { JwtPayload } from '~/api/auth/model'
 import { UserRole } from '~/api/user'
+import { getServerTFromNextRequest } from '~/lib/i18n'
 
 export interface AuthRequest extends NextRequest {
   user?: JwtPayload
@@ -29,13 +30,14 @@ export type AuthResult = AuthSuccessResult | AuthFailureResult
  * Returns payload on success or error response on failure
  */
 export async function authMiddleware(request: NextRequest): Promise<AuthResult> {
+  const { t } = getServerTFromNextRequest(request)
   // Get token from cookies or Authorization header
   const accessToken = request.cookies.get('accessToken')?.value || request.headers.get('Authorization')?.replace('Bearer ', '')
 
   if (!accessToken) {
     return {
       success: false,
-      response: NextResponse.json({ message: 'Authentication required' }, { status: 401 }),
+      response: NextResponse.json({ message: t('errors.authenticationRequired') }, { status: 401 }),
     }
   }
 
@@ -62,7 +64,7 @@ export async function authMiddleware(request: NextRequest): Promise<AuthResult> 
       }),
     }
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Invalid or expired token'
+    const message = error instanceof Error ? error.message : t('auth.errors.invalidToken')
 
     return {
       success: false,
@@ -76,6 +78,7 @@ export async function authMiddleware(request: NextRequest): Promise<AuthResult> 
  */
 export function roleMiddleware(allowedRoles: UserRole[]) {
   return async (request: NextRequest): Promise<AuthResult> => {
+    const { t } = getServerTFromNextRequest(request)
     const authResult = await authMiddleware(request)
 
     if (!authResult.success) {
@@ -85,7 +88,7 @@ export function roleMiddleware(allowedRoles: UserRole[]) {
     if (!allowedRoles.includes(authResult.payload.role)) {
       return {
         success: false,
-        response: NextResponse.json({ message: 'Insufficient permissions' }, { status: 403 }),
+        response: NextResponse.json({ message: t('errors.insufficientPermissions') }, { status: 403 }),
       }
     }
 

@@ -7,10 +7,13 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { RUM_METRIC_NAMES } from '~/api/rum/model'
 import type { RumIngestBody } from '~/api/rum/types'
+import { getServerTFromNextRequest } from '~/lib/i18n'
 
 const isValidMetricName = (n: unknown): n is RumIngestBody['name'] => typeof n === 'string' && (RUM_METRIC_NAMES as readonly string[]).includes(n)
 
 const handler = async (request: NextRequest, _context: RouteHandlerContext) => {
+  const { t } = getServerTFromNextRequest(request)
+
   if (!RUM_CONFIG.enabled) {
     return new NextResponse(null, { status: 204 })
   }
@@ -20,11 +23,11 @@ const handler = async (request: NextRequest, _context: RouteHandlerContext) => {
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json({ message: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ message: t('rum.errors.invalidJson') }, { status: 400 })
   }
 
   if (!body || typeof body !== 'object') {
-    return NextResponse.json({ message: 'Invalid body' }, { status: 400 })
+    return NextResponse.json({ message: t('rum.errors.invalidBody') }, { status: 400 })
   }
 
   const b = body as Record<string, unknown>
@@ -33,15 +36,15 @@ const handler = async (request: NextRequest, _context: RouteHandlerContext) => {
   const pathname = b.pathname
 
   if (!isValidMetricName(name)) {
-    return NextResponse.json({ message: 'Invalid metric name' }, { status: 400 })
+    return NextResponse.json({ message: t('rum.errors.invalidMetricName') }, { status: 400 })
   }
 
   if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return NextResponse.json({ message: 'Invalid value' }, { status: 400 })
+    return NextResponse.json({ message: t('rum.errors.invalidValue') }, { status: 400 })
   }
 
   if (typeof pathname !== 'string' || pathname.length > 1024) {
-    return NextResponse.json({ message: 'Invalid pathname' }, { status: 400 })
+    return NextResponse.json({ message: t('rum.errors.invalidPathname') }, { status: 400 })
   }
 
   const commitHash = COMMIT_HASH?.trim() || null
@@ -62,7 +65,7 @@ const handler = async (request: NextRequest, _context: RouteHandlerContext) => {
       connectionEffectiveType: typeof b.connectionEffectiveType === 'string' ? b.connectionEffectiveType : null,
     })
   } catch {
-    return NextResponse.json({ message: 'Failed to persist' }, { status: 500 })
+    return NextResponse.json({ message: t('rum.errors.failedToPersist') }, { status: 500 })
   }
 
   return new NextResponse(null, { status: 204 })

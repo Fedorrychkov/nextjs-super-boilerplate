@@ -3,6 +3,7 @@ import test from 'node:test'
 
 import { ArticleVisibility } from '~/api/article'
 
+import { getT } from '../i18n'
 import { buildDefaultArticleUrl, resolveArticleCanonicalUrl, validateCanonicalUrlForStorage } from './articleCanonical'
 
 const site = 'https://example.com'
@@ -24,13 +25,13 @@ test('resolveArticleCanonicalUrl keeps same-origin override', () => {
 })
 
 test('validateCanonicalUrlForStorage rejects wrong origin', () => {
-  const r = validateCanonicalUrlForStorage('https://other.com/x', site)
+  const r = validateCanonicalUrlForStorage('https://other.com/x', site, getT('en'))
 
   assert.equal(r.ok, false)
 })
 
 test('validateCanonicalUrlForStorage accepts same origin', () => {
-  const r = validateCanonicalUrlForStorage('https://example.com/article/foo', site)
+  const r = validateCanonicalUrlForStorage('https://example.com/article/foo', site, getT('en'))
 
   assert.equal(r.ok, true)
 

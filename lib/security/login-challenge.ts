@@ -1,7 +1,7 @@
 import { cacheClient } from '@lib/cache'
 
 import { getUniqueId } from '~/utils/getUniqueId'
-import { jsonStringifySafety } from '~/utils/jsonSafe'
+import { jsonParseSafety, jsonStringifySafety } from '~/utils/jsonSafe'
 
 const CHALLENGE_TTL_SECONDS = 5 * 60 // 5 minutes
 
@@ -30,9 +30,5 @@ export const consumeLoginChallenge = async (id: string): Promise<LoginChallenge 
     return null
   }
 
-  try {
-    return JSON.parse(data) as LoginChallenge
-  } catch {
-    return null
-  }
+  return jsonParseSafety<LoginChallenge>(data) ?? null
 }

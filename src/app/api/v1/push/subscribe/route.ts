@@ -3,13 +3,17 @@ import { AuthSuccessResult } from '@lib/security/auth'
 import { pushSubscriptionService } from '@lib/services/push-subscription.service'
 import { NextRequest, NextResponse } from 'next/server'
 
+import { getServerTFromNextRequest } from '~/lib/i18n'
+
 const handlerPost = async (request: NextRequest, authResult: AuthSuccessResult) => {
   return apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
+    const { t } = getServerTFromNextRequest(request)
+
     const body = await request.json()
     const { subscription } = body || {}
 
     if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
-      return response.json({ ok: false, error: 'INVALID_SUBSCRIPTION' }, { status: 400 })
+      return response.json({ ok: false, error: t('push.errors.invalidSubscription') }, { status: 400 })
     }
 
     const dto = {
@@ -31,11 +35,13 @@ const handlerPost = async (request: NextRequest, authResult: AuthSuccessResult) 
 
 const handlerDelete = async (request: NextRequest, authResult: AuthSuccessResult) => {
   return apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
+    const { t } = getServerTFromNextRequest(request)
+
     const body = await request.json()
     const { endpoint } = body || {}
 
     if (!endpoint) {
-      return response.json({ ok: false, error: 'INVALID_PARAMS' }, { status: 400 })
+      return response.json({ ok: false, error: t('push.errors.invalidParams') }, { status: 400 })
     }
 
     const user = authResult.payload

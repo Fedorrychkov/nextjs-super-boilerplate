@@ -6,13 +6,16 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { ArticleRevisionMetadata, ArticleRevisionModel } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
+import { getServerTFromNextRequest } from '~/lib/i18n'
 import { validateCanonicalUrlForStorage } from '~/lib/seo/articleCanonical'
 import { seoConfig } from '~/lib/seo/config'
 
 const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
   apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
+    const { t } = getServerTFromNextRequest(request)
+
     if (![UserRole.ADMIN, UserRole.EDITOR].includes(authResult.payload.role)) {
-      return NextResponse.json({ message: 'Insufficient permissions' }, { status: 403 })
+      return NextResponse.json({ message: t('errors.insufficientPermissions') }, { status: 403 })
     }
 
     await connectDB()
@@ -23,7 +26,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
 
     const metadataBase = (body.metadata as ArticleRevisionMetadata | undefined) ?? {}
     const mergedSeo = { ...(metadataBase.seo ?? {}) }
-    const canonicalValidation = validateCanonicalUrlForStorage(mergedSeo.canonicalUrl, seoConfig.siteUrl)
+    const canonicalValidation = validateCanonicalUrlForStorage(mergedSeo.canonicalUrl, seoConfig.siteUrl, t)
 
     if (!canonicalValidation.ok) {
       return NextResponse.json({ message: canonicalValidation.message }, { status: 400 })

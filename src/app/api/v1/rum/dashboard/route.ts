@@ -5,13 +5,16 @@ import { buildRumDashboard } from '@lib/services/rum-dashboard.service'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { UserRole } from '~/api/user'
+import { getServerTFromNextRequest } from '~/lib/i18n'
 
 const MAX_DAYS = 14
 
 const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
   apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
+    const { t } = getServerTFromNextRequest(request)
+
     if (![UserRole.ADMIN, UserRole.EDITOR].includes(authResult.payload.role)) {
-      return NextResponse.json({ message: 'Insufficient permissions' }, { status: 403 })
+      return NextResponse.json({ message: t('errors.insufficientPermissions') }, { status: 403 })
     }
 
     const raw = request.nextUrl.searchParams.get('days')

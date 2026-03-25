@@ -7,6 +7,8 @@ import { AuthSuccessResult } from '@lib/security/auth'
 import { decryptSecret, verifyTotpCode } from '@lib/security/totp'
 import { NextRequest } from 'next/server'
 
+import { getServerTFromNextRequest } from '~/lib/i18n'
+
 type ConfirmMfaDto = {
   code: string
 }
@@ -15,8 +17,10 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) => {
   return apiErrorHandlerContainer(request)(async (res, req) => {
     const body = (await req.json()) as ConfirmMfaDto
 
+    const { t } = getServerTFromNextRequest(request)
+
     if (!body.code) {
-      throw new ValidationError('MFA code is required')
+      throw new ValidationError(t('totp.errors.mfaIsRequired'))
     }
 
     await connectDB()
@@ -24,21 +28,21 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) => {
     const user = await User.findById(authResult.payload.sub)
 
     if (!user) {
-      throw new ValidationError('User not found')
+      throw new ValidationError(t('user.errors.notFound'))
     }
 
     const settings = await UserSettings.findOne({ userId: user._id })
 
     if (!settings || !settings.mfaSecret) {
-      throw new ValidationError('MFA is not initialized for this user')
+      throw new ValidationError(t('totp.errors.mfaIsNotInitializedForThisUser'))
     }
 
     const secret = decryptSecret(settings.mfaSecret)
 
-    const totpValid = await verifyTotpCode(secret, body.code)
+    const totpValid = await verifyTotpCode(secret, body.code, t)
 
     if (!totpValid.valid) {
-      throw new ValidationError('Invalid MFA code')
+      throw new ValidationError(t('totp.errors.invalidCode'))
     }
 
     settings.mfaEnabled = true

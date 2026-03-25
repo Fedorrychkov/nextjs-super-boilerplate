@@ -2,6 +2,7 @@ import { BruteForceError, ForbiddenError, NotFoundError, UnauthorizedError, Vali
 import { AxiosError, AxiosResponse } from 'axios'
 import { NextRequest, NextResponse } from 'next/server'
 
+import { getServerTFromNextRequest } from '~/lib/i18n'
 import { getUniqueId } from '~/utils/getUniqueId'
 import { Logger } from '~/utils/logger'
 import { time } from '~/utils/time'
@@ -15,6 +16,7 @@ export const apiErrorHandlerContainer =
   (req: NextRequest, argLogger?: Logger) =>
   async <T>(handler: (res: typeof NextResponse, req: NextRequest) => Promise<T>) => {
     const res = NextResponse
+    const { t } = getServerTFromNextRequest(req)
 
     const logger = argLogger || defaultLogger
 
@@ -126,7 +128,7 @@ export const apiErrorHandlerContainer =
 
       return res.json(
         {
-          message: 'Something goes wrong...',
+          message: t('errors.unknown'),
         },
         {
           status: 500,

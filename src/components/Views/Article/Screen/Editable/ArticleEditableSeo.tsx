@@ -11,6 +11,7 @@ import { Button, Option, Typography } from '~/components/ui'
 import { routes } from '~/constants'
 import { handleRegister } from '~/hooks/useRegister'
 import { validateCanonicalUrlForStorage } from '~/lib/seo/articleCanonical'
+import { useT } from '~/providers'
 
 type SeoForm = {
   metaTitle: string
@@ -100,6 +101,7 @@ type Props = {
 
 export const ArticleEditableSeo = (props: Props) => {
   const { articleRevision, isLoading, onSave, article, isDisabled } = props
+  const t = useT()
 
   const defaultValues = useMemo(() => toFormValues(readSeoFromRevision(articleRevision), article), [articleRevision, article])
 
@@ -194,7 +196,7 @@ export const ArticleEditableSeo = (props: Props) => {
                       return true
                     }
 
-                    const result = validateCanonicalUrlForStorage(v.trim(), site)
+                    const result = validateCanonicalUrlForStorage(v.trim(), site, t)
 
                     return result.ok ? true : result.message
                   },

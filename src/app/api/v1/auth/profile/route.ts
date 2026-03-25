@@ -4,15 +4,18 @@ import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } fro
 import { AuthSuccessResult } from '@lib/security/auth'
 import { NextRequest } from 'next/server'
 
+import { getServerTFromNextRequest } from '~/lib/i18n'
+
 const handler = async (request: NextRequest, authResult: AuthSuccessResult) => {
   return apiErrorHandlerContainer(request)(async (res) => {
+    const { t } = getServerTFromNextRequest(request)
     const user = authResult.payload
 
     await connectDB()
     const userDoc = await User.findById(user.sub).select('-password')
 
     if (!userDoc) {
-      return res.json({ message: 'User not found' }, { status: 404 })
+      return res.json({ message: t('user.errors.notFound') }, { status: 404 })
     }
 
     return res.json(

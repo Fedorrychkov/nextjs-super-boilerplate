@@ -7,6 +7,8 @@ import { AuthSuccessResult } from '@lib/security/auth'
 import { decryptSecret, verifyTotpCode } from '@lib/security/totp'
 import { NextRequest } from 'next/server'
 
+import { getServerTFromNextRequest } from '~/lib/i18n'
+
 type DisableMfaDto = {
   code?: string
   password?: string
@@ -16,37 +18,39 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) => {
   return apiErrorHandlerContainer(request)(async (res, req) => {
     const body = (await req.json().catch(() => ({}))) as DisableMfaDto
 
+    const { t } = getServerTFromNextRequest(request)
+
     await connectDB()
 
     const user = await User.findById(authResult.payload.sub).select('+password')
 
     if (!user) {
-      throw new ValidationError('User not found')
+      throw new ValidationError(t('user.errors.notFound'))
     }
 
     const settings = await UserSettings.findOne({ userId: user._id })
 
     if (!settings || !settings.mfaEnabled) {
-      throw new ValidationError('MFA is not enabled for this user')
+      throw new ValidationError(t('totp.errors.mfaNotEnabledForThisUser'))
     }
 
     // Require password for extra safety
     if (!body.password) {
-      throw new ValidationError('Password is required to disable MFA')
+      throw new ValidationError(t('totp.errors.passwordIsRequiredToDisableMfa'))
     }
 
     const passwordValid = await user.comparePassword(body.password)
 
     if (!passwordValid) {
-      throw new ValidationError('Invalid password')
+      throw new ValidationError(t('auth.errors.invalidPassword'))
     }
 
     if (body.code && settings.mfaSecret) {
       const secret = decryptSecret(settings.mfaSecret)
-      const totpValid = await verifyTotpCode(secret, body.code)
+      const totpValid = await verifyTotpCode(secret, body.code, t)
 
       if (!totpValid.valid) {
-        throw new ValidationError('Invalid MFA code')
+        throw new ValidationError(t('totp.errors.invalidMfaCode'))
       }
     }
 

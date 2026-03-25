@@ -4,13 +4,17 @@ import { authService } from '@lib/services/auth.service'
 import { cookies } from 'next/headers'
 import { NextRequest } from 'next/server'
 
+import { getServerTFromNextRequest } from '~/lib/i18n'
+
 const handler = (request: NextRequest) => {
   return apiErrorHandlerContainer(request)(async (res) => {
+    const { t } = getServerTFromNextRequest(request)
+
     const cookieStore = await cookies()
     const refreshToken = cookieStore.get('refreshToken')?.value ?? null
 
     if (!refreshToken) {
-      const response = res.json({ message: 'Refresh token not found' }, { status: 401 })
+      const response = res.json({ message: t('auth.errors.refreshTokenNotFound') }, { status: 401 })
       clearAuthCookies(response)
 
       return response
