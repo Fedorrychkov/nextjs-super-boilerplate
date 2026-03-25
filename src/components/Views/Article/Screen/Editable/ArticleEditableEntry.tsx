@@ -14,6 +14,7 @@ import { MediaProvider, MediaResourceType } from '~/api/media'
 import { Tab, TabsContainer } from '~/components/Blocks/Tabs/TabsContainer'
 import { SpinnerScreen } from '~/components/Loaders'
 import { AlertBlock, Button, Typography } from '~/components/ui'
+import { routes } from '~/constants'
 import { useNotify } from '~/providers/notify'
 import {
   useArticleQuery,
@@ -376,7 +377,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
       return
     }
 
-    window.open(`/preview/${article?.slug}?revisionId=${activeRevisionId}`, '_blank')
+    window.open(`${routes.articlePreview.path?.replace(':slug', article?.slug ?? '')}?revisionId=${activeRevisionId}`, '_blank')
   }, [article, activeRevisionId])
 
   const handlePublish = useCallback(async () => {

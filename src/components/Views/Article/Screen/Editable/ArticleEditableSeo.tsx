@@ -8,6 +8,7 @@ import { ArticleRevisionMediaMetadata, ArticleRevisionModel, ArticleRevisionSeoM
 import { MediaProvider, MediaResourceType } from '~/api/media'
 import { DefaultCheckbox, DefaultFieldContainer, DefaultMultiselectField, DefaultTextAreaContainer, MediaUrlUploadField } from '~/components/Fields'
 import { Button, Option, Typography } from '~/components/ui'
+import { routes } from '~/constants'
 import { handleRegister } from '~/hooks/useRegister'
 import { validateCanonicalUrlForStorage } from '~/lib/seo/articleCanonical'
 
@@ -119,7 +120,7 @@ export const ArticleEditableSeo = (props: Props) => {
       return ''
     }
 
-    return `${site.replace(/\/+$/, '')}/${article?.visibility === ArticleVisibility.PUBLIC ? 'article' : 'private-article'}/${encodeURIComponent(slug)}`
+    return `${site.replace(/\/+$/, '')}${article?.visibility === ArticleVisibility.PUBLIC ? `${routes.articlePublic.path?.replace(':slug', slug ?? '')}` : `${routes.articlePrivate.path?.replace(':slug', slug ?? '')}`}`
   }, [article])
 
   const handleSubmit = useCallback(

@@ -8,6 +8,7 @@ import { CopyContainer } from '~/components/Blocks/CopyContainer'
 import { CustomTable, TableDefaultSkeleton } from '~/components/Blocks/Table'
 import { CustomTooltip } from '~/components/Blocks/Tooltip'
 import { Badge, TableCell, TableRow, Typography } from '~/components/ui'
+import { routes } from '~/constants'
 import { cn } from '~/utils/cn'
 import { time } from '~/utils/time'
 
@@ -50,18 +51,23 @@ export const ArticleListTable = ({ isLoading, data }: Props) => {
           {columnKeys?.includes('slug') && (
             <TableCell className="whitespace-nowrap">
               <CopyContainer
-                content={`${process.env.NEXT_PUBLIC_SITE_URL}/${item.visibility === ArticleVisibility.PUBLIC ? 'article/' : 'private-article/'}${item.slug}`}
+                content={`${process.env.NEXT_PUBLIC_SITE_URL}${item.visibility === ArticleVisibility.PUBLIC ? `${routes.articlePublic.path?.replace(':slug', item.slug ?? '')}` : `${routes.articlePrivate.path?.replace(':slug', item.slug ?? '')}`}`}
               >
                 <CustomTooltip
                   content={
                     <Typography variant="Body/XS/Regular">
-                      {process.env.NEXT_PUBLIC_SITE_URL}/{item.visibility === ArticleVisibility.PUBLIC ? 'article/' : 'private-article/'}
-                      {item.slug}
+                      {process.env.NEXT_PUBLIC_SITE_URL}
+                      {item.visibility === ArticleVisibility.PUBLIC
+                        ? `${routes.articlePublic.path?.replace(':slug', item.slug ?? '')}`
+                        : `${routes.articlePrivate.path?.replace(':slug', item.slug ?? '')}`}
                     </Typography>
                   }
                 >
                   <Typography variant="Body/XS/Semibold" className="max-w-[200px] truncate">
-                    {process.env.NEXT_PUBLIC_SITE_URL}/{item.visibility === ArticleVisibility.PUBLIC ? 'article/' : 'private-article/'}
+                    {process.env.NEXT_PUBLIC_SITE_URL}
+                    {item.visibility === ArticleVisibility.PUBLIC
+                      ? `${routes.articlePublic.path?.replace(':slug', item.slug ?? '')}`
+                      : `${routes.articlePrivate.path?.replace(':slug', item.slug ?? '')}`}
                     {item.slug}
                   </Typography>
                 </CustomTooltip>

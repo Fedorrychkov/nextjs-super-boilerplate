@@ -11,6 +11,7 @@ import { MediaResourceType } from '~/api/media'
 import { UserRole } from '~/api/user'
 import { DefaultFieldContainer, DefaultMultiselectField, DefaultTextAreaContainer, MediaUrlUploadField } from '~/components/Fields'
 import { AlertBlock, Button, Option, Typography } from '~/components/ui'
+import { routes } from '~/constants'
 import { handleRegister } from '~/hooks/useRegister'
 
 export type SaveForm = Omit<Form, 'allowedRoles' | 'visibility'> & { allowedRoles?: UserRole[] | null; visibility?: ArticleVisibility | null }
@@ -157,7 +158,7 @@ export const ArticleEditablePreview = (props: Props) => {
             disabled={isLoading || isDisabled || !!article?.slug}
             label="Article Slug"
             name="slug"
-            hintText={`This is the slug of the article. It is used to generate the article URL. ${slug ? `Current slug: ${visibility?.[0]?.value === ArticleVisibility.PUBLIC ? 'article/' : 'private-article/'}${slug}` : ''}`}
+            hintText={`This is the slug of the article. It is used to generate the article URL. ${slug ? `Current slug: ${visibility?.[0]?.value === ArticleVisibility.PUBLIC ? `${routes.articlePublic.path?.replace(':slug', slug ?? '')}` : `${routes.articlePrivate.path?.replace(':slug', slug ?? '')}`}` : ''}`}
           />
           <DefaultMultiselectField
             options={visibilityOptions}
