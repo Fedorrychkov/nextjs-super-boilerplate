@@ -2,11 +2,14 @@ import './globals.css'
 
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
+import { cookies, headers } from 'next/headers'
 
+import { detectLocaleFromNextCookiesAndHeaders } from '~/lib/i18n/detectLocale'
 import { seoConfig } from '~/lib/seo/config'
 import { QueryProvider } from '~/providers'
 import { AuthProvider } from '~/providers/auth'
 import { CookieConsentBanner, CookieConsentProvider } from '~/providers/cookie-consent'
+import { I18nProvider } from '~/providers/i18n'
 import { NotifyProvider } from '~/providers/notify'
 import { WebVitalsReporter } from '~/providers/Rum/WebVitalsReporter'
 
@@ -51,21 +54,28 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const locale = detectLocaleFromNextCookiesAndHeaders({
+    cookies: await cookies(),
+    headers: await headers(),
+  })
+
   return (
-    <html lang="en">
+    <html lang={locale}>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <QueryProvider>
           <AuthProvider>
             <NotifyProvider>
               <CookieConsentProvider>
-                <WebVitalsReporter />
-                <CookieConsentBanner />
-                {children}
+                <I18nProvider locale={locale}>
+                  <WebVitalsReporter />
+                  <CookieConsentBanner />
+                  {children}
+                </I18nProvider>
               </CookieConsentProvider>
             </NotifyProvider>
           </AuthProvider>

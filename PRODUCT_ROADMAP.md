@@ -16,7 +16,7 @@ This roadmap tracks the remaining work for the article platform and related qual
 
 - [ ] Add security test fixtures with common XSS payloads and run them in CI.
 - [ ] Document canonical policy (`default from article URL + optional manual override in SEO step`).
-- [ ] Add canonical URL normalization utility (protocol/host/trailing slash rules).
+- [x] Add canonical URL normalization utility (protocol/host/trailing slash rules).
 - [ ] Define publishing state-transition matrix (draft/confirmed/published/unpublished/republished).
 - [ ] Add minimal publish pipeline logs (`publish_started`, `publish_succeeded`, `publish_failed`).
 - [ ] Define initial Web Vitals SLO targets (p75 by route/device) before alert tuning.
