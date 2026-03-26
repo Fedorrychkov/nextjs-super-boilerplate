@@ -24,7 +24,7 @@ export default function robots(): MetadataRoute.Robots {
         allow: '/',
       },
     ],
-    /** Обычный sitemap из `app/sitemap.ts`. News sitemap (Google News XML) — отдельный формат; добавь URL сюда только если реализуешь `sitemap-news.xml`. */
+    /** Regular sitemap from `app/sitemap.ts`. News sitemap (Google News XML) — separate format; add URL here only if you implement `sitemap-news.xml`. */
     sitemap: `${siteUrl}/sitemap.xml`,
     host: siteUrl,
   }

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import React, { Suspense, useCallback, useEffect, useState } from 'react'
 
 import { SpinnerScreen } from '~/components/Loaders'
-import { useAuth } from '~/providers'
+import { useAuth, useT } from '~/providers'
 import { useNotify } from '~/providers/notify'
 import { useLoginMfaMutation, useLoginMutation, useLogoutQuery, useSignUpMutation } from '~/query/auth'
 import { Logger } from '~/utils/logger'
@@ -19,6 +19,7 @@ const MfaCodeBlock = React.lazy(() => import('~/components/Views/Auth/Blocks/Mfa
 
 // Component for handling searchParams
 const LoginWithParams = () => {
+  const t = useT()
   const searchParams = useSearchParams()
   const nextPath = searchParams.get('nextPath')
   const searchVariant = searchParams.get('variant')
@@ -79,13 +80,13 @@ const LoginWithParams = () => {
         if (after) {
           const duration = time().add(after, 'seconds')
 
-          notify(`Too many login attempts. Please try again after ${after ? `${duration.format('HH:mm:ss')}.` : 'later.'}`, 'destructive')
+          notify(`${t('auth.errors.tooManyLoginAttempts')} ${after ? `${duration.format('HH:mm:ss')}.` : `${t('auth.errors.later')}.`}`, 'destructive')
 
           return
         }
       }
 
-      notify('Sign in failed, please check your data and try again', 'warning')
+      notify(t('auth.errors.signInFailed'), 'warning')
 
       logger.error(error)
     }
@@ -108,7 +109,7 @@ const LoginWithParams = () => {
         }
       }
     } catch (error) {
-      notify('Invalid code. Try again or use a backup code.', 'destructive')
+      notify(t('auth.errors.invalidCode'), 'destructive')
       logger.error(error)
     }
   }
@@ -130,7 +131,7 @@ const LoginWithParams = () => {
         logger.error('SignUp failed')
       }
     } catch (error) {
-      notify('Sign up failed, please check your data and try again', 'warning')
+      notify(t('auth.errors.signUpFailed'), 'warning')
       logger.error(error)
     }
   }

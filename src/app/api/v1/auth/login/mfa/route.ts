@@ -9,6 +9,8 @@ import { consumeBackupCode, decryptSecret, verifyTotpCode } from '@lib/security/
 import { authService } from '@lib/services/auth.service'
 import { NextRequest } from 'next/server'
 
+import { getServerTFromNextRequest } from '~/lib/i18n/server'
+
 type MfaLoginDto = {
   challengeId: string
   code: string
@@ -18,14 +20,16 @@ const handler = (request: NextRequest) => {
   return apiErrorHandlerContainer(request)(async (res, req) => {
     const body = (await req.json()) as MfaLoginDto
 
+    const { t } = getServerTFromNextRequest(request)
+
     if (!body.challengeId || !body.code) {
-      throw new ValidationError('challengeId and code are required')
+      throw new ValidationError(t('totp.errors.challengeIdAndCodeAreRequired'))
     }
 
     const challenge = await consumeLoginChallenge(body.challengeId)
 
     if (!challenge) {
-      throw new ValidationError('Login challenge has expired or is invalid')
+      throw new ValidationError(t('totp.errors.loginChallengeHasExpiredOrIsInvalid'))
     }
 
     await connectDB()
@@ -33,18 +37,18 @@ const handler = (request: NextRequest) => {
     const user = await User.findById(challenge.userId)
 
     if (!user) {
-      throw new ValidationError('User not found')
+      throw new ValidationError(t('user.errors.notFound'))
     }
 
     const settings = await UserSettings.findOne({ userId: user._id })
 
     if (!settings || !settings.mfaEnabled || !settings.mfaSecret) {
-      throw new ValidationError('MFA is not enabled for this user')
+      throw new ValidationError(t('totp.errors.mfaNotEnabledForThisUser'))
     }
 
     const secret = decryptSecret(settings.mfaSecret)
 
-    const totpValid = await verifyTotpCode(secret, body.code)
+    const totpValid = await verifyTotpCode(secret, body.code, t)
 
     let backupUsed = false
 
@@ -52,7 +56,7 @@ const handler = (request: NextRequest) => {
       const { matched, remainingCodes } = await consumeBackupCode(body.code, settings.mfaBackupCodes)
 
       if (!matched) {
-        throw new ValidationError('Invalid remaining backup code')
+        throw new ValidationError(t('totp.errors.invalidRemainingBackupCode'))
       }
 
       settings.mfaBackupCodes = remainingCodes

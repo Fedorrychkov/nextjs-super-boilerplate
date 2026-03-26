@@ -7,9 +7,12 @@ import { authService } from '@lib/services/auth.service'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { RegisterDto } from '~/api/auth/types'
+import { getServerTFromNextRequest } from '~/lib/i18n/server'
 
 const handler = (request: NextRequest) => {
   return apiErrorHandlerContainer(request)(async (res, req) => {
+    const { t } = getServerTFromNextRequest(request)
+
     const body: RegisterDto = await req.json()
     const ip = getClientKey(req)
     await ensureCanRegister(ip)
@@ -22,7 +25,7 @@ const handler = (request: NextRequest) => {
      * This is to prevent the first admin from being able to register other admins
      */
     if (email === FIRST_ADMIN_CONFIG.login && password !== FIRST_ADMIN_CONFIG.password) {
-      return NextResponse.json({ message: 'Insufficient permissions' }, { status: 403 })
+      return NextResponse.json({ message: t('errors.insufficientPermissions') }, { status: 403 })
     }
 
     const isValidAdmin = email === FIRST_ADMIN_CONFIG.login && password === FIRST_ADMIN_CONFIG.password
@@ -32,7 +35,7 @@ const handler = (request: NextRequest) => {
     const response = res.json(
       {
         success: true,
-        message: 'registered successfully',
+        message: t('user.messages.registeredSuccessfully'),
         user: authResponse.user,
       },
       { status: 201 },

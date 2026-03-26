@@ -16,7 +16,7 @@ This roadmap tracks the remaining work for the article platform and related qual
 
 - [ ] Add security test fixtures with common XSS payloads and run them in CI.
 - [ ] Document canonical policy (`default from article URL + optional manual override in SEO step`).
-- [ ] Add canonical URL normalization utility (protocol/host/trailing slash rules).
+- [x] Add canonical URL normalization utility (protocol/host/trailing slash rules).
 - [ ] Define publishing state-transition matrix (draft/confirmed/published/unpublished/republished).
 - [ ] Add minimal publish pipeline logs (`publish_started`, `publish_succeeded`, `publish_failed`).
 - [ ] Define initial Web Vitals SLO targets (p75 by route/device) before alert tuning.
@@ -168,8 +168,8 @@ This roadmap tracks the remaining work for the article platform and related qual
 
 ### 3. Internationalization readiness
 
-- [ ] Introduce key-based UI translations and local locale files for author/public pages.
-- [ ] Add i18n conventions for content-related labels, validation messages, and notifications.
+- [x] Introduce key-based UI translations and local locale files for author/public pages.
+- [x] Add i18n conventions for content-related labels, validation messages, and notifications.
 - [ ] Define migration plan for replacing hardcoded UI strings with translation keys.
 
 ---
@@ -180,7 +180,7 @@ This roadmap tracks the remaining work for the article platform and related qual
 
 ### 1. Site default and user locale
 
-- [ ] Single source of truth for default locale (e.g. `NEXT_PUBLIC_DEFAULT_LOCALE` / `seoConfig`) driving root `<html lang>` and server-side `Intl` defaults.
+- [x] Single source of truth for default locale (e.g. `NEXT_PUBLIC_DEFAULT_LOCALE` / `seoConfig`) driving root `<html lang>` and server-side `Intl` defaults.
 - [ ] Optional: read `Accept-Language` in middleware + persist choice (cookie or user profile) for first-time visitors.
 - [ ] Optional later: `app/[locale]` URL segment and redirects; document trade-offs (SEO, caching) before implementation.
 

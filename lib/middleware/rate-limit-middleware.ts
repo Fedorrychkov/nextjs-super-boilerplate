@@ -1,6 +1,7 @@
 import { getClientKey, rateLimit } from '@lib/security/rate-limit'
 import { NextRequest, NextResponse } from 'next/server'
 
+import { getServerTFromNextRequest } from '~/lib/i18n/server'
 import { Logger } from '~/utils/logger'
 
 import type { RouteHandlerContext } from './auth-middleware'
@@ -9,6 +10,7 @@ type RouteHandler = (request: NextRequest, context: RouteHandlerContext) => Prom
 
 export const withGlobalRateLimit = <T extends RouteHandler>(handler: T): T =>
   (async (request: NextRequest, context: RouteHandlerContext) => {
+    const { t } = getServerTFromNextRequest(request)
     const key = getClientKey(request)
     const logger = new Logger(['withGlobalRateLimit', '[lib/rate-limit.ts]', `consumed key: ${key}`])
 
@@ -25,7 +27,7 @@ export const withGlobalRateLimit = <T extends RouteHandler>(handler: T): T =>
     } catch {
       return NextResponse.json(
         {
-          message: 'Too many requests. Please try again later.',
+          message: t('errors.tooManyRequests'),
         },
         { status: 429 },
       )

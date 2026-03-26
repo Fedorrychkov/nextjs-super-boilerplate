@@ -8,6 +8,7 @@ import { DefaultEditor } from '~/components/Blocks/Editor/DefaultEditor'
 import { useDefaultEditor } from '~/components/Blocks/Editor/hooks/useDefaultEditor'
 import { MarkdownEditor } from '~/components/Blocks/Editor/MarkdownEditor'
 import { AlertBlock, Button, Typography } from '~/components/ui'
+import { useT } from '~/providers'
 import { cn } from '~/utils/cn'
 import { jsonParseSafety } from '~/utils/jsonSafe'
 
@@ -22,7 +23,8 @@ type Props = {
 }
 
 export const ArticleEditableContent = (props: Props) => {
-  const { className = '', title = 'Content Editor', onUpdate, articleRevision, isDisabled } = props
+  const t = useT()
+  const { className = '', title = t('article.ui.contentEditor'), onUpdate, articleRevision, isDisabled } = props
 
   const defaultContent = useMemo(() => {
     return articleRevision?.content ? jsonParseSafety<string>(articleRevision.content) : ''
@@ -45,18 +47,18 @@ export const ArticleEditableContent = (props: Props) => {
       <Typography variant="heading-3">{title}</Typography>
       <div className="flex flex-row gap-3 flex-wrap">
         <Button variant={mode === 'default' ? 'default' : 'secondary'} size="sm-md" onClick={() => setMode('default')}>
-          Text Editor
+          {t('article.ui.textEditor')}
         </Button>
         <Button variant={mode === 'markdown' ? 'default' : 'secondary'} size="sm-md" onClick={handleSetMode('markdown')}>
-          Markdown Editor
+          {t('article.ui.markdownEditor')}
         </Button>
         {mode === 'default' && (
           <Button variant="outline" size="sm-md" onClick={handleSetExample} disabled={isDisabled}>
-            Set Example
+            {t('article.ui.setExample')}
           </Button>
         )}
       </div>
-      {mode === 'markdown' && <AlertBlock notify={{ type: 'info', message: 'Markdown mode is not supported auto save, please save manually' }} />}
+      {mode === 'markdown' && <AlertBlock notify={{ type: 'info', message: t('article.ui.markdownModeNotSupportedAutoSave') }} />}
       <div
         className={cn({
           hidden: mode === 'markdown',
@@ -67,7 +69,7 @@ export const ArticleEditableContent = (props: Props) => {
       {mode === 'markdown' && <MarkdownEditor isDisabled={isDisabled} value={markdownInput} editor={editor} onChange={setMarkdownInput} limit={50_000} />}
       <div>
         <Button variant="secondary" size="default" onClick={handleSave} disabled={isDisabled}>
-          Save
+          {t('common.save')}
         </Button>
       </div>
     </div>

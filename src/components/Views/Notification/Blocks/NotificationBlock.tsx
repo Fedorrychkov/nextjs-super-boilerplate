@@ -5,6 +5,7 @@ import { Bell } from 'lucide-react'
 
 import { ClientSubscriptionApi } from '~/api/subscription'
 import { AlertBlock, Button, Typography } from '~/components/ui'
+import { useT } from '~/providers'
 import { useNotify } from '~/providers/notify'
 import { usePush } from '~/providers/push'
 import { Logger } from '~/utils/logger'
@@ -12,6 +13,7 @@ import { Logger } from '~/utils/logger'
 const logger = new Logger(['NotificationBlock', '[src/components/Views/Notification/Blocks/NotificationBlock.tsx]'])
 
 export const NotificationBlock = () => {
+  const t = useT()
   const { unlockAudio, notify } = useNotify()
   const { subscribed, subscribe, unsubscribe } = usePush()
 
@@ -25,7 +27,7 @@ export const NotificationBlock = () => {
       }
     } catch (error) {
       logger.error('Error subscribing to notifications', error)
-      notify('Error subscribing to notifications', 'destructive')
+      notify(t('notification.errors.errorSubscribingToNotifications'), 'destructive')
     }
   }
 
@@ -38,16 +40,16 @@ export const NotificationBlock = () => {
     <div className="flex flex-col rounded-lg border bg-card p-4 space-y-4">
       <div className="flex items-center gap-2">
         <Bell className="h-5 w-5 text-muted-foreground shrink-0" />
-        <Typography variant="heading-3">Push Notifications</Typography>
+        <Typography variant="heading-3">{t('notification.ui.pushNotifications')}</Typography>
       </div>
       <div className="flex flex-col gap-4">
         <Typography variant="Body/S/Regular">
           {subscribed
-            ? 'You have successfully subscribed to updates'
-            : 'To receive notifications when the tab is not active, please grant permission to notifications in the application'}
+            ? t('notification.ui.youHaveSuccessfullySubscribedToUpdates')
+            : t('notification.ui.toReceiveNotificationsWhenTheTabIsNotActivePleaseGrantPermissionToNotificationsInTheApplication')}
         </Typography>
         <Button variant="outline" onClick={handleSubscribe}>
-          {subscribed ? 'Unsubscribe' : 'Subscribe'}
+          {subscribed ? t('notification.ui.unsubscribe') : t('notification.ui.subscribe')}
         </Button>
       </div>
       {subscribed && (
@@ -57,11 +59,12 @@ export const NotificationBlock = () => {
             message: (
               <div className="flex flex-col gap-2">
                 <Typography variant="Body/S/Regular">
-                  If you are still not receiving notifications in the application, try &quot;Unsubscribe&quot; and reset all permissions for the site, refresh
-                  the page and click &quot;Subscribe&quot; again.
+                  {t(
+                    'notification.ui.ifYouAreStillNotReceivingNotificationsInTheApplicationTryUnsubscribeAndResetAllPermissionsForTheSiteRefreshThePageAndClickSubscribeAgain',
+                  )}
                 </Typography>
                 <Typography variant="Body/S/Regular">
-                  If that doesn&apos;t work, try to check browser permissions to notifications in your OS settings.
+                  {t('notification.ui.ifThatDoesntWorkTryToCheckBrowserPermissionsToNotificationsInYourOSSettings')}
                 </Typography>
               </div>
             ),
@@ -71,7 +74,7 @@ export const NotificationBlock = () => {
       {subscribed && !isProd && (
         <div className="flex flex-row gap-2 justify-between flex-wrap">
           <Button variant="outline" onClick={handleTest}>
-            Try send test notification NOW
+            {t('notification.ui.trySendTestNotificationNOW')}
           </Button>
           <Button
             variant="outline"
@@ -81,7 +84,7 @@ export const NotificationBlock = () => {
               }, 5000)
             }}
           >
-            Try send (DELAY 5 SECONDS)
+            {t('notification.ui.trySendTestNotificationDelay5Seconds')}
           </Button>
         </div>
       )}

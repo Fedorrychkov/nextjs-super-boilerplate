@@ -1,5 +1,6 @@
 import { Period, ReusablePeriodField } from '~/components/Filters'
 import { Button, Input, Typography } from '~/components/ui'
+import type { AppMessageKey, TFunction } from '~/lib/i18n'
 import { FilterOption } from '~/types'
 import { cn } from '~/utils/cn'
 
@@ -14,6 +15,7 @@ export type FilterContainerProps<T> = {
   availablePeriods?: Period[]
   setFilters: React.Dispatch<React.SetStateAction<Record<keyof T, unknown>>>
   handleChangePeriod: (from?: string, to?: string) => void
+  t: TFunction
 }
 
 export const FilterContainer = <T,>(props: FilterContainerProps<T>, ref: React.ForwardedRef<HTMLDivElement | null>) => {
@@ -28,6 +30,7 @@ export const FilterContainer = <T,>(props: FilterContainerProps<T>, ref: React.F
     paramNames,
     defaultPeriod = Period.perAllTime,
     availablePeriods,
+    t,
   } = props
 
   const handleSetFilters =
@@ -58,10 +61,16 @@ export const FilterContainer = <T,>(props: FilterContainerProps<T>, ref: React.F
 
   return (
     <div ref={ref} className={cn('flex flex-col rounded-md gap-4 bg-slate-100 p-2', className, isFilterOpen ? 'flex' : 'hidden')}>
-      <Typography variant="Body/M/Semibold">Filters</Typography>
+      <Typography variant="Body/M/Semibold">{t('common.filters')}</Typography>
       <div className="flex flex-col gap-2">
-        <Typography variant="Body/S/Regular">By date</Typography>
-        <ReusablePeriodField defaultPeriod={defaultPeriod} isLoading={isLoading} onChangePeriod={handleChangePeriod} availablePeriods={availablePeriods} />
+        <Typography variant="Body/S/Regular">{t('common.byDate')}</Typography>
+        <ReusablePeriodField
+          defaultPeriod={defaultPeriod}
+          isLoading={isLoading}
+          onChangePeriod={handleChangePeriod}
+          availablePeriods={availablePeriods}
+          t={t}
+        />
       </div>
       {Object.keys(defaultFilterValues).map((key) => (
         <div className="flex flex-col gap-2" key={key}>
@@ -76,7 +85,7 @@ export const FilterContainer = <T,>(props: FilterContainerProps<T>, ref: React.F
                     onClick={handleSetFilters(key as keyof T, option)}
                     key={[key, option.label].join('-')}
                   >
-                    {option.label}
+                    {option.labelLocalizationKey ? t(option.labelLocalizationKey as AppMessageKey) : option.label}
                   </Button>
                 ))}
               </>

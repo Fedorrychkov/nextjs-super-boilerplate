@@ -14,6 +14,9 @@ import { MediaProvider, MediaResourceType } from '~/api/media'
 import { Tab, TabsContainer } from '~/components/Blocks/Tabs/TabsContainer'
 import { SpinnerScreen } from '~/components/Loaders'
 import { AlertBlock, Button, Typography } from '~/components/ui'
+import { routes } from '~/constants'
+import type { TFunction } from '~/lib/i18n'
+import { useT } from '~/providers'
 import { useNotify } from '~/providers/notify'
 import {
   useArticleQuery,
@@ -47,14 +50,15 @@ const getSteps = (props: {
   publishLabel?: string
   isDisabledEditing?: boolean
   onPublish?: () => void
+  t: TFunction
 }): Tab[] => [
   {
-    label: 'Preview information',
+    label: props.t('article.ui.previewInformation'),
     icon: <InfoIcon />,
     value: 'preview-information',
     children: (
       <ArticleEditablePreview
-        btnLabel={!props?.article ? 'Next' : 'Save Changes'}
+        btnLabel={!props?.article ? props.t('common.next') : props.t('common.saveChanges')}
         article={props.article}
         articleRevision={props.articleRevision}
         onSave={props.onSavePreview}
@@ -63,7 +67,7 @@ const getSteps = (props: {
     ),
   },
   {
-    label: 'Content',
+    label: props.t('article.ui.content'),
     icon: <FileTextIcon />,
     value: 'content',
     isEnabled: props.isContentEnabled,
@@ -79,14 +83,14 @@ const getSteps = (props: {
     ),
   },
   {
-    label: 'Preview',
+    label: props.t('common.preview'),
     icon: <EyeIcon />,
     value: 'preview',
     onClick: props.onPreview,
     isEnabled: props.isSeoEnabled,
   },
   {
-    label: props.publishLabel ?? 'Publish',
+    label: props.publishLabel ?? props.t('common.publish'),
     icon: <SendIcon />,
     value: 'publish',
     onClick: props.onPublish,
@@ -110,6 +114,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
   const router = useRouter()
   const { notify } = useNotify()
   const queryClient = useQueryClient()
+  const t = useT()
 
   const [activeRevisionId, setActiveRevisionId] = useState<string | null | undefined>(revisionId)
 
@@ -160,13 +165,13 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
     async (form: SaveForm) => {
       try {
         if (isDisabledEditing) {
-          notify('You are not allowed to edit this article', 'destructive')
+          notify(t('article.ui.youAreNotAllowedToEditThisArticle'), 'destructive')
 
           return
         }
 
         if (articleId) {
-          notify('Updating article...', 'info')
+          notify(t('article.ui.updatingArticle'), 'info')
 
           await updateArticleMutation.mutateAsync({
             id: articleId,
@@ -174,13 +179,13 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
             allowedRoles: form.allowedRoles,
           })
 
-          notify('Article updated', 'success')
+          notify(t('article.ui.articleUpdated'), 'success')
 
           queryClient.invalidateQueries([articleKey])
         }
 
         if (activeRevisionId) {
-          notify('Updating article revision...', 'info')
+          notify(t('article.ui.updatingArticleRevision'), 'info')
 
           const currentMetadata = (articleRevision?.metadata as ArticleRevisionMetadata | undefined) ?? {}
           const nextMedia: ArticleRevisionMediaMetadata = {
@@ -206,20 +211,20 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
             },
           })
 
-          notify('Article revision updated', 'success')
+          notify(t('article.ui.articleRevisionUpdated'), 'success')
 
           queryClient.invalidateQueries([articleRevisionKey])
         }
 
         if (!articleId) {
-          notify('Creating article...', 'info')
+          notify(t('article.ui.creatingArticle'), 'info')
           const response = await createArticleMutation.mutateAsync({
             slug: form.slug,
             visibility: form.visibility,
             allowedRoles: form.allowedRoles,
           })
 
-          notify('Article created', 'success')
+          notify(t('article.ui.articleCreated'), 'success')
 
           if (response.id) {
             const revision = await createArticleRevisionMutation.mutateAsync({
@@ -241,13 +246,13 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
               },
             })
 
-            notify('Draft revision created', 'success')
+            notify(t('article.ui.draftRevisionCreated'), 'success')
 
             router.replace(`/admin/articles/${response.id}?revisionId=${revision.id}&activeTab=content`)
 
             return
           } else {
-            notify('Something went wrong', 'destructive')
+            notify(t('errors.unknown'), 'destructive')
 
             return
           }
@@ -258,12 +263,12 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
         logger.error(error)
 
         if (error instanceof AxiosError) {
-          notify(error.response?.data?.message ?? 'Something went wrong', 'destructive')
+          notify(error.response?.data?.message ?? t('errors.unknown'), 'destructive')
 
           return
         }
 
-        notify('Something went wrong', 'destructive')
+        notify(t('errors.unknown'), 'destructive')
 
         return
       }
@@ -278,6 +283,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
       updateArticleRevisionMutation,
       router,
       notify,
+      t,
       queryClient,
       articleKey,
       articleRevisionKey,
@@ -289,13 +295,13 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
     async (payload: ArticleEditableSeoSavePayload) => {
       try {
         if (isDisabledEditing) {
-          notify('You are not allowed to edit this article', 'destructive')
+          notify(t('article.ui.youAreNotAllowedToEditThisArticle'), 'destructive')
 
           return
         }
 
         if (activeRevisionId) {
-          notify('Updating article revision SEO...', 'info')
+          notify(t('article.ui.updatingArticleRevisionSeo'), 'info')
 
           const currentMetadata = (articleRevision?.metadata as ArticleRevisionMetadata | undefined) ?? {}
           const mergedMetadata: ArticleRevisionMetadata = {
@@ -316,7 +322,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
             metadata: mergedMetadata,
           })
 
-          notify('Article revision SEO updated', 'success')
+          notify(t('article.ui.articleRevisionSeoUpdated'), 'success')
 
           queryClient.invalidateQueries([articleRevisionKey])
         }
@@ -324,51 +330,49 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
         logger.error(error)
 
         if (error instanceof AxiosError) {
-          notify(error.response?.data?.message ?? 'Something went wrong', 'destructive')
+          notify(error.response?.data?.message ?? t('errors.unknown'), 'destructive')
 
           return
         }
 
-        notify('Something went wrong', 'destructive')
+        notify(t('errors.unknown'), 'destructive')
       }
     },
-    [activeRevisionId, articleRevision, updateArticleRevisionMutation, notify, queryClient, articleRevisionKey, isDisabledEditing],
+    [activeRevisionId, articleRevision, updateArticleRevisionMutation, notify, queryClient, articleRevisionKey, isDisabledEditing, t],
   )
 
   const handleUpdateContent = useCallback(
     async (editor: Editor) => {
       try {
         if (isDisabledEditing) {
-          notify('You are not allowed to edit this article', 'destructive')
+          notify(t('article.ui.youAreNotAllowedToEditThisArticle'), 'destructive')
 
           return
         }
 
-        logger.info('Updating article revision content...', { content: editor.getJSON() })
-
         if (activeRevisionId) {
-          notify('Updating article revision content...', 'info')
+          notify(t('article.ui.updatingArticleRevisionContent'), 'info')
 
           await updateArticleRevisionMutation.mutateAsync({
             id: activeRevisionId,
             content: jsonStringifySafety(editor.getJSON()),
           })
 
-          notify('Article revision content updated', 'success')
+          notify(t('article.ui.articleRevisionContentUpdated'), 'success')
         }
       } catch (error) {
         logger.error(error)
 
         if (error instanceof AxiosError) {
-          notify(error.response?.data?.message ?? 'Something went wrong', 'destructive')
+          notify(error.response?.data?.message ?? t('errors.unknown'), 'destructive')
 
           return
         }
 
-        notify('Something went wrong', 'destructive')
+        notify(t('errors.unknown'), 'destructive')
       }
     },
-    [activeRevisionId, updateArticleRevisionMutation, notify, isDisabledEditing],
+    [activeRevisionId, updateArticleRevisionMutation, notify, isDisabledEditing, t],
   )
 
   const handlePreview = useCallback(() => {
@@ -376,7 +380,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
       return
     }
 
-    window.open(`/preview/${article?.slug}?revisionId=${activeRevisionId}`, '_blank')
+    window.open(`${routes.articlePreview.path?.replace(':slug', article?.slug ?? '')}?revisionId=${activeRevisionId}`, '_blank')
   }, [article, activeRevisionId])
 
   const handlePublish = useCallback(async () => {
@@ -384,7 +388,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
       const isRepublishing = article?.revisionId !== articleRevision?.id
 
       if (isDisabledEditing && !isRepublishing) {
-        notify('You are not allowed to edit this article', 'destructive')
+        notify(t('article.ui.youAreNotAllowedToEditThisArticle'), 'destructive')
 
         return
       }
@@ -393,7 +397,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
         return
       }
 
-      notify('Publishing article...', 'info')
+      notify(t('article.ui.publishingArticle'), 'info')
 
       await updateArticleMutation.mutateAsync({
         id: articleId,
@@ -408,16 +412,17 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
         publishedAt: time().toISOString(),
       })
 
-      notify('Article published', 'success')
+      notify(t('article.ui.articlePublished'), 'success')
 
       window.location.reload()
     } catch (error) {
       logger.error(error)
     }
-  }, [isDisabledEditing, article, articleId, activeRevisionId, articleRevision, updateArticleMutation, updateArticleRevisionMutation, notify])
+  }, [isDisabledEditing, article, articleId, activeRevisionId, articleRevision, updateArticleMutation, updateArticleRevisionMutation, notify, t])
 
   const steps = useMemo(() => {
     const steps = getSteps({
+      t,
       article,
       articleRevision,
       onSavePreview: handleSavePreview,
@@ -429,7 +434,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
       isPublishEnabled:
         articleRevision?.status === ArticleRevisionStatus.DRAFT ||
         (articleRevision?.status === ArticleRevisionStatus.CONFIRMED && article?.revisionId !== articleRevision?.id),
-      publishLabel: articleRevision?.status === ArticleRevisionStatus.DRAFT ? 'Publish' : 'Republish',
+      publishLabel: articleRevision?.status === ArticleRevisionStatus.DRAFT ? t('common.publish') : t('common.republish'),
       onPublish: handlePublish,
       isDisabledEditing,
     })
@@ -443,7 +448,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
     })
 
     return filteredSteps
-  }, [isDisabledEditing, articleId, article, articleRevision, handlePublish, handlePreview, handleSavePreview, handleSaveSeo, handleUpdateContent])
+  }, [t, isDisabledEditing, articleId, article, articleRevision, handlePublish, handlePreview, handleSavePreview, handleSaveSeo, handleUpdateContent])
 
   const finalActiveTab = useMemo(() => {
     const isTabValid = steps.some((step) => step.value === activeTab)
@@ -482,7 +487,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
         publishedAt: null,
       })
 
-      notify('New version created', 'success')
+      notify(t('article.ui.newVersionCreated'), 'success')
 
       setActiveRevisionId(response.id)
       setActiveTab('preview-information')
@@ -492,14 +497,14 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
       logger.error(error)
 
       if (error instanceof AxiosError) {
-        notify(error.response?.data?.message ?? 'Something went wrong', 'destructive')
+        notify(error.response?.data?.message ?? t('errors.unknown'), 'destructive')
 
         return
       }
 
-      notify('Something went wrong', 'destructive')
+      notify(t('errors.unknown'), 'destructive')
     }
-  }, [articleId, lastPublishedRevision, activeRevisionId, article, articleRevision, createArticleRevisionMutation, notify])
+  }, [t, articleId, lastPublishedRevision, activeRevisionId, article, articleRevision, createArticleRevisionMutation, notify])
 
   return (
     <div className={cn('flex flex-col gap-4', className)}>
@@ -538,15 +543,15 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
                 message: (
                   <div className="flex flex-col gap-2 items-start">
                     <Typography variant="Body/S/Regular" className="whitespace-nowrap text-nowrap text-neutral-1000">
-                      You are not allowed to edit the last published article. Please start the new version
+                      {t('article.ui.youAreNotAllowedToEditTheLastPublishedArticlePleaseStartTheNewVersion')}
                     </Typography>
                     {!isHasDraftRevision ? (
                       <Button variant="default" size="sm-md" onClick={handleStartNewVersion}>
-                        Start new version
+                        {t('article.ui.startNewVersion')}
                       </Button>
                     ) : null}
                     <Typography variant="Body/S/Regular" className="whitespace-nowrap text-nowrap text-neutral-1000">
-                      or republish early version
+                      {t('article.ui.orRepublishEarlyVersion')}
                     </Typography>
                   </div>
                 ),

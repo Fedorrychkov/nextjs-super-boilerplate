@@ -5,6 +5,8 @@ import { NextResponse } from 'next/server'
 import { Logger } from '~/utils/logger'
 import { time } from '~/utils/time'
 
+import { jsonStringifySafety } from './utils/jsonSafe'
+
 export async function proxy(request: NextRequest) {
   const logger = new Logger(['proxy', '[src/proxy.ts]'])
 
@@ -64,7 +66,7 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  response.headers.set('X-Client-Info', JSON.stringify(clientInfo))
+  response.headers.set('X-Client-Info', jsonStringifySafety(clientInfo) ?? '')
 
   if (clientIP) {
     response.headers.set('X-Client-IP', clientIP)

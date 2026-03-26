@@ -6,11 +6,14 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { RegisterDto } from '~/api/auth/types'
 import { UserRole } from '~/api/user'
+import { getServerTFromNextRequest } from '~/lib/i18n/server'
 
 const handler = (request: NextRequest, authResult: AuthSuccessResult) => {
   return apiErrorHandlerContainer(request)(async (res, req) => {
+    const { t } = getServerTFromNextRequest(request)
+
     if (![UserRole.ADMIN, UserRole.EDITOR].includes(authResult.payload.role)) {
-      return NextResponse.json({ message: 'Insufficient permissions' }, { status: 403 })
+      return NextResponse.json({ message: t('errors.insufficientPermissions') }, { status: 403 })
     }
 
     const body: RegisterDto = await req.json()
@@ -20,7 +23,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) => {
     const response = res.json(
       {
         success: true,
-        message: 'User registered successfully',
+        message: t('user.messages.userRegisteredSuccessfully'),
         user: authResponse.user,
       },
       { status: 201 },

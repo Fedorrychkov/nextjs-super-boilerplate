@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import type { ReactNode } from 'react'
 import { useEffect, useState } from 'react'
 
 import { ClientPublicArticleListApi } from '~/api/article/client/publicArticleList'
@@ -11,12 +12,15 @@ import { SortBy, SortOrder } from '~/api/article/types'
 import { Button } from '~/components/ui/button'
 import { Select } from '~/components/ui/select-1'
 import { Typography } from '~/components/ui/Typography/Typography'
-import { ArticleItem } from '~/components/Views/Article/Block/ArticleItem'
+import { ArticleItemClient } from '~/components/Views/Article/Block/client/ArticleItemClient'
+import { useT } from '~/providers'
 import type { PaginationMeta } from '~/types'
 
 type Props = {
   initial: PaginationMeta<PublicArticleListItem>
   listQuery: ArticleFilter
+  /** First page of cards — render on the server (RSC) and pass here for SEO / crawlers. */
+  children: ReactNode
 }
 
 const SORT_BY_OPTIONS = [
@@ -30,12 +34,14 @@ const SORT_ORDER_OPTIONS = [
   { value: SortOrder.asc, label: 'Oldest first' },
 ]
 
-export function ArticlesPublicFeed({ initial, listQuery }: Props) {
+export function ArticlesPublicFeed({ initial, listQuery, children }: Props) {
+  const t = useT()
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  const [items, setItems] = useState<PublicArticleListItem[]>(() => initial.list)
+  /** Items loaded only via “Load more” (first page is `children` from the server). */
+  const [extraItems, setExtraItems] = useState<PublicArticleListItem[]>([])
   const [totalCount, setTotalCount] = useState(initial.count)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -44,12 +50,13 @@ export function ArticlesPublicFeed({ initial, listQuery }: Props) {
   const sortOrder = listQuery.sortOrder ?? SortOrder.desc
 
   useEffect(() => {
-    setItems(initial.list)
+    setExtraItems([])
     setTotalCount(initial.count)
     setError(null)
   }, [initial.list, initial.count, listQuery.sortBy, listQuery.sortOrder, listQuery.startOfDateIso, listQuery.endOfDateIso])
 
-  const hasMore = items.length < totalCount
+  const shownCount = initial.list.length + extraItems.length
+  const hasMore = shownCount < totalCount
 
   const applyFiltersToUrl = (next: Pick<ArticleFilter, 'sortBy' | 'sortOrder' | 'startOfDateIso' | 'endOfDateIso'>) => {
     const qs = serializePublicListFilters({
@@ -75,17 +82,17 @@ export function ArticlesPublicFeed({ initial, listQuery }: Props) {
       const page = await api.getList({
         ...listQuery,
         limit: PUBLIC_ARTICLES_PAGE_SIZE,
-        offset: items.length,
+        offset: shownCount,
       })
 
-      setItems((prev) => {
-        const seen = new Set(prev.map((a) => a.id))
+      setExtraItems((prev) => {
+        const seen = new Set([...initial.list.map((a) => a.id), ...prev.map((a) => a.id)])
 
         return [...prev, ...page.list.filter((a) => !seen.has(a.id))]
       })
       setTotalCount(page.count)
     } catch {
-      setError('Could not load more articles.')
+      setError(t('article.errors.couldNotLoadMoreArticles'))
     } finally {
       setLoading(false)
     }
@@ -96,7 +103,7 @@ export function ArticlesPublicFeed({ initial, listQuery }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <Typography variant="heading-3">Articles</Typography>
+        <Typography variant="heading-3">{t('article.ui.articles')}</Typography>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Select
             size="small"
@@ -117,13 +124,13 @@ export function ArticlesPublicFeed({ initial, listQuery }: Props) {
 
       <div className="flex flex-col gap-3 text-sm text-muted-foreground">
         <span>
-          Showing {items.length} of {totalCount}
+          Showing {shownCount} of {totalCount}
           {currentQs ? (
             <>
               {' '}
               —{' '}
               <Link href={pathname} className="underline">
-                Clear filters
+                {t('article.ui.clearFilters')}
               </Link>
             </>
           ) : null}
@@ -131,8 +138,9 @@ export function ArticlesPublicFeed({ initial, listQuery }: Props) {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {items.map((article) => (
-          <ArticleItem key={article.id} article={article} />
+        {children}
+        {extraItems.map((article) => (
+          <ArticleItemClient key={article.id} article={article} />
         ))}
       </div>
 
@@ -145,7 +153,7 @@ export function ArticlesPublicFeed({ initial, listQuery }: Props) {
       {hasMore ? (
         <div className="flex justify-center">
           <Button type="button" variant="outline" disabled={loading} onClick={() => void loadMore()}>
-            {loading ? 'Loading…' : 'Load more'}
+            {loading ? t('article.ui.loading') : t('article.ui.loadMore')}
           </Button>
         </div>
       ) : null}

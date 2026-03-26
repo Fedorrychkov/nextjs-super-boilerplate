@@ -1,5 +1,7 @@
 import { ArticleVisibility } from '~/api/article'
 
+import type { TFunction } from '../i18n'
+
 export function getArticleSegmentPath(visibility: ArticleVisibility | null | undefined): 'article' | 'private-article' {
   return visibility === ArticleVisibility.PUBLIC ? 'article' : 'private-article'
 }
@@ -58,36 +60,36 @@ export function resolveArticleCanonicalUrl(
 export type CanonicalValidationResult = { ok: true; value: string | null } | { ok: false; message: string }
 
 /** API / form: empty → null; otherwise absolute http(s) on the same origin as the site. */
-export function validateCanonicalUrlForStorage(raw: string | null | undefined, siteUrl: string): CanonicalValidationResult {
+export function validateCanonicalUrlForStorage(raw: string | null | undefined, siteUrl: string, t: TFunction): CanonicalValidationResult {
   if (raw === null || raw === undefined) {
     return { ok: true, value: null }
   }
 
-  const t = String(raw).trim()
+  const text = String(raw).trim()
 
-  if (!t) {
+  if (!text) {
     return { ok: true, value: null }
   }
 
   try {
-    const u = new URL(t)
+    const u = new URL(text)
 
     if (u.protocol !== 'http:' && u.protocol !== 'https:') {
-      return { ok: false, message: 'Canonical URL must use http or https' }
+      return { ok: false, message: t('article.errors.canonicalUrlMustUseHttpOrHttps') }
     }
 
     const siteOrigin = normalizeSiteOrigin(siteUrl)
 
     if (!siteOrigin) {
-      return { ok: false, message: 'Site URL is not configured' }
+      return { ok: false, message: t('article.errors.siteUrlIsNotConfigured') }
     }
 
     if (u.origin !== siteOrigin) {
-      return { ok: false, message: 'Canonical URL must use the same host as the site' }
+      return { ok: false, message: t('article.errors.canonicalUrlMustUseSameHostAsSite') }
     }
 
     return { ok: true, value: u.href }
   } catch {
-    return { ok: false, message: 'Canonical URL must be a valid absolute URL' }
+    return { ok: false, message: t('article.errors.canonicalUrlMustBeValidAbsoluteUrl') }
   }
 }

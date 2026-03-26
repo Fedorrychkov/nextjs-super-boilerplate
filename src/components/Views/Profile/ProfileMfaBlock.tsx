@@ -7,6 +7,7 @@ import { CopyContainer } from '~/components/Blocks/CopyContainer'
 import { ImageLoader } from '~/components/Containers'
 import { Skeleton } from '~/components/Loaders'
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Typography } from '~/components/ui'
+import { useT } from '~/providers'
 import { useNotify } from '~/providers/notify'
 import { useMfaConfirmMutation, useMfaDisableMutation, useMfaSetupMutation, useMfaStatusQuery } from '~/query/auth'
 import { cp } from '~/utils/cp'
@@ -15,6 +16,7 @@ const QR_API = 'https://api.qrserver.com/v1/create-qr-code/'
 const QR_SIZE = 200
 
 export function ProfileMfaBlock() {
+  const t = useT()
   const { data: mfaStatus, refetch: refetchMfaStatus } = useMfaStatusQuery(true)
   const setupMutation = useMfaSetupMutation()
   const confirmMutation = useMfaConfirmMutation()
@@ -44,13 +46,13 @@ export function ProfileMfaBlock() {
       })
       setSetupStep('show-codes')
     } catch (_e) {
-      notify('Failed to start 2FA setup', 'destructive')
+      notify(t('auth.errors.failedToStart2FASetup'), 'destructive')
     }
   }
 
   const handleConfirmMfa = async () => {
     if (!confirmCode.trim()) {
-      notify('Enter the code from your app', 'warning')
+      notify(t('auth.errors.enterCodeFromApp'), 'warning')
 
       return
     }
@@ -60,15 +62,15 @@ export function ProfileMfaBlock() {
       setSetupData(null)
       setConfirmCode('')
       await refetchMfaStatus()
-      notify('Two-factor authentication enabled', 'success')
+      notify(t('auth.ui.twoFactorAuthenticationEnabled'), 'success')
     } catch (_e) {
-      notify('Invalid code. Try again.', 'destructive')
+      notify(t('auth.errors.invalidCodeTryAgain'), 'destructive')
     }
   }
 
   const handleDisableMfa = async () => {
     if (!disablePassword.trim()) {
-      notify('Enter your password', 'warning')
+      notify(t('auth.errors.enterPassword'), 'warning')
 
       return
     }
@@ -81,22 +83,22 @@ export function ProfileMfaBlock() {
       setDisablePassword('')
       setDisableCode('')
       await refetchMfaStatus()
-      notify('Two-factor authentication disabled', 'success')
+      notify(t('auth.ui.twoFactorAuthenticationDisabled'), 'success')
     } catch (_e) {
-      notify('Failed to disable 2FA. Check password.', 'destructive')
+      notify(t('auth.errors.failedToDisable2FACheckPassword'), 'destructive')
     }
   }
 
   const copyAllBackupCodes = () => {
     if (!setupData?.backupCodes.length) return
     cp.copy(setupData.backupCodes.join('\n'))
-    notify('Backup codes copied', 'success')
+    notify(t('auth.ui.backupCodesCopied'), 'success')
   }
 
   if (mfaStatus === undefined) {
     return (
       <div className="rounded-lg border bg-card p-4">
-        <Typography variant="Body/M/Regular">Loading security settings…</Typography>
+        <Typography variant="Body/M/Regular">{t('auth.ui.loadingSecuritySettings')}</Typography>
       </div>
     )
   }
@@ -105,27 +107,27 @@ export function ProfileMfaBlock() {
     <div className="rounded-lg border bg-card p-4 space-y-4">
       <div className="flex items-center gap-2">
         <KeyRound className="h-5 w-5 text-muted-foreground shrink-0" />
-        <Typography variant="heading-3">Two-factor authentication (2FA)</Typography>
+        <Typography variant="heading-3">{t('auth.ui.twoFactorAuthentication2fa')}</Typography>
       </div>
 
       {!mfaEnabled && setupStep === 'idle' && (
         <div className="space-y-3">
           <Typography variant="Body/M/Regular" className="text-muted-foreground">
-            Add an extra layer of security by enabling TOTP (Google Authenticator, etc.).
+            {t('auth.ui.addAnExtraLayerOfSecurityByEnablingTOTPGoogleAuthenticatorEtc')}
           </Typography>
           <Button onClick={handleStartSetup} disabled={setupMutation.isLoading}>
-            {setupMutation.isLoading ? 'Starting…' : 'Enable 2FA'}
+            {setupMutation.isLoading ? t('auth.ui.starting') : t('auth.ui.enable2fa')}
           </Button>
         </div>
       )}
 
       {!mfaEnabled && setupStep === 'show-codes' && setupData && (
         <div className="space-y-4">
-          <Typography variant="Body/M/Regular">Scan the QR code with your authenticator app, or enter the secret manually.</Typography>
+          <Typography variant="Body/M/Regular">{t('auth.ui.scanTheQRCodeWithYourAuthenticatorAppOrEnterTheSecretManually')}</Typography>
           <div className="flex flex-col sm:flex-row gap-4 items-start">
             <ImageLoader
               src={`${QR_API}?size=${QR_SIZE}x${QR_SIZE}&data=${encodeURIComponent(setupData.otpauthUrl)}`}
-              alt="QR code for 2FA"
+              alt={t('auth.ui.qrCodeFor2FA')}
               width={QR_SIZE}
               height={QR_SIZE}
               defaultPlaceholder={<Skeleton className="w-[200px] h-[200px]" />}
@@ -133,13 +135,13 @@ export function ProfileMfaBlock() {
             />
             <div className="flex-1 min-w-0">
               <Typography variant="Body/S/Regular" className="text-muted-foreground mb-1">
-                Secret key
+                {t('auth.ui.secretKey')}
               </Typography>
               <div className="flex items-center gap-2">
                 <CopyContainer
                   className="flex-1 break-all cursor-pointer rounded bg-muted px-2 py-1 text-sm font-mono flex items-start justify-between"
                   content={setupData.secret}
-                  successNotifyText="Secret copied"
+                  successNotifyText={t('auth.ui.secretCopied')}
                 >
                   {setupData.secret}
                 </CopyContainer>
@@ -149,7 +151,7 @@ export function ProfileMfaBlock() {
 
           <div>
             <Typography variant="Body/S/Regular" className="text-muted-foreground mb-2">
-              Backup codes (save them in a safe place; they won’t be shown again)
+              {t('auth.ui.backupCodesSaveThemInASafePlaceTheyWontBeShownAgain')}
             </Typography>
             <ul className="grid grid-cols-2 gap-2 mb-2 font-mono text-sm">
               {setupData.backupCodes.map((code, i) => (
@@ -157,24 +159,24 @@ export function ProfileMfaBlock() {
                   key={[code, i].join('-')}
                   className="flex items-center cursor-pointer justify-between rounded bg-muted px-2 py-1"
                   content={code}
-                  successNotifyText="Code copied"
+                  successNotifyText={t('auth.ui.codeCopied')}
                 >
                   {code}
                 </CopyContainer>
               ))}
             </ul>
             <Button type="button" variant="outline" size="sm" onClick={copyAllBackupCodes}>
-              Copy all backup codes
+              {t('auth.ui.copyAllBackupCodes')}
             </Button>
           </div>
 
-          <Button onClick={() => setSetupStep('confirm')}>I’ve saved the codes, continue</Button>
+          <Button onClick={() => setSetupStep('confirm')}>{t('auth.ui.iveSavedTheCodesContinue')}</Button>
         </div>
       )}
 
       {!mfaEnabled && setupStep === 'confirm' && (
         <div className="space-y-3">
-          <Typography variant="Body/M/Regular">Enter the 6-digit code from your authenticator app to activate 2FA.</Typography>
+          <Typography variant="Body/M/Regular">{t('auth.ui.enterThe6DigitCodeFromYourAuthenticatorAppToActivate2FA')}</Typography>
           <div className="flex gap-2">
             <input
               type="text"
@@ -192,11 +194,11 @@ export function ProfileMfaBlock() {
               className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             <Button onClick={handleConfirmMfa} disabled={confirmMutation.isLoading || confirmCode.length < 6}>
-              {confirmMutation.isLoading ? 'Checking…' : 'Confirm'}
+              {confirmMutation.isLoading ? t('auth.ui.checking') : t('auth.ui.confirm')}
             </Button>
           </div>
           <Button type="button" variant="outline" onClick={() => setSetupStep('show-codes')}>
-            Back
+            {t('auth.ui.back')}
           </Button>
         </div>
       )}
@@ -205,20 +207,20 @@ export function ProfileMfaBlock() {
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
             <Shield className="h-4 w-4" />
-            <Typography variant="Body/M/Regular">2FA is enabled</Typography>
+            <Typography variant="Body/M/Regular">{t('auth.ui.twoFactorAuthenticationEnabledShort')}</Typography>
           </div>
           <Dialog open={disableOpen} onOpenChange={setDisableOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" className="text-destructive hover:text-destructive">
                 <ShieldOff className="h-4 w-4 mr-2" />
-                Disable 2FA
+                {t('auth.ui.disable2fa')}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Disable two-factor authentication</DialogTitle>
+                <DialogTitle>{t('auth.ui.disableTwoFactorAuthentication')}</DialogTitle>
               </DialogHeader>
-              <p className="text-sm text-muted-foreground">Enter your password. You can also enter a current 2FA code for extra verification.</p>
+              <p className="text-sm text-muted-foreground">{t('auth.ui.enterYourPasswordYouCanAlsoEnterACurrent2FACodeForExtraVerification')}</p>
               <input
                 type="password"
                 placeholder="Password"
@@ -239,17 +241,17 @@ export function ProfileMfaBlock() {
                     handleDisableMfa()
                   }
                 }}
-                placeholder="2FA code (optional)"
+                placeholder={t('auth.ui.twoFactorAuthenticationCodeOptional')}
                 value={disableCode}
                 onChange={(e) => setDisableCode(e.target.value.replace(/\D/g, ''))}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setDisableOpen(false)}>
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
                 <Button onClick={handleDisableMfa} disabled={disableMutation.isLoading}>
-                  {disableMutation.isLoading ? 'Disabling…' : 'Disable 2FA'}
+                  {disableMutation.isLoading ? t('auth.ui.disabling2fa') : t('auth.ui.disable2fa')}
                 </Button>
               </div>
             </DialogContent>

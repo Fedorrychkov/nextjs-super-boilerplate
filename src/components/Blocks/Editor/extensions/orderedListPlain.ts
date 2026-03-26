@@ -8,6 +8,6 @@ import { OrderedList } from '@tiptap/extension-list'
  */
 export const OrderedListPlain = OrderedList.extend({
   // false — disables custom tokenizer; type expects an object, see comment above
-  // @ts-expect-error — намеренно не MarkdownTokenizer
+  // @ts-expect-error — intentionally not MarkdownTokenizer
   markdownTokenizer: false,
 })

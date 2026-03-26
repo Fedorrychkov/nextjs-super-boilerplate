@@ -1,6 +1,8 @@
 /* eslint-disable react-refresh/only-export-components */
 import type { Article, Organization, WebSite, WithContext } from 'schema-dts'
 
+import { jsonStringifySafety } from '~/utils/jsonSafe'
+
 import { seoConfig } from './config'
 
 export const getOrganizationJsonLd = (): WithContext<Organization> => ({
@@ -58,6 +60,6 @@ export const getArticleJsonLd = (props: {
 
 export const JsonLd = ({ data }: { data: unknown }) => (
   <script type="application/ld+json" suppressHydrationWarning>
-    {JSON.stringify(data)}
+    {jsonStringifySafety(data) ?? '{}'}
   </script>
 )

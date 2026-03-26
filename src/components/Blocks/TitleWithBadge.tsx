@@ -15,7 +15,7 @@ export const TitleWithBadge = (props: Props) => {
   const { className, children = null, title = null, badgeContent = null } = props
 
   return (
-    <div className={cn('flex flex-row items-center gap-2 relative', className)}>
+    <div className={cn('flex flex-row items-center gap-2 relative max-w-fit', className)}>
       {title && <Typography variant="heading-3">{title}</Typography>}
       {children ?? null}
       {badgeContent && (

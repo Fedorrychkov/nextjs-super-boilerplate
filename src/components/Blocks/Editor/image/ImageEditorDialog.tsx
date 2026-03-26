@@ -8,6 +8,7 @@ import { MediaUrlUploadField } from '~/components/Fields'
 import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '~/components/ui'
 import { Textarea } from '~/components/ui/fields/textarea'
 import { Input } from '~/components/ui/input'
+import { useT } from '~/providers'
 
 import type { ArticleImageAlign, ArticleImageObjectFit } from '../extensions/articleImage'
 import { getSelectedImagePosition } from './imageSelection'
@@ -62,6 +63,7 @@ type Props = {
 }
 
 export const ImageEditorDialog = (props: Props) => {
+  const t = useT()
   const { editor, open, mode, onOpenChange, articleRevisionId } = props
   const [form, setForm] = useState<FormState>(emptyForm)
   /** In edit mode: for external URL you can change src; for data: — not allowed */
@@ -140,7 +142,7 @@ export const ImageEditorDialog = (props: Props) => {
       const src = resolveExternalImageSrc(form.src)
 
       if (!src) {
-        setError('Specify a valid URL (https://…) or path from the root of the site (/…). Inserting base64 — through copy/paste/drop in the text.')
+        setError(t('media.ui.uploadImageFileHintText'))
 
         return
       }
@@ -167,7 +169,7 @@ export const ImageEditorDialog = (props: Props) => {
     const pos = getSelectedImagePosition(editor)
 
     if (pos == null) {
-      setError('Select an image in the text.')
+      setError(t('media.ui.selectImageInText'))
 
       return
     }
@@ -175,7 +177,7 @@ export const ImageEditorDialog = (props: Props) => {
     const node = editor.state.doc.nodeAt(pos)
 
     if (!node || node.type.name !== 'image') {
-      setError('Image node not found.')
+      setError(t('media.ui.imageNodeNotFound'))
 
       return
     }
@@ -187,7 +189,7 @@ export const ImageEditorDialog = (props: Props) => {
       const src = resolveExternalImageSrc(form.src)
 
       if (!src) {
-        setError('Specify a valid URL (https://…) or path /…')
+        setError(t('media.ui.specifyValidUrlOrPath'))
 
         return
       }
@@ -203,15 +205,12 @@ export const ImageEditorDialog = (props: Props) => {
     editor.chain().focus().setNodeSelection(pos).updateAttributes('image', attrs).run()
 
     onOpenChange(false)
-  }, [editor, form, mode, onOpenChange, commonAttrs])
+  }, [editor, form, mode, onOpenChange, commonAttrs, t])
 
-  const title = mode === 'create' ? 'Add image' : 'Image'
-  const description =
-    mode === 'create'
-      ? 'Specify the image address (https or path /…). The rest is up to you. Base64 is inserted by copying or dragging.'
-      : 'Alt, caption, frame fitting, alignment and size limits (px). For images by URL you can change the address. Embedded (base64) — only caption and formatting, without changing the URL.'
+  const title = mode === 'create' ? t('media.ui.addImage') : t('media.ui.image')
+  const description = mode === 'create' ? t('media.ui.specifyImageAddress') : t('media.ui.altCaptionFrameFittingAlignmentSizeLimits')
 
-  const submitLabel = mode === 'create' ? 'Insert' : 'Save'
+  const submitLabel = mode === 'create' ? t('common.insert') : t('common.save')
 
   const showUrlField = mode === 'create' || srcEditable
 
@@ -226,14 +225,12 @@ export const ImageEditorDialog = (props: Props) => {
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
           {mode === 'edit' && !srcEditable ? (
-            <p className="text-sm text-muted-foreground rounded-md border border-border bg-muted/40 px-3 py-2">
-              Embedded image (inserted into the document). The address cannot be changed; available alt, caption and formatting.
-            </p>
+            <p className="text-sm text-muted-foreground rounded-md border border-border bg-muted/40 px-3 py-2">{t('media.ui.embeddedImage')}</p>
           ) : null}
 
           {showUrlField ? (
             <MediaUrlUploadField
-              label="Image URL"
+              label={t('media.ui.imageUrl')}
               value={form.src}
               assetId={form.assetId || null}
               resourceType={MediaResourceType.IMAGE}
@@ -262,50 +259,75 @@ export const ImageEditorDialog = (props: Props) => {
                   assetId: next.assetId ?? '',
                 }))
               }}
-              hintText="Upload/paste/drop image or provide a URL."
+              hintText={t('media.ui.uploadImageFileHintTextShort')}
             />
           ) : null}
 
-          <Input label="Alt" value={form.alt} onChange={(v) => setForm((s) => ({ ...s, alt: v }))} placeholder="Описание для доступности" />
+          <Input label="Alt" value={form.alt} onChange={(v) => setForm((s) => ({ ...s, alt: v }))} placeholder="Description for accessibility" />
           <div className="flex flex-col gap-1">
-            <span className="text-[13px] text-gray-900 capitalize">Caption under the image</span>
-            <Textarea value={form.caption} onChange={(e) => setForm((s) => ({ ...s, caption: e.target.value }))} placeholder="Текст под картинкой" rows={3} />
+            <span className="text-[13px] text-gray-900 capitalize">{t('media.ui.captionUnderTheImage')}</span>
+            <Textarea
+              value={form.caption}
+              onChange={(e) => setForm((s) => ({ ...s, caption: e.target.value }))}
+              placeholder={t('media.ui.textUnderTheImage')}
+              rows={3}
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1">
-              <span className="text-[13px] text-gray-900">Object fit</span>
+              <span className="text-[13px] text-gray-900">{t('media.ui.objectFit')}</span>
               <select
                 className="h-10 rounded-md border border-input bg-background px-2 text-sm"
                 value={form.objectFit}
                 onChange={(e) => setForm((s) => ({ ...s, objectFit: e.target.value as ArticleImageObjectFit }))}
               >
-                <option value="contain">Contain</option>
-                <option value="cover">Cover</option>
+                <option value="contain">{t('media.ui.contain')}</option>
+                <option value="cover">{t('media.ui.cover')}</option>
               </select>
             </div>
             <div className="flex flex-col gap-1">
-              <span className="text-[13px] text-gray-900">Alignment</span>
+              <span className="text-[13px] text-gray-900">{t('media.ui.alignment')}</span>
               <select
                 className="h-10 rounded-md border border-input bg-background px-2 text-sm"
                 value={form.align}
                 onChange={(e) => setForm((s) => ({ ...s, align: e.target.value as ArticleImageAlign }))}
               >
-                <option value="left">Left</option>
-                <option value="center">Center</option>
-                <option value="right">Right</option>
+                <option value="left">{t('media.ui.left')}</option>
+                <option value="center">{t('media.ui.center')}</option>
+                <option value="right">{t('media.ui.right')}</option>
               </select>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Min width (px)" value={form.minWidthPx} onChange={(v) => setForm((s) => ({ ...s, minWidthPx: v }))} placeholder="auto" />
-            <Input label="Min height (px)" value={form.minHeightPx} onChange={(v) => setForm((s) => ({ ...s, minHeightPx: v }))} placeholder="auto" />
-            <Input label="Max width (px)" value={form.maxWidthPx} onChange={(v) => setForm((s) => ({ ...s, maxWidthPx: v }))} placeholder="auto" />
-            <Input label="Max height (px)" value={form.maxHeightPx} onChange={(v) => setForm((s) => ({ ...s, maxHeightPx: v }))} placeholder="optional" />
+            <Input
+              label={t('media.ui.minWidth')}
+              value={form.minWidthPx}
+              onChange={(v) => setForm((s) => ({ ...s, minWidthPx: v }))}
+              placeholder={t('media.ui.auto')}
+            />
+            <Input
+              label={t('media.ui.minHeight')}
+              value={form.minHeightPx}
+              onChange={(v) => setForm((s) => ({ ...s, minHeightPx: v }))}
+              placeholder={t('media.ui.auto')}
+            />
+            <Input
+              label={t('media.ui.maxWidth')}
+              value={form.maxWidthPx}
+              onChange={(v) => setForm((s) => ({ ...s, maxWidthPx: v }))}
+              placeholder={t('media.ui.auto')}
+            />
+            <Input
+              label={t('media.ui.maxHeight')}
+              value={form.maxHeightPx}
+              onChange={(v) => setForm((s) => ({ ...s, maxHeightPx: v }))}
+              placeholder={t('media.ui.optional')}
+            />
           </div>
         </div>
         <DialogFooter>
           <Button type="button" variant="secondary" size="sm-md" onClick={() => onOpenChange(false)}>
-            Отмена
+            {t('common.cancel')}
           </Button>
           <Button type="button" size="sm-md" onClick={apply}>
             {submitLabel}

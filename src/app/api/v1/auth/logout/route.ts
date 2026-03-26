@@ -5,8 +5,12 @@ import { authService } from '@lib/services/auth.service'
 import { cookies } from 'next/headers'
 import { NextRequest } from 'next/server'
 
+import { getServerTFromNextRequest } from '~/lib/i18n/server'
+
 const handler = (request: NextRequest) => {
   return apiErrorHandlerContainer(request)(async (res, _req) => {
+    const { t } = getServerTFromNextRequest(request)
+
     const cookieStore = await cookies()
     const refreshToken = cookieStore.get('refreshToken')?.value ?? null
 
@@ -18,7 +22,7 @@ const handler = (request: NextRequest) => {
       }
     }
 
-    const response = res.json({ success: true, message: 'Logged out successfully' }, { status: 200 })
+    const response = res.json({ success: true, message: t('auth.messages.loggedOutSuccessfully') }, { status: 200 })
     clearAuthCookies(response)
 
     return response

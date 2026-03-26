@@ -3,18 +3,20 @@ import { AuthSuccessResult } from '@lib/security/auth'
 import { webPushService } from '@lib/services/web-push.service'
 import { NextRequest } from 'next/server'
 
+import { getServerTFromNextRequest } from '~/lib/i18n/server'
 import { AnyString } from '~/types'
 
 const handler = (request: NextRequest, authResult: AuthSuccessResult) => {
   return apiErrorHandlerContainer(request)(async (res, req) => {
+    const { t } = getServerTFromNextRequest(request)
     const user = authResult.payload
 
     const body: { type: 'test' | AnyString } = await req.json()
 
     const result = await webPushService.sendToUser(user.sub, {
       type: body.type,
-      title: 'New message',
-      body: `Example body for ${body.type} request`,
+      title: t('push.messages.newMessage'),
+      body: t('push.messages.exampleBody', { type: body.type }),
       url: '/ui-kit',
       tag: 'ui-kit',
       dedupId: 'ui-kit',

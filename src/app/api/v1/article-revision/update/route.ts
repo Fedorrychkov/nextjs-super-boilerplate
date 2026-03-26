@@ -8,15 +8,19 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { ArticleRevisionMetadata, ArticleRevisionModel, ArticleRevisionStatus } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
+import { routes } from '~/constants'
 import { publicArticleCacheTag } from '~/lib/cache/publicArticlePageCache'
+import { getServerTFromNextRequest } from '~/lib/i18n/server'
 import { validateCanonicalUrlForStorage } from '~/lib/seo/articleCanonical'
 import { seoConfig } from '~/lib/seo/config'
 import { time } from '~/utils/time'
 
 const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
   apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
+    const { t } = getServerTFromNextRequest(request)
+
     if (![UserRole.ADMIN, UserRole.EDITOR].includes(authResult.payload.role)) {
-      return NextResponse.json({ message: 'Insufficient permissions' }, { status: 403 })
+      return NextResponse.json({ message: t('errors.insufficientPermissions') }, { status: 403 })
     }
 
     await connectDB()
@@ -26,7 +30,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     const articleRevision = await ArticleRevision.findById(body.id)
 
     if (!articleRevision) {
-      return NextResponse.json({ message: 'Article revision not found' }, { status: 404 })
+      return NextResponse.json({ message: t('article.errors.articleRevisionNotFound') }, { status: 404 })
     }
 
     const id = body.id
@@ -36,7 +40,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
 
     const existingMeta = (articleRevision.metadata as ArticleRevisionMetadata | null | undefined) ?? {}
     const mergedSeo = { ...(existingMeta.seo ?? {}), ...(body.metadata?.seo ?? {}) }
-    const canonicalValidation = validateCanonicalUrlForStorage(mergedSeo.canonicalUrl, seoConfig.siteUrl)
+    const canonicalValidation = validateCanonicalUrlForStorage(mergedSeo.canonicalUrl, seoConfig.siteUrl, t)
 
     if (!canonicalValidation.ok) {
       return NextResponse.json({ message: canonicalValidation.message }, { status: 400 })
@@ -62,14 +66,14 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     const data = await ArticleRevision.findById(id)
 
     if (!data) {
-      return NextResponse.json({ message: 'Article revision not found' }, { status: 404 })
+      return NextResponse.json({ message: t('article.errors.articleRevisionNotFound') }, { status: 404 })
     }
 
     const parentArticle = await Article.findById(data.articleId)
 
     if (parentArticle?.slug && String(parentArticle.revisionId) === String(data._id)) {
       revalidateTag(publicArticleCacheTag(parentArticle.slug), 'max')
-      revalidatePath(`/article/${parentArticle.slug}`)
+      revalidatePath(routes.articlePublic.path.replace(':slug', parentArticle.slug))
     }
 
     revalidatePath('/sitemap.xml')

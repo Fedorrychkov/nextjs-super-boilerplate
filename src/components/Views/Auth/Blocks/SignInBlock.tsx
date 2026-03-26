@@ -5,6 +5,7 @@ import * as React from 'react'
 import { useState } from 'react'
 
 import { Button } from '~/components/ui'
+import { useT } from '~/providers'
 
 type Props = {
   onSubmit: (email: string, password: string) => void
@@ -13,6 +14,7 @@ type Props = {
 }
 
 const SignInBlock = (props: Props) => {
+  const t = useT()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -25,13 +27,13 @@ const SignInBlock = (props: Props) => {
     e.preventDefault()
 
     if (!email || !password) {
-      setError('Enter email and password')
+      setError(t('auth.errors.enterEmailAndPassword'))
 
       return
     }
 
     if (!validateEmail(email)) {
-      setError('Enter a valid email')
+      setError(t('auth.errors.enterValidEmail'))
 
       return
     }
@@ -49,15 +51,15 @@ const SignInBlock = (props: Props) => {
         <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-white mb-6 shadow-lg shadow-opacity-5">
           <LogIn className="w-7 h-7 text-black" />
         </div>
-        <h2 className="text-2xl font-semibold mb-2 text-center">Sign in with email</h2>
-        <p className="text-gray-500 text-sm mb-6 text-center">Sign in to continue working</p>
+        <h2 className="text-2xl font-semibold mb-2 text-center">{t('auth.ui.signInWithEmail')}</h2>
+        <p className="text-gray-500 text-sm mb-6 text-center">{t('auth.ui.signInToContinueWorking')}</p>
         <div className="w-full flex flex-col gap-3 mb-2">
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
               <Mail className="w-4 h-4" />
             </span>
             <input
-              placeholder="Email"
+              placeholder={t('auth.ui.email')}
               type="email"
               value={email}
               disabled={props.isLoading}
@@ -70,7 +72,7 @@ const SignInBlock = (props: Props) => {
               <Lock className="w-4 h-4" />
             </span>
             <input
-              placeholder="Password"
+              placeholder={t('auth.ui.password')}
               type="password"
               value={password}
               disabled={props.isLoading}
@@ -86,10 +88,10 @@ const SignInBlock = (props: Props) => {
           disabled={props.isLoading}
           className="w-full bg-gradient-to-b from-gray-700 to-gray-900 text-white font-medium py-2 rounded-xl shadow hover:brightness-105 cursor-pointer transition mb-4 mt-2"
         >
-          Sign in
+          {t('auth.ui.signIn')}
         </button>
         <Button variant="link" onClick={props.onChange}>
-          Sign up
+          {t('auth.ui.signUp')}
         </Button>
       </form>
     </div>

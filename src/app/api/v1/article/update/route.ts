@@ -9,7 +9,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ArticleModel, ArticleStatus, ArticleVisibility } from '~/api/article'
 import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
+import { routes } from '~/constants'
 import { publicArticleCacheTag } from '~/lib/cache/publicArticlePageCache'
+import { getServerTFromNextRequest } from '~/lib/i18n/server'
 import { resolveArticleCanonicalUrl } from '~/lib/seo/articleCanonical'
 import { seoConfig } from '~/lib/seo/config'
 import { notifySearchEngines } from '~/lib/seo/indexing'
@@ -17,8 +19,10 @@ import { time } from '~/utils/time'
 
 const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
   apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
+    const { t } = getServerTFromNextRequest(request)
+
     if (![UserRole.ADMIN, UserRole.EDITOR].includes(authResult.payload.role)) {
-      return NextResponse.json({ message: 'Insufficient permissions' }, { status: 403 })
+      return NextResponse.json({ message: t('errors.insufficientPermissions') }, { status: 403 })
     }
 
     await connectDB()
@@ -28,7 +32,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     const article = await Article.findById(body.id)
 
     if (!article) {
-      return NextResponse.json({ message: 'Article not found' }, { status: 404 })
+      return NextResponse.json({ message: t('article.errors.notFound') }, { status: 404 })
     }
 
     const previousSlug = article.slug ?? undefined
@@ -43,7 +47,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     const data = await Article.findById(id)
 
     if (!data) {
-      return NextResponse.json({ message: 'Article not found' }, { status: 404 })
+      return NextResponse.json({ message: t('article.errors.notFound') }, { status: 404 })
     }
 
     const isPublishedPublic = data.status === ArticleStatus.PUBLISHED && data.visibility === ArticleVisibility.PUBLIC
@@ -60,7 +64,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     }
 
     if (articleUrl) {
-      revalidatePath(`/article/${data.slug}`)
+      revalidatePath(routes.articlePublic.path.replace(':slug', data.slug ?? ''))
     }
 
     const nextSlug = data.slug ?? undefined
