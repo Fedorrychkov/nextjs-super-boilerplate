@@ -16,6 +16,7 @@ Minimal Next.js template with deploy (GitHub Actions), optional Docker stack (ng
 - [Bundle optimization and monitoring](#bundle-optimization-and-monitoring)
 - [Troubleshooting](#troubleshooting)
 - [License](#license)
+- [Statuses](#statuses)
 
 ## Demo
 
@@ -388,3 +389,18 @@ see:
 ## License
 
 [MIT](./LICENSE).
+
+
+## Statuses
+
+[Docker Status](https://www.dockerstatus.com/)
+
+[NPM Status](https://status.npmjs.org/)
+
+[TimeWeb Host Status](https://timeweb.cloud/live)
+
+[Digital Oucean Status](https://status.digitalocean.com/)
+
+[Github Status](https://www.githubstatus.com/)
+
+[Firebase Status](https://status.firebase.google.com/)
