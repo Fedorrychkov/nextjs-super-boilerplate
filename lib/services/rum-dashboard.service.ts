@@ -1,7 +1,7 @@
 import RumWebVital from '@lib/db/models/RumWebVital'
 
 import { RUM_METRIC_NAMES } from '~/api/rum/model'
-import { RumDashboardPayload } from '~/api/rum/types'
+import { RumDashboardPayload, RumFilter } from '~/api/rum/types'
 
 function percentile75(values: number[]): number | null {
   if (!values.length) {
@@ -14,10 +14,18 @@ function percentile75(values: number[]): number | null {
   return sorted[idx]
 }
 
-export async function buildRumDashboard(windowDays: number): Promise<RumDashboardPayload> {
+export async function buildRumDashboard(filter: RumFilter): Promise<RumDashboardPayload> {
+  const { days, pathname } = filter
+  const windowDays = days || 7
+  const normalizedPathname = pathname?.trim()
+
   const until = new Date()
   const since = new Date(until.getTime() - windowDays * 24 * 60 * 60 * 1000)
   const match = { createdAt: { $gte: since, $lte: until } } as Record<string, unknown>
+
+  if (normalizedPathname) {
+    match.pathname = normalizedPathname
+  }
 
   const totalSamples = await RumWebVital.countDocuments(match)
 

@@ -34,3 +34,8 @@ export type RumIngestBody = {
   pathname: string
   connectionEffectiveType?: string
 }
+
+export type RumFilter = {
+  days: number
+  pathname?: string | null
+}

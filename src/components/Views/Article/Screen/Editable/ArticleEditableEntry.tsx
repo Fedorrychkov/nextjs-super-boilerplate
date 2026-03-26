@@ -3,12 +3,13 @@
 import type { Editor } from '@tiptap/core'
 import { AxiosError } from 'axios'
 import debounce from 'lodash/debounce'
-import { EyeIcon, FileTextIcon, InfoIcon, LockIcon, SearchIcon, SendIcon } from 'lucide-react'
+import { ActivityIcon, BotIcon, EyeIcon, FileTextIcon, InfoIcon, LockIcon, SearchIcon, SendIcon } from 'lucide-react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useState } from 'react'
 import { useQueryClient } from 'react-query'
 
-import { ArticleModel, ArticleStatus } from '~/api/article'
+import { ArticleModel, ArticleStatus, ArticleVisibility } from '~/api/article'
 import { ArticleRevisionMediaMetadata, ArticleRevisionMetadata, ArticleRevisionModel, ArticleRevisionStatus, SortOrder } from '~/api/article-revision'
 import { MediaProvider, MediaResourceType } from '~/api/media'
 import { Tab, TabsContainer } from '~/components/Blocks/Tabs/TabsContainer'
@@ -534,6 +535,24 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
                   {item?.status === ArticleRevisionStatus.CONFIRMED ? <LockIcon className="w-6 h-6 shrink-0 bg-green-500 text-white rounded-md p-1" /> : null}
                 </Button>
               ))}
+              {article?.slug && article?.visibility === ArticleVisibility.PUBLIC && article?.status === ArticleStatus.PUBLISHED && (
+                <div className="flex flex-row gap-2 items-center justify-start">
+                  <Link
+                    href={`/admin/rum?pathname=/article/${article.slug}`}
+                    target="_blank"
+                    className="flex items-center gap-2 p-2 rounded-lg text-secondary-400"
+                  >
+                    <ActivityIcon className="md:w-4 md:h-4 w-2 h-2 shrink-0" /> {t('navigation.rumDashboard')}
+                  </Link>
+                  <Link
+                    href={`/admin/ai-referrals?pathname=/article/${article.slug}`}
+                    target="_blank"
+                    className="flex items-center gap-2 p-2 rounded-lg text-secondary-400"
+                  >
+                    <BotIcon className="md:w-4 md:h-4 w-2 h-2 shrink-0" /> {t('navigation.aiReferralsDashboard')}
+                  </Link>
+                </div>
+              )}
             </div>
           ) : null}
           {isDisabledEditing && (

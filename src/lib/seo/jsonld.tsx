@@ -10,6 +10,7 @@ export const getOrganizationJsonLd = (): WithContext<Organization> => ({
   '@type': 'Organization',
   name: seoConfig.siteName,
   url: seoConfig.siteUrl,
+  ...(seoConfig.organizationSameAs.length ? { sameAs: seoConfig.organizationSameAs } : {}),
 })
 
 export const getWebSiteJsonLd = (): WithContext<WebSite> => ({
@@ -54,6 +55,7 @@ export const getArticleJsonLd = (props: {
     '@type': 'Organization',
     name: seoConfig.siteName,
     url: seoConfig.siteUrl,
+    ...(seoConfig.organizationSameAs.length ? { sameAs: seoConfig.organizationSameAs } : {}),
   },
   inLanguage: seoConfig.defaultLocale,
 })

@@ -1,9 +1,9 @@
 import { Request } from '@lib/request'
 import { AxiosInstance } from 'axios'
 
-import { RumDashboardPayload, RumFilter } from '../types'
+import { AiReferralDashboardPayload, AiRefferralFilter } from '../types'
 
-export class ClientRumApi {
+export class ClientAiReferralsApi {
   private readonly client: AxiosInstance
 
   constructor(origin?: string, options?: { headers?: Record<string, string> }) {
@@ -11,9 +11,9 @@ export class ClientRumApi {
     this.client = new Request(config).apiClient
   }
 
-  async getDashboard(filter: RumFilter): Promise<RumDashboardPayload> {
-    const response = await this.client.get<RumDashboardPayload>('/api/v1/rum/dashboard', {
-      params: { days: filter.days, pathname: filter.pathname },
+  async getDashboard(filter: AiRefferralFilter): Promise<AiReferralDashboardPayload> {
+    const response = await this.client.get<AiReferralDashboardPayload>('/api/v1/ai-referrals/dashboard', {
+      params: { days: filter.days, pathname: filter.pathname, source: filter.source },
     })
 
     return response.data
