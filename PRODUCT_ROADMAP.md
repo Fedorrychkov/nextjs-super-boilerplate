@@ -168,8 +168,8 @@ This roadmap tracks the remaining work for the article platform and related qual
 
 ### 3. Internationalization readiness
 
-- [ ] Introduce key-based UI translations and local locale files for author/public pages.
-- [ ] Add i18n conventions for content-related labels, validation messages, and notifications.
+- [x] Introduce key-based UI translations and local locale files for author/public pages.
+- [x] Add i18n conventions for content-related labels, validation messages, and notifications.
 - [ ] Define migration plan for replacing hardcoded UI strings with translation keys.
 
 ---
@@ -180,7 +180,7 @@ This roadmap tracks the remaining work for the article platform and related qual
 
 ### 1. Site default and user locale
 
-- [ ] Single source of truth for default locale (e.g. `NEXT_PUBLIC_DEFAULT_LOCALE` / `seoConfig`) driving root `<html lang>` and server-side `Intl` defaults.
+- [x] Single source of truth for default locale (e.g. `NEXT_PUBLIC_DEFAULT_LOCALE` / `seoConfig`) driving root `<html lang>` and server-side `Intl` defaults.
 - [ ] Optional: read `Accept-Language` in middleware + persist choice (cookie or user profile) for first-time visitors.
 - [ ] Optional later: `app/[locale]` URL segment and redirects; document trade-offs (SEO, caching) before implementation.
 
