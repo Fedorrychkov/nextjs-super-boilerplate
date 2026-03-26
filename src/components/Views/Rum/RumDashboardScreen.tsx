@@ -1,5 +1,6 @@
 'use client'
 
+import { useSearchParams } from 'next/navigation'
 import { useMemo, useState } from 'react'
 
 import { TitleWithBadge } from '~/components/Blocks/TitleWithBadge'
@@ -72,10 +73,14 @@ function formatMetricDisplay(name: string, value: number | null): string {
 
 export const RumDashboardScreen = () => {
   const t = useT()
-  const [daysStr, setDaysStr] = useState('7')
+  const searchParams = useSearchParams()
+  const daysSearchParam = searchParams.get('days') || '7'
+  const pathnameSearchParam = searchParams.get('pathname')
+
+  const [daysStr, setDaysStr] = useState(daysSearchParam)
   const days = useMemo(() => Number.parseInt(daysStr, 10) || 7, [daysStr])
 
-  const { data, isLoading, isError } = useRumDashboardQuery(days)
+  const { data, isLoading, isError } = useRumDashboardQuery({ days, pathname: pathnameSearchParam })
 
   const dayOptions = useMemo(() => DAY_OPTIONS(t), [t])
 

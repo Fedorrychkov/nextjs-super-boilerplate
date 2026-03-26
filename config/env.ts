@@ -30,6 +30,7 @@ const {
   COMMIT_HASH = process.env.COMMIT_HASH || process.env.VERCEL_GIT_COMMIT_SHA || '',
   RUM_ENABLED = process.env.RUM_ENABLED !== 'false',
   NEXT_PUBLIC_RUM_ENABLED = process.env.NEXT_PUBLIC_RUM_ENABLED !== 'false',
+  NEXT_PUBLIC_ORGANIZATION_SAME_AS = process.env.NEXT_PUBLIC_ORGANIZATION_SAME_AS || '',
 } = process.env
 
 const isDevelop = [APP_ENV, NEXT_PUBLIC_APP_ENV].includes('development')
@@ -100,6 +101,7 @@ export {
   JWT_CONFIG,
   MFA_CONFIG,
   MONGODB_CONFIG,
+  NEXT_PUBLIC_ORGANIZATION_SAME_AS,
   NEXT_PUBLIC_SITE_URL,
   PUSH_CONFIG,
   RATE_LIMIT_CONFIG,

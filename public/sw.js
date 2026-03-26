@@ -3,9 +3,10 @@
 const STATIC_CACHE = 'static-v1'
 const HTML_CACHE = 'html-v1'
 const API_PUBLIC_CACHE = 'api-public-v1'
+const APP_ICON = '/images/favicon.svg'
 
 // Shell-pages, for precache (can be expanded to your project)
-const PRECACHE_URLS = ['/',]
+const PRECACHE_URLS = ['/', APP_ICON, '/images/site.webmanifest']
 
 self.addEventListener('push', (event) => {
 	let payload
@@ -27,8 +28,8 @@ self.addEventListener('push', (event) => {
 	
 	const options = {
 		body: payload.body,
-		icon: payload.icon || '/vercel.svg',
-		badge: payload.badge || '/vercel.svg',
+		icon: payload.icon || APP_ICON,
+		badge: payload.badge || APP_ICON,
 		tag: uniqueTag, //  Unique tag for each notification
 		data: {
 			url: payload.url || '/',

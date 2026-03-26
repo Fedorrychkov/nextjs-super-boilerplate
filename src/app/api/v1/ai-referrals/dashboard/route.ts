@@ -1,13 +1,13 @@
 import connectDB from '@lib/db/client'
 import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
-import { buildRumDashboard } from '@lib/services/rum-dashboard.service'
+import { buildAiReferralsDashboard } from '@lib/services/ai-referrals-dashboard.service'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { UserRole } from '~/api/user'
 import { getServerTFromNextRequest } from '~/lib/i18n/server'
 
-const MAX_DAYS = 14
+const MAX_DAYS = 30
 
 const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
   apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
@@ -18,14 +18,12 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     }
 
     const raw = request.nextUrl.searchParams.get('days')
-    const days = Math.min(MAX_DAYS, Math.max(1, raw ? Number.parseInt(raw, 10) || 7 : 7))
-
     const rawPathname = request.nextUrl.searchParams.get('pathname')
-    const pathname = rawPathname ? decodeURIComponent(rawPathname) : null
+    const days = Math.min(MAX_DAYS, Math.max(1, raw ? Number.parseInt(raw, 10) || 7 : 7))
 
     await connectDB()
 
-    const data = await buildRumDashboard({ days, pathname })
+    const data = await buildAiReferralsDashboard({ days, pathname: rawPathname ? decodeURIComponent(rawPathname) : null })
 
     return response.json(data)
   })

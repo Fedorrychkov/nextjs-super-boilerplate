@@ -86,6 +86,17 @@ test('getArticleJsonLd omits isAccessibleForFree when undefined', () => {
   assert.equal('isAccessibleForFree' in ld, false)
 })
 
+test('getArticleJsonLd uses explicit language when provided', () => {
+  const ld = getArticleJsonLd({
+    slug: 'x',
+    title: 'T',
+    canonicalUrl: 'https://example.com/article/x',
+    language: 'ru',
+  })
+
+  assert.equal(ld.inLanguage, 'ru')
+})
+
 test('getOrganizationJsonLd and getWebSiteJsonLd expose https site url', () => {
   const org = getOrganizationJsonLd()
   const site = getWebSiteJsonLd()

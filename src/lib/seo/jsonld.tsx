@@ -10,6 +10,7 @@ export const getOrganizationJsonLd = (): WithContext<Organization> => ({
   '@type': 'Organization',
   name: seoConfig.siteName,
   url: seoConfig.siteUrl,
+  ...(seoConfig.organizationSameAs.length ? { sameAs: seoConfig.organizationSameAs } : {}),
 })
 
 export const getWebSiteJsonLd = (): WithContext<WebSite> => ({
@@ -30,6 +31,7 @@ export const getArticleJsonLd = (props: {
   /** Absolute canonical URL — must match `alternates.canonical` / metadata. */
   canonicalUrl: string
   keywords?: string | null
+  language?: string | null
   /** Public articles: true; private / restricted: false. */
   isAccessibleForFree?: boolean
 }): WithContext<Article> => ({
@@ -54,8 +56,9 @@ export const getArticleJsonLd = (props: {
     '@type': 'Organization',
     name: seoConfig.siteName,
     url: seoConfig.siteUrl,
+    ...(seoConfig.organizationSameAs.length ? { sameAs: seoConfig.organizationSameAs } : {}),
   },
-  inLanguage: seoConfig.defaultLocale,
+  inLanguage: props.language?.trim() || seoConfig.defaultLocale,
 })
 
 export const JsonLd = ({ data }: { data: unknown }) => (

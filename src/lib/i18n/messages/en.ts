@@ -77,6 +77,7 @@ export const en = {
     logout: 'Logout',
     refresh: 'Refresh',
     rumDashboard: 'RUM Dashboard',
+    aiReferralsDashboard: 'AI Referrals Dashboard',
     articles: 'Articles',
     articlesCreate: 'Create Article',
     articlePublic: 'Article Public',
@@ -260,7 +261,7 @@ export const en = {
       link_only: 'Link Only',
     },
     ui: {
-      publishedVersion: 'Published version',
+      publishedVersion: 'Number of version',
       readMore: 'Read more',
       currentRevision: 'Current Revision',
       lastRevision: 'Last Revision',
@@ -302,6 +303,9 @@ export const en = {
       metaKeywordsOptional: 'Meta keywords (optional)',
       throughACommaForGoogleAlmostDoesNotAffectSometimesOtherSystemsAreUsed:
         'Through a comma. For Google almost does not affect, sometimes other systems are used.',
+      articleLanguageOptional: 'Article language (optional)',
+      ifNotSpecifiedTheDefaultSiteLanguageWillBeUsed: 'If not specified, the default site language is used.',
+      notSelected: 'Not selected',
       socialNetworksOpenGraph: 'Social networks (Open Graph)',
       ogTitle: 'OG title',
       ifEmptyTheMetaTitleOrArticleTitleIsUsed: 'If empty, the meta title or article title is used.',
@@ -454,6 +458,26 @@ export const en = {
       invalidValue: 'Invalid value',
       invalidPathname: 'Invalid pathname',
       failedToPersist: 'Failed to persist',
+      failedToLoadData: 'Failed to load data. Check your authorization and try again.',
+    },
+  },
+  aiReferrals: {
+    ui: {
+      title: 'AI Referrals',
+      window: 'Window',
+      period: 'Period',
+      days: {
+        one: 'day',
+        other: 'days',
+      },
+      bySource: 'By source',
+      source: 'Source',
+      topPaths: 'Top paths',
+      pathname: 'Pathname',
+      events: 'Events',
+      noDataForSelectedPeriod: 'No data for the selected period',
+    },
+    errors: {
       failedToLoadData: 'Failed to load data. Check your authorization and try again.',
     },
   },
