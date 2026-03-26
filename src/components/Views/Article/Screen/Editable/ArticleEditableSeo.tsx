@@ -10,6 +10,7 @@ import { DefaultCheckbox, DefaultFieldContainer, DefaultMultiselectField, Defaul
 import { Button, Option, Typography } from '~/components/ui'
 import { routes } from '~/constants'
 import { handleRegister } from '~/hooks/useRegister'
+import { getSupportedLocales } from '~/lib/i18n'
 import { validateCanonicalUrlForStorage } from '~/lib/seo/articleCanonical'
 import { useT } from '~/providers'
 
@@ -25,6 +26,7 @@ type SeoForm = {
   noindex: boolean
   nofollow: boolean
   keywords: string
+  language: Option[]
 }
 
 const twitterCardOptions: Option[] = [
@@ -43,6 +45,7 @@ const emptySeo = (): ArticleRevisionSeoMetadata => ({
   noindex: false,
   nofollow: false,
   keywords: null,
+  language: null,
 })
 
 const readSeoFromRevision = (revision: ArticleRevisionModel | null | undefined): ArticleRevisionSeoMetadata => {
@@ -65,6 +68,7 @@ const toFormValues = (seo: ArticleRevisionSeoMetadata, article?: ArticleModel | 
   noindex: article?.visibility ? [ArticleVisibility.PRIVATE, ArticleVisibility.LINK_ONLY].includes(article.visibility) : Boolean(seo.noindex),
   nofollow: true,
   keywords: seo.keywords ?? '',
+  language: seo.language ? [{ value: seo.language, label: seo.language.toUpperCase() }] : [],
 })
 
 const formToSeoPayload = (data: SeoForm): ArticleRevisionSeoMetadata => ({
@@ -79,6 +83,7 @@ const formToSeoPayload = (data: SeoForm): ArticleRevisionSeoMetadata => ({
   noindex: data.noindex,
   nofollow: data.nofollow,
   keywords: data.keywords.trim() || null,
+  language: data.language?.[0]?.value?.trim() || null,
 })
 
 export type ArticleEditableSeoSavePayload = {
@@ -104,6 +109,14 @@ export const ArticleEditableSeo = (props: Props) => {
   const t = useT()
 
   const defaultValues = useMemo(() => toFormValues(readSeoFromRevision(articleRevision), article), [articleRevision, article])
+  const languageOptions = useMemo<Option[]>(
+    () =>
+      getSupportedLocales().map((locale) => ({
+        value: locale,
+        label: locale.toUpperCase(),
+      })),
+    [],
+  )
 
   const form = useForm<SeoForm>({
     defaultValues,
@@ -220,6 +233,22 @@ export const ArticleEditableSeo = (props: Props) => {
               name="keywords"
               hintText={t('article.ui.throughACommaForGoogleAlmostDoesNotAffectSometimesOtherSystemsAreUsed')}
             />
+
+            <DefaultMultiselectField
+              options={languageOptions}
+              {...handleRegister({
+                ...register('language'),
+                errors,
+              })}
+              updateBySelected
+              disabled={isLoading || isDisabled}
+              label={t('article.ui.articleLanguageOptional')}
+              name="language"
+              placeholder={t('article.ui.notSelected')}
+            />
+            <Typography variant="Body/XS/Regular" className="text-muted-foreground -mt-2">
+              {t('article.ui.ifNotSpecifiedTheDefaultSiteLanguageWillBeUsed')}
+            </Typography>
           </section>
 
           <section className="flex flex-col gap-4">

@@ -1,5 +1,6 @@
 import type { ArticleModel } from '~/api/article'
 import type { ArticleRevisionSeoMetadata } from '~/api/article-revision'
+import { FALLBACK_THUMBNAIL_IMAGE } from '~/constants'
 
 import { resolveArticleCanonicalUrl } from './articleCanonical'
 import { seoConfig } from './config'
@@ -25,7 +26,7 @@ export function resolvePublicArticlePageMeta(params: {
   const description = seo.metaDescription?.trim() || revision.description?.trim() || 'Article page'
   const ogTitle = seo.ogTitle?.trim() || seo.metaTitle?.trim() || title
   const ogDescription = seo.ogDescription?.trim() || description
-  const image = seo.ogImageUrl?.trim() || revision.thumbnailUrl || undefined
+  const image = seo.ogImageUrl?.trim() || revision.thumbnailUrl || FALLBACK_THUMBNAIL_IMAGE
   const canonical = resolveArticleCanonicalUrl(seoConfig.siteUrl, slug, article.visibility, seo.canonicalUrl)
 
   return {

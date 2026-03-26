@@ -8,8 +8,10 @@ import { notFound } from 'next/navigation'
 import { ArticleVisibility } from '~/api/article'
 import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { ArticlePublishedDate } from '~/components/Views/Article/Block/server/ArticlePublishedDate'
+import { FALLBACK_THUMBNAIL_IMAGE } from '~/constants'
 import { getCachedPublicArticlePagePayload } from '~/lib/cache/publicArticlePageCache'
 import { trackAiReferralVisit } from '~/lib/seo/aiReferrals'
+import { resolveArticleLanguage } from '~/lib/seo/articleLanguage'
 import { resolvePublicArticlePageMeta } from '~/lib/seo/articleMeta'
 import { getArticleJsonLd, JsonLd } from '~/lib/seo/jsonld'
 import { Logger } from '~/utils/logger'
@@ -41,6 +43,7 @@ export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Pr
   const metadata = response.revision.metadata
 
   const seoData = metadata && 'seo' in metadata ? (metadata.seo as ArticleRevisionSeoMetadata) : {}
+  const articleLanguage = resolveArticleLanguage(seoData?.language)
 
   const meta = resolvePublicArticlePageMeta({
     slug,
@@ -67,12 +70,16 @@ export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Pr
       title: meta.ogTitle,
       description: meta.ogDescription,
       images: meta.image ? [meta.image] : undefined,
+      locale: articleLanguage,
     },
     twitter: {
       card: seoData?.twitterCard || 'summary_large_image',
       title: meta.ogTitle,
       description: meta.ogDescription,
       images: meta.image ? [meta.image] : undefined,
+    },
+    other: {
+      'article:language': articleLanguage,
     },
   }
 }
@@ -97,6 +104,7 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
 
   const articleMetadata = response.revision.metadata as { seo?: ArticleRevisionSeoMetadata } | undefined
   const seoJson = articleMetadata?.seo ?? {}
+  const articleLanguage = resolveArticleLanguage(seoJson.language)
   const pageMeta = resolvePublicArticlePageMeta({
     slug: slugResolved,
     revision: response.revision,
@@ -108,11 +116,12 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
     slug: slugResolved,
     title: response.revision.title ?? response.article.slug ?? 'Article',
     description: response.revision.description,
-    image: response.revision.thumbnailUrl,
+    image: response.revision.thumbnailUrl || FALLBACK_THUMBNAIL_IMAGE,
     datePublished: response.revision.publishedAt ?? response.article.publishedAt,
     dateModified: response.revision.updatedAt ?? response.article.updatedAt,
     canonicalUrl: pageMeta.canonical,
     keywords: seoJson.keywords,
+    language: articleLanguage,
     isAccessibleForFree: true,
   })
 
@@ -138,7 +147,7 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
     <>
       <JsonLd data={articleJsonLd} />
       <ArticlePublishedDate publishedAt={publishedAt} className="mb-4 text-muted-foreground" />
-      <div className="max-w-full tiptap readonly" dangerouslySetInnerHTML={{ __html: bodyHtml }} />
+      <div className="max-w-full tiptap readonly" lang={articleLanguage} dangerouslySetInnerHTML={{ __html: bodyHtml }} />
     </>
   )
 }

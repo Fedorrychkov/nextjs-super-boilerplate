@@ -12,6 +12,7 @@ import { routes } from '~/constants'
 import { publicArticleCacheTag } from '~/lib/cache/publicArticlePageCache'
 import { getServerTFromNextRequest } from '~/lib/i18n/server'
 import { validateCanonicalUrlForStorage } from '~/lib/seo/articleCanonical'
+import { normalizeArticleLanguage } from '~/lib/seo/articleLanguage'
 import { seoConfig } from '~/lib/seo/config'
 import { time } from '~/utils/time'
 
@@ -41,6 +42,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     const existingMeta = (articleRevision.metadata as ArticleRevisionMetadata | null | undefined) ?? {}
     const mergedSeo = { ...(existingMeta.seo ?? {}), ...(body.metadata?.seo ?? {}) }
     const canonicalValidation = validateCanonicalUrlForStorage(mergedSeo.canonicalUrl, seoConfig.siteUrl, t)
+    const language = normalizeArticleLanguage(mergedSeo.language)
 
     if (!canonicalValidation.ok) {
       return NextResponse.json({ message: canonicalValidation.message }, { status: 400 })
@@ -52,6 +54,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
       seo: {
         ...mergedSeo,
         canonicalUrl: canonicalValidation.value,
+        language,
       },
     }
 
