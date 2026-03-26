@@ -1,3 +1,5 @@
+'use client'
+
 import type { EditorView } from '@tiptap/pm/view'
 import { Editor, useEditor } from '@tiptap/react'
 import { useCallback, useMemo, useState } from 'react'

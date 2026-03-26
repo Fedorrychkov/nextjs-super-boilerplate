@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { MediaResourceType } from '~/api/media'
 import { UserRole } from '~/api/user'
-import { getServerTFromNextRequest } from '~/lib/i18n'
+import { getServerTFromNextRequest } from '~/lib/i18n/server'
 
 const mapAsset = (asset: any) => ({
   ...asset.toObject(),

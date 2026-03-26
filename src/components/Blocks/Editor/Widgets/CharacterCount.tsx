@@ -1,4 +1,8 @@
+'use client'
+
 import { Editor, useEditorState } from '@tiptap/react'
+
+import { useT } from '~/providers'
 
 type Props = {
   editor: Editor
@@ -6,6 +10,7 @@ type Props = {
 }
 
 export const CharacterCount = (props: Props) => {
+  const t = useT()
   const { editor, limit = 0 } = props
 
   const { charactersCount, wordsCount } = useEditorState({
@@ -36,9 +41,9 @@ export const CharacterCount = (props: Props) => {
         />
         <circle r="6" cx="10" cy="10" fill="white" />
       </svg>
-      {charactersCount} / {limit} characters
+      {charactersCount} / {limit} {t('common.characters')}
       <br />
-      {wordsCount} words
+      {wordsCount} {t('common.words')}
     </div>
   )
 }

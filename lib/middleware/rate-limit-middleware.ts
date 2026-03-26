@@ -1,7 +1,7 @@
 import { getClientKey, rateLimit } from '@lib/security/rate-limit'
 import { NextRequest, NextResponse } from 'next/server'
 
-import { getServerTFromNextRequest } from '~/lib/i18n'
+import { getServerTFromNextRequest } from '~/lib/i18n/server'
 import { Logger } from '~/utils/logger'
 
 import type { RouteHandlerContext } from './auth-middleware'

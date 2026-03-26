@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { ArticleRevisionFilter } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
-import { getServerTFromNextRequest } from '~/lib/i18n'
+import { getServerTFromNextRequest } from '~/lib/i18n/server'
 
 const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
   apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {

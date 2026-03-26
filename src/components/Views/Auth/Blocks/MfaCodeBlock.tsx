@@ -4,6 +4,7 @@ import { KeyRound } from 'lucide-react'
 import * as React from 'react'
 
 import { Button } from '~/components/ui'
+import { useT } from '~/providers'
 
 type Props = {
   onSubmit: (code: string) => void
@@ -12,6 +13,7 @@ type Props = {
 }
 
 const MfaCodeBlock = (props: Props) => {
+  const t = useT()
   const [code, setCode] = React.useState('')
   const [error, setError] = React.useState('')
 
@@ -20,7 +22,7 @@ const MfaCodeBlock = (props: Props) => {
     const trimmed = code.replace(/\D/g, '')
 
     if (!trimmed) {
-      setError('Enter the code from your app')
+      setError(t('auth.errors.enterCodeFromApp'))
 
       return
     }
@@ -37,14 +39,14 @@ const MfaCodeBlock = (props: Props) => {
         <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-white mb-6 shadow-lg shadow-opacity-5">
           <KeyRound className="w-7 h-7 text-black" />
         </div>
-        <h2 className="text-2xl font-semibold mb-2 text-center">Two-factor authentication</h2>
-        <p className="text-gray-500 text-sm mb-6 text-center">Enter the 6-digit code from your authenticator app, or a backup code.</p>
+        <h2 className="text-2xl font-semibold mb-2 text-center">{t('auth.ui.twoFactorAuthentication')}</h2>
+        <p className="text-gray-500 text-sm mb-6 text-center">{t('auth.ui.enterCodeFromAppOrBackupCodeDescription')}</p>
         <div className="w-full flex flex-col gap-3 mb-4">
           <input
             type="text"
             inputMode="numeric"
             autoComplete="one-time-code"
-            placeholder="000000 or backup code"
+            placeholder={t('auth.ui.enterCodeFromAppOrBackupCodePlaceholder')}
             value={code}
             onChange={(e) => setCode(e.target.value)}
             disabled={props.isLoading}
@@ -57,10 +59,10 @@ const MfaCodeBlock = (props: Props) => {
           disabled={props.isLoading}
           className="w-full bg-gradient-to-b from-gray-700 to-gray-900 text-white font-medium py-2 rounded-xl shadow hover:brightness-105 cursor-pointer transition mb-4 mt-2"
         >
-          {props.isLoading ? 'Checking…' : 'Continue'}
+          {props.isLoading ? t('auth.ui.checking') : t('auth.ui.continue')}
         </button>
         <Button type="button" variant="link" onClick={props.onBack}>
-          Back to sign in
+          {t('auth.ui.backToSignIn')}
         </Button>
       </form>
     </div>

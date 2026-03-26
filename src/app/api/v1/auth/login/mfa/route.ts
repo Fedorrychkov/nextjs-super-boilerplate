@@ -9,7 +9,7 @@ import { consumeBackupCode, decryptSecret, verifyTotpCode } from '@lib/security/
 import { authService } from '@lib/services/auth.service'
 import { NextRequest } from 'next/server'
 
-import { getServerTFromNextRequest } from '~/lib/i18n'
+import { getServerTFromNextRequest } from '~/lib/i18n/server'
 
 type MfaLoginDto = {
   challengeId: string

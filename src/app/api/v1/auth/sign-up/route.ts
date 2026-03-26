@@ -7,7 +7,7 @@ import { authService } from '@lib/services/auth.service'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { RegisterDto } from '~/api/auth/types'
-import { getServerTFromNextRequest } from '~/lib/i18n'
+import { getServerTFromNextRequest } from '~/lib/i18n/server'
 
 const handler = (request: NextRequest) => {
   return apiErrorHandlerContainer(request)(async (res, req) => {

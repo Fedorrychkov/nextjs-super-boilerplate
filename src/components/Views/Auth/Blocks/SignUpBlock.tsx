@@ -5,6 +5,7 @@ import * as React from 'react'
 import { useState } from 'react'
 
 import { Button } from '~/components/ui'
+import { useT } from '~/providers'
 
 type Props = {
   onSubmit: (email: string, password: string) => void
@@ -13,6 +14,7 @@ type Props = {
 }
 
 const SignUpBlock = (props: Props) => {
+  const t = useT()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -25,13 +27,13 @@ const SignUpBlock = (props: Props) => {
     e.preventDefault()
 
     if (!email || !password) {
-      setError('Enter email and password')
+      setError(t('auth.errors.enterEmailAndPassword'))
 
       return
     }
 
     if (!validateEmail(email)) {
-      setError('Enter a valid email')
+      setError(t('auth.errors.enterValidEmail'))
 
       return
     }
@@ -49,9 +51,9 @@ const SignUpBlock = (props: Props) => {
         <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-white mb-6 shadow-lg shadow-opacity-5">
           <UserRoundPlusIcon className="w-7 h-7 text-black" />
         </div>
-        <h2 className="text-2xl font-semibold mb-2 text-center">Create an account to continue</h2>
+        <h2 className="text-2xl font-semibold mb-2 text-center">{t('auth.ui.createAccountToContinue')}</h2>
         <p className="text-gray-500 text-sm mb-6 text-center">
-          Please enter your email and password to create an account. You will be able to sign in using these credentials in the future.
+          {t('auth.ui.pleaseEnterYourEmailAndPasswordToCreateAnAccountYouWillBeAbleToSignInUsingTheseCredentialsInTheFuture')}
         </p>
         <div className="w-full flex flex-col gap-3 mb-2">
           <div className="relative">
@@ -59,7 +61,7 @@ const SignUpBlock = (props: Props) => {
               <Mail className="w-4 h-4" />
             </span>
             <input
-              placeholder="Email"
+              placeholder={t('auth.ui.email')}
               type="email"
               value={email}
               disabled={props.isLoading}
@@ -72,7 +74,7 @@ const SignUpBlock = (props: Props) => {
               <Lock className="w-4 h-4" />
             </span>
             <input
-              placeholder="Password"
+              placeholder={t('auth.ui.password')}
               type="password"
               value={password}
               disabled={props.isLoading}
@@ -89,10 +91,10 @@ const SignUpBlock = (props: Props) => {
           disabled={props.isLoading}
           className="w-full bg-gradient-to-b from-gray-700 to-gray-900 text-white font-medium py-2 rounded-xl shadow hover:brightness-105 cursor-pointer transition mb-4 mt-2"
         >
-          Create an account
+          {t('auth.ui.createAccount')}
         </button>
         <Button variant="link" onClick={props.onChange}>
-          Sign in
+          {t('auth.ui.signIn')}
         </Button>
       </form>
     </div>

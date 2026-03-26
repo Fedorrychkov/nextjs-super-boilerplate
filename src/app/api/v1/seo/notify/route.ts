@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server'
 
-import { getServerTFromNextRequest } from '~/lib/i18n'
+import { getServerTFromNextRequest } from '~/lib/i18n/server'
 import { notifySearchEngines } from '~/lib/seo/indexing'
 import { jsonStringifySafety } from '~/utils/jsonSafe'
 

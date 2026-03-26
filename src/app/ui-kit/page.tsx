@@ -12,25 +12,26 @@ import { PaginationSkeleton } from '~/components/List/PaginationSkeleton'
 import { Skeleton, SpinnerScreen } from '~/components/Loaders'
 import { BottomNavigation, HeaderNavigation, SettingsNavigation } from '~/components/Navigation'
 import { AlertBlock, Button, TableCell, TableRow, Typography } from '~/components/ui'
+import { getServerT } from '~/lib/i18n/server'
 
 import { Sticky } from './Sticky'
 import { TextAreaWithState } from './TextAreaWithState'
 
 const UiKitRoot = async () => {
+  const { t } = await getServerT()
+
   return (
     <div className="w-full h-full flex justify-center flex-col gap-8 flex-1">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
-          <Typography variant="heading-1">UI Kit</Typography>
+          <Typography variant="heading-1">{t('uiKit.title')}</Typography>
+          <Typography variant="Body/S/Regular">{t('uiKit.description')}</Typography>
           <Typography variant="Body/S/Regular">
-            We attached much more components to help you build your next project. You can find all the components in this page.
-          </Typography>
-          <Typography variant="Body/S/Regular">
-            We are using shadcn/ui as a base for the components. You can find the source code of the components in the{' '}
+            {t('uiKit.weAreUsingShadcnUiAsABaseForTheComponentsYouCanFindTheSourceCodeOfTheComponentsInThe')}
             <Typography variant="Body/S/Regular" asTag="a" href="https://github.com/shadcn/ui" target="_blank" rel="noopener noreferrer">
               shadcn/ui
             </Typography>{' '}
-            repository or{' '}
+            {t('uiKit.repositoryOr')}{' '}
             <Typography variant="Body/S/Regular" asTag="a" href="https://21st.dev" target="_blank" rel="noopener noreferrer">
               21st.dev
             </Typography>
@@ -40,10 +41,7 @@ const UiKitRoot = async () => {
 
         <div className="flex flex-col gap-2">
           <Typography variant="heading-1">Typography</Typography>
-          <Typography variant="Body/S/Regular">
-            Typography is used to style the text of the page. It is used to add heading 1, heading 2, heading 3, body large regular, body large semibold, body
-            medium regular, body medium semibold, body small regular, body small semibold, body extra small regular and body extra small semibold.
-          </Typography>
+          <Typography variant="Body/S/Regular">{t('uiKit.typographyDescription')}</Typography>
         </div>
 
         <div className="flex flex-col gap-2">
@@ -64,10 +62,7 @@ const UiKitRoot = async () => {
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <Typography variant="heading-1">Button</Typography>
-          <Typography variant="Body/S/Regular">
-            Button is used to trigger an action. It is used to add default, loading, disabled, outline, secondary, ghost, link, destructive, default sm, default
-            sm-md, default lg, icon and input icon button.
-          </Typography>
+          <Typography variant="Body/S/Regular">{t('uiKit.buttonDescription')}</Typography>
         </div>
 
         <div className="flex flex-row flex-wrap gap-2">
@@ -103,9 +98,7 @@ const UiKitRoot = async () => {
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <Typography variant="heading-1">Alert</Typography>
-          <Typography variant="Body/S/Regular">
-            Alert is used to show a notification message. It is used to add secondary, primary, destructive, success, info, warning and mono alert.
-          </Typography>
+          <Typography variant="Body/S/Regular">{t('uiKit.alertDescription')}</Typography>
         </div>
 
         <div className="flex flex-row flex-wrap gap-2">
@@ -121,9 +114,7 @@ const UiKitRoot = async () => {
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <Typography variant="heading-1">Skeleton</Typography>
-          <Typography variant="Body/S/Regular">
-            Skeleton is used to show a loading state. It is used to add default skeleton, pagination skeleton, table default skeleton, spinner screen and more.
-          </Typography>
+          <Typography variant="Body/S/Regular">{t('uiKit.skeletonDescription')}</Typography>
         </div>
 
         <div className="flex flex-col gap-2">
@@ -148,9 +139,7 @@ const UiKitRoot = async () => {
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <Typography variant="heading-1">Navigation</Typography>
-          <Typography variant="Body/S/Regular">
-            Navigation is used to navigate between pages. It is used to add bottom navigation, header navigation and settings navigation.
-          </Typography>
+          <Typography variant="Body/S/Regular">{t('uiKit.navigationDescription')}</Typography>
         </div>
 
         <div className="flex flex-col gap-2">
@@ -187,9 +176,7 @@ const UiKitRoot = async () => {
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <Typography variant="heading-1">Containers</Typography>
-          <Typography variant="Body/S/Regular">
-            Containers are used to wrap the content of the page. They are used to add copied content, tooltip content, pretty container, number format, etc.
-          </Typography>
+          <Typography variant="Body/S/Regular">{t('uiKit.containersDescription')}</Typography>
         </div>
 
         <div className="flex flex-col gap-2">
@@ -413,9 +400,7 @@ const UiKitRoot = async () => {
       <div className="flex flex-col gap-8">
         <div className="flex flex-col gap-2">
           <Typography variant="heading-1">Table</Typography>
-          <Typography variant="Body/S/Regular">
-            Customization for columns, rows and pagination. Choose what columns you need to display by using component props.
-          </Typography>
+          <Typography variant="Body/S/Regular">{t('uiKit.tableDescription')}</Typography>
         </div>
         <div className="flex flex-col gap-2">
           <div className="flex sm:flex-row flex-wrap flex-col gap-4">

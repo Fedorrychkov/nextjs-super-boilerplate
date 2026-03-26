@@ -9,11 +9,12 @@ import { CustomTable, TableDefaultSkeleton } from '~/components/Blocks/Table'
 import { CustomTooltip } from '~/components/Blocks/Tooltip'
 import { Badge, TableCell, TableRow, Typography } from '~/components/ui'
 import { routes } from '~/constants'
+import { useT } from '~/providers'
 import { cn } from '~/utils/cn'
 import { time } from '~/utils/time'
 
-import { ArticleRevisions } from '../Block/ArticleRevisions'
-import { ARTICLES_PARAM_NAMES, ARTICLES_STATUS_NAMES, ARTICLES_VISIBILITY_NAMES } from '../paramNames'
+import { ArticleRevisions } from '../Block/client/ArticleRevisions'
+import { ARTICLES_PARAM_NAMES } from '../paramNames'
 import { columns } from './constants'
 
 type Props = {
@@ -22,6 +23,8 @@ type Props = {
 }
 
 export const ArticleListTable = ({ isLoading, data }: Props) => {
+  const t = useT()
+
   return (
     <CustomTable
       Row={({ item, columnKeys }) => (
@@ -86,7 +89,7 @@ export const ArticleListTable = ({ isLoading, data }: Props) => {
                     item.status === ArticleStatus.UNPUBLISHED && 'bg-red-500 text-white',
                   )}
                 >
-                  {item.status ? ARTICLES_STATUS_NAMES[item.status] : '-'}
+                  {item.status ? t(`article.statuses.${item.status}`) : '-'}
                 </Badge>
               </div>
             </TableCell>
@@ -102,7 +105,7 @@ export const ArticleListTable = ({ isLoading, data }: Props) => {
                   item.visibility === ArticleVisibility.LINK_ONLY && 'bg-yellow-500 text-white',
                 )}
               >
-                {item.visibility ? ARTICLES_VISIBILITY_NAMES[item.visibility] : '-'}
+                {item.visibility ? t(`article.visibilityes.${item.visibility}`) : '-'}
               </Badge>
             </TableCell>
           )}
@@ -111,12 +114,12 @@ export const ArticleListTable = ({ isLoading, data }: Props) => {
               <div className="flex flex-col gap-1">
                 <div className="flex flex-col gap-1">
                   {[
-                    { key: 'createdAt', label: 'Created At', value: item.createdAt },
-                    { key: 'publishedAt', label: 'Published At', value: item.publishedAt },
-                    { key: 'updatedAt', label: 'Updated At', value: item.updatedAt },
+                    { key: 'createdAt', label: t('common.createdAt'), value: item.createdAt },
+                    { key: 'publishedAt', label: t('common.publishedAt'), value: item.publishedAt },
+                    { key: 'updatedAt', label: t('common.updatedAt'), value: item.updatedAt },
                   ].map((value, index) => (
                     <div key={index} className="flex flex-col gap-1">
-                      <Typography variant="Body/XS/Semibold">{ARTICLES_PARAM_NAMES[value.key as keyof typeof ARTICLES_PARAM_NAMES] ?? value.label}</Typography>
+                      <Typography variant="Body/XS/Semibold">{t(`article.fields.${value.key as keyof typeof ARTICLES_PARAM_NAMES}`) ?? value.label}</Typography>
                       <Typography variant="Body/XS/Regular">{value.value ? time(value.value).format('DD/MM/YYYY HH:mm') : '-'}</Typography>
                     </div>
                   ))}

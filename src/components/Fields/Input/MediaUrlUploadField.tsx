@@ -8,6 +8,7 @@ import { MediaAssetModel, MediaResourceType } from '~/api/media'
 import { ImageLoader } from '~/components/Containers'
 import { Button } from '~/components/ui'
 import { Input } from '~/components/ui/input'
+import { useT } from '~/providers'
 import { useNotify } from '~/providers/notify'
 import { useDeleteMediaMutation, useUploadMediaMutation } from '~/query/media'
 
@@ -24,6 +25,7 @@ type Props = {
 }
 
 export const MediaUrlUploadField = (props: Props) => {
+  const t = useT()
   const { label, value, assetId, disabled, hintText, resourceType = MediaResourceType.IMAGE, variant = 'inline', articleRevisionId, onChange } = props
 
   const inputFileRef = useRef<HTMLInputElement>(null)
@@ -41,12 +43,12 @@ export const MediaUrlUploadField = (props: Props) => {
         const uploaded = await uploadMediaMutation.mutateAsync({ file, resourceType })
 
         onChange({ value: `${uploaded.proxyUrl}/${variant}`, assetId: uploaded.asset.id, asset: uploaded.asset })
-        notify('File uploaded', 'success')
+        notify(t('media.messages.fileUploaded'), 'success')
       } catch (_error) {
-        notify('Failed to upload file', 'destructive')
+        notify(t('media.errors.failedToUploadFile'), 'destructive')
       }
     },
-    [notify, onChange, resourceType, uploadMediaMutation, variant],
+    [notify, onChange, t, resourceType, uploadMediaMutation, variant],
   )
 
   const handleRemove = useCallback(async () => {
@@ -56,18 +58,18 @@ export const MediaUrlUploadField = (props: Props) => {
 
         onChange({ value: '', assetId: null, asset: null, removed: true })
 
-        notify('File removed', 'success')
+        notify(t('media.messages.fileRemoved'), 'success')
       }
     } catch (error) {
       if (error instanceof AxiosError) {
-        notify(error.response?.data?.reason ?? 'Failed to remove file', 'destructive')
+        notify(error.response?.data?.reason ?? t('media.errors.failedToRemoveFile'), 'destructive')
 
         return
       }
 
-      notify('Failed to remove file', 'destructive')
+      notify(t('media.errors.failedToRemoveFile'), 'destructive')
     }
-  }, [assetId, articleRevisionId, deleteMediaMutation, onChange, notify])
+  }, [assetId, articleRevisionId, deleteMediaMutation, onChange, notify, t])
 
   const helperText = useMemo(() => {
     if (hintText) {
@@ -75,11 +77,11 @@ export const MediaUrlUploadField = (props: Props) => {
     }
 
     if (resourceType === MediaResourceType.IMAGE) {
-      return 'Upload, paste, or drop an image file. Field stores proxy URL and asset reference.'
+      return t('media.ui.uploadImageFileHintText')
     }
 
-    return 'Upload, paste, or drop a file. Field stores proxy URL and asset reference.'
-  }, [hintText, resourceType])
+    return t('media.ui.uploadFileHintText')
+  }, [hintText, resourceType, t])
 
   return (
     <div className="flex flex-col gap-2">
@@ -148,11 +150,11 @@ export const MediaUrlUploadField = (props: Props) => {
       >
         <div className="flex flex-row gap-2">
           <Button type="button" variant="secondary" size="sm-md" disabled={disabled || isBusy} onClick={() => inputFileRef.current?.click()}>
-            Upload
+            {t('common.upload')}
           </Button>
           {assetId && (
             <Button type="button" variant="outline" size="sm-md" disabled={disabled || isBusy || !canRemove} onClick={handleRemove}>
-              Remove
+              {t('common.remove')}
             </Button>
           )}
         </div>

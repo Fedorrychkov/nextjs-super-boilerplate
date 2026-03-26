@@ -5,7 +5,7 @@ import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
 import { NextRequest } from 'next/server'
 
 import { UserStatus } from '~/api/user'
-import { getServerTFromNextRequest } from '~/lib/i18n'
+import { getServerTFromNextRequest } from '~/lib/i18n/server'
 
 const handler = (request: NextRequest) => {
   return apiErrorHandlerContainer(request)(async (res, req) => {

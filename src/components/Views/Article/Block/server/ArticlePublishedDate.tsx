@@ -1,4 +1,5 @@
 import { Typography } from '~/components/ui/Typography'
+import { getServerT } from '~/lib/i18n/server'
 import { time } from '~/utils/time'
 
 type Props = {
@@ -6,7 +7,9 @@ type Props = {
   className?: string
 }
 
-export function ArticlePublishedDate({ publishedAt, className }: Props) {
+export async function ArticlePublishedDate({ publishedAt, className }: Props) {
+  const { locale } = await getServerT()
+
   if (!publishedAt || !time(publishedAt)?.isValid()) {
     return null
   }
@@ -15,8 +18,7 @@ export function ArticlePublishedDate({ publishedAt, className }: Props) {
 
   return (
     <Typography variant="Body/XS/Regular" className={className}>
-      {d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}{' '}
-      {d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+      {d.toLocaleDateString(locale, { year: 'numeric', month: 'long', day: 'numeric' })} {d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}
     </Typography>
   )
 }

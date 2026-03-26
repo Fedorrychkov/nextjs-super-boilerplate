@@ -10,7 +10,7 @@ import { ArticleRevisionMetadata, ArticleRevisionModel, ArticleRevisionStatus } 
 import { UserRole } from '~/api/user'
 import { routes } from '~/constants'
 import { publicArticleCacheTag } from '~/lib/cache/publicArticlePageCache'
-import { getServerTFromNextRequest } from '~/lib/i18n'
+import { getServerTFromNextRequest } from '~/lib/i18n/server'
 import { validateCanonicalUrlForStorage } from '~/lib/seo/articleCanonical'
 import { seoConfig } from '~/lib/seo/config'
 import { time } from '~/utils/time'

@@ -3,6 +3,7 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 import { Pagination as PaginationRoot, PaginationContent, PaginationEllipsis, PaginationItem } from '~/components/ui/pagination'
+import { useT } from '~/providers'
 
 import { Button } from '../ui/button'
 
@@ -13,6 +14,8 @@ type Props = {
 }
 
 export const Pagination = ({ currentPage, pages: totalPages, onChange }: Props) => {
+  const t = useT()
+
   const handleClick = (page: number) => {
     onChange?.(page)
   }
@@ -39,7 +42,7 @@ export const Pagination = ({ currentPage, pages: totalPages, onChange }: Props) 
       <PaginationContent>
         <PaginationItem>
           <Button variant="ghost" onClick={handlePrev} disabled={currentPage === 1}>
-            <ChevronLeft className="rtl:rotate-180" /> Prev
+            <ChevronLeft className="rtl:rotate-180" /> {t('common.prev')}
           </Button>
         </PaginationItem>
         {firstThreePages.map((page) => (
@@ -63,7 +66,7 @@ export const Pagination = ({ currentPage, pages: totalPages, onChange }: Props) 
         ))}
         <PaginationItem>
           <Button variant="ghost" onClick={handleNext} disabled={currentPage === totalPages}>
-            Next <ChevronRight className="rtl:rotate-180" />
+            {t('common.next')} <ChevronRight className="rtl:rotate-180" />
           </Button>
         </PaginationItem>
       </PaginationContent>

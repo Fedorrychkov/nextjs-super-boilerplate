@@ -5,7 +5,7 @@ import { buildRumDashboard } from '@lib/services/rum-dashboard.service'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { UserRole } from '~/api/user'
-import { getServerTFromNextRequest } from '~/lib/i18n'
+import { getServerTFromNextRequest } from '~/lib/i18n/server'
 
 const MAX_DAYS = 14
 

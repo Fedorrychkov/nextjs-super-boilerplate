@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { JwtPayload } from '~/api/auth/model'
 import { UserRole } from '~/api/user'
-import { getServerTFromNextRequest } from '~/lib/i18n'
+import { getServerTFromNextRequest } from '~/lib/i18n/server'
 
 export interface AuthRequest extends NextRequest {
   user?: JwtPayload

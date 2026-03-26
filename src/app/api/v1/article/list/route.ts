@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { ArticleFilter } from '~/api/article'
 import { UserRole } from '~/api/user'
-import { getServerTFromNextRequest } from '~/lib/i18n'
+import { getServerTFromNextRequest } from '~/lib/i18n/server'
 import { Logger } from '~/utils/logger'
 
 const logger = new Logger('ArticleListRoute')

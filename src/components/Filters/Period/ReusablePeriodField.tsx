@@ -1,5 +1,7 @@
 import dayjs from 'dayjs'
 
+import type { TFunction } from '~/lib/i18n'
+
 import { Period } from './hooks'
 import { PeriodFields } from './PeriodFields'
 
@@ -11,10 +13,11 @@ type Props = {
   availablePeriods?: Period[]
   range?: number
   isHideUnderText?: boolean
+  t: TFunction
 }
 
 export const ReusablePeriodField = (props: Props) => {
-  const { isLoading, onChangePeriod, defaultPeriod = Period.perDay, minFromDate, range, availablePeriods, isHideUnderText } = props
+  const { isLoading, onChangePeriod, defaultPeriod = Period.perDay, minFromDate, range, availablePeriods, isHideUnderText, t } = props
 
   return (
     <PeriodFields
@@ -27,6 +30,7 @@ export const ReusablePeriodField = (props: Props) => {
       isHideUnderText={isHideUnderText}
       availablePeriods={availablePeriods ? availablePeriods : [...Object.values(Period).filter((period) => period !== Period.custom), Period.custom]}
       defaultPeriod={defaultPeriod}
+      t={t}
     />
   )
 }

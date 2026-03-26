@@ -14,6 +14,7 @@ import { usePagination } from '~/components/List/usePagination'
 import { Badge, Button, Typography } from '~/components/ui'
 import { routes } from '~/constants'
 import { useStickyContainer } from '~/hooks/useStickyContainer'
+import { useT } from '~/providers'
 import { useArticlesListQuery } from '~/query/article'
 
 import { ArticlesFilter, DefaultArticlesFilters } from '../Filters'
@@ -24,6 +25,7 @@ const PaginationLazy = lazy(() => import('~/components/List').then((mod) => ({ d
 const ArticleListTableLazy = lazy(() => import('../List/ArticlesListTable').then((mod) => ({ default: mod.ArticleListTable })))
 
 export const ArticleListScreen = () => {
+  const t = useT()
   const router = useRouter()
   const headerRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -73,11 +75,11 @@ export const ArticleListScreen = () => {
           <TitleWithBadge title="Articles" badgeContent={<Typography variant="Body/XS/Regular">{data?.count ?? 0}</Typography>} />
           <div className="flex md:flex-row flex-col items-end md:items-center gap-2">
             <div className="flex flex-row gap-2">
-              <CustomTooltip content={<Typography variant="Body/XS/Regular">Create new Article</Typography>}>
+              <CustomTooltip content={<Typography variant="Body/XS/Regular">{t('article.ui.createNewArticle')}</Typography>}>
                 <Button variant="outline" size="sm-md" className="flex items-center gap-2" onClick={() => router.push(routes.articlesCreate.path)}>
                   <div className="relative flex items-center gap-2">
                     <PlusIcon className="md:w-4 md:h-4 w-2 h-2 shrink-0 text-neutral-600 bg-neutral-600/10 rounded-full" />
-                    <Typography variant="Body/XS/Semibold">Add new</Typography>
+                    <Typography variant="Body/XS/Semibold">{t('common.addNew')}</Typography>
                   </div>
                 </Button>
               </CustomTooltip>
@@ -92,7 +94,7 @@ export const ArticleListScreen = () => {
                   </div>
                 </Button>
               </CustomTooltip>
-              <CustomTooltip content={<Typography variant="Body/XS/Regular">Clear filters</Typography>}>
+              <CustomTooltip content={<Typography variant="Body/XS/Regular">{t('common.clearFilters')}</Typography>}>
                 {settledFiltersCount > 0 && (
                   <Button variant="outline" size="sm-md" className="flex items-center gap-2" onClick={handleClearFilters}>
                     <XIcon className="md:w-4 md:h-4 w-2 h-2" />
@@ -111,6 +113,7 @@ export const ArticleListScreen = () => {
         defaultFilterValues={DefaultArticlesFilters}
         paramNames={ARTICLES_PARAM_NAMES}
         setFilters={setFilters}
+        t={t}
         handleChangePeriod={handleChangePeriod}
       />
       {isLoading ? (

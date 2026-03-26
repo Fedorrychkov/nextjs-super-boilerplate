@@ -13,6 +13,7 @@ import { DefaultFieldContainer, DefaultMultiselectField, DefaultTextAreaContaine
 import { AlertBlock, Button, Option, Typography } from '~/components/ui'
 import { routes } from '~/constants'
 import { handleRegister } from '~/hooks/useRegister'
+import { useT } from '~/providers'
 
 export type SaveForm = Omit<Form, 'allowedRoles' | 'visibility'> & { allowedRoles?: UserRole[] | null; visibility?: ArticleVisibility | null }
 
@@ -47,6 +48,7 @@ type Props = {
 }
 
 export const ArticleEditablePreview = (props: Props) => {
+  const t = useT()
   const { article, articleRevision, isLoading, btnLabel, onSave, isDisabled } = props
 
   const defaultValues: Form = {
@@ -97,13 +99,25 @@ export const ArticleEditablePreview = (props: Props) => {
 
   return (
     <div className="flex flex-col gap-4">
+      {article?.version && (
+        <AlertBlock
+          notify={{
+            type: 'warning',
+            message: (
+              <Typography variant="Body/S/Regular">
+                {t('article.ui.publishedVersion')}: {article?.version}
+              </Typography>
+            ),
+          }}
+        />
+      )}
       <FormProvider {...form}>
         <form onSubmit={onSubmit(handleSubmit)} className="w-full flex flex-col gap-5">
           <DefaultFieldContainer
             {...handleRegister({
               ...register('title', {
-                required: { value: true, message: 'Article title is required' },
-                maxLength: { value: 180, message: 'Article title must be less than 180 characters' },
+                required: { value: true, message: t('article.errors.titleRequired') },
+                maxLength: { value: 180, message: t('article.errors.titleMaxLength') },
               }),
               errors,
               required: true,
@@ -114,26 +128,26 @@ export const ArticleEditablePreview = (props: Props) => {
               }
             }}
             disabled={isLoading || isDisabled}
-            label="Article Title"
+            label={t('article.ui.articleTitle')}
             name="title"
-            hintText="This text shown in the article preview, search engines and social media. You can change it later in Seo settings."
+            hintText={t('article.ui.articleTitleHint')}
           />
           <DefaultTextAreaContainer
             {...handleRegister({
               ...register('description', {
-                required: { value: true, message: 'Article description is required' },
-                maxLength: { value: 200, message: 'Article description must be less than 200 characters' },
+                required: { value: true, message: t('article.errors.descriptionRequired') },
+                maxLength: { value: 200, message: t('article.errors.descriptionMaxLength') },
               }),
               errors,
               required: true,
             })}
             disabled={isLoading || isDisabled}
-            label="Article Description"
+            label={t('article.ui.articleDescription')}
             name="description"
-            hintText="This is short description of the article. It is shown in the article preview and search engines."
+            hintText={t('article.ui.articleDescriptionHint')}
           />
           <MediaUrlUploadField
-            label="Article Thumbnail URL"
+            label={t('article.ui.articleThumbnailUrl')}
             value={(watch('thumbnailUrl') as string) ?? ''}
             assetId={(watch('thumbnailAssetId') as string) ?? null}
             articleRevisionId={articleRevision?.id ?? null}
@@ -144,32 +158,37 @@ export const ArticleEditablePreview = (props: Props) => {
               setValue('thumbnailUrl', next.value || null, { shouldDirty: true })
               setValue('thumbnailAssetId', next.assetId || null, { shouldDirty: true })
             }}
-            hintText="Upload/paste/drop image and store CDN proxy URL for article thumbnail."
+            hintText={t('article.ui.articleThumbnailUrlHint')}
           />
           <DefaultFieldContainer
             {...handleRegister({
               ...register('slug', {
-                required: { value: true, message: 'Article slug is required' },
-                pattern: { value: /^[a-z0-9-]+$/, message: 'Article slug must contain only lowercase letters, numbers and hyphens' },
+                required: { value: true, message: t('article.errors.slugRequired') },
+                pattern: { value: /^[a-z0-9-]+$/, message: t('article.errors.slugPattern') },
               }),
               errors,
               required: true,
             })}
             disabled={isLoading || isDisabled || !!article?.slug}
-            label="Article Slug"
+            label={t('article.ui.articleSlug')}
             name="slug"
-            hintText={`This is the slug of the article. It is used to generate the article URL. ${slug ? `Current slug: ${visibility?.[0]?.value === ArticleVisibility.PUBLIC ? `${routes.articlePublic.path?.replace(':slug', slug ?? '')}` : `${routes.articlePrivate.path?.replace(':slug', slug ?? '')}`}` : ''}`}
+            hintText={t('article.ui.articleSlugHint', {
+              slug:
+                visibility?.[0]?.value === ArticleVisibility.PUBLIC
+                  ? `${routes.articlePublic.path?.replace(':slug', slug ?? '')}`
+                  : `${routes.articlePrivate.path?.replace(':slug', slug ?? '')}`,
+            })}
           />
           <DefaultMultiselectField
             options={visibilityOptions}
             {...handleRegister({
-              ...register('visibility', { required: { value: true, message: 'Article visibility is required' } }),
+              ...register('visibility', { required: { value: true, message: t('article.errors.visibilityRequired') } }),
               errors,
               required: true,
             })}
             updateBySelected
             disabled={isLoading || isDisabled}
-            label="Article Visibility"
+            label={t('article.ui.articleVisibility')}
             name="visibility"
           />
           <AlertBlock
@@ -178,13 +197,13 @@ export const ArticleEditablePreview = (props: Props) => {
               message: (
                 <div className="flex flex-col gap-2">
                   {visibility?.[0]?.value === ArticleVisibility.PRIVATE && (
-                    <Typography variant="Body/S/Regular">If you choose Private, you can choose which roles can access the article.</Typography>
+                    <Typography variant="Body/S/Regular">{t('article.ui.articleVisibilityPrivateHintText')}</Typography>
                   )}
                   {visibility?.[0]?.value === ArticleVisibility.LINK_ONLY && (
-                    <Typography variant="Body/S/Regular">If you choose Link Only, the article will be accessible via link only.</Typography>
+                    <Typography variant="Body/S/Regular">{t('article.ui.articleVisibilityLinkOnlyHintText')}</Typography>
                   )}
                   {visibility?.[0]?.value === ArticleVisibility.PUBLIC && (
-                    <Typography variant="Body/S/Regular">If you choose Public, the article will be accessible to everyone.</Typography>
+                    <Typography variant="Body/S/Regular">{t('article.ui.articleVisibilityPublicHintText')}</Typography>
                   )}
                 </div>
               ),
@@ -199,13 +218,13 @@ export const ArticleEditablePreview = (props: Props) => {
               })}
               maxSelected={10}
               disabled={isLoading || isDisabled}
-              label="Allowed Roles for Private Articles"
+              label={t('article.ui.allowedRolesForPrivateArticles')}
               name="allowedRoles"
             />
           )}
           <div>
             <Button variant="secondary" size="default" disabled={isLoading || isDisabled}>
-              {btnLabel ?? 'Save Changes'}
+              {btnLabel ?? t('common.saveChanges')}
             </Button>
           </div>
         </form>

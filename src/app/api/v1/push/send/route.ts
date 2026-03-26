@@ -3,7 +3,7 @@ import { AuthSuccessResult } from '@lib/security/auth'
 import { webPushService } from '@lib/services/web-push.service'
 import { NextRequest } from 'next/server'
 
-import { getServerTFromNextRequest } from '~/lib/i18n'
+import { getServerTFromNextRequest } from '~/lib/i18n/server'
 import { AnyString } from '~/types'
 
 const handler = (request: NextRequest, authResult: AuthSuccessResult) => {

@@ -2,7 +2,7 @@ import { BruteForceError, ForbiddenError, NotFoundError, UnauthorizedError, Vali
 import { AxiosError, AxiosResponse } from 'axios'
 import { NextRequest, NextResponse } from 'next/server'
 
-import { getServerTFromNextRequest } from '~/lib/i18n'
+import { getServerTFromNextRequest } from '~/lib/i18n/server'
 import { getUniqueId } from '~/utils/getUniqueId'
 import { Logger } from '~/utils/logger'
 import { time } from '~/utils/time'

@@ -6,6 +6,7 @@ import { BubbleMenu } from '@tiptap/react/menus'
 import { type ComponentProps, useCallback } from 'react'
 
 import { Button } from '~/components/ui'
+import { useT } from '~/providers'
 
 type Props = {
   editor: Editor
@@ -19,6 +20,7 @@ type BubbleMenuShouldShowProps = Parameters<NonNullable<ComponentProps<typeof Bu
  */
 export const ImageBubbleMenu = (props: Props) => {
   const { editor, onOpenSettings } = props
+  const t = useT()
 
   const shouldShow = useCallback((p: BubbleMenuShouldShowProps) => {
     const { editor: ed, view, state, element } = p
@@ -46,7 +48,7 @@ export const ImageBubbleMenu = (props: Props) => {
   return (
     <BubbleMenu editor={editor} shouldShow={shouldShow} className="bg-neutral-400/80 shadow-md rounded-md p-1 flex gap-2">
       <Button type="button" variant="outline" size="sm-md" onMouseDown={(e) => e.preventDefault()} onClick={() => onOpenSettings()}>
-        Image properties
+        {t('common.imageProperties')}
       </Button>
     </BubbleMenu>
   )

@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { ArticleRevisionMetadata, ArticleRevisionModel } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
-import { getServerTFromNextRequest } from '~/lib/i18n'
+import { getServerTFromNextRequest } from '~/lib/i18n/server'
 import { validateCanonicalUrlForStorage } from '~/lib/seo/articleCanonical'
 import { seoConfig } from '~/lib/seo/config'
 

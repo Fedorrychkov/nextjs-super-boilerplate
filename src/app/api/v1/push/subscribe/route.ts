@@ -3,7 +3,7 @@ import { AuthSuccessResult } from '@lib/security/auth'
 import { pushSubscriptionService } from '@lib/services/push-subscription.service'
 import { NextRequest, NextResponse } from 'next/server'
 
-import { getServerTFromNextRequest } from '~/lib/i18n'
+import { getServerTFromNextRequest } from '~/lib/i18n/server'
 
 const handlerPost = async (request: NextRequest, authResult: AuthSuccessResult) => {
   return apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
