@@ -23,8 +23,11 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 })
 
+const METADATA_FALLBACK_IMAGE = '/images/web-app-manifest-192x192.png'
+
 export const metadata: Metadata = {
   metadataBase: new URL(seoConfig.siteUrl),
+  manifest: '/images/site.webmanifest',
   title: {
     default: seoConfig.defaultTitle,
     template: `%s | ${seoConfig.siteName}`,
@@ -34,17 +37,33 @@ export const metadata: Metadata = {
   alternates: {
     canonical: '/',
   },
+  icons: {
+    icon: [
+      { url: '/images/favicon.ico' },
+      { url: '/images/favicon.svg', type: 'image/svg+xml' },
+      { url: '/images/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
+    ],
+    apple: '/images/apple-touch-icon.png',
+    other: [
+      {
+        rel: 'manifest',
+        url: '/images/site.webmanifest',
+      },
+    ],
+  },
   openGraph: {
     type: 'website',
     siteName: seoConfig.siteName,
     url: seoConfig.siteUrl,
     title: seoConfig.defaultTitle,
     description: seoConfig.defaultDescription,
+    images: [METADATA_FALLBACK_IMAGE],
   },
   twitter: {
     card: 'summary_large_image',
     title: seoConfig.defaultTitle,
     description: seoConfig.defaultDescription,
+    images: [METADATA_FALLBACK_IMAGE],
   },
 }
 

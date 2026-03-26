@@ -11,8 +11,10 @@ import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
 import { defaultExtensions } from '~/components/Blocks/Editor/extensions'
 import { ArticlePublishedDate } from '~/components/Views/Article/Block/server/ArticlePublishedDate'
+import { FALLBACK_THUMBNAIL_IMAGE } from '~/constants'
 import { finalizeArticleBodyHtml } from '~/lib/editor/finalizeArticleBodyHtml'
 import { resolveArticleCanonicalUrl } from '~/lib/seo/articleCanonical'
+import { resolveArticleLanguage } from '~/lib/seo/articleLanguage'
 import { seoConfig } from '~/lib/seo/config'
 import { getArticleJsonLd, JsonLd } from '~/lib/seo/jsonld'
 import { jsonParseSafety } from '~/utils/jsonSafe'
@@ -66,13 +68,13 @@ export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Pr
     openGraph: {
       title: `${seoData?.metaTitle || title}`,
       description: seoData?.metaDescription || response?.revision?.description?.trim() || 'Private article preview',
-      images: [seoData?.ogImageUrl || response?.revision?.thumbnailUrl || ''],
+      images: [seoData?.ogImageUrl || response?.revision?.thumbnailUrl || FALLBACK_THUMBNAIL_IMAGE],
     },
     twitter: {
       card: seoData?.twitterCard || 'summary_large_image',
       title: `${seoData?.metaTitle || title} (Preview)`,
       description: seoData?.metaDescription || response?.revision?.description?.trim() || 'Private article preview',
-      images: [seoData?.ogImageUrl || response?.revision?.thumbnailUrl || ''],
+      images: [seoData?.ogImageUrl || response?.revision?.thumbnailUrl || FALLBACK_THUMBNAIL_IMAGE],
     },
   }
 }
@@ -117,6 +119,7 @@ const PrivateArticleRoot = async (props: PageProps<{ slug: string[] }>) => {
   const generatedPageString = finalizeArticleBodyHtml(await renderToHTMLString({ content, extensions: defaultExtensions() }))
   const articleMetadata = response.revision.metadata as { seo?: ArticleRevisionSeoMetadata } | undefined
   const seoJson = articleMetadata?.seo ?? {}
+  const articleLanguage = resolveArticleLanguage(seoJson.language)
   const slugResolved = response.article.slug ?? params.slug?.[0] ?? ''
   const canonicalForJson = resolveArticleCanonicalUrl(seoConfig.siteUrl, slugResolved, response.article.visibility, seoJson.canonicalUrl)
 
@@ -124,11 +127,12 @@ const PrivateArticleRoot = async (props: PageProps<{ slug: string[] }>) => {
     slug: slugResolved,
     title: response.revision.title ?? response.article.slug ?? 'Article',
     description: response.revision.description,
-    image: response.revision.thumbnailUrl,
+    image: response.revision.thumbnailUrl || FALLBACK_THUMBNAIL_IMAGE,
     datePublished: response.revision.publishedAt ?? response.article.publishedAt,
     dateModified: response.revision.updatedAt ?? response.article.updatedAt,
     canonicalUrl: canonicalForJson,
     keywords: seoJson.keywords,
+    language: articleLanguage,
     isAccessibleForFree: false,
   })
 
@@ -138,7 +142,7 @@ const PrivateArticleRoot = async (props: PageProps<{ slug: string[] }>) => {
     <>
       <JsonLd data={articleJsonLd} />
       <ArticlePublishedDate publishedAt={publishedAt} className="mb-4 text-muted-foreground" />
-      <div className="max-w-full tiptap readonly" dangerouslySetInnerHTML={{ __html: generatedPageString }} />
+      <div className="max-w-full tiptap readonly" lang={articleLanguage} dangerouslySetInnerHTML={{ __html: generatedPageString }} />
     </>
   )
 }

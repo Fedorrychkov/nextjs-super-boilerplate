@@ -24,6 +24,8 @@ export type ArticleRevisionSeoMetadata = {
   nofollow?: boolean | null
   /** meta keywords (optional, weak value for Google) */
   keywords?: string | null
+  /** Primary language of the article content (BCP 47 / app locale, e.g. "en", "ru"). */
+  language?: string | null
   ogImageAssetId?: string | null
 }
 

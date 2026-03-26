@@ -1,0 +1,25 @@
+{
+  "name": "Production Ready Next.js Boilerplate",
+  "short_name": "Next.js Boilerplate",
+  "description": "Production-ready Next.js starter with auth, SEO, RUM and AI referral tracking",
+  "start_url": "/",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/images/web-app-manifest-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/web-app-manifest-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "theme_color": "#0f172a",
+  "background_color": "#0f172a",
+  "orientation": "portrait",
+  "display": "standalone"
+}

@@ -303,6 +303,9 @@ export const en = {
       metaKeywordsOptional: 'Meta keywords (optional)',
       throughACommaForGoogleAlmostDoesNotAffectSometimesOtherSystemsAreUsed:
         'Through a comma. For Google almost does not affect, sometimes other systems are used.',
+      articleLanguageOptional: 'Article language (optional)',
+      ifNotSpecifiedTheDefaultSiteLanguageWillBeUsed: 'If not specified, the default site language is used.',
+      notSelected: 'Not selected',
       socialNetworksOpenGraph: 'Social networks (Open Graph)',
       ogTitle: 'OG title',
       ifEmptyTheMetaTitleOrArticleTitleIsUsed: 'If empty, the meta title or article title is used.',

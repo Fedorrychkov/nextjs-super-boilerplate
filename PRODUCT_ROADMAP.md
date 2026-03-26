@@ -78,7 +78,7 @@ This roadmap tracks the remaining work for the article platform and related qual
 - [x] Enforce consistent fallback strategy for title/description/OG/Twitter/canonical (`resolvePublicArticlePageMeta` for `/article/[slug]`).
 - [x] Validate canonical URL format and domain policy (same origin as `NEXT_PUBLIC_SITE_URL` / `seoConfig.siteUrl`; API + SEO form).
 - [x] Ensure private/link-only content cannot leak to indexable metadata (sitemap/RSS unchanged — public + `noindex` filter; private/preview `robots` unchanged).
-- [ ] Article / site locale in metadata and markup (see **Phase 7**).
+- [x] Article / site locale in metadata and markup (see **Phase 7**).
 - [x] Keep canonical defaults derived from article URL while allowing explicit SEO-step override with validation (`articleCanonical.ts`).
 - [x] Use one canonical generation/normalization utility for metadata, sitemap, RSS, IndexNow URL, and JSON-LD (`buildDefaultArticleUrl` / `resolveArticleCanonicalUrl`).
 
@@ -189,9 +189,9 @@ This roadmap tracks the remaining work for the article platform and related qual
 
 ### 2. Article content language (optional field; powers metadata + rendering)
 
-- [ ] Optional field on revision or SEO step: **primary language of the article** (BCP 47, e.g. `ru`, `en-US`).
-- [ ] Public (and preview/private) article markup: set `lang` on article wrapper when known; fallback to site default.
-- [ ] Metadata + JSON-LD: `inLanguage`; dates/numbers use article locale when set, else site default.
+- [x] Optional field on revision or SEO step: **primary language of the article** (currently app locales `ru`/`en`).
+- [x] Public (and preview/private) article markup: set `lang` on article wrapper when known; fallback to site default.
+- [x] Metadata + JSON-LD: `inLanguage`; fallback to site default locale when article language is empty.
 - [ ] When/if translations exist: `hreflang` and locale-aware alternates (sitemap + `<head>`); until then, single-language sites can ship without alternates.
 
 ### 3. Consistency and docs

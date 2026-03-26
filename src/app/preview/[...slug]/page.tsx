@@ -9,8 +9,10 @@ import { notFound } from 'next/navigation'
 import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
 import { defaultExtensions } from '~/components/Blocks/Editor/extensions'
+import { FALLBACK_THUMBNAIL_IMAGE } from '~/constants'
 import { finalizeArticleBodyHtml } from '~/lib/editor/finalizeArticleBodyHtml'
 import { resolveArticleCanonicalUrl } from '~/lib/seo/articleCanonical'
+import { resolveArticleLanguage } from '~/lib/seo/articleLanguage'
 import { seoConfig } from '~/lib/seo/config'
 import { jsonParseSafety } from '~/utils/jsonSafe'
 import { Logger } from '~/utils/logger'
@@ -42,6 +44,7 @@ export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Pr
   const metadata = response?.revision?.metadata
 
   const seoData = metadata && 'seo' in metadata ? (metadata.seo as ArticleRevisionSeoMetadata) : {}
+  const articleLanguage = resolveArticleLanguage(seoData?.language)
   const slugResolved = response?.article?.slug ?? slug
   const canonical =
     slugResolved && response?.article
@@ -62,13 +65,14 @@ export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Pr
     openGraph: {
       title: `${seoData?.metaTitle || title} (Preview)`,
       description: seoData?.metaDescription || response?.revision?.description?.trim() || 'Private article preview',
-      images: [seoData?.ogImageUrl || response?.revision?.thumbnailUrl || ''],
+      images: [seoData?.ogImageUrl || response?.revision?.thumbnailUrl || FALLBACK_THUMBNAIL_IMAGE],
+      locale: articleLanguage,
     },
     twitter: {
       card: seoData?.twitterCard || 'summary_large_image',
       title: `${seoData?.metaTitle || title} (Preview)`,
       description: seoData?.metaDescription || response?.revision?.description?.trim() || 'Private article preview',
-      images: [seoData?.ogImageUrl || response?.revision?.thumbnailUrl || ''],
+      images: [seoData?.ogImageUrl || response?.revision?.thumbnailUrl || FALLBACK_THUMBNAIL_IMAGE],
     },
   }
 }
@@ -104,8 +108,10 @@ const PreviewRoot = async (props: PageProps<{ slug: string[] }>) => {
   }
 
   const generatedPageString = finalizeArticleBodyHtml(await renderToHTMLString({ content, extensions: defaultExtensions() }))
+  const articleMetadata = response.revision.metadata as { seo?: ArticleRevisionSeoMetadata } | undefined
+  const articleLanguage = resolveArticleLanguage(articleMetadata?.seo?.language)
 
-  return <div className="max-w-full tiptap readonly" dangerouslySetInnerHTML={{ __html: generatedPageString }} />
+  return <div className="max-w-full tiptap readonly" lang={articleLanguage} dangerouslySetInnerHTML={{ __html: generatedPageString }} />
 }
 
 export default PreviewRoot
