@@ -6,14 +6,17 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { ArticleFilter } from '~/api/article'
 import { UserRole } from '~/api/user'
+import { getServerTFromNextRequest } from '~/lib/i18n/server'
 import { Logger } from '~/utils/logger'
 
 const logger = new Logger('ArticleListRoute')
 
 const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
   apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
+    const { t } = getServerTFromNextRequest(request)
+
     if (![UserRole.ADMIN, UserRole.EDITOR].includes(authResult.payload.role)) {
-      return NextResponse.json({ message: 'Insufficient permissions' }, { status: 403 })
+      return NextResponse.json({ message: t('errors.insufficientPermissions') }, { status: 403 })
     }
 
     await connectDB()

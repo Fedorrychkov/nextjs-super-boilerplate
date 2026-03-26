@@ -6,7 +6,7 @@ import { notFound } from 'next/navigation'
 
 import { ArticleVisibility } from '~/api/article'
 import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
-import { ArticlePublishedDate } from '~/components/Views/Article/Block/ArticlePublishedDate'
+import { ArticlePublishedDate } from '~/components/Views/Article/Block/server/ArticlePublishedDate'
 import { getCachedPublicArticlePagePayload } from '~/lib/cache/publicArticlePageCache'
 import { resolvePublicArticlePageMeta } from '~/lib/seo/articleMeta'
 import { getArticleJsonLd, JsonLd } from '~/lib/seo/jsonld'

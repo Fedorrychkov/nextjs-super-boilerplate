@@ -1,9 +1,11 @@
 import type { NextRequest } from 'next/server'
 
+import { getServerTFromNextRequest } from '~/lib/i18n/server'
 import { notifyGoogleIndexing } from '~/lib/seo/indexing'
 import { jsonStringifySafety } from '~/utils/jsonSafe'
 
 export const POST = async (request: NextRequest) => {
+  const { t } = getServerTFromNextRequest(request)
   const { urls } = (await request.json()) as { urls?: string[] }
 
   if (!urls || !Array.isArray(urls) || urls.length === 0) {
@@ -18,7 +20,7 @@ export const POST = async (request: NextRequest) => {
   return new Response(
     jsonStringifySafety({
       ok: true,
-      message: 'Google Indexing API accepts only JobPosting/BroadcastEvent; general pages are indexed via sitemap.',
+      message: t('seo.googleIndexing.messages.googleIndexingApiAcceptsOnlyJobPostingBroadcastEvent'),
     }),
     {
       status: 200,

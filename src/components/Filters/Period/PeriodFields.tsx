@@ -1,9 +1,11 @@
 import dayjs from 'dayjs'
+import capitalize from 'lodash/capitalize'
 import { useMemo } from 'react'
 
 import { Button, Typography } from '~/components/ui'
 import { Input } from '~/components/ui/input'
 import { Select } from '~/components/ui/select-1'
+import type { TFunction } from '~/lib/i18n'
 import { cn } from '~/utils/cn'
 
 import { Period, periodFilterOptions, usePeriodFilter } from './hooks'
@@ -28,6 +30,7 @@ type Props = {
    * Day range
    */
   range?: number
+  t: TFunction
 }
 
 export const PeriodFields = (props: Props) => {
@@ -47,6 +50,7 @@ export const PeriodFields = (props: Props) => {
     isEnabledDefaultMaxDate = false,
     isHideUnderText = false,
     range,
+    t,
   } = props
   const {
     period,
@@ -124,7 +128,10 @@ export const PeriodFields = (props: Props) => {
   }, [fieldType])
 
   const periods = useMemo(() => {
-    const periods = periodFilterOptions.map((period) => ({ text: period.label, value: period.type }))
+    const periods = periodFilterOptions.map((period) => ({
+      text: period.labelLocalizationKey ? t(period.labelLocalizationKey) : period.label,
+      value: period.type,
+    }))
 
     if (!availablePeriods?.length) return periods
 
@@ -133,7 +140,7 @@ export const PeriodFields = (props: Props) => {
 
       return has
     })
-  }, [availablePeriods])
+  }, [availablePeriods, t])
 
   return (
     <div className={cn('flex flex-col gap-2', className)}>
@@ -147,8 +154,12 @@ export const PeriodFields = (props: Props) => {
 
       {!isCustom && fromDate && toDate && !isHideUnderText && (
         <div className="flex flex-row gap-2 flex-wrap">
-          <Typography variant="Body/XS/Regular">selected period from {dayjs.unix(fromDate).format(dateFormat)}</Typography>
-          <Typography variant="Body/XS/Regular">to {dayjs.unix(toDate).format(dateFormat)}</Typography>
+          <Typography variant="Body/XS/Regular">
+            {t('common.selectedPeriodFrom')} {dayjs.unix(fromDate).format(dateFormat)}
+          </Typography>
+          <Typography variant="Body/XS/Regular">
+            {t('common.to')} {dayjs.unix(toDate).format(dateFormat)}
+          </Typography>
         </div>
       )}
 
@@ -158,7 +169,7 @@ export const PeriodFields = (props: Props) => {
             <div className="flex flex-row flex-wrap gap-2">
               <Input
                 id="datetime-from"
-                label="От"
+                label={capitalize(t('common.from'))}
                 type={fieldType}
                 defaultValue={customFromDate ? undefined : defaultFromDate.format(dateFormat) || undefined}
                 value={customFromDate?.format(dateFormat) || ''}
@@ -171,7 +182,7 @@ export const PeriodFields = (props: Props) => {
               />
               <Input
                 id="datetime-to"
-                label="До"
+                label={capitalize(t('common.to'))}
                 type={fieldType}
                 defaultValue={customToDate ? undefined : defaultToDate.format(dateFormat) || undefined}
                 value={customToDate?.format(dateFormat) || ''}

@@ -5,8 +5,7 @@ import { ImageLoader } from '~/components/Containers/ImageLoader'
 import { Skeleton } from '~/components/Loaders'
 import { Typography } from '~/components/ui/Typography'
 import { routes } from '~/constants'
-
-import { ArticlePublishedDate } from './ArticlePublishedDate'
+import type { TFunction } from '~/lib/i18n'
 
 type Props = {
   article: Partial<
@@ -16,10 +15,12 @@ type Props = {
       description?: string | null
     }
   >
+  t: TFunction
+  publishComponent: React.ReactNode
 }
 
-export const ArticleItem = (props: Props) => {
-  const { article } = props
+export const ArticleItemComponent = async (props: Props) => {
+  const { article, publishComponent, t } = props
 
   return (
     <article key={article.id} aria-label={article.title ?? 'Article'} className="flex flex-col gap-4 bg-white p-4 rounded-md shadow-md">
@@ -31,7 +32,7 @@ export const ArticleItem = (props: Props) => {
           defaultPlaceholder={<Skeleton className="w-full h-full object-cover max-h-[200px]" />}
         />
       ) : null}
-      <ArticlePublishedDate publishedAt={article.publishedAt} />
+      {publishComponent}
       <div className="flex flex-col gap-2">
         <Typography variant="heading-3">{article.title}</Typography>
         <Typography variant="Body/M/Regular">{article.description}</Typography>
@@ -45,7 +46,7 @@ export const ArticleItem = (props: Props) => {
           }
           className="text-sm text-blue-500"
         >
-          Read more
+          {t('article.ui.readMore')}
         </Link>
       </div>
     </article>

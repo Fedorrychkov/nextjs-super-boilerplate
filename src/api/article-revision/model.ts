@@ -1,20 +1,20 @@
 import { MediaProvider, MediaResourceType } from '../media/model'
 
 /**
- * Ручные SEO-поля ревизии — кладём в `metadata.seo` (см. ArticleEditableSeo).
+ * Manual SEO fields for revision — put in `metadata.seo` (see ArticleEditableSeo).
  */
 export type ArticleRevisionSeoMetadata = {
-  /** &lt;title&gt; в выдаче; если пусто — на странице подставляют title ревизии */
+  /** &lt;title&gt; in search results; if empty, the revision title is used */
   metaTitle?: string | null
   /** meta description */
   metaDescription?: string | null
-  /** Полный URL канонической страницы */
+  /** Full URL of the canonical page */
   canonicalUrl?: string | null
-  /** og:title; если пусто — meta title / title */
+  /** og:title; if empty, the meta title / title is used */
   ogTitle?: string | null
   /** og:description */
   ogDescription?: string | null
-  /** og:image; если пусто — thumbnailUrl */
+  /** og:image; if empty, the thumbnailUrl is used */
   ogImageUrl?: string | null
   /** Twitter / X card type */
   twitterCard?: 'summary' | 'summary_large_image' | null
@@ -22,7 +22,7 @@ export type ArticleRevisionSeoMetadata = {
   noindex?: boolean | null
   /** meta robots: nofollow */
   nofollow?: boolean | null
-  /** meta keywords (опционально, слабая ценность для Google) */
+  /** meta keywords (optional, weak value for Google) */
   keywords?: string | null
   ogImageAssetId?: string | null
 }

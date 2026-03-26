@@ -7,52 +7,55 @@ import { CustomTooltip } from '~/components/Blocks/Tooltip'
 import { Select } from '~/components/ui/select-1'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '~/components/ui/table'
 import { Typography } from '~/components/ui/Typography/Typography'
+import type { TFunction } from '~/lib/i18n'
+import { useT } from '~/providers'
 import { useRumDashboardQuery } from '~/query/rum'
 
 const RUM_METRIC_TOOLTIPS = {
   CLS: {
-    description: 'Visual stability: how much visible elements shift unexpectedly during the page lifetime.',
+    description: 'rum.ui.info.cls',
     docsUrl: 'https://web.dev/articles/cls/',
   },
   FCP: {
-    description: 'Time from navigation start until any part of the page content is first painted.',
+    description: 'rum.ui.info.fcp',
     docsUrl: 'https://web.dev/articles/fcp/',
   },
   INP: {
-    description: 'Overall responsiveness: latency of interactions across the full page visit.',
+    description: 'rum.ui.info.inp',
     docsUrl: 'https://web.dev/articles/inp/',
   },
   LCP: {
-    description: 'Loading performance: time until the largest image or text block becomes visible.',
+    description: 'rum.ui.info.lcp',
     docsUrl: 'https://web.dev/articles/lcp/',
   },
   TTFB: {
-    description: 'Time from requesting the document until the first byte of the response arrives.',
+    description: 'rum.ui.info.ttfb',
     docsUrl: 'https://web.dev/articles/ttfb/',
   },
 } as const
 
 type RumMetricTooltipKey = keyof typeof RUM_METRIC_TOOLTIPS
 
-function RumMetricTooltipContent({ metricKey }: { metricKey: RumMetricTooltipKey }) {
+const RumMetricTooltipContent = ({ metricKey }: { metricKey: RumMetricTooltipKey }) => {
   const info = RUM_METRIC_TOOLTIPS[metricKey]
+  const t = useT()
 
   return (
     <div className="flex flex-col gap-2">
       <Typography variant="Body/XS/Regular" className="text-popover-foreground">
-        {info.description}
+        {t(info.description)}
       </Typography>
       <Typography variant="Body/XS/Regular" asTag="a" href={info.docsUrl} target="_blank" rel="noopener noreferrer">
-        Documentation on web.dev →
+        {t('rum.ui.documentationOnWebDev')} →
       </Typography>
     </div>
   )
 }
 
-const DAY_OPTIONS = [
-  { value: '1', label: '1 day' },
-  { value: '7', label: '7 days' },
-  { value: '14', label: '14 days' },
+const DAY_OPTIONS = (t: TFunction) => [
+  { value: '1', label: `1 ${t('rum.ui.days.one')}` },
+  { value: '7', label: `7 ${t('rum.ui.days.other')}` },
+  { value: '14', label: `14 ${t('rum.ui.days.other')}` },
 ]
 
 function formatMetricDisplay(name: string, value: number | null): string {
@@ -68,10 +71,13 @@ function formatMetricDisplay(name: string, value: number | null): string {
 }
 
 export const RumDashboardScreen = () => {
+  const t = useT()
   const [daysStr, setDaysStr] = useState('7')
   const days = useMemo(() => Number.parseInt(daysStr, 10) || 7, [daysStr])
 
   const { data, isLoading, isError } = useRumDashboardQuery(days)
+
+  const dayOptions = useMemo(() => DAY_OPTIONS(t), [t])
 
   return (
     <div className="flex flex-col gap-6 md:px-8 px-2 py-4 w-full max-w-5xl mx-auto">
@@ -79,30 +85,30 @@ export const RumDashboardScreen = () => {
         <TitleWithBadge title="RUM / Web Vitals" badgeContent={<Typography variant="Body/XS/Regular">{data?.totalSamples ?? '—'}</Typography>} />
         <div className="flex flex-col gap-1 min-w-[180px]">
           <Typography variant="Body/XS/Regular" className="text-muted-foreground">
-            Window
+            {t('rum.ui.window')}
           </Typography>
-          <Select size="small" value={daysStr} options={DAY_OPTIONS} onChange={(e) => setDaysStr(e.target.value)} />
+          <Select size="small" value={daysStr} options={dayOptions} onChange={(e) => setDaysStr(e.target.value)} />
         </div>
       </div>
 
       {data && (
         <Typography variant="Body/XS/Regular" className="text-muted-foreground">
-          Period: {new Date(data.since).toLocaleString()} — {new Date(data.until).toLocaleString()}
+          {t('rum.ui.period')}: {new Date(data.since).toLocaleString()} — {new Date(data.until).toLocaleString()}
         </Typography>
       )}
 
       {isError && (
         <Typography variant="Body/S/Regular" className="text-destructive">
-          Failed to load data. Check your authorization and try again.
+          {t('rum.errors.failedToLoadData')}
         </Typography>
       )}
 
       <div className="flex flex-col gap-2">
-        <Typography variant="Body/S/Semibold">Metrics</Typography>
+        <Typography variant="Body/S/Semibold">{t('rum.ui.metrics')}</Typography>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Metric</TableHead>
+              <TableHead>{t('rum.ui.metric')}</TableHead>
               <TableHead className="text-right">N</TableHead>
               <TableHead className="text-right">avg</TableHead>
               <TableHead className="text-right">p75</TableHead>
@@ -127,11 +133,11 @@ export const RumDashboardScreen = () => {
                       <span className="cursor-help border-b border-dotted border-muted-foreground/50">{row.name}</span>
                     </CustomTooltip>
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">{row.count}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatMetricDisplay(row.name, row.avg)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatMetricDisplay(row.name, row.p75)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatMetricDisplay(row.name, row.min)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatMetricDisplay(row.name, row.max)}</TableCell>
+                  <TableCell className="text-right tabular-nums whitespace-nowrap">{row.count}</TableCell>
+                  <TableCell className="text-right tabular-nums whitespace-nowrap">{formatMetricDisplay(row.name, row.avg)}</TableCell>
+                  <TableCell className="text-right tabular-nums whitespace-nowrap">{formatMetricDisplay(row.name, row.p75)}</TableCell>
+                  <TableCell className="text-right tabular-nums whitespace-nowrap">{formatMetricDisplay(row.name, row.min)}</TableCell>
+                  <TableCell className="text-right tabular-nums whitespace-nowrap">{formatMetricDisplay(row.name, row.max)}</TableCell>
                 </TableRow>
               ))}
           </TableBody>
@@ -139,12 +145,12 @@ export const RumDashboardScreen = () => {
       </div>
 
       <div className="flex flex-col gap-2">
-        <Typography variant="Body/S/Semibold">Top paths</Typography>
+        <Typography variant="Body/S/Semibold">{t('rum.ui.topPaths')}</Typography>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Pathname</TableHead>
-              <TableHead className="text-right">Events</TableHead>
+              <TableHead>{t('rum.ui.pathname')}</TableHead>
+              <TableHead className="text-right">{t('rum.ui.events')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -166,7 +172,7 @@ export const RumDashboardScreen = () => {
               ) : (
                 <TableRow>
                   <TableCell colSpan={2} className="text-muted-foreground">
-                    No data for the selected period
+                    {t('rum.ui.noDataForSelectedPeriod')}
                   </TableCell>
                 </TableRow>
               ))}

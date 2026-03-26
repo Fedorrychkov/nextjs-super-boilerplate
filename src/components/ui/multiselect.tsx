@@ -6,6 +6,7 @@ import * as React from 'react'
 import { forwardRef, useEffect } from 'react'
 
 import { cn } from '~/utils/cn'
+import { jsonParseSafety, jsonStringifySafety } from '~/utils/jsonSafe'
 
 import { Command, CommandGroup, CommandItem, CommandList } from './command'
 
@@ -125,7 +126,7 @@ function transToGroupOption(options: Option[], groupBy?: string) {
 }
 
 function removePickedOption(groupOption: GroupOption, picked: Option[]) {
-  const cloneOption = JSON.parse(JSON.stringify(groupOption)) as GroupOption
+  const cloneOption = jsonParseSafety<GroupOption>(jsonStringifySafety(groupOption) ?? '{}')!
 
   for (const [key, value] of Object.entries(cloneOption)) {
     cloneOption[key] = value.filter((val) => !picked.find((p) => p.value === val.value))
@@ -282,7 +283,7 @@ const MultipleSelector = React.forwardRef<MultipleSelectorRef, MultipleSelectorP
       }
       const newOption = transToGroupOption(arrayOptions || [], groupBy)
 
-      if (JSON.stringify(newOption) !== JSON.stringify(options)) {
+      if (jsonStringifySafety(newOption) !== jsonStringifySafety(options)) {
         setOptions(newOption)
       }
     }, [arrayDefaultOptions, arrayOptions, groupBy, onSearch, options])

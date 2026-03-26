@@ -4,11 +4,14 @@ import { deleteMediaAssetIfUnused } from '@lib/services/media.service'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { UserRole } from '~/api/user'
+import { getServerTFromNextRequest } from '~/lib/i18n/server'
 
 const handler = (request: NextRequest, authResult: AuthSuccessResult, context?: RouteHandlerContext) =>
   apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
+    const { t } = getServerTFromNextRequest(request)
+
     if (![UserRole.ADMIN, UserRole.EDITOR].includes(authResult.payload.role)) {
-      return NextResponse.json({ message: 'Insufficient permissions' }, { status: 403 })
+      return NextResponse.json({ message: t('errors.insufficientPermissions') }, { status: 403 })
     }
 
     const searchParams = request.nextUrl.searchParams
@@ -18,13 +21,13 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult, context?: 
     const id = typeof rawId === 'string' ? rawId : Array.isArray(rawId) ? rawId[0] : undefined
 
     if (!id) {
-      return NextResponse.json({ message: 'Media asset id is required' }, { status: 400 })
+      return NextResponse.json({ message: t('media.errors.mediaAssetIdRequired') }, { status: 400 })
     }
 
     const result = await deleteMediaAssetIfUnused(id, articleRevisionId ?? null)
 
     if (result.reason === 'not_found') {
-      return NextResponse.json({ message: 'Media asset not found' }, { status: 404 })
+      return NextResponse.json({ message: t('media.errors.mediaAssetNotFound') }, { status: 404 })
     }
 
     if (!result.deleted) {
@@ -32,7 +35,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult, context?: 
     }
 
     if (!result.asset) {
-      return NextResponse.json({ message: 'Media asset not found' }, { status: 404 })
+      return NextResponse.json({ message: t('media.errors.mediaAssetNotFound') }, { status: 404 })
     }
 
     return response.json({

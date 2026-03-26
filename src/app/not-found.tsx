@@ -1,11 +1,14 @@
 import { Typography } from '~/components/ui'
+import { getServerT } from '~/lib/i18n/server'
 
-export default function NotFound() {
+export default async function NotFound() {
+  const { t } = await getServerT()
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black flex-col gap-4">
-      <Typography variant="Body/L/Regular">404 - Page Not Found</Typography>
+      <Typography variant="Body/L/Regular">{t('notFound.title')}</Typography>
       <Typography variant="Body/M/Semibold" asTag="a" href="/">
-        Go to home
+        {t('common.goToHome')}
       </Typography>
     </div>
   )

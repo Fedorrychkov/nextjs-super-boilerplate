@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { type Metric, onCLS, onFCP, onINP, onLCP, onTTFB } from 'web-vitals'
 
 import { useCookieConsent } from '~/providers/cookie-consent'
+import { jsonStringifySafety } from '~/utils/jsonSafe'
 import { Logger } from '~/utils/logger'
 
 /** Only `NEXT_PUBLIC_*` — do not import server `config/env` in client bundles. */
@@ -23,7 +24,7 @@ function sendToRum(metric: Metric) {
 
   const nav = navigator as Navigator & { connection?: { effectiveType?: string } }
 
-  const payload = JSON.stringify({
+  const payload = jsonStringifySafety({
     name: metric.name,
     value: metric.value,
     rating: metric.rating,
@@ -33,6 +34,10 @@ function sendToRum(metric: Metric) {
     pathname: window.location.pathname,
     connectionEffectiveType: nav.connection?.effectiveType,
   })
+
+  if (!payload) {
+    return
+  }
 
   const url = '/api/v1/rum'
 

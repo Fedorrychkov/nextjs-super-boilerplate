@@ -9,7 +9,7 @@ export type EditorTextAlignOptions = {
 }
 
 /**
- * Выравнивание text blocks (paragraph, heading) without separate package @tiptap/extension-text-align.
+ * Text alignment for text blocks (paragraph, heading) without separate package @tiptap/extension-text-align.
  */
 export const EditorTextAlign = Extension.create<EditorTextAlignOptions>({
   name: 'editorTextAlign',

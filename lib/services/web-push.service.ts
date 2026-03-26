@@ -2,6 +2,7 @@ import { PUSH_CONFIG } from '@config/env'
 import * as webpush from 'web-push'
 
 import { AnyString } from '~/types'
+import { jsonStringifySafety } from '~/utils/jsonSafe'
 import { Logger } from '~/utils/logger'
 
 import { pushSubscriptionService } from './push-subscription.service'
@@ -46,7 +47,7 @@ export class WebPushService {
         }
 
         try {
-          await webpush.sendNotification(sub, JSON.stringify(payload))
+          await webpush.sendNotification(sub, jsonStringifySafety(payload))
 
           return { ok: true }
         } catch (err: any) {

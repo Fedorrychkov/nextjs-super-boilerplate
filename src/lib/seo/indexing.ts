@@ -2,6 +2,7 @@ import { GOOGLE_INDEXING_CLIENT_EMAIL, GOOGLE_INDEXING_PRIVATE_KEY, INDEXNOW_API
 import jwt from 'jsonwebtoken'
 
 import { getUniqueId } from '~/utils/getUniqueId'
+import { jsonStringifySafety } from '~/utils/jsonSafe'
 import { Logger } from '~/utils/logger'
 
 import { seoConfig } from './config'
@@ -98,7 +99,7 @@ export const pingIndexNow = async (urls: string[]) => {
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
       },
-      body: JSON.stringify(body),
+      body: jsonStringifySafety(body),
     })
 
     if (!response.ok) {
@@ -150,7 +151,7 @@ export const notifyGoogleIndexing = async (urls: string[]) => {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
+        body: jsonStringifySafety({
           url,
           type: 'URL_UPDATED',
         }),

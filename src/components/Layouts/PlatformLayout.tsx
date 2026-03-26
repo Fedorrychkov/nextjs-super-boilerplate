@@ -6,30 +6,32 @@ import { useMemo } from 'react'
 import { UserRole } from '~/api/user'
 import { Sidebar } from '~/components/ui/sidebar'
 import { routes } from '~/constants'
-import { useAuth } from '~/providers'
+import { useAuth, useT } from '~/providers'
 
 export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
+  const t = useT()
+
   const { isLoading, isFetched, authUser } = useAuth()
 
   const navigation = useMemo(
     () => [
       {
-        title: 'Welcome Panel',
+        title: t('navigation.welcomePanel'),
         extra: true,
         defaultOpen: true,
         items: [
           {
-            label: routes.home.name,
+            label: t(routes.home.tKey),
             icon: <HomeIcon width={16} height={16} />,
             href: routes.home.path,
           },
           {
-            label: routes.uiKit.name,
+            label: t(routes.uiKit.tKey),
             icon: <WrenchIcon width={16} height={16} />,
             href: routes.uiKit.path,
           },
           {
-            label: routes.profile.name,
+            label: t(routes.profile.tKey),
             icon: <UserIcon width={16} height={16} />,
             href: routes.profile.path,
           },
@@ -40,15 +42,15 @@ export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
             {
               extra: true,
               defaultOpen: true,
-              title: 'Admin Panel',
+              title: t('navigation.adminPanel'),
               items: [
                 {
-                  label: routes.rumDashboard.name,
+                  label: t(routes.rumDashboard.tKey),
                   icon: <ActivityIcon width={16} height={16} />,
                   href: routes.rumDashboard.path,
                 },
                 {
-                  label: routes.articles.name,
+                  label: t(routes.articles.tKey),
                   icon: <TextQuoteIcon width={16} height={16} />,
                   href: routes.articles.path,
                 },
@@ -57,7 +59,7 @@ export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
           ]
         : []),
     ],
-    [authUser?.role],
+    [authUser?.role, t],
   )
 
   return <Sidebar navigation={isLoading || !isFetched ? [] : navigation}>{children}</Sidebar>

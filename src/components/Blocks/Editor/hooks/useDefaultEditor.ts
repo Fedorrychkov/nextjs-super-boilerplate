@@ -1,3 +1,5 @@
+'use client'
+
 import type { EditorView } from '@tiptap/pm/view'
 import { Editor, useEditor } from '@tiptap/react'
 import { useCallback, useMemo, useState } from 'react'
@@ -81,7 +83,7 @@ export const useDefaultEditor = (props: Props) => {
     const md = normalizeMarkdownForTiptap(markdownInput ?? '')
 
     if (!editor.markdown) {
-      notify('MarkdownManager недоступен', 'destructive')
+      notify('MarkdownManager not available', 'destructive')
 
       return
     }

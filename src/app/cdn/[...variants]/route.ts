@@ -4,6 +4,7 @@ import { buildUploadcareCdnUrl } from '@lib/services/cdn-uploadcare.service'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { MediaResourceType } from '~/api/media'
+import { getServerTFromNextRequest } from '~/lib/i18n/server'
 
 const variantToOps: Record<string, string> = {
   original: '',
@@ -19,13 +20,14 @@ const variantToOps: Record<string, string> = {
   'seo-fit': '-/autorotate/yes/-/quality/smart/-/format/auto/-/stretch/off/-/resize/1200x/',
 }
 
-export const GET = async (_request: NextRequest, context: { params: Promise<{ variants: string[] }> }) => {
+export const GET = async (request: NextRequest, context: { params: Promise<{ variants: string[] }> }) => {
+  const { t } = getServerTFromNextRequest(request)
   const { variants } = await context.params
 
   const [assetId, variant] = variants || []
 
   if (!assetId) {
-    return NextResponse.json({ message: 'Invalid request' }, { status: 400 })
+    return NextResponse.json({ message: t('media.errors.invalidRequest') }, { status: 400 })
   }
 
   await connectDB()
@@ -33,7 +35,7 @@ export const GET = async (_request: NextRequest, context: { params: Promise<{ va
   const asset = await MediaAsset.findById(assetId)
 
   if (!asset || asset.isDeleted) {
-    return NextResponse.json({ message: 'Media not found' }, { status: 404 })
+    return NextResponse.json({ message: t('media.errors.mediaNotFound') }, { status: 404 })
   }
 
   if (asset.resourceType !== MediaResourceType.IMAGE) {

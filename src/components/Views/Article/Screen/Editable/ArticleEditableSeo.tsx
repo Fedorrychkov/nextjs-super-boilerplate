@@ -8,8 +8,10 @@ import { ArticleRevisionMediaMetadata, ArticleRevisionModel, ArticleRevisionSeoM
 import { MediaProvider, MediaResourceType } from '~/api/media'
 import { DefaultCheckbox, DefaultFieldContainer, DefaultMultiselectField, DefaultTextAreaContainer, MediaUrlUploadField } from '~/components/Fields'
 import { Button, Option, Typography } from '~/components/ui'
+import { routes } from '~/constants'
 import { handleRegister } from '~/hooks/useRegister'
 import { validateCanonicalUrlForStorage } from '~/lib/seo/articleCanonical'
+import { useT } from '~/providers'
 
 type SeoForm = {
   metaTitle: string
@@ -83,7 +85,7 @@ export type ArticleEditableSeoSavePayload = {
   metadata: ArticleRevisionMetadataPatch
 }
 
-/** Патч для merge с существующим `revision.metadata` на бэке */
+/** Patch to merge with existing `revision.metadata` on the backend */
 export type ArticleRevisionMetadataPatch = {
   seo: ArticleRevisionSeoMetadata
   media?: ArticleRevisionMediaMetadata
@@ -99,6 +101,7 @@ type Props = {
 
 export const ArticleEditableSeo = (props: Props) => {
   const { articleRevision, isLoading, onSave, article, isDisabled } = props
+  const t = useT()
 
   const defaultValues = useMemo(() => toFormValues(readSeoFromRevision(articleRevision), article), [articleRevision, article])
 
@@ -119,7 +122,7 @@ export const ArticleEditableSeo = (props: Props) => {
       return ''
     }
 
-    return `${site.replace(/\/+$/, '')}/${article?.visibility === ArticleVisibility.PUBLIC ? 'article' : 'private-article'}/${encodeURIComponent(slug)}`
+    return `${site.replace(/\/+$/, '')}${article?.visibility === ArticleVisibility.PUBLIC ? `${routes.articlePublic.path?.replace(':slug', slug ?? '')}` : `${routes.articlePrivate.path?.replace(':slug', slug ?? '')}`}`
   }, [article])
 
   const handleSubmit = useCallback(
@@ -149,38 +152,38 @@ export const ArticleEditableSeo = (props: Props) => {
   return (
     <div className="flex flex-col gap-4">
       <Typography variant="Body/M/Regular" className="text-muted-foreground">
-        Fields below affect the snippets in search, Open Graph and Twitter/X. Empty OG values are usually filled from the main content / preview.
+        {t('article.ui.fieldsBelowAffectTheSnippetsInSearchOpenGraphAndTwitterX')}
       </Typography>
 
       <FormProvider {...form}>
         <form onSubmit={onSubmit(handleSubmit)} className="w-full flex flex-col gap-6">
           <section className="flex flex-col gap-4">
-            <Typography variant="Body/L/Semibold">Search (Google and others)</Typography>
+            <Typography variant="Body/L/Semibold">{t('article.ui.searchGoogleAndOthers')}</Typography>
 
             <DefaultFieldContainer
               {...handleRegister({
                 ...register('metaTitle', {
-                  maxLength: { value: 70, message: 'It is better to do up to ~60 characters for the snippet' },
+                  maxLength: { value: 70, message: t('article.errors.itIsBetterToDoUpTo60CharactersForTheSnippet') },
                 }),
                 errors,
               })}
               disabled={isLoading || isDisabled}
-              label="Meta title"
+              label={t('article.ui.metaTitle')}
               name="metaTitle"
-              hintText="Title in the search (~50–60 characters). If empty, the article title is used."
+              hintText={t('article.ui.titleInTheSearch5060CharactersIfEmptyTheArticleTitleIsUsed')}
             />
 
             <DefaultTextAreaContainer
               {...handleRegister({
                 ...register('metaDescription', {
-                  maxLength: { value: 320, message: 'Usually enough ~160 characters' },
+                  maxLength: { value: 320, message: t('article.errors.usuallyEnough160Characters') },
                 }),
                 errors,
               })}
               disabled={isLoading || isDisabled}
-              label="Meta description"
+              label={t('article.ui.metaDescription')}
               name="metaDescription"
-              hintText="Short description in the search (~150–160 characters)."
+              hintText={t('article.ui.shortDescriptionInTheSearch150160Characters')}
             />
 
             <DefaultFieldContainer
@@ -193,7 +196,7 @@ export const ArticleEditableSeo = (props: Props) => {
                       return true
                     }
 
-                    const result = validateCanonicalUrlForStorage(v.trim(), site)
+                    const result = validateCanonicalUrlForStorage(v.trim(), site, t)
 
                     return result.ok ? true : result.message
                   },
@@ -201,47 +204,47 @@ export const ArticleEditableSeo = (props: Props) => {
                 errors,
               })}
               disabled={isLoading || isDisabled}
-              label="Canonical URL"
+              label={t('article.ui.canonicalUrl')}
               name="canonicalUrl"
               placeholder={canonicalUrl}
-              hintText="If the page is available by multiple URLs, specify the main one (https://…)."
+              hintText={t('article.ui.ifThePageIsAvailableByMultipleURLsSpecifyTheMainOneHttps')}
             />
 
             <DefaultTextAreaContainer
               {...handleRegister({
-                ...register('keywords', { maxLength: { value: 500, message: 'Not more than 500 characters' } }),
+                ...register('keywords', { maxLength: { value: 500, message: t('article.errors.notMoreThan500Characters') } }),
                 errors,
               })}
               disabled={isLoading || isDisabled}
-              label="Meta keywords (optional)"
+              label={t('article.ui.metaKeywordsOptional')}
               name="keywords"
-              hintText="Through a comma. For Google almost does not affect, sometimes other systems are used."
+              hintText={t('article.ui.throughACommaForGoogleAlmostDoesNotAffectSometimesOtherSystemsAreUsed')}
             />
           </section>
 
           <section className="flex flex-col gap-4">
-            <Typography variant="Body/L/Semibold">Social networks (Open Graph)</Typography>
+            <Typography variant="Body/L/Semibold">{t('article.ui.socialNetworksOpenGraph')}</Typography>
 
             <DefaultFieldContainer
               {...handleRegister({
-                ...register('ogTitle', { maxLength: { value: 100, message: 'Up to ~100 characters' } }),
+                ...register('ogTitle', { maxLength: { value: 100, message: t('article.errors.upTo100Characters') } }),
                 errors,
               })}
               disabled={isLoading || isDisabled}
-              label="OG title"
+              label={t('article.ui.ogTitle')}
               name="ogTitle"
-              hintText="If empty, the meta title or article title is used."
+              hintText={t('article.ui.ifEmptyTheMetaTitleOrArticleTitleIsUsed')}
             />
 
             <DefaultTextAreaContainer
               {...handleRegister({
-                ...register('ogDescription', { maxLength: { value: 320, message: 'Up to ~200 characters for the preview' } }),
+                ...register('ogDescription', { maxLength: { value: 320, message: t('article.errors.upTo200CharactersForThePreview') } }),
                 errors,
               })}
               disabled={isLoading || isDisabled}
-              label="OG description"
+              label={t('article.ui.ogDescription')}
               name="ogDescription"
-              hintText="If empty, the meta description or short description of the article is used."
+              hintText={t('article.ui.ifEmptyTheMetaDescriptionOrShortDescriptionOfTheArticleIsUsed')}
             />
 
             <DefaultFieldContainer
@@ -255,7 +258,7 @@ export const ArticleEditableSeo = (props: Props) => {
               name="ogImageAssetId"
             />
             <MediaUrlUploadField
-              label="OG image URL"
+              label={t('article.ui.ogImageUrl')}
               value={(watch('ogImageUrl') as string) ?? ''}
               assetId={(watch('ogImageAssetId') as string) ?? null}
               articleRevisionId={articleRevision?.id ?? null}
@@ -266,29 +269,29 @@ export const ArticleEditableSeo = (props: Props) => {
                 setValue('ogImageUrl', next.value ?? '', { shouldDirty: true })
                 setValue('ogImageAssetId', next.assetId ?? '', { shouldDirty: true })
               }}
-              hintText="Recommended ~1200x630. Upload/paste/drop image and keep proxy URL."
+              hintText={t('article.ui.recommended1200x630UploadPasteDropImageAndKeepProxyURL')}
             />
           </section>
 
           <section className="flex flex-col gap-4">
-            <Typography variant="Body/L/Semibold">Twitter / X</Typography>
+            <Typography variant="Body/L/Semibold">{t('article.ui.twitterX')}</Typography>
 
             <DefaultMultiselectField
               options={twitterCardOptions}
               {...handleRegister({
-                ...register('twitterCard', { required: { value: true, message: 'Select the type of card' } }),
+                ...register('twitterCard', { required: { value: true, message: t('article.errors.selectTheTypeOfCard') } }),
                 errors,
                 required: true,
               })}
               updateBySelected
               disabled={isLoading || isDisabled}
-              label="Twitter card type"
+              label={t('article.ui.twitterCardType')}
               name="twitterCard"
             />
           </section>
 
           <section className="flex flex-col gap-4">
-            <Typography variant="Body/L/Semibold">Indexing (robots)</Typography>
+            <Typography variant="Body/L/Semibold">{t('article.ui.indexingRobots')}</Typography>
 
             <DefaultCheckbox
               {...handleRegister({
@@ -296,8 +299,8 @@ export const ArticleEditableSeo = (props: Props) => {
                 errors,
               })}
               name="noindex"
-              label="Hide from search (noindex)"
-              description="The page should not be indexed by search engines."
+              label={t('article.ui.hideFromSearchNoindex')}
+              description={t('article.ui.thePageShouldNotBeIndexedBySearchEngines')}
               disabled={
                 isDisabled || isLoading || [ArticleVisibility.PRIVATE, ArticleVisibility.LINK_ONLY].includes(article?.visibility ?? ArticleVisibility.PUBLIC)
               }
@@ -309,15 +312,15 @@ export const ArticleEditableSeo = (props: Props) => {
                 errors,
               })}
               name="nofollow"
-              label="Do not pass weight by links (nofollow)"
-              description="Search engines should not follow the links from the page (rarely needed for articles)."
+              label={t('article.ui.doNotPassWeightByLinksNofollow')}
+              description={t('article.ui.searchEnginesShouldNotFollowTheLinksFromThePageRarelyNeededForArticles')}
               disabled
             />
           </section>
 
           <div>
             <Button type="submit" variant="secondary" size="default" disabled={isLoading || isDisabled}>
-              Save SEO
+              {t('common.save')}
             </Button>
           </div>
         </form>

@@ -1,5 +1,7 @@
 import { Editor } from '@tiptap/react'
 
+import type { TFunction } from '~/lib/i18n'
+
 import { features } from './editor.types'
 
 export type FeatureConfigOptions = {
@@ -12,6 +14,7 @@ export type FeatureConfigOptions = {
 export const getFeatureConfig = (
   editor: Editor,
   options?: FeatureConfigOptions,
+  t?: TFunction,
 ): Record<
   (typeof features)[number],
   {
@@ -21,27 +24,27 @@ export const getFeatureConfig = (
 > => {
   return {
     bold: {
-      label: 'Bold',
+      label: t?.('common.bold') ?? 'Bold',
       onClick: () => editor.chain().focus()?.toggleBold().run(),
     },
     italic: {
-      label: 'Italic',
+      label: t?.('common.italic') ?? 'Italic',
       onClick: () => editor.chain().focus()?.toggleItalic().run(),
     },
     underline: {
-      label: 'Underline',
+      label: t?.('common.underline') ?? 'Underline',
       onClick: () => editor.chain().focus()?.toggleUnderline().run(),
     },
     strike: {
-      label: 'Strike',
+      label: t?.('common.strike') ?? 'Strike',
       onClick: () => editor.chain().focus()?.toggleStrike().run(),
     },
     codeBlock: {
-      label: 'Code Block',
+      label: t?.('common.codeBlock') ?? 'Code Block',
       onClick: () => editor.chain().focus()?.toggleCodeBlock().run(),
     },
     link: {
-      label: 'Link',
+      label: t?.('common.link') ?? 'Link',
       onClick: () => {
         if (options?.openLinkDialog) {
           options.openLinkDialog()
@@ -65,43 +68,43 @@ export const getFeatureConfig = (
       onClick: () => editor.chain().focus()?.toggleHeading({ level: 3 }).run(),
     },
     alignLeft: {
-      label: '◧ Left',
+      label: t?.('common.alignLeft') ?? '◧ Left',
       onClick: () => editor.chain().focus()?.setTextAlign('left').run(),
     },
     alignCenter: {
-      label: '▣ Center',
+      label: t?.('common.alignCenter') ?? '▣ Center',
       onClick: () => editor.chain().focus()?.setTextAlign('center').run(),
     },
     alignRight: {
-      label: '◨ Right',
+      label: t?.('common.alignRight') ?? '◨ Right',
       onClick: () => editor.chain().focus()?.setTextAlign('right').run(),
     },
     taskList: {
-      label: 'Task List',
+      label: t?.('common.taskList') ?? 'Task List',
       onClick: () => editor.chain().focus()?.toggleTaskList().run(),
     },
     bulletList: {
-      label: 'Bullet List',
+      label: t?.('common.bulletList') ?? 'Bullet List',
       onClick: () => editor.chain().focus()?.toggleBulletList().run(),
     },
     orderedList: {
-      label: 'Ordered List',
+      label: t?.('common.orderedList') ?? 'Ordered List',
       onClick: () => editor.chain().focus()?.toggleOrderedList().run(),
     },
     blockquote: {
-      label: 'Blockquote',
+      label: t?.('common.blockquote') ?? 'Blockquote',
       onClick: () => editor.chain().focus()?.toggleBlockquote().run(),
     },
     horizontalRule: {
-      label: 'Horizontal Rule',
+      label: t?.('common.horizontalRule') ?? 'Horizontal Rule',
       onClick: () => editor.chain().focus()?.setHorizontalRule().run(),
     },
     breakLine: {
-      label: 'Break Line',
+      label: t?.('common.breakLine') ?? 'Break Line',
       onClick: () => editor.chain().focus()?.enter().run(),
     },
     image: {
-      label: 'Image',
+      label: t?.('common.image') ?? 'Image',
       onClick: () => {
         if (options?.openImageDialog) {
           options.openImageDialog()
