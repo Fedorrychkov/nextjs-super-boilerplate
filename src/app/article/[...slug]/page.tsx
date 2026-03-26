@@ -2,12 +2,14 @@ import '../../../components/Blocks/Editor/styles/editor.styles.scss'
 
 import { PageProps } from '@lib/page'
 import type { Metadata } from 'next'
+import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 
 import { ArticleVisibility } from '~/api/article'
 import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { ArticlePublishedDate } from '~/components/Views/Article/Block/server/ArticlePublishedDate'
 import { getCachedPublicArticlePagePayload } from '~/lib/cache/publicArticlePageCache'
+import { trackAiReferralVisit } from '~/lib/seo/aiReferrals'
 import { resolvePublicArticlePageMeta } from '~/lib/seo/articleMeta'
 import { getArticleJsonLd, JsonLd } from '~/lib/seo/jsonld'
 import { Logger } from '~/utils/logger'
@@ -115,6 +117,22 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
   })
 
   const publishedAt = response.revision.publishedAt ?? response.article.publishedAt
+  const requestHeaders = await headers()
+  const referrer = requestHeaders.get('referer')
+  const userAgent = requestHeaders.get('user-agent')
+
+  try {
+    await trackAiReferralVisit({
+      pathname: `/article/${slugResolved}`,
+      referrer,
+      userAgent,
+    })
+  } catch (error) {
+    logger.warn('Failed to persist AI referral', {
+      slug: slugResolved,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
 
   return (
     <>

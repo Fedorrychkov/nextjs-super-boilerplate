@@ -77,6 +77,7 @@ export const ru = {
     logout: 'Выход',
     refresh: 'Обновить',
     rumDashboard: 'RUM панель',
+    aiReferralsDashboard: 'Панель AI рефералов',
     articles: 'Статьи',
     articlesCreate: 'Создать статью',
     articlePublic: 'Публичная статья',
@@ -260,7 +261,7 @@ export const ru = {
       link_only: 'Только по ссылке',
     },
     ui: {
-      publishedVersion: 'Опубликованная версия',
+      publishedVersion: 'Количество публикаций',
       readMore: 'Читать далее',
       currentRevision: 'Текущая ревизия',
       lastRevision: 'Последняя ревизия',
@@ -333,10 +334,9 @@ export const ru = {
       publishingArticle: 'Публикация статьи...',
       articlePublished: 'Статья опубликована',
       newVersionCreated: 'Новая версия создана',
-      youAreNotAllowedToEditTheLastPublishedArticlePleaseStartTheNewVersion:
-        'Вы не имеете права редактировать последнюю опубликованную статью. Пожалуйста, создайте новую версию',
+      youAreNotAllowedToEditTheLastPublishedArticlePleaseStartTheNewVersion: 'Редактирование статьи доступно только в режиме создания новой версии',
       startNewVersion: 'Создать новую версию',
-      orRepublishEarlyVersion: 'или опубликовать раннюю версию',
+      orRepublishEarlyVersion: '',
     },
     errors: {
       selectTheTypeOfCard: 'Выберите тип карточки',
@@ -455,6 +455,26 @@ export const ru = {
       invalidPathname: 'Некорректный pathname',
       failedToPersist: 'Не удалось сохранить',
       failedToLoadData: 'Не удалось загрузить данные. Проверьте ваше авторизацию и попробуйте снова.',
+    },
+  },
+  aiReferrals: {
+    ui: {
+      title: 'AI рефералы',
+      window: 'Окно наблюдения',
+      period: 'Период',
+      days: {
+        one: 'день',
+        other: 'дней',
+      },
+      bySource: 'По источнику',
+      source: 'Источник',
+      topPaths: 'Топ страниц',
+      pathname: 'Путь',
+      events: 'События',
+      noDataForSelectedPeriod: 'Нет данных за выбранный период',
+    },
+    errors: {
+      failedToLoadData: 'Не удалось загрузить данные. Проверьте авторизацию и попробуйте снова.',
     },
   },
   seo: {

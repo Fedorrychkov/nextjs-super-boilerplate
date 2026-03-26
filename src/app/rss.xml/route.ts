@@ -11,6 +11,14 @@ const escapeXml = (input?: string | null) =>
 
 const generateRss = async () => {
   const articles = await getPublishedPublicArticlesForSeo()
+  const lastBuildDate = articles
+    .map((article) => {
+      const updatedAt = article.updatedAt ? new Date(article.updatedAt).getTime() : 0
+      const publishedAt = article.publishedAt ? new Date(article.publishedAt).getTime() : 0
+
+      return Math.max(updatedAt, publishedAt)
+    })
+    .reduce((max, current) => Math.max(max, current), 0)
 
   const items = articles.map((article) => {
     const url = buildDefaultArticleUrl(seoConfig.siteUrl, article.slug, ArticleVisibility.PUBLIC)
@@ -30,11 +38,14 @@ const generateRss = async () => {
   })
 
   return `<?xml version="1.0" encoding="UTF-8" ?>
-<rss version="2.0">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>${seoConfig.siteName}</title>
     <link>${seoConfig.siteUrl}</link>
     <description>${seoConfig.defaultDescription}</description>
+    <language>${seoConfig.defaultLocale}</language>
+    <atom:link href="${seoConfig.siteUrl}/rss.xml" rel="self" type="application/rss+xml" />
+    ${lastBuildDate ? `<lastBuildDate>${new Date(lastBuildDate).toUTCString()}</lastBuildDate>` : ''}
     ${items.join('\n')}
   </channel>
 </rss>`

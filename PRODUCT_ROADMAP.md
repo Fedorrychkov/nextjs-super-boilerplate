@@ -156,9 +156,12 @@ This roadmap tracks the remaining work for the article platform and related qual
 
 ### 1. AI referral and citation tracking
 
-- [ ] Add referrer classification for AI sources (Perplexity, ChatGPT, Copilot, Gemini, etc.).
-- [ ] Build acquisition dashboard segment for AI-origin sessions.
-- [ ] Track landing page performance from AI traffic.
+- [x] Add referrer classification for AI sources (Perplexity, ChatGPT, Copilot, Gemini, etc.).
+- [x] Build acquisition dashboard segment for AI-origin sessions.
+- [x] Track landing page performance from AI traffic.
+- [ ] Add prompt-based citation tracking (brand mention/citation share) across ChatGPT, Perplexity, Gemini, Copilot.
+- [ ] Add AI citation KPIs: citation rate, share of voice, sentiment trend by prompt cluster.
+- [ ] Add weekly export/report pipeline combining GSC + Bing Webmaster + AI citation dashboard.
 
 ### 2. Public article listing UX
 
