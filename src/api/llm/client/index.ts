@@ -1,8 +1,8 @@
 import { Request } from '@lib/request'
 import { AxiosInstance } from 'axios'
 
-import { ArticleAuditApiResponse, LlmChatHistoryResponse, LlmModelsResponse } from '../model'
-import { ArticleAuditDto, LlmChatHistoryFilter, LlmChatStreamDto } from '../types'
+import { ArticleAuditApiResponse, ArticleAuditListResponse, LlmChatHistoryResponse, LlmModelsResponse } from '../model'
+import { ArticleAuditDto, LlmArticleAuditListFilter, LlmChatHistoryFilter, LlmChatStreamDto } from '../types'
 
 export class ClientLlmApi {
   private readonly client: AxiosInstance
@@ -20,6 +20,17 @@ export class ClientLlmApi {
 
   async getChatHistory(filter: LlmChatHistoryFilter): Promise<LlmChatHistoryResponse> {
     const response = await this.client.get<LlmChatHistoryResponse>('/api/v1/llm/chat/history', {
+      params: {
+        articleId: filter.articleId,
+        revisionId: filter.revisionId,
+      },
+    })
+
+    return response.data
+  }
+
+  async listArticleAudits(filter: LlmArticleAuditListFilter): Promise<ArticleAuditListResponse> {
+    const response = await this.client.get<ArticleAuditListResponse>('/api/v1/llm/article-audit', {
       params: {
         articleId: filter.articleId,
         revisionId: filter.revisionId,

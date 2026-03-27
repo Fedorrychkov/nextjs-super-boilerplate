@@ -430,6 +430,10 @@ export const ru = {
       aiAuditIssues: 'Проблемы',
       aiAuditRecommendations: 'Рекомендации',
       aiHistoryLoading: 'Загрузка истории чата…',
+      aiTabChat: 'Чат',
+      aiTabAudits: 'Аудиты',
+      aiAuditListEmpty: 'Для этой ревизии пока нет сохранённых аудитов. Запустите аудит.',
+      aiAuditListTokens: '{total} ток.',
     },
     errors: {
       selectTheTypeOfCard: 'Выберите тип карточки',

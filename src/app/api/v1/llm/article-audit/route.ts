@@ -5,6 +5,7 @@ import ArticleRevision from '@lib/db/models/ArticleRevision'
 import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
 import { llmChatRateLimit } from '@lib/security/llm-rate-limit'
+import { listArticleAuditsForRevision, saveArticleAuditRun } from '@lib/services/llm/article-audit-persistence'
 import { buildArticleAuditMessages } from '@lib/services/llm/build-article-audit-prompt'
 import { getChatModelAllowlist, resolveChatModel } from '@lib/services/llm/chat-models'
 import { ChatMessage, llmService } from '@lib/services/llm/llm.service'
@@ -46,7 +47,40 @@ function toRevisionModel(doc: mongoose.Document & { _id: mongoose.Types.ObjectId
   }
 }
 
-const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
+const handlerGet = (request: NextRequest, authResult: AuthSuccessResult) =>
+  apiErrorHandlerContainer(
+    request,
+    logger,
+  )(async () => {
+    const { t } = getServerTFromNextRequest(request)
+
+    if (![UserRole.ADMIN, UserRole.EDITOR].includes(authResult.payload.role)) {
+      return NextResponse.json({ message: t('errors.insufficientPermissions') }, { status: 403 })
+    }
+
+    const articleId = request.nextUrl.searchParams.get('articleId')?.trim() ?? ''
+    const revisionId = request.nextUrl.searchParams.get('revisionId')?.trim() ?? ''
+
+    if (!articleId || !mongoose.Types.ObjectId.isValid(articleId)) {
+      return NextResponse.json({ message: t('article.errors.idRequired') }, { status: 400 })
+    }
+
+    if (!revisionId || !mongoose.Types.ObjectId.isValid(revisionId)) {
+      return NextResponse.json({ message: t('article.errors.articleRevisionIdRequired') }, { status: 400 })
+    }
+
+    await connectDB()
+
+    const items = await listArticleAuditsForRevision({
+      articleId,
+      revisionId,
+      userId: authResult.payload.sub,
+    })
+
+    return NextResponse.json({ items })
+  })
+
+const handlerPost = (request: NextRequest, authResult: AuthSuccessResult) =>
   apiErrorHandlerContainer(
     request,
     logger,
@@ -132,10 +166,30 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
         return NextResponse.json({ message: t('article.errors.llmAuditParseFailed') }, { status: 422 })
       }
 
+      let savedId: string | undefined
+
+      try {
+        const saved = await saveArticleAuditRun({
+          articleId,
+          revisionId,
+          userId: authResult.payload.sub,
+          audit,
+          model,
+          usage: completion.usage,
+        })
+
+        savedId = saved.id
+      } catch (persistErr) {
+        logger.error('article audit persist failed', {
+          message: persistErr instanceof Error ? persistErr.message : String(persistErr),
+        })
+      }
+
       return NextResponse.json({
         audit,
         usage: completion.usage,
         model,
+        savedId,
       })
     } catch (err) {
       const message = err instanceof Error ? err.message : t('errors.unknown')
@@ -146,4 +200,5 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     }
   })
 
-export const POST = withGlobalRateLimit(withAuthMiddleware(handler))
+export const GET = withGlobalRateLimit(withAuthMiddleware(handlerGet))
+export const POST = withGlobalRateLimit(withAuthMiddleware(handlerPost))

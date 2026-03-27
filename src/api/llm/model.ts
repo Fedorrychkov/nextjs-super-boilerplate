@@ -47,4 +47,18 @@ export type ArticleAuditApiResponse = {
   audit: ArticleAuditResult
   usage?: LlmTokenUsage
   model: string
+  /** Set when audit row was saved to MongoDB. */
+  savedId?: string
+}
+
+export type ArticleAuditListItem = {
+  id: string
+  audit: ArticleAuditResult
+  model: string
+  usage: LlmTokenUsage | null
+  createdAt: string
+}
+
+export type ArticleAuditListResponse = {
+  items: ArticleAuditListItem[]
 }

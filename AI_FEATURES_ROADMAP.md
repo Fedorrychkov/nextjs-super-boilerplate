@@ -44,11 +44,15 @@ Goal: conversational assistance for **article body** and **SEO/preview settings*
 ### 1.4 Persistence (minimal for Phase 1)
 
 - [x] **Session/thread** tied to `articleId` + `revisionId` + user (`LlmChatSession` / `LlmChatMessage`); messages + **usage** on assistant turn; `GET /api/v1/llm/chat/history` + UI load on modal open.
-- [ ] **No requirement** to send full history on every request; use **rolling summary + recent turns** (see Phase 2) — design tables with this in mind.
+- [x] **Persist article audits** — `LlmArticleAudit` collection: structured result + `llmModel`, **usage**, `createdAt`, `userId`, `articleId` + `revisionId`; append-only **history** per revision (newest first in API).
+- [x] **Audit API + UI:** `GET /api/v1/llm/article-audit?articleId=&revisionId=` returns `{ items }`; `POST` saves after parse; modal loads **latest** audit for the revision on open (same as **«Аудит статьи»** re-run to append).
+- [x] **Cross-feature usage log** — `LlmUsageEvent` append-only rows (`source`: `chat_stream` | `article_audit`, tokens, `userId`, optional `articleId` / `revisionId`, links to session or audit) for future **admin cost / usage** dashboards.
+- [ ] **No requirement** to send full chat history on every LLM request; use **rolling summary + recent turns** (see Phase 2) — design tables with this in mind.
 
 ### 1.5 Observability
 
-- [x] Log request id, model, duration, and token usage server-side (`Logger` on stream completion); optional admin “usage” view later.
+- [x] Log request id, model, duration, and token usage server-side (`Logger` on stream completion).
+- [ ] **Admin usage / cost view:** aggregate `LlmUsageEvent` (and/or chat message usage) — planned; data is persisted in Phase 1.4.
 
 **Phase 1 exit criteria:** Editor can open AI chat, stream replies, switch model from API-provided list, and context includes article + SEO where available; all calls go through backend.
 
@@ -58,6 +62,7 @@ Goal: conversational assistance for **article body** and **SEO/preview settings*
 
 - [ ] **JSON / structured outputs** for SEO field updates (schema aligned with `ArticleRevisionSeo` / forms) and optional content patch (Markdown or TipTap JSON) with **Apply** buttons.
 - [ ] **Tab-aware modal:** same shell; actions differ for **Content** vs **SEO** vs **Preview** metadata.
+- [ ] **Audit timeline / compare (optional polish):** once audits are **persisted** (see Phase 1.4), UI to browse **multiple saved audits** per article or revision (e.g. timeline, diff of scores/summary) for **before/after** editing workflows.
 - [ ] **Conversation compaction:** rolling summary + last N messages; optional “compact now” to refresh summary.
 - [ ] **Usage dashboard:** per-user / per-article aggregates from stored usage rows.
 - [ ] **Prompt caching** where applicable (OpenAI) to reduce cost on repeated system prompts.
@@ -129,8 +134,8 @@ Goal: generate a **listenable** version of the article (“read by a narrator”
 
 | Phase | Focus | Client sees |
 | ----- | ----- | ----------- |
-| **1** | Text chat + streaming + SEO/article context + quality prompts | Streamed text; model list from API |
-| **2** | Structured apply, history, usage, compaction | Apply to forms/editor; dashboards |
+| **1** | Text chat + streaming + SEO/article context + quality prompts; **planned:** persisted audits per revision | Streamed text; model list from API; audits comparable across edits (when persisted) |
+| **2** | Structured apply, history, usage, compaction; audit timeline | Apply to forms/editor; dashboards; optional audit compare |
 | **3** | Image generation → media URL | Image URL ready to insert |
 | **4** | TTS → article audio field + optional publish hook | Audio URL; voice/model from API |
 

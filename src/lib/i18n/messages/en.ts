@@ -433,6 +433,10 @@ export const en = {
       aiAuditIssues: 'Issues',
       aiAuditRecommendations: 'Recommendations',
       aiHistoryLoading: 'Loading chat history…',
+      aiTabChat: 'Chat',
+      aiTabAudits: 'Audits',
+      aiAuditListEmpty: 'No saved audits for this revision yet. Run an audit to add one.',
+      aiAuditListTokens: '{total} tokens',
     },
     errors: {
       selectTheTypeOfCard: 'Select the type of card',

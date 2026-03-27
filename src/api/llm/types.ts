@@ -3,6 +3,12 @@ export type LlmChatHistoryFilter = {
   revisionId: string
 }
 
+/** Same shape as chat history — audits are scoped per article + revision + user. */
+export type LlmArticleAuditListFilter = {
+  articleId: string
+  revisionId: string
+}
+
 export type ArticleAuditDto = {
   articleId: string
   revisionId: string

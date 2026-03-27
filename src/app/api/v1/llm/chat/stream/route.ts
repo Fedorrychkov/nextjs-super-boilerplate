@@ -9,6 +9,7 @@ import { buildArticleChatSystemPrompt } from '@lib/services/llm/build-article-ch
 import { getChatModelAllowlist, resolveChatModel } from '@lib/services/llm/chat-models'
 import { ChatMessage, llmService } from '@lib/services/llm/llm.service'
 import { appendChatTurn, findOrCreateSession } from '@lib/services/llm/llm-chat-persistence'
+import { recordLlmUsageEvent } from '@lib/services/llm/llm-usage-persistence'
 import mongoose from 'mongoose'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -207,6 +208,26 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
                 model,
                 usage: lastUsage,
               })
+
+              if (lastUsage) {
+                try {
+                  await recordLlmUsageEvent({
+                    source: 'chat_stream',
+                    userId,
+                    llmModel: model,
+                    usage: lastUsage,
+                    articleId,
+                    revisionId,
+                    sessionId,
+                    requestId,
+                  })
+                } catch (usageErr) {
+                  logger.error('llm usage event persist failed', {
+                    requestId,
+                    message: usageErr instanceof Error ? usageErr.message : String(usageErr),
+                  })
+                }
+              }
             } catch (persistErr) {
               logger.error('llm chat persist failed', {
                 requestId,
