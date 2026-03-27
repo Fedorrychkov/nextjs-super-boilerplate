@@ -255,6 +255,12 @@ export const en = {
     messages: {
       userRegisteredSuccessfully: 'User registered successfully',
       registeredSuccessfully: 'Registered successfully',
+      userUpdateDialog: {
+        title: 'Update user {email}',
+        description: 'You can update the user {email} by changing the role and status.',
+        userUpdatedSuccessfully: 'User updated successfully',
+        update: 'Update',
+      },
       registerByAdminUserDialog: {
         title: 'Register by admin user',
         description: 'Register a new user by admin',
@@ -278,11 +284,15 @@ export const en = {
         requirementNotMet: '- Requirement not met',
       },
       failedToCreateUser: 'Failed to create user',
+      userUpdatedSuccessfully: 'User updated successfully',
     },
     errors: {
       notFound: 'User not found',
       notFoundOrInactive: 'User not found or inactive',
       failedToCreateUser: 'Failed to create user',
+      failedToUpdateUser: 'Failed to update user',
+      idRequired: 'User ID is required',
+      selfUpdateNotAllowed: 'Self update not allowed',
     },
   },
   article: {

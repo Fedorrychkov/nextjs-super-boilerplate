@@ -18,3 +18,5 @@ export type UserFilter = Partial<Omit<UserModel, 'passwordHash' | 'createdAt' | 
   startOfDateIso?: string | null
   endOfDateIso?: string | null
 }
+
+export type UpdateUserDto = Partial<Omit<UserModel, 'passwordHash' | 'createdAt' | 'updatedAt' | 'email'>>

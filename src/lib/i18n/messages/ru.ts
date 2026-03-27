@@ -254,6 +254,12 @@ export const ru = {
     messages: {
       userRegisteredSuccessfully: 'Пользователь успешно зарегистрирован',
       registeredSuccessfully: 'Регистрация прошла успешно',
+      userUpdateDialog: {
+        title: 'Обновление пользователя {email}',
+        description: 'Вы можете обновить пользователя {email}, изменив роль и статус.',
+        userUpdatedSuccessfully: 'Пользователь успешно обновлен',
+        update: 'Обновить',
+      },
       registerByAdminUserDialog: {
         title: 'Регистрация пользователя администратором',
         description: 'Регистрация нового пользователя администратором',
@@ -277,11 +283,15 @@ export const ru = {
         requirementNotMet: '- Требование не выполнено',
       },
       failedToCreateUser: 'Не удалось создать пользователя',
+      userUpdatedSuccessfully: 'Пользователь успешно обновлен',
     },
     errors: {
       notFound: 'Пользователь не найден',
       notFoundOrInactive: 'Пользователь не найден или неактивен',
       failedToCreateUser: 'Не удалось создать пользователя',
+      failedToUpdateUser: 'Не удалось обновить пользователя',
+      idRequired: 'Требуется ID пользователя',
+      selfUpdateNotAllowed: 'Самообновление не разрешено',
     },
   },
   article: {

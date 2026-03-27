@@ -152,7 +152,15 @@ export const RegisterByAdminUserDialog = (props: Props) => {
           <FormProvider {...form}>
             <form onSubmit={handleSubmit(onSubmit)} className="w-full">
               <div className="flex flex-col gap-4 py-4">
-                <DefaultMultiselectField disabled={isLoading} ref={refRole} {...roleField} options={roleOptions} name="role" label="Роль" />
+                <DefaultMultiselectField
+                  updateBySelected
+                  disabled={isLoading}
+                  ref={refRole}
+                  {...roleField}
+                  options={roleOptions}
+                  name="role"
+                  label={t('user.fields.role')}
+                />
                 <DefaultFieldContainer
                   disabled={isLoading}
                   ref={refEmail}

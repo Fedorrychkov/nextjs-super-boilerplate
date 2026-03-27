@@ -1,14 +1,12 @@
 'use client'
 
-import { ActivityIcon, BotIcon, PencilIcon } from 'lucide-react'
-import Link from 'next/link'
+import { PencilIcon } from 'lucide-react'
 
 import { UserModel, UserRole, UserStatus } from '~/api/user'
 import { CopyContainer } from '~/components/Blocks/CopyContainer'
 import { CustomTable, TableDefaultSkeleton } from '~/components/Blocks/Table'
 import { CustomTooltip } from '~/components/Blocks/Tooltip'
-import { Badge, TableCell, TableRow, Typography } from '~/components/ui'
-import { routes } from '~/constants'
+import { Badge, Button, TableCell, TableRow, Typography } from '~/components/ui'
 import { useT } from '~/providers'
 import { cn } from '~/utils/cn'
 import { time } from '~/utils/time'
@@ -19,9 +17,10 @@ import { columns } from './constants'
 type Props = {
   isLoading?: boolean
   data?: UserModel[]
+  onSelect?: (user: UserModel) => void
 }
 
-export const UserListTable = ({ isLoading, data }: Props) => {
+export const UserListTable = ({ isLoading, data, onSelect }: Props) => {
   const t = useT()
 
   return (
@@ -31,24 +30,38 @@ export const UserListTable = ({ isLoading, data }: Props) => {
           <TableRow key={item.id}>
             {columnKeys?.includes('id') && (
               <TableCell className="font-medium">
-                <div className="flex flex-row gap-2 items-center justify-start">
-                  <CustomTooltip
-                    content={
-                      <div>
-                        <CopyContainer content={item.id}>
-                          <Typography variant="Body/L/Semibold">{item.id}</Typography>
-                        </CopyContainer>
-                        <Typography variant="Body/XS/Regular">{item.email}</Typography>
-                      </div>
-                    }
-                    enableInfoIcon
-                  >
-                    <CopyContainer content={item.email}>
+                <div className="flex flex-col gap-3 items-start justify-start">
+                  <div className="flex flex-row gap-2 items-center justify-start">
+                    <CopyContainer content={item.id}>
                       <Typography variant="Body/XS/Semibold" className="max-w-[40px] truncate">
-                        {item.email}
+                        {item.id}
                       </Typography>
                     </CopyContainer>
-                  </CustomTooltip>
+                  </div>
+                  <div className="flex flex-row gap-2 items-center justify-start">
+                    {onSelect && (
+                      <Button variant="outline" size="icon" onClick={() => onSelect(item)}>
+                        <PencilIcon className="w-4 h-4" />
+                      </Button>
+                    )}
+                    <CustomTooltip
+                      content={
+                        <div>
+                          <CopyContainer content={item.id}>
+                            <Typography variant="Body/L/Semibold">{item.id}</Typography>
+                          </CopyContainer>
+                          <Typography variant="Body/XS/Regular">{item.email}</Typography>
+                        </div>
+                      }
+                      enableInfoIcon
+                    >
+                      <CopyContainer content={item.email}>
+                        <Typography variant="Body/XS/Semibold" className="max-w-[120px] truncate">
+                          {item.email}
+                        </Typography>
+                      </CopyContainer>
+                    </CustomTooltip>
+                  </div>
                 </div>
               </TableCell>
             )}

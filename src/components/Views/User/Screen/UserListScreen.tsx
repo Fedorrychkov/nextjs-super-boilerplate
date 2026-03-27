@@ -1,9 +1,11 @@
 'use client'
 
+import { AxiosError } from 'axios'
 import { FilterIcon, PlusIcon, XIcon } from 'lucide-react'
-import { lazy, Suspense, useRef } from 'react'
+import { lazy, Suspense, useRef, useState } from 'react'
 
 import { RegisterByAdminDto } from '~/api/auth/types'
+import { UpdateUserDto, UserModel } from '~/api/user'
 import { TableDefaultSkeleton } from '~/components/Blocks/Table'
 import { TitleWithBadge } from '~/components/Blocks/TitleWithBadge'
 import { CustomTooltip } from '~/components/Blocks/Tooltip'
@@ -14,22 +16,30 @@ import { usePagination } from '~/components/List/usePagination'
 import { Badge, Button, Typography } from '~/components/ui'
 import { useStickyContainer } from '~/hooks/useStickyContainer'
 import { useSwitch } from '~/hooks/useSwitch'
-import { useT } from '~/providers'
+import { useAuth, useT } from '~/providers'
 import { useNotify } from '~/providers/notify'
 import { useRegisterByAdminMutation } from '~/query/auth'
+import { useUpdateByAdminMutation } from '~/query/user'
 import { useUsersListQuery } from '~/query/user/query/useUserListQuery'
+import { Logger } from '~/utils/logger'
 
 import { DefaultUsersFilters, UsersFilter } from '../Filters'
 import { columns } from '../List/constants'
-import { RegisterByAdminUserDialog } from '../Modal'
+import { RegisterByAdminUserDialog, UpdateByAdminUserDialog } from '../Modal'
 import { USERS_PARAM_NAMES } from '../paramNames'
 
 const PaginationLazy = lazy(() => import('~/components/List').then((mod) => ({ default: mod.Pagination })))
 const UserListTableLazy = lazy(() => import('../List/UserListTable').then((mod) => ({ default: mod.UserListTable })))
 
+const logger = new Logger(['UserListScreen', '[src/components/Views/User/Screen/UserListScreen.tsx]'])
+
 export const UserListScreen = () => {
   const [isOpened, { toggle }] = useSwitch(false)
+  const [isUpdateOpened, { toggle: toggleUpdate }] = useSwitch(false)
+  const [selectedUser, setSelectedUser] = useState<UserModel | null>(null)
+
   const { notify } = useNotify()
+  const { authUser } = useAuth()
   const t = useT()
   const headerRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -73,6 +83,7 @@ export const UserListScreen = () => {
   )
 
   const { registerByAdminMutation } = useRegisterByAdminMutation()
+  const { updateByAdminMutation } = useUpdateByAdminMutation()
 
   const handleAddUser = async (dto: RegisterByAdminDto) => {
     try {
@@ -88,9 +99,36 @@ export const UserListScreen = () => {
         user: result?.user,
       }
     } catch (error) {
-      console.info(error)
+      logger.error(error)
 
       notify(t('user.errors.failedToCreateUser'), 'warning')
+    }
+  }
+
+  const handleSelectUser = (user: UserModel) => {
+    setSelectedUser(user)
+    toggleUpdate()
+  }
+
+  const handleUpdateUser = async (dto: Partial<UpdateUserDto>) => {
+    try {
+      await updateByAdminMutation.mutateAsync(dto)
+
+      notify(t('user.messages.userUpdateDialog.userUpdatedSuccessfully'), 'success')
+
+      setSelectedUser(null)
+
+      refetch()
+
+      return { success: true, message: t('user.messages.userUpdateDialog.userUpdatedSuccessfully') }
+    } catch (error) {
+      logger.error(error)
+
+      if (error instanceof AxiosError) {
+        notify(error.response?.data?.message ?? t('user.errors.failedToUpdateUser'), 'warning')
+      } else {
+        notify(t('user.errors.failedToUpdateUser'), 'warning')
+      }
     }
   }
 
@@ -147,7 +185,7 @@ export const UserListScreen = () => {
         <TableDefaultSkeleton size={columns.length} />
       ) : (
         <Suspense fallback={<TableDefaultSkeleton size={columns.length} />}>
-          <UserListTableLazy data={data?.list} isLoading={isLoading} />
+          <UserListTableLazy data={data?.list} isLoading={isLoading} onSelect={handleSelectUser} />
         </Suspense>
       )}
       {isLoading ? (
@@ -158,6 +196,17 @@ export const UserListScreen = () => {
             <PaginationLazy currentPage={page} pages={data?.pages ?? 0} onChange={setPage} />
           </StickyContainer>
         </Suspense>
+      )}
+
+      {selectedUser && isUpdateOpened && (
+        <UpdateByAdminUserDialog
+          user={selectedUser}
+          disabled={selectedUser.id === authUser?.id}
+          isOpen={isUpdateOpened}
+          toggle={toggleUpdate}
+          onSubmit={handleUpdateUser}
+          isLoading={isLoading}
+        />
       )}
     </div>
   )
