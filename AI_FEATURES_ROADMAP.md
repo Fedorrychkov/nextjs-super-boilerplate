@@ -52,7 +52,8 @@ Goal: conversational assistance for **article body** and **SEO/preview settings*
 ### 1.5 Observability
 
 - [x] Log request id, model, duration, and token usage server-side (`Logger` on stream completion).
-- [ ] **Admin usage / cost view:** aggregate `LlmUsageEvent` (and/or chat message usage) — planned; data is persisted in Phase 1.4.
+- [x] **Admin usage dashboard** — `GET /api/v1/llm/usage/dashboard?days=` (ADMIN only); UI `/admin/llm-usage`: totals, by source, top users, recent events from `LlmUsageEvent`.
+- [x] **Per-revision usage in editor** — `GET /api/v1/llm/usage/article?articleId=&revisionId=` (current user); short summary next to the AI assistant button; invalidated after chat/audit from the modal.
 
 **Phase 1 exit criteria:** Editor can open AI chat, stream replies, switch model from API-provided list, and context includes article + SEO where available; all calls go through backend.
 
@@ -64,7 +65,7 @@ Goal: conversational assistance for **article body** and **SEO/preview settings*
 - [ ] **Tab-aware modal:** same shell; actions differ for **Content** vs **SEO** vs **Preview** metadata.
 - [ ] **Audit timeline / compare (optional polish):** once audits are **persisted** (see Phase 1.4), UI to browse **multiple saved audits** per article or revision (e.g. timeline, diff of scores/summary) for **before/after** editing workflows.
 - [ ] **Conversation compaction:** rolling summary + last N messages; optional “compact now” to refresh summary.
-- [ ] **Usage dashboard:** per-user / per-article aggregates from stored usage rows.
+- [ ] **Usage analytics (Phase 2+):** charts, export, cost estimates per model — basic admin list is in Phase 1.5.
 - [ ] **Prompt caching** where applicable (OpenAI) to reduce cost on repeated system prompts.
 
 ---

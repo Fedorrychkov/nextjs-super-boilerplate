@@ -38,6 +38,7 @@ import { ArticleEditableContent } from './ArticleEditableContent'
 import { ArticleEditablePreview, SaveForm } from './ArticleEditablePreview'
 import { ArticleEditablePublish } from './ArticleEditablePublish'
 import { ArticleEditableSeo, ArticleEditableSeoSavePayload } from './ArticleEditableSeo'
+import { ArticleEditorLlmUsageChip } from './ArticleEditorLlmUsageChip'
 
 const getSteps = (props: {
   article?: ArticleModel | null
@@ -557,12 +558,15 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
               )}
             </div>
           ) : null}
-          {isLlmUiEnabled() && articleId && activeRevisionId && articleRevision?.status === ArticleRevisionStatus.DRAFT ? (
-            <div className="flex flex-row flex-wrap items-center gap-2">
-              <Button type="button" variant="outline" size="sm-md" className="gap-2" onClick={() => setAiChatOpen(true)}>
-                <BotIcon className="size-4 shrink-0" />
-                {t('article.ui.aiAssistant')}
-              </Button>
+          {isLlmUiEnabled() && articleId && activeRevisionId ? (
+            <div className="flex flex-row flex-wrap items-center gap-x-3 gap-y-2">
+              {articleRevision?.status === ArticleRevisionStatus.DRAFT ? (
+                <Button type="button" variant="outline" size="sm-md" className="gap-2" onClick={() => setAiChatOpen(true)}>
+                  <BotIcon className="size-4 shrink-0" />
+                  {t('article.ui.aiAssistant')}
+                </Button>
+              ) : null}
+              <ArticleEditorLlmUsageChip articleId={articleId} revisionId={activeRevisionId} enabled />
               <ArticleAiChatModal
                 articleId={articleId}
                 revisionId={activeRevisionId}

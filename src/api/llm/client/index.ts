@@ -1,8 +1,15 @@
 import { Request } from '@lib/request'
 import { AxiosInstance } from 'axios'
 
-import { ArticleAuditApiResponse, ArticleAuditListResponse, LlmChatHistoryResponse, LlmModelsResponse } from '../model'
-import { ArticleAuditDto, LlmArticleAuditListFilter, LlmChatHistoryFilter, LlmChatStreamDto } from '../types'
+import {
+  ArticleAuditApiResponse,
+  ArticleAuditListResponse,
+  LlmArticleUsageResponse,
+  LlmChatHistoryResponse,
+  LlmModelsResponse,
+  LlmUsageDashboardResponse,
+} from '../model'
+import { ArticleAuditDto, LlmArticleAuditListFilter, LlmArticleUsageFilter, LlmChatHistoryFilter, LlmChatStreamDto, LlmUsageDashboardFilter } from '../types'
 
 export class ClientLlmApi {
   private readonly client: AxiosInstance
@@ -14,6 +21,25 @@ export class ClientLlmApi {
 
   async listModels(): Promise<LlmModelsResponse> {
     const response = await this.client.get<LlmModelsResponse>('/api/v1/llm/models')
+
+    return response.data
+  }
+
+  async getUsageDashboard(filter?: LlmUsageDashboardFilter): Promise<LlmUsageDashboardResponse> {
+    const response = await this.client.get<LlmUsageDashboardResponse>('/api/v1/llm/usage/dashboard', {
+      params: { days: filter?.days },
+    })
+
+    return response.data
+  }
+
+  async getArticleUsage(filter: LlmArticleUsageFilter): Promise<LlmArticleUsageResponse> {
+    const response = await this.client.get<LlmArticleUsageResponse>('/api/v1/llm/usage/article', {
+      params: {
+        articleId: filter.articleId,
+        revisionId: filter.revisionId,
+      },
+    })
 
     return response.data
   }

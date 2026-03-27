@@ -26,3 +26,12 @@ export type LlmChatStreamDto = {
   model: string
   messages: LlmChatStreamMessage[]
 }
+
+export type LlmUsageDashboardFilter = {
+  days?: number
+}
+
+export type LlmArticleUsageFilter = {
+  articleId: string
+  revisionId: string
+}

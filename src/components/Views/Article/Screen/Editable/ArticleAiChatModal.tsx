@@ -11,7 +11,14 @@ import type { ArticleRevisionModel } from '~/api/article-revision'
 import { articleAuditToMarkdown } from '~/components/Views/Article/Screen/Editable/articleAuditToMarkdown'
 import { ArticleAiChatAssistantMessage } from '~/components/Views/Article/Screen/Editable/ArticleAiChatAssistantMessage'
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, Textarea, Typography } from '~/components/ui'
-import { buildLlmArticleAuditsQueryKey, useArticleAuditMutation, useLlmArticleAuditsQuery, useLlmChatHistoryQuery, useLlmModelsQuery } from '~/query/llm'
+import {
+  buildLlmArticleAuditsQueryKey,
+  buildLlmArticleUsageQueryKey,
+  useArticleAuditMutation,
+  useLlmArticleAuditsQuery,
+  useLlmChatHistoryQuery,
+  useLlmModelsQuery,
+} from '~/query/llm'
 import { useT } from '~/providers'
 import { cn } from '~/utils/cn'
 import { time } from '~/utils/time'
@@ -244,6 +251,8 @@ export const ArticleAiChatModal = (props: Props) => {
           setError(ev.message)
         }
       })
+
+      void queryClient.invalidateQueries(buildLlmArticleUsageQueryKey({ articleId, revisionId }))
     } catch (e) {
       const msg = e instanceof Error ? e.message : t('errors.unknown')
 
@@ -252,7 +261,7 @@ export const ArticleAiChatModal = (props: Props) => {
     } finally {
       setStreaming(false)
     }
-  }, [articleId, revisionId, input, messages, model, models, serverLlmEnabled, streaming, t])
+  }, [articleId, revisionId, input, messages, model, models, queryClient, serverLlmEnabled, streaming, t])
 
   const handleAudit = useCallback(async () => {
     if (articleAuditMutation.isLoading || streaming || !serverLlmEnabled) {
@@ -273,6 +282,7 @@ export const ArticleAiChatModal = (props: Props) => {
       const body = await articleAuditMutation.mutateAsync({ articleId, revisionId, model: selectedModel })
 
       await queryClient.invalidateQueries(buildLlmArticleAuditsQueryKey({ articleId, revisionId }))
+      void queryClient.invalidateQueries(buildLlmArticleUsageQueryKey({ articleId, revisionId }))
       const refetched = await articleAuditsQuery.refetch()
 
       if (body.savedId) {

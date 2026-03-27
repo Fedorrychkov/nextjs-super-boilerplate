@@ -62,3 +62,52 @@ export type ArticleAuditListItem = {
 export type ArticleAuditListResponse = {
   items: ArticleAuditListItem[]
 }
+
+export type LlmUsageSourceKind = 'chat_stream' | 'article_audit'
+
+export type LlmUsageTotalsPayload = {
+  eventCount: number
+  totalPromptTokens: number
+  totalCompletionTokens: number
+  totalTokens: number
+}
+
+export type LlmUsageBySourcePayload = {
+  source: LlmUsageSourceKind
+  count: number
+  totalTokens: number
+}
+
+export type LlmUsageTopUserPayload = {
+  userId: string
+  eventCount: number
+  totalTokens: number
+}
+
+export type LlmUsageRecentEventPayload = {
+  id: string
+  source: LlmUsageSourceKind
+  userId: string
+  llmModel: string
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+  articleId: string | null
+  revisionId: string | null
+  createdAt: string
+}
+
+export type LlmUsageDashboardResponse = {
+  since: string
+  until: string
+  days: number
+  totals: LlmUsageTotalsPayload
+  bySource: LlmUsageBySourcePayload[]
+  topUsers: LlmUsageTopUserPayload[]
+  recent: LlmUsageRecentEventPayload[]
+}
+
+export type LlmArticleUsageResponse = {
+  totals: LlmUsageTotalsPayload
+  bySource: LlmUsageBySourcePayload[]
+}

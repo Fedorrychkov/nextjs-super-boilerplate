@@ -53,6 +53,12 @@ export const routes = {
     tKey: 'navigation.aiReferralsDashboard' as const,
     needAuth: true,
   },
+  llmUsageDashboard: {
+    path: '/admin/llm-usage',
+    name: 'LLM usage',
+    tKey: 'navigation.llmUsageDashboard' as const,
+    needAuth: true,
+  },
   articles: {
     path: '/admin/articles',
     name: 'Articles',

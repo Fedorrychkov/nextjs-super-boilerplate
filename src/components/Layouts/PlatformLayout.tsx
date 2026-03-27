@@ -1,6 +1,6 @@
 'use client'
 
-import { ActivityIcon, BotIcon, HomeIcon, TextQuoteIcon, UserIcon, WrenchIcon } from 'lucide-react'
+import { ActivityIcon, BarChart3Icon, BotIcon, HomeIcon, TextQuoteIcon, UserIcon, WrenchIcon } from 'lucide-react'
 import { useMemo } from 'react'
 
 import { UserRole } from '~/api/user'
@@ -59,6 +59,12 @@ export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
                   label: t(routes.aiReferralsDashboard.tKey),
                   icon: <BotIcon width={16} height={16} />,
                   href: routes.aiReferralsDashboard.path,
+                },
+                {
+                  label: t(routes.llmUsageDashboard.tKey),
+                  icon: <BarChart3Icon width={16} height={16} />,
+                  disabled: authUser?.role !== UserRole.ADMIN,
+                  href: routes.llmUsageDashboard.path,
                 },
                 {
                   label: t(routes.articles.tKey),
