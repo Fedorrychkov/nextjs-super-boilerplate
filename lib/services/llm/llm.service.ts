@@ -22,6 +22,17 @@ export interface ChatCompletionResponse {
   }
 }
 
+export type ChatStreamChunk =
+  | { type: 'text'; text: string }
+  | {
+      type: 'usage'
+      usage: {
+        promptTokens: number
+        completionTokens: number
+        totalTokens: number
+      }
+    }
+
 export class LLMService {
   private client: OpenAI | null = null
 
@@ -101,19 +112,16 @@ export class LLMService {
   }
 
   /**
-   * Streaming response by chunks (for sending to client).
-   * @param messages - Array of messages for the dialog
-   * @param options - Options for the request
-   * @yields Text chunks of the response
+   * Streaming response: text deltas and optional final usage (requires `stream_options.include_usage`).
    */
-  async *chatStream(messages: ChatMessage[], options?: ChatCompletionOptions): AsyncGenerator<string> {
+  async *chatStream(messages: ChatMessage[], options?: ChatCompletionOptions): AsyncGenerator<ChatStreamChunk> {
     const client = this.getClient()
 
     if (!client) {
       throw new Error('LLM is not enabled. Please set NEXT_PUBLIC_LLM_ENABLED to true in environment variables.')
     }
 
-    const { model = 'gpt-4o-mini', temperature = 0.7, maxTokens = 1000 } = options || {}
+    const { model = 'gpt-4o-mini', temperature = 0.7, maxTokens = 4096 } = options || {}
 
     const stream = await client.chat.completions.create({
       model,
@@ -121,13 +129,26 @@ export class LLMService {
       temperature,
       max_tokens: maxTokens,
       stream: true,
+      stream_options: { include_usage: true },
     })
 
     for await (const chunk of stream) {
       const delta = chunk.choices[0]?.delta?.content ?? ''
 
-      // We yield the chunk if there is delta or usage (usage comes in the last chunk, often without delta)
-      if (delta) yield delta
+      if (delta) {
+        yield { type: 'text', text: delta }
+      }
+
+      if (chunk.usage) {
+        yield {
+          type: 'usage',
+          usage: {
+            promptTokens: chunk.usage.prompt_tokens,
+            completionTokens: chunk.usage.completion_tokens,
+            totalTokens: chunk.usage.total_tokens,
+          },
+        }
+      }
     }
   }
 

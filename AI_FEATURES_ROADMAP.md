@@ -23,22 +23,22 @@ Goal: conversational assistance for **article body** and **SEO/preview settings*
 
 ### 1.1 API and transport
 
-- [ ] **Streaming chat endpoint** (e.g. SSE or chunked `ReadableStream`) using existing `chatStream` / OpenAI streaming; no raw API key on client.
-- [ ] **Auth + authorization:** only users who can edit the article may call AI routes; validate `articleId` / `revisionId` where applicable.
-- [ ] **Rate limiting** per user (and optionally per article) to control cost abuse.
-- [ ] **Configurable models for chat** (default + allowlist); endpoint returns **`availableModels[]`** for the chat mode so the UI can render a selector.
+- [x] **Streaming chat endpoint** — `POST /api/v1/llm/chat/stream` (SSE `text/event-stream`) using `llmService.chatStream` + `stream_options.include_usage`; no API key on client.
+- [x] **Auth + authorization:** `ADMIN` / `EDITOR` only; `revisionId` must belong to `articleId` (`Article` + `ArticleRevision` loaded from DB).
+- [x] **Rate limiting** — separate per-user limiter (`llmChatRateLimit`, key `llm:{userId}`); `LLM_CHAT_RATE_LIMIT_POINTS` / `LLM_CHAT_RATE_DURATION_SEC` in `LLM_CONFIG`.
+- [x] **Configurable models** — `GET /api/v1/llm/models` returns `chat.models[]`; allowlist from `LLM_CHAT_MODELS` or defaults (`gpt-4o-mini`, `gpt-4o`).
 
 ### 1.2 Context and quality (“LLM validation”)
 
-- [ ] **Request payload builder** that attaches: trimmed title/description, SEO language (if set), article/revision identifiers, and **content excerpt or full body** (Markdown or plain text derived from TipTap — single canonical extraction path).
-- [ ] **System prompts per intent:** e.g. SEO suggestions, content rewrite, outline from keywords, “ideas only” when body is empty (no pretend full-article analysis without substance).
-- [ ] **Structured “quality” pass (optional sub-step):** after or alongside chat, a dedicated prompt can score/check consistency (readability, SEO field lengths, language match). Output can be JSON for UI badges or a short summary — still text-first in Phase 1.
+- [x] **Request payload builder** — `buildArticleChatSystemPrompt` + `extractPlainTextFromRevisionContent` (TipTap JSON → plain text, truncated) + title/description/SEO fields.
+- [x] **System prompts (initial):** single system message instructs SEO + body help, language matching, and **no full-article analysis** when body is empty.
+- [ ] **Structured “quality” pass (optional sub-step):** dedicated scoring/JSON pass — Phase 1 follow-up.
 
 ### 1.3 UI
 
-- [ ] **Chat surface** (modal or side panel) reusable from editor flow; **streamed** assistant text.
-- [ ] **Gating:** hide or disable AI actions when `NEXT_PUBLIC_LLM_ENABLED` is false; for **new/unsaved** articles, defer heavy features until an article/revision exists (product rule).
-- [ ] **Empty content:** show guidance — require minimal user input or use “ideas chat” instead of full article tools.
+- [x] **Chat surface** — `ArticleAiChatModal` from article editor; streamed assistant text.
+- [x] **Gating:** UI only when `NEXT_PUBLIC_LLM_ENABLED === 'true'` **and** `articleId` + `revisionId` exist (no AI on brand-new article before save).
+- [x] **Empty content:** short-body hint when extracted plain text is under ~40 characters.
 - [ ] **“Apply” (Phase 1 minimal):** copy-paste or partial apply; full structured apply can be Phase 2.
 
 ### 1.4 Persistence (minimal for Phase 1)
@@ -48,7 +48,7 @@ Goal: conversational assistance for **article body** and **SEO/preview settings*
 
 ### 1.5 Observability
 
-- [ ] Log request id, model, duration, and token usage server-side; optional admin “usage” view later.
+- [x] Log request id, model, duration, and token usage server-side (`Logger` on stream completion); optional admin “usage” view later.
 
 **Phase 1 exit criteria:** Editor can open AI chat, stream replies, switch model from API-provided list, and context includes article + SEO where available; all calls go through backend.
 

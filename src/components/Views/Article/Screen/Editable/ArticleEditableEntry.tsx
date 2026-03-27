@@ -33,6 +33,7 @@ import { jsonStringifySafety } from '~/utils/jsonSafe'
 import { Logger } from '~/utils/logger'
 import { time } from '~/utils/time'
 
+import { ArticleAiChatModal, isLlmUiEnabled } from './ArticleAiChatModal'
 import { ArticleEditableContent } from './ArticleEditableContent'
 import { ArticleEditablePreview, SaveForm } from './ArticleEditablePreview'
 import { ArticleEditablePublish } from './ArticleEditablePublish'
@@ -112,6 +113,7 @@ export type ArticleEditableEntryProps = {
 export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
   const { articleId, revisionId, className = '', activeTab: activeTabProp } = props
   const [activeTab, setActiveTab] = useState<string | null>(activeTabProp ?? null)
+  const [aiChatOpen, setAiChatOpen] = useState(false)
   const router = useRouter()
   const { notify } = useNotify()
   const queryClient = useQueryClient()
@@ -553,6 +555,21 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
                   </Link>
                 </div>
               )}
+            </div>
+          ) : null}
+          {isLlmUiEnabled() && articleId && activeRevisionId && articleRevision?.status === ArticleRevisionStatus.DRAFT ? (
+            <div className="flex flex-row flex-wrap items-center gap-2">
+              <Button type="button" variant="outline" size="sm-md" className="gap-2" onClick={() => setAiChatOpen(true)}>
+                <BotIcon className="size-4 shrink-0" />
+                {t('article.ui.aiAssistant')}
+              </Button>
+              <ArticleAiChatModal
+                articleId={articleId}
+                revisionId={activeRevisionId}
+                articleRevision={articleRevision}
+                open={aiChatOpen}
+                onOpenChange={setAiChatOpen}
+              />
             </div>
           ) : null}
           {isDisabledEditing && (

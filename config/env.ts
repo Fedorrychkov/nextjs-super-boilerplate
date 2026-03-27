@@ -33,6 +33,11 @@ const {
   NEXT_PUBLIC_ORGANIZATION_SAME_AS = process.env.NEXT_PUBLIC_ORGANIZATION_SAME_AS || '',
   LLM_API_KEY = process.env.LLM_API_KEY || '',
   NEXT_PUBLIC_LLM_ENABLED = process.env.NEXT_PUBLIC_LLM_ENABLED === 'true',
+  /** Comma-separated OpenAI chat model ids (optional). Defaults in `getChatModelAllowlist`. */
+  LLM_CHAT_MODELS = process.env.LLM_CHAT_MODELS || '',
+  /** Per-user LLM chat requests per `LLM_CHAT_RATE_DURATION_SEC` window (Redis or memory). */
+  LLM_CHAT_RATE_LIMIT_POINTS = Number(process.env.LLM_CHAT_RATE_LIMIT_POINTS || 30),
+  LLM_CHAT_RATE_DURATION_SEC = Number(process.env.LLM_CHAT_RATE_DURATION_SEC || 60),
 } = process.env
 
 const isDevelop = [APP_ENV, NEXT_PUBLIC_APP_ENV].includes('development')
@@ -90,6 +95,9 @@ const RUM_CONFIG = {
 const LLM_CONFIG = {
   apiKey: LLM_API_KEY,
   enabled: NEXT_PUBLIC_LLM_ENABLED,
+  chatModelsCsv: LLM_CHAT_MODELS,
+  chatRateLimitPoints: Number.isFinite(LLM_CHAT_RATE_LIMIT_POINTS) ? LLM_CHAT_RATE_LIMIT_POINTS : 30,
+  chatRateDurationSec: Number.isFinite(LLM_CHAT_RATE_DURATION_SEC) ? LLM_CHAT_RATE_DURATION_SEC : 60,
 }
 
 export {
