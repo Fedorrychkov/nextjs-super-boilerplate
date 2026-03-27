@@ -5,9 +5,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { extractPlainTextFromRevisionContent } from '@lib/services/llm/extract-plain-text-from-revision-content'
 import { BotIcon } from 'lucide-react'
 
+import { ClientLlmApi } from '~/api/llm'
 import type { ArticleRevisionModel } from '~/api/article-revision'
+import { articleAuditToMarkdown } from '~/components/Views/Article/Screen/Editable/articleAuditToMarkdown'
 import { ArticleAiChatAssistantMessage } from '~/components/Views/Article/Screen/Editable/ArticleAiChatAssistantMessage'
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, Textarea, Typography } from '~/components/ui'
+import { useArticleAuditMutation, useLlmChatHistoryQuery, useLlmModelsQuery } from '~/query/llm'
 import { useT } from '~/providers'
 import { cn } from '~/utils/cn'
 /* eslint-enable simple-import-sort/imports */
@@ -18,11 +21,6 @@ export const isLlmUiEnabled = (): boolean => process.env.NEXT_PUBLIC_LLM_ENABLED
 type ChatRole = 'user' | 'assistant'
 
 export type ChatTurn = { role: ChatRole; content: string }
-
-type LlmModelsResponse = {
-  enabled: boolean
-  chat: { models: { id: string; label: string }[] }
-}
 
 type StreamEvent =
   | { type: 'start'; requestId: string }
@@ -80,6 +78,8 @@ type Props = {
   onOpenChange: (open: boolean) => void
 }
 
+type ApiErrorShape = { response?: { data?: { message?: string } } }
+
 export const ArticleAiChatModal = (props: Props) => {
   const { articleId, revisionId, articleRevision, open, onOpenChange } = props
   const t = useT()
@@ -91,50 +91,52 @@ export const ArticleAiChatModal = (props: Props) => {
   const [streaming, setStreaming] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastUsage, setLastUsage] = useState<{ promptTokens: number; completionTokens: number; totalTokens: number } | null>(null)
+  const [auditMarkdown, setAuditMarkdown] = useState<string | null>(null)
+  const [auditError, setAuditError] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  const modelsQuery = useLlmModelsQuery(open)
+  const historyFilter = open && articleId && revisionId ? { articleId, revisionId } : null
+  const historyQuery = useLlmChatHistoryQuery(historyFilter, open)
+  const { articleAuditMutation } = useArticleAuditMutation()
 
   const bodyPlain = useMemo(() => extractPlainTextFromRevisionContent(articleRevision?.content ?? ''), [articleRevision?.content])
   const isBodyWeak = bodyPlain.trim().length < 40
 
   useEffect(() => {
-    if (!open) {
+    if (!modelsQuery.data) {
       return
     }
 
-    let cancelled = false
+    setServerLlmEnabled(modelsQuery.data.enabled)
+    setModels(modelsQuery.data.chat.models)
+    setModel((m) => m || modelsQuery.data!.chat.models[0]?.id || '')
+  }, [modelsQuery.data])
 
-    const load = async () => {
-      try {
-        const res = await fetch('/api/v1/llm/models', { credentials: 'include' })
+  useEffect(() => {
+    setAuditMarkdown(null)
+    setAuditError(null)
+  }, [revisionId])
 
-        if (!res.ok) {
-          return
-        }
+  useEffect(() => {
+    setMessages([])
+  }, [revisionId])
 
-        const data = (await res.json()) as LlmModelsResponse
-
-        if (cancelled) {
-          return
-        }
-
-        setServerLlmEnabled(data.enabled)
-        setModels(data.chat?.models ?? [])
-        setModel((m) => m || data.chat?.models?.[0]?.id || '')
-      } catch {
-        // ignore
-      }
+  useEffect(() => {
+    if (!historyQuery.data?.messages) {
+      return
     }
 
-    void load()
+    const loaded = historyQuery.data.messages
+      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      .map((m) => ({ role: m.role as ChatRole, content: m.content }))
 
-    return () => {
-      cancelled = true
-    }
-  }, [open])
+    setMessages(loaded)
+  }, [historyQuery.data])
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
-  }, [messages, streaming])
+  }, [messages, streaming, auditMarkdown])
 
   const handleSend = useCallback(async () => {
     const text = input.trim()
@@ -162,16 +164,12 @@ export const ArticleAiChatModal = (props: Props) => {
     let assistantAcc = ''
 
     try {
-      const res = await fetch('/api/v1/llm/chat/stream', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          articleId,
-          revisionId,
-          model: selectedModel,
-          messages: historyForApi.map(({ role, content }) => ({ role, content })),
-        }),
+      const api = new ClientLlmApi()
+      const res = await api.postChatStream({
+        articleId,
+        revisionId,
+        model: selectedModel,
+        messages: historyForApi.map(({ role, content }) => ({ role, content })),
       })
 
       if (!res.ok) {
@@ -210,6 +208,47 @@ export const ArticleAiChatModal = (props: Props) => {
     }
   }, [articleId, revisionId, input, messages, model, models, serverLlmEnabled, streaming, t])
 
+  const handleAudit = useCallback(async () => {
+    if (articleAuditMutation.isLoading || streaming || !serverLlmEnabled) {
+      return
+    }
+
+    const selectedModel = model || models[0]?.id
+
+    if (!selectedModel) {
+      setAuditError(t('article.errors.llmNotConfigured'))
+
+      return
+    }
+
+    setAuditError(null)
+
+    try {
+      const body = await articleAuditMutation.mutateAsync({ articleId, revisionId, model: selectedModel })
+
+      setAuditMarkdown(
+        articleAuditToMarkdown(body.audit, {
+          preview: t('article.ui.aiAuditSectionPreview'),
+          content: t('article.ui.aiAuditSectionContent'),
+          seo: t('article.ui.aiAuditSectionSeo'),
+          overall: t('article.ui.aiAuditOverall'),
+          strengths: t('article.ui.aiAuditStrengths'),
+          issues: t('article.ui.aiAuditIssues'),
+          recommendations: t('article.ui.aiAuditRecommendations'),
+        }),
+      )
+    } catch (e) {
+      setAuditMarkdown(null)
+      const err = e as ApiErrorShape
+      const msg = err.response?.data?.message ?? (e instanceof Error ? e.message : t('errors.unknown'))
+
+      setAuditError(msg)
+    }
+  }, [articleId, revisionId, articleAuditMutation, streaming, serverLlmEnabled, model, models, t])
+
+  const historyLoading = historyQuery.isLoading
+  const auditLoading = articleAuditMutation.isLoading
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90vh] min-w-[80vw] w-full max-w-2xl flex-col gap-3 p-4 sm:p-6">
@@ -225,7 +264,7 @@ export const ArticleAiChatModal = (props: Props) => {
         ) : (
           <>
             {isBodyWeak ? <AlertInline message={t('article.ui.aiEmptyBodyHint')} /> : null}
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <label className="flex flex-1 flex-col gap-1 text-sm text-muted-foreground">
                 {t('article.ui.aiModel')}
                 <select
@@ -235,7 +274,7 @@ export const ArticleAiChatModal = (props: Props) => {
                   )}
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
-                  disabled={streaming}
+                  disabled={streaming || auditLoading}
                 >
                   {models.map((m) => (
                     <option key={m.id} value={m.id}>
@@ -244,10 +283,17 @@ export const ArticleAiChatModal = (props: Props) => {
                   ))}
                 </select>
               </label>
+              <Button type="button" variant="secondary" onClick={() => void handleAudit()} disabled={streaming || auditLoading}>
+                {auditLoading ? t('article.ui.aiAuditing') : t('article.ui.aiAuditArticle')}
+              </Button>
             </div>
 
             <div ref={scrollRef} className="min-h-[200px] max-h-[45vh] overflow-y-auto rounded-md border border-border bg-muted/30 p-3 text-sm">
-              {messages.length === 0 ? (
+              {historyLoading && messages.length === 0 ? (
+                <Typography variant="Body/S/Regular" className="text-muted-foreground">
+                  {t('article.ui.aiHistoryLoading')}
+                </Typography>
+              ) : messages.length === 0 ? (
                 <Typography variant="Body/S/Regular" className="text-muted-foreground">
                   {t('article.ui.aiChatEmpty')}
                 </Typography>
@@ -287,6 +333,19 @@ export const ArticleAiChatModal = (props: Props) => {
                 })
               )}
             </div>
+
+            {auditMarkdown ? (
+              <div className="flex max-h-[30vh] flex-col gap-2 overflow-hidden rounded-md border border-border bg-muted/20 p-3">
+                <Typography variant="Body/S/Semibold" className="text-foreground">
+                  {t('article.ui.aiAuditResultTitle')}
+                </Typography>
+                <div className="max-h-[24vh] overflow-y-auto">
+                  <ArticleAiChatAssistantMessage content={auditMarkdown} />
+                </div>
+              </div>
+            ) : null}
+
+            {auditError ? <AlertInline message={auditError} destructive /> : null}
 
             {error ? <AlertInline message={error} destructive /> : null}
 

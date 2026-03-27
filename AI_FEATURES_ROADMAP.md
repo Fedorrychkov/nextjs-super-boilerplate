@@ -32,7 +32,7 @@ Goal: conversational assistance for **article body** and **SEO/preview settings*
 
 - [x] **Request payload builder** — `buildArticleChatSystemPrompt` + `extractPlainTextFromRevisionContent` (TipTap JSON → plain text, truncated) + title/description/SEO fields.
 - [x] **System prompts (initial):** single system message instructs SEO + body help, language matching, and **no full-article analysis** when body is empty.
-- [ ] **Structured “quality” pass (optional sub-step):** dedicated scoring/JSON pass — Phase 1 follow-up.
+- [x] **Structured “quality” pass (optional sub-step):** `POST /api/v1/llm/article-audit` (JSON mode) + **Article audit** in `ArticleAiChatModal` (markdown view).
 
 ### 1.3 UI
 
@@ -43,7 +43,7 @@ Goal: conversational assistance for **article body** and **SEO/preview settings*
 
 ### 1.4 Persistence (minimal for Phase 1)
 
-- [ ] **Session/thread** tied to `articleId` + `revisionId` + user; store messages and **usage** (tokens, model) for later analytics.
+- [x] **Session/thread** tied to `articleId` + `revisionId` + user (`LlmChatSession` / `LlmChatMessage`); messages + **usage** on assistant turn; `GET /api/v1/llm/chat/history` + UI load on modal open.
 - [ ] **No requirement** to send full history on every request; use **rolling summary + recent turns** (see Phase 2) — design tables with this in mind.
 
 ### 1.5 Observability

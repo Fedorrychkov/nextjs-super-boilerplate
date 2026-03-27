@@ -8,6 +8,7 @@ import { llmChatRateLimit } from '@lib/security/llm-rate-limit'
 import { buildArticleChatSystemPrompt } from '@lib/services/llm/build-article-chat-context'
 import { getChatModelAllowlist, resolveChatModel } from '@lib/services/llm/chat-models'
 import { ChatMessage, llmService } from '@lib/services/llm/llm.service'
+import { appendChatTurn, findOrCreateSession } from '@lib/services/llm/llm-chat-persistence'
 import mongoose from 'mongoose'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -165,8 +166,11 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
 
     const requestId = crypto.randomUUID()
     const started = time()
+    const userId = authResult.payload.sub
 
     const encoder = new TextEncoder()
+
+    let assistantTextAccumulator = ''
 
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
@@ -181,6 +185,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
 
           for await (const chunk of llmService.chatStream(messages, { model, temperature: 0.6, maxTokens: 4096 })) {
             if (chunk.type === 'text') {
+              assistantTextAccumulator += chunk.text
               send({ type: 'delta', text: chunk.text })
             } else if (chunk.type === 'usage') {
               lastUsage = chunk.usage
@@ -190,13 +195,33 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
 
           const durationMs = time().diff(started, 'milliseconds')
 
+          const lastUser = clientMessages[clientMessages.length - 1]
+
+          if (lastUser?.role === 'user' && assistantTextAccumulator.trim()) {
+            try {
+              const { id: sessionId } = await findOrCreateSession({ articleId, revisionId, userId })
+              await appendChatTurn({
+                sessionId,
+                userContent: lastUser.content,
+                assistantContent: assistantTextAccumulator,
+                model,
+                usage: lastUsage,
+              })
+            } catch (persistErr) {
+              logger.error('llm chat persist failed', {
+                requestId,
+                message: persistErr instanceof Error ? persistErr.message : String(persistErr),
+              })
+            }
+          }
+
           logger.info('llm chat stream completed', {
             requestId,
             durationMs,
             model,
             articleId,
             revisionId,
-            userId: authResult.payload.sub,
+            userId,
             usage: lastUsage,
           })
 

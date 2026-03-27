@@ -21,6 +21,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     return response.json({
       enabled,
       chat: { models },
+      audit: { models },
     })
   })
 

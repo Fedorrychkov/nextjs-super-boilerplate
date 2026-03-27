@@ -11,6 +11,8 @@ export interface ChatCompletionOptions {
   temperature?: number
   maxTokens?: number
   stream?: boolean
+  /** OpenAI JSON mode — model must support it; output should be valid JSON. */
+  responseFormatJson?: boolean
 }
 
 export interface ChatCompletionResponse {
@@ -68,7 +70,7 @@ export class LLMService {
       throw new Error('LLM is not enabled. Please set NEXT_PUBLIC_LLM_ENABLED to true in environment variables.')
     }
 
-    const { model = 'gpt-4o-mini', temperature = 0.7, maxTokens = 1000, stream = false } = options || {}
+    const { model = 'gpt-4o-mini', temperature = 0.7, maxTokens = 1000, stream = false, responseFormatJson = false } = options || {}
 
     try {
       const completion = await client.chat.completions.create({
@@ -80,6 +82,7 @@ export class LLMService {
         temperature,
         max_tokens: maxTokens,
         stream,
+        ...(responseFormatJson ? { response_format: { type: 'json_object' as const } } : {}),
       })
 
       if (stream) {
