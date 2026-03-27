@@ -47,6 +47,7 @@ export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
                 {
                   label: t(routes.users.tKey),
                   icon: <UserIcon width={16} height={16} />,
+                  disabled: authUser?.role !== UserRole.ADMIN,
                   href: routes.users.path,
                 },
                 {

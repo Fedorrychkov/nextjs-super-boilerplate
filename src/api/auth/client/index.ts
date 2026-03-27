@@ -3,7 +3,7 @@ import { AxiosHeaders, AxiosInstance } from 'axios'
 
 import { UserModel } from '~/api/user'
 
-import { LoginEmailDto, RegisterDto } from '../types'
+import { LoginEmailDto, RegisterByAdminDto, RegisterDto } from '../types'
 
 export class ClientAuthApi {
   private readonly client: AxiosInstance
@@ -15,6 +15,12 @@ export class ClientAuthApi {
 
   async verifyToken(headers: AxiosHeaders, accessToken: string): Promise<{ user: Pick<UserModel, 'id' | 'email' | 'role' | 'status'> }> {
     const response = await this.client.post('/api/v1/auth/verify-token', { accessToken }, { headers: headers as Record<string, string> })
+
+    return response.data
+  }
+
+  async registerByAdmin(body: RegisterByAdminDto): Promise<{ success: true; message: string; user: Pick<UserModel, 'id' | 'email' | 'role' | 'status'> }> {
+    const response = await this.client.post('/api/v1/auth/register-by-admin', body)
 
     return response.data
   }

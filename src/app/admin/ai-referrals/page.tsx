@@ -8,8 +8,8 @@ const AiReferralsDashboardPage = async (props: PageProps) => {
     ...props,
     segments: ['admin', 'ai-referrals'],
     fallbackNavigatePath: '/',
-    roles: [UserRole.ADMIN],
-    fallbackRolesNavigatePath: { [UserRole.USER]: '/', [UserRole.EDITOR]: '/' },
+    roles: [UserRole.ADMIN, UserRole.EDITOR],
+    fallbackRolesNavigatePath: { [UserRole.USER]: '/' },
   })
 
   return (

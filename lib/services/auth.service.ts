@@ -6,8 +6,8 @@ import { ForbiddenError, NotFoundError, UnauthorizedError, ValidationError } fro
 import { generateAccessToken, generateRefreshToken, getTokenExpiration, verifyRefreshToken } from '@lib/jwt/utils'
 
 import { AuthResponse } from '~/api/auth/model'
-import { LoginEmailDto, RegisterDto } from '~/api/auth/types'
-import { UserRole, UserStatus } from '~/api/user'
+import { LoginEmailDto, RegisterByAdminDto, RegisterDto } from '~/api/auth/types'
+import { UserModel, UserRole, UserStatus } from '~/api/user'
 
 export class AuthService {
   /**
@@ -30,6 +30,36 @@ export class AuthService {
     })
 
     return this.generateAuthResponse(user)
+  }
+
+  async registerByAdmin(data: RegisterByAdminDto): Promise<Pick<UserModel, 'id' | 'email' | 'role' | 'status'>> {
+    await connectDB()
+
+    const existingUser = await User.findOne({ email: data.email.toLowerCase() })
+
+    if (existingUser) {
+      throw new ValidationError('User with this email already exists')
+    }
+
+    const isValidRole = Object.values(UserRole).includes(data.role)
+
+    if (!isValidRole) {
+      throw new ValidationError('Invalid role')
+    }
+
+    const user = await User.create({
+      email: data.email.toLowerCase(),
+      role: data.role,
+      status: UserStatus.ACTIVE,
+      password: data.password,
+    })
+
+    return {
+      id: user._id.toString(),
+      email: user.email,
+      role: user.role,
+      status: user.status,
+    }
   }
 
   async login(data: LoginEmailDto): Promise<AuthResponse> {

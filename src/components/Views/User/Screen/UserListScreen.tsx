@@ -1,8 +1,9 @@
 'use client'
 
-import { FilterIcon, XIcon } from 'lucide-react'
+import { FilterIcon, PlusIcon, XIcon } from 'lucide-react'
 import { lazy, Suspense, useRef } from 'react'
 
+import { RegisterByAdminDto } from '~/api/auth/types'
 import { TableDefaultSkeleton } from '~/components/Blocks/Table'
 import { TitleWithBadge } from '~/components/Blocks/TitleWithBadge'
 import { CustomTooltip } from '~/components/Blocks/Tooltip'
@@ -12,17 +13,23 @@ import { PaginationSkeleton } from '~/components/List'
 import { usePagination } from '~/components/List/usePagination'
 import { Badge, Button, Typography } from '~/components/ui'
 import { useStickyContainer } from '~/hooks/useStickyContainer'
+import { useSwitch } from '~/hooks/useSwitch'
 import { useT } from '~/providers'
+import { useNotify } from '~/providers/notify'
+import { useRegisterByAdminMutation } from '~/query/auth'
 import { useUsersListQuery } from '~/query/user/query/useUserListQuery'
 
 import { DefaultUsersFilters, UsersFilter } from '../Filters'
 import { columns } from '../List/constants'
+import { RegisterByAdminUserDialog } from '../Modal'
 import { USERS_PARAM_NAMES } from '../paramNames'
 
 const PaginationLazy = lazy(() => import('~/components/List').then((mod) => ({ default: mod.Pagination })))
 const UserListTableLazy = lazy(() => import('../List/UserListTable').then((mod) => ({ default: mod.UserListTable })))
 
 export const UserListScreen = () => {
+  const [isOpened, { toggle }] = useSwitch(false)
+  const { notify } = useNotify()
   const t = useT()
   const headerRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -60,10 +67,32 @@ export const UserListScreen = () => {
 
   const { page, setPage, offset } = usePagination({ limit: 25 })
 
-  const { data, isLoading } = useUsersListQuery(
+  const { data, isLoading, refetch } = useUsersListQuery(
     { limit: 25, offset, startOfDateIso: period?.fromDate, endOfDateIso: period?.toDate, ...debouncedFilters },
     isPeriodEnabled,
   )
+
+  const { registerByAdminMutation } = useRegisterByAdminMutation()
+
+  const handleAddUser = async (dto: RegisterByAdminDto) => {
+    try {
+      const result = await registerByAdminMutation.mutateAsync(dto)
+
+      if (result?.success) {
+        refetch()
+
+        notify(t('user.messages.userRegisteredSuccessfully'), 'success')
+      }
+
+      return {
+        user: result?.user,
+      }
+    } catch (error) {
+      console.info(error)
+
+      notify(t('user.errors.failedToCreateUser'), 'warning')
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4" ref={containerRef}>
@@ -72,6 +101,16 @@ export const UserListScreen = () => {
           <TitleWithBadge title={t('navigation.users')} badgeContent={<Typography variant="Body/XS/Regular">{data?.count ?? 0}</Typography>} />
           <div className="flex md:flex-row flex-col items-end md:items-center gap-2">
             <div className="flex flex-row gap-2">
+              <RegisterByAdminUserDialog isOpen={isOpened} toggle={toggle} onSubmit={handleAddUser} isLoading={isLoading}>
+                <CustomTooltip content={<Typography variant="Body/XS/Regular">{t('article.ui.createNewArticle')}</Typography>}>
+                  <Button variant="outline" size="sm-md" className="flex items-center gap-2" onClick={toggle}>
+                    <div className="relative flex items-center gap-2">
+                      <PlusIcon className="md:w-4 md:h-4 w-2 h-2 shrink-0 text-neutral-600 bg-neutral-600/10 rounded-full" />
+                      <Typography variant="Body/XS/Semibold">{t('common.addNew')}</Typography>
+                    </div>
+                  </Button>
+                </CustomTooltip>
+              </RegisterByAdminUserDialog>
               <CustomTooltip content={<Typography variant="Body/XS/Regular">{isFilterOpen ? 'Hide filters' : 'Show filters'}</Typography>}>
                 <Button variant={isFilterOpen ? 'default' : 'outline'} size="sm-md" className="flex items-center gap-2" onClick={toggleFilter}>
                   <div className="relative">
