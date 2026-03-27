@@ -8,8 +8,8 @@ const RumDashboardPage = async (props: PageProps) => {
     ...props,
     segments: ['admin', 'rum'],
     fallbackNavigatePath: '/',
-    roles: [UserRole.ADMIN],
-    fallbackRolesNavigatePath: { [UserRole.USER]: '/', [UserRole.EDITOR]: '/' },
+    roles: [UserRole.ADMIN, UserRole.EDITOR],
+    fallbackRolesNavigatePath: { [UserRole.USER]: '/' },
   })
 
   return (

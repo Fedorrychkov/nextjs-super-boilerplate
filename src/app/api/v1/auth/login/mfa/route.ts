@@ -9,6 +9,7 @@ import { consumeBackupCode, decryptSecret, verifyTotpCode } from '@lib/security/
 import { authService } from '@lib/services/auth.service'
 import { NextRequest } from 'next/server'
 
+import { getPreferredLanguageCodeFromAcceptLanguage } from '~/lib/i18n/detectLocale'
 import { getServerTFromNextRequest } from '~/lib/i18n/server'
 
 type MfaLoginDto = {
@@ -19,6 +20,7 @@ type MfaLoginDto = {
 const handler = (request: NextRequest) => {
   return apiErrorHandlerContainer(request)(async (res, req) => {
     const body = (await req.json()) as MfaLoginDto
+    const languageCode = getPreferredLanguageCodeFromAcceptLanguage(req.headers.get('accept-language'))
 
     const { t } = getServerTFromNextRequest(request)
 
@@ -64,7 +66,7 @@ const handler = (request: NextRequest) => {
       backupUsed = true
     }
 
-    const authResponse = await authService.createAuthTokensForUser(user)
+    const authResponse = await authService.createAuthTokensForUser(user, { languageCode })
 
     const response = res.json(
       {

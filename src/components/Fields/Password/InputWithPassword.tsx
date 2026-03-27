@@ -7,6 +7,7 @@ import { Controller, useFormContext } from 'react-hook-form'
 
 import { Input } from '~/components/ui/fields/input'
 import { Label } from '~/components/ui/fields/label'
+import { useT } from '~/providers'
 import { cn } from '~/utils/cn'
 
 export type InputWithPasswordProps = {
@@ -27,6 +28,7 @@ export type InputWithPasswordProps = {
  */
 export const InputWithPassword = forwardRef<HTMLInputElement, InputWithPasswordProps>(({ name, placeholder, label, required, classNames }, ref) => {
   const id = useId()
+  const t = useT()
   const {
     watch,
     formState: { errors },
@@ -42,10 +44,10 @@ export const InputWithPassword = forwardRef<HTMLInputElement, InputWithPasswordP
 
   const checkStrength = (pass: string) => {
     const requirements = [
-      { regex: /.{6,}/, text: 'Minimum 6 characters' },
-      { regex: /[0-9]/, text: 'Minimum 1 digit' },
-      { regex: /[a-z]/, text: 'Minimum 1 lowercase letter' },
-      { regex: /[A-Z]/, text: 'Minimum 1 uppercase letter' },
+      { regex: /.{6,}/, text: t('user.messages.registerByAdminUserDialog.minimum6Characters') },
+      { regex: /[0-9]/, text: t('user.messages.registerByAdminUserDialog.minimum1Digit') },
+      { regex: /[a-z]/, text: t('user.messages.registerByAdminUserDialog.minimum1LowercaseLetter') },
+      { regex: /[A-Z]/, text: t('user.messages.registerByAdminUserDialog.minimum1UppercaseLetter') },
     ]
 
     return requirements.map((req) => ({
@@ -73,13 +75,13 @@ export const InputWithPassword = forwardRef<HTMLInputElement, InputWithPasswordP
   }
 
   const getStrengthText = (score: number) => {
-    if (score === 0) return 'Enter password'
+    if (score === 0) return t('user.messages.registerByAdminUserDialog.enterPassword')
 
-    if (score <= 2) return 'Weak password'
+    if (score <= 2) return t('user.messages.registerByAdminUserDialog.weakPassword')
 
-    if (score === 3) return 'Medium strength'
+    if (score === 3) return t('user.messages.registerByAdminUserDialog.mediumStrength')
 
-    return 'Strong password'
+    return t('user.messages.registerByAdminUserDialog.strongPassword')
   }
 
   return (
@@ -116,7 +118,7 @@ export const InputWithPassword = forwardRef<HTMLInputElement, InputWithPasswordP
             className="absolute inset-y-0 end-0 flex h-full w-9 items-center justify-center rounded-e-lg text-muted-foreground/80 outline-offset-2 transition-colors hover:text-foreground focus:z-10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
             type="button"
             onClick={toggleVisibility}
-            aria-label={isVisible ? 'Hide password' : 'Show password'}
+            aria-label={isVisible ? t('user.messages.registerByAdminUserDialog.hidePassword') : t('user.messages.registerByAdminUserDialog.showPassword')}
             aria-pressed={isVisible}
             aria-controls="password"
           >
@@ -143,7 +145,7 @@ export const InputWithPassword = forwardRef<HTMLInputElement, InputWithPasswordP
       </div>
 
       <p id={`${id}-description`} className="mb-2 text-sm font-medium text-foreground">
-        {getStrengthText(strengthScore)}. Must contain:
+        {getStrengthText(strengthScore)}. {t('user.messages.registerByAdminUserDialog.mustContain')}:
       </p>
 
       <ul className="space-y-1.5" aria-label="Password requirements">
@@ -156,7 +158,9 @@ export const InputWithPassword = forwardRef<HTMLInputElement, InputWithPasswordP
             )}
             <span className={`text-xs ${req.met ? 'text-emerald-600' : 'text-muted-foreground'}`}>
               {req.text}
-              <span className="sr-only">{req.met ? ' - Requirement met' : ' - Requirement not met'}</span>
+              <span className="sr-only">
+                {req.met ? t('user.messages.registerByAdminUserDialog.requirementMet') : t('user.messages.registerByAdminUserDialog.requirementNotMet')}
+              </span>
             </span>
           </li>
         ))}

@@ -4,6 +4,7 @@ export type UserModel = {
   passwordHash?: string | null
   email: string
   status: UserStatus
+  languageCode?: string | null
   createdAt?: string | null
   updatedAt?: string | null
 }

@@ -72,7 +72,7 @@ export const ArticleListScreen = () => {
     <div className="flex flex-col gap-4" ref={containerRef}>
       <div className="flex flex-col gap-4">
         <StickyContainer ref={headerRef} className="flex flex-row gap-4 items-center justify-between md:px-8 md:py-4 py-2 px-1">
-          <TitleWithBadge title="Articles" badgeContent={<Typography variant="Body/XS/Regular">{data?.count ?? 0}</Typography>} />
+          <TitleWithBadge title={t('navigation.articles')} badgeContent={<Typography variant="Body/XS/Regular">{data?.count ?? 0}</Typography>} />
           <div className="flex md:flex-row flex-col items-end md:items-center gap-2">
             <div className="flex flex-row gap-2">
               <CustomTooltip content={<Typography variant="Body/XS/Regular">{t('article.ui.createNewArticle')}</Typography>}>
@@ -84,7 +84,7 @@ export const ArticleListScreen = () => {
                 </Button>
               </CustomTooltip>
 
-              <CustomTooltip content={<Typography variant="Body/XS/Regular">{isFilterOpen ? 'Hide filters' : 'Show filters'}</Typography>}>
+              <CustomTooltip content={<Typography variant="Body/XS/Regular">{isFilterOpen ? t('common.hideFilters') : t('common.showFilters')}</Typography>}>
                 <Button variant={isFilterOpen ? 'default' : 'outline'} size="sm-md" className="flex items-center gap-2" onClick={toggleFilter}>
                   <div className="relative">
                     <FilterIcon className="md:w-4 md:h-4 w-2 h-2" />

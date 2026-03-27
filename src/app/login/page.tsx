@@ -74,6 +74,8 @@ const LoginWithParams = () => {
         logger.error('Login failed')
       }
     } catch (error) {
+      logger.error(error)
+
       if (error instanceof AxiosError) {
         const after = error.response?.data?.retryAfterSeconds
 
@@ -83,12 +85,12 @@ const LoginWithParams = () => {
           notify(`${t('auth.errors.tooManyLoginAttempts')} ${after ? `${duration.format('HH:mm:ss')}.` : `${t('auth.errors.later')}.`}`, 'destructive')
 
           return
+        } else {
+          notify(error?.response?.data?.message ?? t('auth.errors.signInFailed'), 'warning')
         }
+      } else {
+        notify(t('auth.errors.signInFailed'), 'warning')
       }
-
-      notify(t('auth.errors.signInFailed'), 'warning')
-
-      logger.error(error)
     }
   }
 

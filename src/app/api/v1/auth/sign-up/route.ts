@@ -7,6 +7,7 @@ import { authService } from '@lib/services/auth.service'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { RegisterDto } from '~/api/auth/types'
+import { getPreferredLanguageCodeFromAcceptLanguage } from '~/lib/i18n/detectLocale'
 import { getServerTFromNextRequest } from '~/lib/i18n/server'
 
 const handler = (request: NextRequest) => {
@@ -14,6 +15,7 @@ const handler = (request: NextRequest) => {
     const { t } = getServerTFromNextRequest(request)
 
     const body: RegisterDto = await req.json()
+    const languageCode = getPreferredLanguageCodeFromAcceptLanguage(req.headers.get('accept-language'))
     const ip = getClientKey(req)
     await ensureCanRegister(ip)
 
@@ -30,7 +32,7 @@ const handler = (request: NextRequest) => {
 
     const isValidAdmin = email === FIRST_ADMIN_CONFIG.login && password === FIRST_ADMIN_CONFIG.password
 
-    const authResponse = await authService.register(body, isValidAdmin)
+    const authResponse = await authService.register(body, isValidAdmin, { languageCode })
 
     const response = res.json(
       {

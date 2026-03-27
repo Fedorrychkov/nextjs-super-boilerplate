@@ -32,3 +32,7 @@ export type MediaUploadResponse = {
   asset: MediaAssetModel
   proxyUrl: string
 }
+
+export type MediaAssetListResponse = {
+  items: MediaAssetModel[]
+}
