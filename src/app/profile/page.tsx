@@ -22,7 +22,20 @@ const ProfileRoot = async (props: PageProps) => {
 
   return (
     <div className="w-full h-full flex justify-center flex-col flex-1 gap-6">
-      <Typography variant="Body/L/Regular">{profile.email}</Typography>
+      <div className="flex flex-col rounded-lg border bg-card p-4 space-y-4">
+        <div className="flex flex-col gap-2">
+          <Typography variant="Body/S/Semibold">{t('user.fields.email')}</Typography>
+          <Typography variant="Body/XS/Regular">{profile.email}</Typography>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Typography variant="Body/S/Semibold">{t('user.fields.role')}</Typography>
+          <Typography variant="Body/XS/Regular">{t(`user.roles.${profile.role}`)}</Typography>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Typography variant="Body/S/Semibold">{t('user.fields.status')}</Typography>
+          <Typography variant="Body/XS/Regular">{t(`user.statuses.${profile.status}`)}</Typography>
+        </div>
+      </div>
 
       <NotificationBlock />
 

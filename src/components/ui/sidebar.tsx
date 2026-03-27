@@ -191,20 +191,22 @@ const NavigationSection = ({ navigation, toggle }: { navigation: NavigationSecti
                   <CollapsibleSection defaultOpen={nav.defaultOpen} title={nav.title || ''}>
                     {nav.items ? (
                       <ul className="flex flex-col gap-2">
-                        {nav.items?.map((item) => (
-                          <li key={item.label}>
-                            <Link
-                              onClick={toggle}
-                              href={item.href || ''}
-                              className={cn('w-full font-medium text-sm flex flex-start items-center gap-2 text-left p-2 rounded-xl hover:bg-gray-100', {
-                                'bg-gray-100': matchesPathname(item.href || '', pathname),
-                              })}
-                            >
-                              {item.icon}
-                              {item.label}
-                            </Link>
-                          </li>
-                        ))}
+                        {nav.items
+                          ?.filter((item) => !item.disabled)
+                          .map((item) => (
+                            <li key={item.label}>
+                              <Link
+                                onClick={toggle}
+                                href={item.href || ''}
+                                className={cn('w-full font-medium text-sm flex flex-start items-center gap-2 text-left p-2 rounded-xl hover:bg-gray-100', {
+                                  'bg-gray-100': matchesPathname(item.href || '', pathname),
+                                })}
+                              >
+                                {item.icon}
+                                {item.label}
+                              </Link>
+                            </li>
+                          ))}
                       </ul>
                     ) : (
                       <p className="text-sm text-gray-500">{nav.content}</p>

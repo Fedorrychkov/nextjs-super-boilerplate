@@ -45,6 +45,12 @@ export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
               title: t('navigation.adminPanel'),
               items: [
                 {
+                  label: t(routes.users.tKey),
+                  icon: <UserIcon width={16} height={16} />,
+                  disabled: authUser?.role !== UserRole.ADMIN,
+                  href: routes.users.path,
+                },
+                {
                   label: t(routes.rumDashboard.tKey),
                   icon: <ActivityIcon width={16} height={16} />,
                   href: routes.rumDashboard.path,

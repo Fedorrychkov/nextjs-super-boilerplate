@@ -74,7 +74,7 @@ export const FilterContainer = <T,>(props: FilterContainerProps<T>, ref: React.F
       </div>
       {Object.keys(defaultFilterValues).map((key) => (
         <div className="flex flex-col gap-2" key={key}>
-          <Typography variant="Body/S/Regular">{paramNames[key as keyof T]}</Typography>
+          <Typography variant="Body/S/Regular">{paramNames[key as keyof T] ? t(paramNames[key as keyof T] as AppMessageKey) : ''}</Typography>
 
           <div className="flex flex-row gap-2 flex-wrap" key={key}>
             {defaultFilterValues[key as keyof T].options?.length ? (

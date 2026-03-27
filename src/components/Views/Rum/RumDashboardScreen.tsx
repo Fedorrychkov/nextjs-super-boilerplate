@@ -87,7 +87,7 @@ export const RumDashboardScreen = () => {
   return (
     <div className="flex flex-col gap-6 md:px-8 px-2 py-4 w-full max-w-5xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <TitleWithBadge title="RUM / Web Vitals" badgeContent={<Typography variant="Body/XS/Regular">{data?.totalSamples ?? '—'}</Typography>} />
+        <TitleWithBadge title={t('navigation.rumDashboard')} badgeContent={<Typography variant="Body/XS/Regular">{data?.totalSamples ?? '—'}</Typography>} />
         <div className="flex flex-col gap-1 min-w-[180px]">
           <Typography variant="Body/XS/Regular" className="text-muted-foreground">
             {t('rum.ui.window')}
