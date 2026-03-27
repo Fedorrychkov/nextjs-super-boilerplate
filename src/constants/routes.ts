@@ -1,4 +1,10 @@
 export const routes = {
+  users: {
+    path: '/admin/users',
+    name: 'Users',
+    tKey: 'navigation.users' as const,
+    needAuth: true,
+  },
   home: {
     path: '/',
     name: 'Home',

@@ -1,7 +1,6 @@
 'use client'
 
-import { FilterIcon, PlusIcon, XIcon } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { FilterIcon, XIcon } from 'lucide-react'
 import { lazy, Suspense, useRef } from 'react'
 
 import { TableDefaultSkeleton } from '~/components/Blocks/Table'
@@ -12,21 +11,19 @@ import { useDefaultFilters } from '~/components/Filters/useDefaultFilters'
 import { PaginationSkeleton } from '~/components/List'
 import { usePagination } from '~/components/List/usePagination'
 import { Badge, Button, Typography } from '~/components/ui'
-import { routes } from '~/constants'
 import { useStickyContainer } from '~/hooks/useStickyContainer'
 import { useT } from '~/providers'
-import { useArticlesListQuery } from '~/query/article'
+import { useUsersListQuery } from '~/query/user/query/useUserListQuery'
 
-import { ArticlesFilter, DefaultArticlesFilters } from '../Filters'
+import { DefaultUsersFilters, UsersFilter } from '../Filters'
 import { columns } from '../List/constants'
-import { ARTICLES_PARAM_NAMES } from '../paramNames'
+import { USERS_PARAM_NAMES } from '../paramNames'
 
 const PaginationLazy = lazy(() => import('~/components/List').then((mod) => ({ default: mod.Pagination })))
-const ArticleListTableLazy = lazy(() => import('../List/ArticlesListTable').then((mod) => ({ default: mod.ArticleListTable })))
+const UserListTableLazy = lazy(() => import('../List/UserListTable').then((mod) => ({ default: mod.UserListTable })))
 
-export const ArticleListScreen = () => {
+export const UserListScreen = () => {
   const t = useT()
-  const router = useRouter()
   const headerRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const paginationRef = useRef<HTMLDivElement>(null)
@@ -57,13 +54,13 @@ export const ArticleListScreen = () => {
     settledFiltersCount,
   } = useDefaultFilters<Record<string, unknown>>({
     ref: filtersRef,
-    defaultFilterValues: { status: null },
-    filterValues: DefaultArticlesFilters,
+    defaultFilterValues: { status: null, role: null, sortBy: null, sortOrder: null },
+    filterValues: DefaultUsersFilters,
   })
 
   const { page, setPage, offset } = usePagination({ limit: 25 })
 
-  const { data, isLoading } = useArticlesListQuery(
+  const { data, isLoading } = useUsersListQuery(
     { limit: 25, offset, startOfDateIso: period?.fromDate, endOfDateIso: period?.toDate, ...debouncedFilters },
     isPeriodEnabled,
   )
@@ -72,19 +69,10 @@ export const ArticleListScreen = () => {
     <div className="flex flex-col gap-4" ref={containerRef}>
       <div className="flex flex-col gap-4">
         <StickyContainer ref={headerRef} className="flex flex-row gap-4 items-center justify-between md:px-8 md:py-4 py-2 px-1">
-          <TitleWithBadge title={t('navigation.articles')} badgeContent={<Typography variant="Body/XS/Regular">{data?.count ?? 0}</Typography>} />
+          <TitleWithBadge title={t('navigation.users')} badgeContent={<Typography variant="Body/XS/Regular">{data?.count ?? 0}</Typography>} />
           <div className="flex md:flex-row flex-col items-end md:items-center gap-2">
             <div className="flex flex-row gap-2">
-              <CustomTooltip content={<Typography variant="Body/XS/Regular">{t('article.ui.createNewArticle')}</Typography>}>
-                <Button variant="outline" size="sm-md" className="flex items-center gap-2" onClick={() => router.push(routes.articlesCreate.path)}>
-                  <div className="relative flex items-center gap-2">
-                    <PlusIcon className="md:w-4 md:h-4 w-2 h-2 shrink-0 text-neutral-600 bg-neutral-600/10 rounded-full" />
-                    <Typography variant="Body/XS/Semibold">{t('common.addNew')}</Typography>
-                  </div>
-                </Button>
-              </CustomTooltip>
-
-              <CustomTooltip content={<Typography variant="Body/XS/Regular">{isFilterOpen ? t('common.hideFilters') : t('common.showFilters')}</Typography>}>
+              <CustomTooltip content={<Typography variant="Body/XS/Regular">{isFilterOpen ? 'Hide filters' : 'Show filters'}</Typography>}>
                 <Button variant={isFilterOpen ? 'default' : 'outline'} size="sm-md" className="flex items-center gap-2" onClick={toggleFilter}>
                   <div className="relative">
                     <FilterIcon className="md:w-4 md:h-4 w-2 h-2" />
@@ -105,13 +93,13 @@ export const ArticleListScreen = () => {
           </div>
         </StickyContainer>
       </div>
-      <ArticlesFilter
+      <UsersFilter
         ref={filtersRef}
         isFilterOpen={isFilterOpen}
         isLoading={isLoading}
         filters={filters}
-        defaultFilterValues={DefaultArticlesFilters}
-        paramNames={ARTICLES_PARAM_NAMES}
+        defaultFilterValues={DefaultUsersFilters}
+        paramNames={USERS_PARAM_NAMES}
         setFilters={setFilters}
         t={t}
         handleChangePeriod={handleChangePeriod}
@@ -120,7 +108,7 @@ export const ArticleListScreen = () => {
         <TableDefaultSkeleton size={columns.length} />
       ) : (
         <Suspense fallback={<TableDefaultSkeleton size={columns.length} />}>
-          <ArticleListTableLazy data={data?.list} isLoading={isLoading} />
+          <UserListTableLazy data={data?.list} isLoading={isLoading} />
         </Suspense>
       )}
       {isLoading ? (

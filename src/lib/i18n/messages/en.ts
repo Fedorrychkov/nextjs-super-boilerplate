@@ -43,6 +43,10 @@ export const en = {
     selectedPeriodFrom: 'selected period from',
     to: 'to',
     from: 'from',
+    hideFilters: 'Hide filters',
+    showFilters: 'Show filters',
+    applyDates: 'Apply dates',
+    dateFromCannotBeGreaterThanDateTo: 'Date {fromDate} cannot be greater than date {toDate}',
     sortOrderes: {
       asc: 'Ascending',
       desc: 'Descending',
@@ -71,6 +75,7 @@ export const en = {
     welcomePanel: 'Welcome Panel',
     adminPanel: 'Admin Panel',
     home: 'Home',
+    users: 'Users',
     uiKit: 'UI Kit',
     profile: 'Profile',
     login: 'Login',
@@ -226,6 +231,24 @@ export const en = {
     },
   },
   user: {
+    roles: {
+      admin: 'Admin',
+      user: 'User',
+      editor: 'Editor',
+    },
+    statuses: {
+      active: 'Active',
+      blocked: 'Blocked',
+    },
+    fields: {
+      id: 'ID',
+      role: 'Role',
+      status: 'Status',
+      createdAt: 'Created At',
+      updatedAt: 'Updated At',
+      sortBy: 'Sort By',
+      sortOrder: 'Sort Order',
+    },
     messages: {
       userRegisteredSuccessfully: 'User registered successfully',
       registeredSuccessfully: 'Registered successfully',

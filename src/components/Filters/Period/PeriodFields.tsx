@@ -195,12 +195,15 @@ export const PeriodFields = (props: Props) => {
               />
             </div>
             <Button type="button" onClick={handleSaveCustomPeriod} className="sm:w-auto w-full" variant="default" disabled={isLoading || isCustomDatesError}>
-              Apply dates
+              {t('common.applyDates')}
             </Button>
           </div>
           {isCustomDatesError && (
-            <p className="mt-2 text-errorDefault font-golos">
-              Date {'"'}from{'"'} cannot be greater than date {'"'}to{'"'}
+            <p className="mt-2 text-warning-500 font-golos">
+              {t('common.dateFromCannotBeGreaterThanDateTo', {
+                fromDate: customFromDate ? customFromDate.format(dateFormat) : '',
+                toDate: customToDate ? customToDate.format(dateFormat) : '',
+              })}{' '}
             </p>
           )}
         </div>

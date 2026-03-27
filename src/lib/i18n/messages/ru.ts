@@ -43,6 +43,10 @@ export const ru = {
     selectedPeriodFrom: 'Выбранный период с',
     to: 'до',
     from: 'от',
+    hideFilters: 'Скрыть фильтры',
+    showFilters: 'Показать фильтры',
+    applyDates: 'Применить даты',
+    dateFromCannotBeGreaterThanDateTo: 'Дата {fromDate} не может быть больше даты {toDate}',
     sortOrderes: {
       asc: 'По возрастанию',
       desc: 'По убыванию',
@@ -71,6 +75,7 @@ export const ru = {
     welcomePanel: 'Панель',
     adminPanel: 'Панель администратора',
     home: 'Главная',
+    users: 'Пользователи',
     uiKit: 'UI Kit',
     profile: 'Профиль',
     login: 'Вход',
@@ -226,6 +231,24 @@ export const ru = {
     },
   },
   user: {
+    roles: {
+      admin: 'Администратор',
+      user: 'Пользователь',
+      editor: 'Редактор',
+    },
+    statuses: {
+      active: 'Активный',
+      blocked: 'Заблокирован',
+    },
+    fields: {
+      id: 'ID',
+      role: 'Роль',
+      status: 'Статус',
+      createdAt: 'Создано',
+      updatedAt: 'Обновлено',
+      sortBy: 'Сортировка по',
+      sortOrder: 'Порядок сортировки',
+    },
     messages: {
       userRegisteredSuccessfully: 'Пользователь успешно зарегистрирован',
       registeredSuccessfully: 'Регистрация прошла успешно',
