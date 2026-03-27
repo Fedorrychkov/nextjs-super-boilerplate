@@ -29,8 +29,10 @@ const {
   /** Server-only deploy revision (CI injects `COMMIT_HASH` into env; not exposed to the client). */
   COMMIT_HASH = process.env.COMMIT_HASH || process.env.VERCEL_GIT_COMMIT_SHA || '',
   RUM_ENABLED = process.env.RUM_ENABLED !== 'false',
-  NEXT_PUBLIC_RUM_ENABLED = process.env.NEXT_PUBLIC_RUM_ENABLED !== 'false',
+  NEXT_PUBLIC_RUM_ENABLED = process.env.NEXT_PUBLIC_RUM_ENABLED == 'false',
   NEXT_PUBLIC_ORGANIZATION_SAME_AS = process.env.NEXT_PUBLIC_ORGANIZATION_SAME_AS || '',
+  LLM_API_KEY = process.env.LLM_API_KEY || '',
+  NEXT_PUBLIC_LLM_ENABLED = process.env.NEXT_PUBLIC_LLM_ENABLED === 'true',
 } = process.env
 
 const isDevelop = [APP_ENV, NEXT_PUBLIC_APP_ENV].includes('development')
@@ -85,6 +87,11 @@ const RUM_CONFIG = {
   publicEnabled: NEXT_PUBLIC_RUM_ENABLED,
 }
 
+const LLM_CONFIG = {
+  apiKey: LLM_API_KEY,
+  enabled: NEXT_PUBLIC_LLM_ENABLED,
+}
+
 export {
   APP_ENV,
   APP_INTERNAL_ORIGIN,
@@ -99,6 +106,7 @@ export {
   isProd,
   isStage,
   JWT_CONFIG,
+  LLM_CONFIG,
   MFA_CONFIG,
   MONGODB_CONFIG,
   NEXT_PUBLIC_ORGANIZATION_SAME_AS,

@@ -1,0 +1,143 @@
+# AI Features Roadmap
+
+Roadmap for LLM-assisted authoring, SEO tooling, and (later) media generation. **All OpenAI calls go through the backend** — API keys never ship to the client.
+
+## Principles
+
+- **Server-only secrets:** `LLM_API_KEY` and provider calls only on the server; `NEXT_PUBLIC_LLM_ENABLED` gates UI affordances.
+- **Single provider (current scope):** OpenAI SDK / APIs only until a deliberate multi-provider abstraction is introduced.
+- **Phased delivery:** ship vertical slices (API → persistence → UI) per phase; avoid blocking Phase 1 on image/audio infrastructure.
+- **Post-processed assets:** Generated images and audio are uploaded to the existing **media pipeline** on the server; the client receives **final URLs** (and metadata), not raw blobs requiring a second upload.
+- **Model choice:** Expose **per-mode** lists of allowed models from the API so the UI can show cost/quality trade-offs (chat, structured SEO, image, TTS).
+
+---
+
+## Phase 1 — Text AI (Chat-First) — *Current focus*
+
+Goal: conversational assistance for **article body** and **SEO/preview settings**, with streaming responses, session scoping, and guardrails.
+
+### Foundation (shipped)
+
+- [x] **`LLMService`** (`lib/services/llm/llm.service.ts`): OpenAI client; `chat`, `chatStream`, `ask`, `generateText`, `listModels`; usage gated by `LLM_CONFIG` (no key on client).
+- [x] **Config:** `LLM_CONFIG` in `config/env.ts` — `LLM_API_KEY`, `NEXT_PUBLIC_LLM_ENABLED` (strict: `=== 'true'`); entries in `.env.example`.
+
+### 1.1 API and transport
+
+- [ ] **Streaming chat endpoint** (e.g. SSE or chunked `ReadableStream`) using existing `chatStream` / OpenAI streaming; no raw API key on client.
+- [ ] **Auth + authorization:** only users who can edit the article may call AI routes; validate `articleId` / `revisionId` where applicable.
+- [ ] **Rate limiting** per user (and optionally per article) to control cost abuse.
+- [ ] **Configurable models for chat** (default + allowlist); endpoint returns **`availableModels[]`** for the chat mode so the UI can render a selector.
+
+### 1.2 Context and quality (“LLM validation”)
+
+- [ ] **Request payload builder** that attaches: trimmed title/description, SEO language (if set), article/revision identifiers, and **content excerpt or full body** (Markdown or plain text derived from TipTap — single canonical extraction path).
+- [ ] **System prompts per intent:** e.g. SEO suggestions, content rewrite, outline from keywords, “ideas only” when body is empty (no pretend full-article analysis without substance).
+- [ ] **Structured “quality” pass (optional sub-step):** after or alongside chat, a dedicated prompt can score/check consistency (readability, SEO field lengths, language match). Output can be JSON for UI badges or a short summary — still text-first in Phase 1.
+
+### 1.3 UI
+
+- [ ] **Chat surface** (modal or side panel) reusable from editor flow; **streamed** assistant text.
+- [ ] **Gating:** hide or disable AI actions when `NEXT_PUBLIC_LLM_ENABLED` is false; for **new/unsaved** articles, defer heavy features until an article/revision exists (product rule).
+- [ ] **Empty content:** show guidance — require minimal user input or use “ideas chat” instead of full article tools.
+- [ ] **“Apply” (Phase 1 minimal):** copy-paste or partial apply; full structured apply can be Phase 2.
+
+### 1.4 Persistence (minimal for Phase 1)
+
+- [ ] **Session/thread** tied to `articleId` + `revisionId` + user; store messages and **usage** (tokens, model) for later analytics.
+- [ ] **No requirement** to send full history on every request; use **rolling summary + recent turns** (see Phase 2) — design tables with this in mind.
+
+### 1.5 Observability
+
+- [ ] Log request id, model, duration, and token usage server-side; optional admin “usage” view later.
+
+**Phase 1 exit criteria:** Editor can open AI chat, stream replies, switch model from API-provided list, and context includes article + SEO where available; all calls go through backend.
+
+---
+
+## Phase 2 — Structured Apply, History, and Usage Board
+
+- [ ] **JSON / structured outputs** for SEO field updates (schema aligned with `ArticleRevisionSeo` / forms) and optional content patch (Markdown or TipTap JSON) with **Apply** buttons.
+- [ ] **Tab-aware modal:** same shell; actions differ for **Content** vs **SEO** vs **Preview** metadata.
+- [ ] **Conversation compaction:** rolling summary + last N messages; optional “compact now” to refresh summary.
+- [ ] **Usage dashboard:** per-user / per-article aggregates from stored usage rows.
+- [ ] **Prompt caching** where applicable (OpenAI) to reduce cost on repeated system prompts.
+
+---
+
+## Phase 3 — Image Generation (User Prompt → Media URL)
+
+Goal: user enters a **prompt**; server generates an image via OpenAI **Image API** (e.g. `gpt-image-1-mini` or `gpt-image-1.5` per user choice), uploads the result through the **media service**, returns **CDN URL** to the client.
+
+**References:** [Image generation](https://developers.openai.com/api/docs/guides/image-generation) (GPT Image models, sizes, quality, streaming partial images optional).
+
+### 3.1 Backend
+
+- [ ] **Image generation service** (OpenAI `images.generate` or Responses API with `image_generation` tool — pick one stack and standardize).
+- [ ] **Model allowlist** per environment; API returns **`availableModels[]`** for image mode (e.g. `gpt-image-1-mini` vs `gpt-image-1.5`).
+- [ ] **Server-side upload** to media pipeline; persist `MediaAsset` (or equivalent); response includes **public URL** and asset id.
+- [ ] **Moderation / org verification** awareness (GPT Image may require org verification — document ops steps).
+
+### 3.2 UI
+
+- [ ] **Generate image** flow from editor or SEO (OG image) with prompt field + model dropdown + **Insert** into target field.
+- [ ] Optional: streaming partial previews if enabled (`partial_images`) for better UX.
+
+### 3.3 Product
+
+- [ ] Clarify licensing/disclosure for AI-generated images in UI copy if required.
+
+---
+
+## Phase 4 — Text-to-Speech (Article Narration) — Media + Article Model
+
+Goal: generate a **listenable** version of the article (“read by a narrator”) using OpenAI **Speech API**, store audio on the **article** (not revision), and expose optional generation at publish or from the **Content** tab.
+
+**References:** [Text to speech](https://developers.openai.com/api/docs/guides/text-to-speech) (e.g. `gpt-4o-mini-tts`, voices, formats; streaming supported).
+
+### 4.1 Content pipeline
+
+- [ ] **Plain-text extraction** for TTS: strip Markdown/HTML/TipTap noise — one shared function used only for narration (avoid double-maintaining preview vs publish).
+- [ ] **Length limits** and chunking strategy if input exceeds model limits (concatenate audio or single truncated read — product decision).
+
+### 4.2 Backend
+
+- [ ] **TTS endpoint** with `model`, `voice`, `format` (e.g. `mp3` or `wav` for latency); API returns **`availableVoices[]`** and **`availableModels[]`** for TTS mode.
+- [ ] **Upload generated audio** via media pipeline; extend media layer to treat **audio** MIME types (Uploadcare or existing storage — **audio support** explicitly in schema and validation).
+- [ ] **Persist on article model:** e.g. `audioAssetId` / `audioUrl` / duration (exact fields to be defined in schema migration).
+
+### 4.3 UX
+
+- [ ] **Content tab:** “Generate article audio” (primary entry for simplicity).
+- [ ] **Publish flow (optional):** checkbox “Generate voice version after publish” (uses latest published revision’s text snapshot — define rules).
+- [ ] **Disclosure:** OpenAI usage policy requires clear disclosure that voice is **AI-generated** — show in player UI.
+
+### 4.4 Integration with chat (optional)
+
+- [ ] “Generate cover image” / “Generate narration” actions could later invoke Phase 3/4 from the same AI shell; still **server-only** and media-first.
+
+---
+
+## Cross-Cutting — Media and Models API
+
+- [ ] **Unified “capabilities” or “models” endpoint** (or per-domain routes) returning for each mode: `chat`, `seo_structured`, `image`, `tts` — `{ models: [...], voices?: [...] }` with stable ids for UI.
+- [ ] **Media:** document and implement **audio** alongside images (upload, CDN URL, MIME checks, quotas).
+- [x] **Env:** `NEXT_PUBLIC_LLM_ENABLED` and `LLM_API_KEY` documented in `.env.example`; strict opt-in for the public flag (`NEXT_PUBLIC_LLM_ENABLED === 'true'` in `config/env.ts`).
+
+---
+
+## Summary Table
+
+| Phase | Focus | Client sees |
+| ----- | ----- | ----------- |
+| **1** | Text chat + streaming + SEO/article context + quality prompts | Streamed text; model list from API |
+| **2** | Structured apply, history, usage, compaction | Apply to forms/editor; dashboards |
+| **3** | Image generation → media URL | Image URL ready to insert |
+| **4** | TTS → article audio field + optional publish hook | Audio URL; voice/model from API |
+
+---
+
+## Out of Scope (for this document)
+
+- Non-OpenAI providers (unless added later behind the same backend abstraction).
+- Client-side direct calls to OpenAI.
+- Storing full chat history in every LLM request without compaction (anti-pattern — use Phase 2 patterns instead).

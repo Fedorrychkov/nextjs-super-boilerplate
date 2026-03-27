@@ -1,0 +1,196 @@
+import { LLM_CONFIG } from '@config/env'
+import OpenAI from 'openai'
+
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant'
+  content: string
+}
+
+export interface ChatCompletionOptions {
+  model?: string
+  temperature?: number
+  maxTokens?: number
+  stream?: boolean
+}
+
+export interface ChatCompletionResponse {
+  content: string
+  usage?: {
+    promptTokens: number
+    completionTokens: number
+    totalTokens: number
+  }
+}
+
+export class LLMService {
+  private client: OpenAI | null = null
+
+  /**
+   * Initializing the OpenAI client
+   */
+  private getClient(): OpenAI | null | undefined {
+    if (!this.client) {
+      if (!LLM_CONFIG.apiKey && LLM_CONFIG.enabled) {
+        throw new Error('LLM_API_KEY is not configured. Please set LLM_API_KEY in environment variables.')
+      }
+
+      if (LLM_CONFIG.enabled) {
+        this.client = new OpenAI({
+          apiKey: LLM_CONFIG.apiKey,
+        })
+      }
+    }
+
+    return this.client
+  }
+
+  /**
+   * Sending message to ChatGPT
+   * @param messages - Array of messages for the dialog
+   * @param options - Options for the request (model, temperature, etc.)
+   * @returns Response from ChatGPT
+   */
+  async chat(messages: ChatMessage[], options?: ChatCompletionOptions): Promise<ChatCompletionResponse> {
+    const client = this.getClient()
+
+    if (!client) {
+      throw new Error('LLM is not enabled. Please set NEXT_PUBLIC_LLM_ENABLED to true in environment variables.')
+    }
+
+    const { model = 'gpt-4o-mini', temperature = 0.7, maxTokens = 1000, stream = false } = options || {}
+
+    try {
+      const completion = await client.chat.completions.create({
+        model,
+        messages: messages.map((msg) => ({
+          role: msg.role,
+          content: msg.content,
+        })),
+        temperature,
+        max_tokens: maxTokens,
+        stream,
+      })
+
+      if (stream) {
+        // For streaming we need to process differently
+        throw new Error('Streaming mode is not yet implemented. Please set stream: false')
+      }
+
+      const completionWithoutStream = 'choices' in completion ? completion : undefined
+
+      const content = completionWithoutStream?.choices[0]?.message?.content || ''
+      const usage = completionWithoutStream?.usage
+        ? {
+            promptTokens: completionWithoutStream.usage.prompt_tokens,
+            completionTokens: completionWithoutStream.usage.completion_tokens,
+            totalTokens: completionWithoutStream.usage.total_tokens,
+          }
+        : undefined
+
+      return {
+        content,
+        usage,
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`OpenAI API error: ${error.message}`)
+      }
+
+      throw new Error('Unknown error occurred while calling OpenAI API')
+    }
+  }
+
+  /**
+   * Streaming response by chunks (for sending to client).
+   * @param messages - Array of messages for the dialog
+   * @param options - Options for the request
+   * @yields Text chunks of the response
+   */
+  async *chatStream(messages: ChatMessage[], options?: ChatCompletionOptions): AsyncGenerator<string> {
+    const client = this.getClient()
+
+    if (!client) {
+      throw new Error('LLM is not enabled. Please set NEXT_PUBLIC_LLM_ENABLED to true in environment variables.')
+    }
+
+    const { model = 'gpt-4o-mini', temperature = 0.7, maxTokens = 1000 } = options || {}
+
+    const stream = await client.chat.completions.create({
+      model,
+      messages: messages.map((msg) => ({ role: msg.role, content: msg.content })),
+      temperature,
+      max_tokens: maxTokens,
+      stream: true,
+    })
+
+    for await (const chunk of stream) {
+      const delta = chunk.choices[0]?.delta?.content ?? ''
+
+      // We yield the chunk if there is delta or usage (usage comes in the last chunk, often without delta)
+      if (delta) yield delta
+    }
+  }
+
+  /**
+   * Simple request to ChatGPT (without dialog history)
+   * @param prompt - Text of the request
+   * @param systemPrompt - System prompt (optional)
+   * @param options - Options for the request
+   * @returns Response from ChatGPT
+   */
+  async ask(prompt: string, systemPrompt?: string, options?: ChatCompletionOptions): Promise<ChatCompletionResponse> {
+    const messages: ChatMessage[] = []
+
+    if (systemPrompt) {
+      messages.push({
+        role: 'system',
+        content: systemPrompt,
+      })
+    }
+
+    messages.push({
+      role: 'user',
+      content: prompt,
+    })
+
+    return this.chat(messages, options)
+  }
+
+  /**
+   * Generating text using ChatGPT
+   * @param prompt - Prompt for generation
+   * @param options - Options for the request
+   * @returns Generated text
+   */
+  async generateText(prompt: string, options?: ChatCompletionOptions): Promise<string> {
+    const response = await this.ask(prompt, undefined, options)
+
+    return response.content
+  }
+
+  /**
+   * Getting the list of available models (for debugging)
+   * @returns List of models
+   */
+  async listModels(): Promise<string[]> {
+    const client = this.getClient()
+
+    if (!client) {
+      throw new Error('LLM is not enabled. Please set NEXT_PUBLIC_LLM_ENABLED to true in environment variables.')
+    }
+
+    try {
+      const models = await client.models.list()
+
+      return models.data.map((model) => model.id)
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Failed to list models: ${error.message}`)
+      }
+
+      throw new Error('Unknown error occurred while listing models')
+    }
+  }
+}
+
+export const llmService = new LLMService()

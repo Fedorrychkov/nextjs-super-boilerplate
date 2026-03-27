@@ -98,6 +98,7 @@
     "marked": "^17.0.5",
     "mongoose": "^9.2.3",
     "next": "16.1.6",
+    "openai": "^6.33.0",
     "otplib": "^13.3.0",
     "radix-ui": "^1.4.2",
     "rate-limiter-flexible": "^9.1.1",

@@ -175,6 +175,32 @@ This roadmap tracks the remaining work for the article platform and related qual
 - [x] Add i18n conventions for content-related labels, validation messages, and notifications.
 - [ ] Define migration plan for replacing hardcoded UI strings with translation keys.
 
+### 4. Article view counter and unique visitors
+
+**Goal:** track how often each article is opened for **real reads** (public and private/link-only), without counting **preview** or editor sessions.
+
+#### Total views (simple counter)
+
+- [ ] Persist **`viewCount`** (or a separate `ArticleViewStats` document) on the article; increment **once per successful article page load** on the canonical read path (`/article/[slug]` and private article routes — **not** `/preview/...` or draft editor).
+- [ ] **Server-side increment** preferred: e.g. `POST /api/v1/articles/:id/views` or fire-and-forget from a **Route Handler** invoked after auth/authorization confirms the user may see the article (public: optional anonymous; private: must be authenticated and entitled).
+- [ ] **Idempotency / debounce:** avoid double-counting on React Strict Mode double-mount or quick back-navigation — e.g. one increment per **browser tab session** per article per day (see below) or a short TTL key in Redis (`articleId` + `visitorKey` + window).
+- [ ] **SSR vs client:** if the page is cached (`unstable_cache`), do **not** bake the counter into cached HTML; load count via client fetch or edge middleware + async write so counts stay approximate-under-load but consistent in DB.
+
+#### Unique visitors (design options — pick one or combine)
+
+| Approach | Pros | Cons |
+| -------- | ---- | ---- |
+| **Anonymous signed cookie** (`visitor_id` set on first `GET` via API) | Stable per browser profile, no login required for public | Cookie banner / consent if non-essential; cleared when user clears cookies |
+| **`localStorage` UUID** + send with view API | No cookie; survives reloads in same origin | Lost on clear-site-data; not cross-device |
+| **Authenticated user id** | Best for **private** articles (natural unique key) | Logged-out public traffic still needs anonymous key |
+| **Redis / DB dedupe** (`articleId` + `visitorKey` + date bucket) | True “unique per day/week” without trusting client alone | Storage and TTL policy; `visitorKey` from cookie or hash |
+| **IP + UA + day** (hashed, salted) | Rough uniques without cookies | GDPR/privacy review; VPN/shared IP collisions; less accurate |
+
+**Recommendation:** for **public** articles use a **first-party anonymous id** (HttpOnly cookie or `localStorage` + header) created by `/api/v1/visitor` or set on first view POST; for **private** articles prefer **`userId`** from session as the dedupe key (optionally still merge with anonymous if you allow preview-style links later). Store **daily or weekly uniques** in a rollup table or Redis HyperLogLog if you need scale without storing every row.
+
+- [ ] Expose **view count** (and optionally **unique visitors** for a chosen window) in admin or author dashboard.
+- [ ] Document that metrics are **best-effort** under load and cache (acceptable for product analytics, not billing-grade).
+
 ---
 
 ## Phase 7 — Locale, content language, and user-facing language
