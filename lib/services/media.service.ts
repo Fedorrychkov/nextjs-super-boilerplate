@@ -55,6 +55,21 @@ export async function findMediaAssetById(id: string) {
   return MediaAsset.findById(id)
 }
 
+export async function listMediaAssets(params?: { resourceType?: MediaResourceType; limit?: number }) {
+  await connectDB()
+
+  const limit = Math.min(Math.max(params?.limit ?? 50, 1), 200)
+  const query: Record<string, unknown> = {
+    isDeleted: false,
+  }
+
+  if (params?.resourceType) {
+    query.resourceType = params.resourceType
+  }
+
+  return MediaAsset.find(query).sort({ createdAt: -1 }).limit(limit)
+}
+
 export async function markMediaAssetDeleted(id: string) {
   await connectDB()
 
