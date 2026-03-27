@@ -33,6 +33,9 @@ export const en = {
     preview: 'Preview',
     publish: 'Publish',
     republish: 'Republish',
+    loading: 'Loading...',
+    enabled: 'Enabled',
+    disabled: 'Disabled',
     addNew: 'Add new',
     clearFilters: 'Clear filters',
     createdAt: 'Created At',
@@ -49,6 +52,7 @@ export const en = {
     dateFromCannotBeGreaterThanDateTo: 'Date {fromDate} cannot be greater than date {toDate}',
     requiredField: 'Required field',
     emailMustContainAtAndDomain: 'Email must contain @ and domain',
+    notSet: 'Not set',
     sortOrderes: {
       asc: 'Ascending',
       desc: 'Descending',
@@ -258,8 +262,11 @@ export const en = {
       userUpdateDialog: {
         title: 'Update user {email}',
         description: 'You can update the user {email} by changing the role and status.',
+        pushStatus: 'Push subscription',
+        mfaStatus: 'MFA',
         userUpdatedSuccessfully: 'User updated successfully',
         update: 'Update',
+        languageCode: 'Language code',
       },
       registerByAdminUserDialog: {
         title: 'Register by admin user',

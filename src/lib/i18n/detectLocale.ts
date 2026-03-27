@@ -16,6 +16,16 @@ function parseAcceptLanguage(headerValue: string | null | undefined): string[] {
     .filter(Boolean)
 }
 
+export function getPreferredLanguageCodeFromAcceptLanguage(headerValue: string | null | undefined): string | null {
+  const tags = parseAcceptLanguage(headerValue)
+
+  if (!tags.length) {
+    return null
+  }
+
+  return tags[0] ?? null
+}
+
 function pickSupportedLocaleFromAcceptLanguage(headerValue: string | null | undefined): AppLocale | null {
   const tags = parseAcceptLanguage(headerValue)
 

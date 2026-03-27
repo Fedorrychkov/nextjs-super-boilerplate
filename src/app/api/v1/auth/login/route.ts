@@ -9,10 +9,12 @@ import { authService } from '@lib/services/auth.service'
 import { NextRequest } from 'next/server'
 
 import { LoginEmailDto } from '~/api/auth/types'
+import { getPreferredLanguageCodeFromAcceptLanguage } from '~/lib/i18n/detectLocale'
 
 const handler = (request: NextRequest) => {
   return apiErrorHandlerContainer(request)(async (res, req) => {
     const body: LoginEmailDto = await req.json()
+    const languageCode = getPreferredLanguageCodeFromAcceptLanguage(req.headers.get('accept-language'))
     const ip = getClientKey(req)
 
     await assertLoginNotBlocked(ip, body.email)
@@ -24,7 +26,7 @@ const handler = (request: NextRequest) => {
       const settings = await UserSettings.findOne({ userId: user._id })
 
       if (!settings || !settings.mfaEnabled || !settings.mfaSecret) {
-        const authResponse = await authService.login(body)
+        const authResponse = await authService.login(body, { languageCode })
 
         const response = res.json(
           {

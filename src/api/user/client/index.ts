@@ -4,7 +4,7 @@ import { AxiosInstance } from 'axios'
 import { PaginationMeta } from '~/types'
 
 import { UserModel } from '../model'
-import { UpdateUserDto, UserFilter } from '../types'
+import { UpdateUserDto, UserFilter, UserMfaStatusDto, UserPushStatusDto } from '../types'
 
 export class ClientUserApi {
   private readonly client: AxiosInstance
@@ -27,6 +27,18 @@ export class ClientUserApi {
 
   async updateUser(id: string, body: UpdateUserDto): Promise<{ success: true; message: string; user: Pick<UserModel, 'id' | 'email' | 'role' | 'status'> }> {
     const response = await this.client.put(`/api/v1/user/update/${id}`, body)
+
+    return response.data
+  }
+
+  async getUserPushStatus(id: string): Promise<UserPushStatusDto> {
+    const response = await this.client.get(`/api/v1/user/status/push/${id}`)
+
+    return response.data
+  }
+
+  async getUserMfaStatus(id: string): Promise<UserMfaStatusDto> {
+    const response = await this.client.get(`/api/v1/user/status/mfa/${id}`)
 
     return response.data
   }

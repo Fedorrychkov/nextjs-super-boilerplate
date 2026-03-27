@@ -71,6 +71,11 @@ const UserSchema: Schema<IUser> = new Schema<IUser>(
       enum: Object.values(UserStatus),
       default: UserStatus.ACTIVE,
     },
+    languageCode: {
+      type: String,
+      default: null,
+      trim: true,
+    },
     createdAt: {
       type: String,
       default: () => time().toISOString(),

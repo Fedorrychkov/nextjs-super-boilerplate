@@ -10,10 +10,18 @@ import { LoginEmailDto, RegisterByAdminDto, RegisterDto } from '~/api/auth/types
 import { UserModel, UserRole, UserStatus } from '~/api/user'
 
 export class AuthService {
+  private async updateUserLanguage(userId: string, languageCode?: string | null): Promise<void> {
+    if (!languageCode) {
+      return
+    }
+
+    await User.updateOne({ _id: userId }, { $set: { languageCode } })
+  }
+
   /**
    * Registration of a user
    */
-  async register(data: RegisterDto, isAdmin: boolean = false): Promise<AuthResponse> {
+  async register(data: RegisterDto, isAdmin: boolean = false, options?: { languageCode?: string | null }): Promise<AuthResponse> {
     await connectDB()
 
     const existingUser = await User.findOne({ email: data.email.toLowerCase() })
@@ -27,9 +35,10 @@ export class AuthService {
       role: isAdmin ? UserRole.ADMIN : UserRole.USER,
       status: UserStatus.ACTIVE,
       password: data.password,
+      languageCode: options?.languageCode ?? null,
     })
 
-    return this.generateAuthResponse(user)
+    return this.generateAuthResponse(user, options)
   }
 
   async registerByAdmin(data: RegisterByAdminDto): Promise<Pick<UserModel, 'id' | 'email' | 'role' | 'status'>> {
@@ -62,10 +71,10 @@ export class AuthService {
     }
   }
 
-  async login(data: LoginEmailDto): Promise<AuthResponse> {
+  async login(data: LoginEmailDto, options?: { languageCode?: string | null }): Promise<AuthResponse> {
     const user = await this.validateUserCredentials(data)
 
-    return this.generateAuthResponse(user)
+    return this.generateAuthResponse(user, options)
   }
 
   async refreshTokens(refreshTokenString: string): Promise<AuthResponse> {
@@ -135,8 +144,9 @@ export class AuthService {
     return user
   }
 
-  private async generateAuthResponse(user: IUser): Promise<AuthResponse> {
+  private async generateAuthResponse(user: IUser, options?: { languageCode?: string | null }): Promise<AuthResponse> {
     await connectDB()
+    await this.updateUserLanguage(user._id.toString(), options?.languageCode)
 
     const payload = {
       sub: user._id.toString(),
@@ -173,8 +183,8 @@ export class AuthService {
     }
   }
 
-  async createAuthTokensForUser(user: IUser): Promise<AuthResponse> {
-    return this.generateAuthResponse(user)
+  async createAuthTokensForUser(user: IUser, options?: { languageCode?: string | null }): Promise<AuthResponse> {
+    return this.generateAuthResponse(user, options)
   }
 }
 

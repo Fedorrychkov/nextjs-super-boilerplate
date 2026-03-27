@@ -20,3 +20,11 @@ export type UserFilter = Partial<Omit<UserModel, 'passwordHash' | 'createdAt' | 
 }
 
 export type UpdateUserDto = Partial<Omit<UserModel, 'passwordHash' | 'createdAt' | 'updatedAt' | 'email'>>
+
+export type UserPushStatusDto = {
+  hasPushSubscription: boolean
+}
+
+export type UserMfaStatusDto = {
+  mfaEnabled: boolean
+}

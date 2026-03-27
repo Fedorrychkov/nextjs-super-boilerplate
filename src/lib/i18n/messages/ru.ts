@@ -33,6 +33,9 @@ export const ru = {
     preview: 'Предварительный просмотр',
     publish: 'Опубликовать',
     republish: 'Переопубликовать',
+    loading: 'Загрузка...',
+    enabled: 'Включено',
+    disabled: 'Выключено',
     addNew: 'Добавить новый',
     clearFilters: 'Сбросить фильтры',
     createdAt: 'Создано',
@@ -49,6 +52,7 @@ export const ru = {
     requiredField: 'Обязательное поле',
     emailMustContainAtAndDomain: 'Email должен содержать @ и домен',
     dateFromCannotBeGreaterThanDateTo: 'Дата {fromDate} не может быть больше даты {toDate}',
+    notSet: 'Не установлено',
     sortOrderes: {
       asc: 'По возрастанию',
       desc: 'По убыванию',
@@ -257,8 +261,11 @@ export const ru = {
       userUpdateDialog: {
         title: 'Обновление пользователя {email}',
         description: 'Вы можете обновить пользователя {email}, изменив роль и статус.',
+        pushStatus: 'Push-подписка',
+        mfaStatus: 'MFA',
         userUpdatedSuccessfully: 'Пользователь успешно обновлен',
         update: 'Обновить',
+        languageCode: 'Язык',
       },
       registerByAdminUserDialog: {
         title: 'Регистрация пользователя администратором',

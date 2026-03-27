@@ -1,5 +1,4 @@
 import connectDB from '@lib/db/client'
-import Article from '@lib/db/models/Article'
 import User from '@lib/db/models/User'
 import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'

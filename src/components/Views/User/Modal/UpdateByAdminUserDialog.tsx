@@ -7,10 +7,11 @@ import { UpdateUserDto, type UserModel, UserRole, UserStatus } from '~/api/user'
 import { DefaultMultiselectField } from '~/components/Fields'
 import { Option } from '~/components/ui'
 import { Button } from '~/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '~/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '~/components/ui/dialog'
 import { useRegister } from '~/hooks/useRegister'
 import { AppMessageKey } from '~/lib/i18n'
 import { useT } from '~/providers'
+import { useUserMfaStatusQuery, useUserPushStatusQuery } from '~/query/user'
 
 type Props = {
   isOpen?: boolean
@@ -50,6 +51,8 @@ const status: Option[] = [
 export const UpdateByAdminUserDialog = (props: Props) => {
   const t = useT()
   const { isOpen, toggle, onSubmit: defaultOnSubmit, isLoading, disabled } = props
+  const pushStatusQuery = useUserPushStatusQuery(props.user.id, Boolean(isOpen))
+  const mfaStatusQuery = useUserMfaStatusQuery(props.user.id, Boolean(isOpen))
 
   const roleOptions = useMemo(() => {
     return roles.map((role) => ({ ...role, label: t(role.label as AppMessageKey) }))
@@ -126,6 +129,22 @@ export const UpdateByAdminUserDialog = (props: Props) => {
         <FormProvider {...form}>
           <form onSubmit={handleSubmit(onSubmit)} className="w-full">
             <div className="flex flex-col gap-4 py-4">
+              <div className="grid grid-cols-1 gap-2 rounded-md border p-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">{t('user.messages.userUpdateDialog.pushStatus')}</span>
+                  <span>
+                    {pushStatusQuery.isLoading ? t('common.loading') : pushStatusQuery.data?.hasPushSubscription ? t('common.enabled') : t('common.disabled')}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">{t('user.messages.userUpdateDialog.mfaStatus')}</span>
+                  <span>{mfaStatusQuery.isLoading ? t('common.loading') : mfaStatusQuery.data?.mfaEnabled ? t('common.enabled') : t('common.disabled')}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">{t('user.messages.userUpdateDialog.languageCode')}</span>
+                  <span>{props.user.languageCode ?? t('common.notSet')}</span>
+                </div>
+              </div>
               <DefaultMultiselectField
                 updateBySelected
                 disabled={isLoading || disabled}
