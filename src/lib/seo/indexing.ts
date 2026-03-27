@@ -1,4 +1,4 @@
-import { GOOGLE_INDEXING_CLIENT_EMAIL, GOOGLE_INDEXING_PRIVATE_KEY, INDEXNOW_API_KEY, INDEXNOW_KEY_LOCATION } from '@config/env'
+import { GOOGLE_INDEXING_CLIENT_EMAIL, GOOGLE_INDEXING_PRIVATE_KEY, INDEXNOW_API_KEY, INDEXNOW_KEY_LOCATION, isProd } from '@config/env'
 import jwt from 'jsonwebtoken'
 
 import { getUniqueId } from '~/utils/getUniqueId'
@@ -205,6 +205,16 @@ export type NotifySearchEnginesOptions = {
  */
 export const notifySearchEngines = async (urls: string[], options: NotifySearchEnginesOptions = {}): Promise<void> => {
   const { indexNow = true, google = true } = options
+  const logger = new Logger(['notifySearchEngines', '[lib/seo/indexing.ts]'])
+
+  if (!isProd) {
+    logger.warn('[seo] Skipping search engine notification in non-production environment', {
+      urls,
+      options,
+    })
+
+    return
+  }
 
   const normalized = urls.filter((u) => {
     try {

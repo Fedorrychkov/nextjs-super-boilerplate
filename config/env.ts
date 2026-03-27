@@ -12,7 +12,7 @@ const {
   MONGO_USER = process.env.MONGO_USER || '',
   MONGO_PASSWORD = process.env.MONGO_PASSWORD || '',
   MONGO_DB = process.env.MONGO_DB || 'app',
-  RATE_LIMIT_POINTS = Number(process.env.RATE_LIMIT_POINTS || 100),
+  RATE_LIMIT_POINTS = Number(process.env.RATE_LIMIT_POINTS || 400),
   REDIS_URL = process.env.REDIS_URL,
   VAPID_SUBJECT = process.env.VAPID_SUBJECT,
   NEXT_PUBLIC_VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,

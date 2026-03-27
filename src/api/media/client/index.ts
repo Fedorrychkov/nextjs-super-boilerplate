@@ -1,8 +1,8 @@
 import { Request } from '@lib/request'
 import { AxiosInstance } from 'axios'
 
-import { MediaAssetModel, MediaUploadResponse } from '../model'
-import { MediaUploadDto } from '../types'
+import { MediaAssetListResponse, MediaAssetModel, MediaUploadResponse } from '../model'
+import { MediaListDto, MediaUploadDto } from '../types'
 
 export class ClientMediaApi {
   private readonly client: AxiosInstance
@@ -33,6 +33,17 @@ export class ClientMediaApi {
     const response = await this.client.delete(`/api/v1/media/delete/${assetId}`, {
       params: {
         articleRevisionId,
+      },
+    })
+
+    return response.data
+  }
+
+  async listMedia(dto?: MediaListDto): Promise<MediaAssetListResponse> {
+    const response = await this.client.get('/api/v1/media/list', {
+      params: {
+        resourceType: dto?.resourceType,
+        limit: dto?.limit,
       },
     })
 

@@ -12,7 +12,7 @@ import { UserRole } from '~/api/user'
 import { routes } from '~/constants'
 import { publicArticleCacheTag } from '~/lib/cache/publicArticlePageCache'
 import { getServerTFromNextRequest } from '~/lib/i18n/server'
-import { resolveArticleCanonicalUrl } from '~/lib/seo/articleCanonical'
+import { buildDefaultArticleUrl, resolveArticleCanonicalUrl } from '~/lib/seo/articleCanonical'
 import { seoConfig } from '~/lib/seo/config'
 import { notifySearchEngines } from '~/lib/seo/indexing'
 import { time } from '~/utils/time'
@@ -55,15 +55,18 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     const revisionMetadata = currentRevision?.metadata as { seo?: ArticleRevisionSeoMetadata | null } | undefined
     const seo = revisionMetadata?.seo
     const shouldIndex = isPublishedPublic && seo?.noindex !== true
-    const articleUrl = data.slug
+    const canonicalUrl = data.slug
       ? resolveArticleCanonicalUrl(seoConfig.siteUrl, data.slug, data.visibility ?? ArticleVisibility.PUBLIC, seo?.canonicalUrl)
       : null
+    const defaultPublicUrl = data.slug ? buildDefaultArticleUrl(seoConfig.siteUrl, data.slug, ArticleVisibility.PUBLIC) : null
 
-    if (shouldIndex && articleUrl) {
-      await notifySearchEngines([articleUrl])
+    if (shouldIndex && canonicalUrl) {
+      const urlsForIndexing = Array.from(new Set([canonicalUrl, defaultPublicUrl].filter((url): url is string => Boolean(url))))
+
+      await notifySearchEngines(urlsForIndexing)
     }
 
-    if (articleUrl) {
+    if (canonicalUrl) {
       revalidatePath(routes.articlePublic.path.replace(':slug', data.slug ?? ''))
     }
 
