@@ -355,6 +355,9 @@ export const en = {
       articleVisibilityPrivateHintText: 'If you choose Private, you can choose which roles can access the article.',
       articleVisibilityLinkOnlyHintText: 'If you choose Link Only, the article will be accessible via link only.',
       articleVisibilityPublicHintText: 'If you choose Public, the article will be accessible to everyone.',
+      allowAiTrainingLabel: 'Allow AI training use of this content (public pages)',
+      allowAiTrainingDescription:
+        'When published as Public, responses include a Content-Signal header: if enabled, ai-train=yes; if disabled, ai-train=no. Search and agent input signals stay allowed unless you change policy later. Default: allowed.',
       allowedRolesForPrivateArticles: 'Allowed Roles for Private Articles',
       content: 'Content',
       contentEditor: 'Content Editor',

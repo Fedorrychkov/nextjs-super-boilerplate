@@ -9,7 +9,7 @@ import { ArticleModel, ArticleVisibility } from '~/api/article'
 import { ArticleRevisionMediaMetadata, ArticleRevisionModel } from '~/api/article-revision'
 import { MediaResourceType } from '~/api/media'
 import { UserRole } from '~/api/user'
-import { DefaultFieldContainer, DefaultMultiselectField, DefaultTextAreaContainer, MediaUrlUploadField } from '~/components/Fields'
+import { DefaultCheckbox, DefaultFieldContainer, DefaultMultiselectField, DefaultTextAreaContainer, MediaUrlUploadField } from '~/components/Fields'
 import { AlertBlock, Button, Option, Typography } from '~/components/ui'
 import { routes } from '~/constants'
 import { handleRegister } from '~/hooks/useRegister'
@@ -32,6 +32,8 @@ type Form = {
    * If Private, we can choose which roles can access the article
    */
   allowedRoles?: Option[] | null
+  /** Stored on Article; drives `Content-Signal: ai-train=…` on public pages. Default true. */
+  allowAiTraining?: boolean | null
 }
 
 const visibilityOptions = [
@@ -64,6 +66,7 @@ export const ArticleEditablePreview = forwardRef<ArticleEditablePreviewHandle, P
     slug: article?.slug ?? null,
     visibility: article?.visibility ? [{ value: article.visibility, label: article.visibility }] : [{ value: ArticleVisibility.PUBLIC, label: 'Public' }],
     allowedRoles: article?.allowedRoles ? article.allowedRoles.map((role) => ({ value: role, label: role })) : [],
+    allowAiTraining: article?.allowAiTraining !== false,
   }
 
   const form = useForm<Form>({
@@ -115,6 +118,7 @@ export const ArticleEditablePreview = forwardRef<ArticleEditablePreviewHandle, P
         allowedRoles: allowedRoles?.length ? allowedRoles : null,
         visibility: data.visibility?.[0]?.value as ArticleVisibility,
         thumbnailAssetId: data.thumbnailAssetId ?? null,
+        allowAiTraining: Boolean(data.allowAiTraining),
       })
     },
     [onSave],
@@ -244,6 +248,18 @@ export const ArticleEditablePreview = forwardRef<ArticleEditablePreviewHandle, P
               disabled={isLoading || isDisabled}
               label={t('article.ui.allowedRolesForPrivateArticles')}
               name="allowedRoles"
+            />
+          )}
+          {visibility?.[0]?.value === ArticleVisibility.PUBLIC && (
+            <DefaultCheckbox
+              {...handleRegister({
+                ...register('allowAiTraining'),
+                errors,
+              })}
+              name="allowAiTraining"
+              label={t('article.ui.allowAiTrainingLabel')}
+              description={t('article.ui.allowAiTrainingDescription')}
+              disabled={isLoading || isDisabled}
             />
           )}
           <div>

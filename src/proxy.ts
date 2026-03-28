@@ -1,7 +1,10 @@
+import { APP_INTERNAL_ORIGIN } from '@config/env'
 import { getClientKey, rateLimit } from '@lib/security/rate-limit'
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 
+import { ARTICLE_MARKDOWN_REWRITE_SLUG_HEADER } from '~/lib/http/articleMarkdownRewrite'
+import { preferMarkdownAccept } from '~/lib/http/preferMarkdownAccept'
 import { Logger } from '~/utils/logger'
 import { time } from '~/utils/time'
 
@@ -38,6 +41,29 @@ export async function proxy(request: NextRequest) {
     } catch {
       return NextResponse.redirect(new URL('/429-too-many-requests', request.url))
     }
+  }
+
+  const { pathname } = request.nextUrl
+  let publicArticleSlug: string | null = null
+
+  if (pathname.startsWith('/article/')) {
+    const segments = pathname.slice('/article/'.length).split('/').filter(Boolean)
+    publicArticleSlug = segments[0] ?? null
+  }
+
+  if (publicArticleSlug && preferMarkdownAccept(request.headers.get('accept'))) {
+    const rewriteUrl = request.nextUrl.clone()
+
+    rewriteUrl.pathname = '/api/v1/public/article/markdown'
+    rewriteUrl.search = `?slug=${encodeURIComponent(publicArticleSlug)}`
+
+    const rewriteHeaders = new Headers(request.headers)
+
+    rewriteHeaders.set(ARTICLE_MARKDOWN_REWRITE_SLUG_HEADER, publicArticleSlug)
+
+    return NextResponse.rewrite(rewriteUrl, {
+      request: { headers: rewriteHeaders },
+    })
   }
 
   // Build client info object
@@ -85,6 +111,29 @@ export async function proxy(request: NextRequest) {
   if (requestTime) response.headers.set('X-Request-Time', requestTime)
 
   if (userAgent) response.headers.set('X-User-Agent', userAgent)
+
+  if (publicArticleSlug) {
+    const base = APP_INTERNAL_ORIGIN || request.nextUrl.origin
+
+    try {
+      const signalUrl = new URL('/api/v1/public/article/content-signal', base)
+
+      signalUrl.searchParams.set('slug', publicArticleSlug)
+
+      const sigRes = await fetch(signalUrl.toString(), { method: 'GET' })
+
+      if (sigRes.ok) {
+        const data = (await sigRes.json()) as { contentSignal?: string }
+
+        if (data.contentSignal) {
+          response.headers.set('Content-Signal', data.contentSignal)
+          response.headers.set('Vary', 'Accept')
+        }
+      }
+    } catch {
+      // best-effort: page still renders without Content-Signal
+    }
+  }
 
   return response
 }

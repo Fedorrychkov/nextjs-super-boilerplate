@@ -132,6 +132,24 @@ Goal: generate a **listenable** version of the article (“read by a narrator”
 
 ---
 
+## Phase 5 — Public content for AI agents (Markdown negotiation + Content Signals)
+
+**Product alignment:** **`PRODUCT_ROADMAP.md`** Phase 6 §5 (Markdown for agents, `Content-Signal`, public-only surfaces).
+
+**References:** Cloudflare [Introducing Markdown for Agents](https://blog.cloudflare.com/markdown-for-agents/), [Markdown for Agents (docs)](https://developers.cloudflare.com/fundamentals/reference/markdown-for-agents/), [Content Signals](https://contentsignals.org/), Cloudflare [Content Signals Policy](https://blog.cloudflare.com/content-signals-policy/).
+
+### 5.1 Training / crawling policy (shipped — HTML)
+
+- [x] **Per-article flag** `allowAiTraining` on **`Article`** (Mongo), default **`true`**; edited in editor **Preview** when visibility is **Public** (`ArticleEditablePreview`).
+- [x] **HTTP `Content-Signal`** on public **`/article/[slug]`** HTML responses: `buildPublicArticleContentSignalHeader` in `src/lib/seo/contentSignal.ts`; **`src/proxy.ts`** fetches `GET /api/v1/public/article/content-signal?slug=` and sets the header (uses **`APP_INTERNAL_ORIGIN`** when needed).
+
+### 5.2 Markdown representation (shipped)
+
+- [x] **`Accept: text/markdown`** on **`/article/[slug]`** (**`src/proxy.ts`**: **`preferMarkdownAccept`** + rewrite to **`/api/v1/public/article/markdown`**); body = YAML front matter + TipTap → Markdown; **`Vary: Accept`** on HTML and Markdown; **`Content-Signal`** on Markdown responses (`src/app/api/v1/public/article/markdown/route.ts`).
+- [x] **`x-markdown-tokens`** — `countPublicArticleMarkdownTokens` + **`gpt-tokenizer`** (default **o200k_base**) on the Markdown route.
+
+---
+
 ## Cross-Cutting — Media and Models API
 
 - [ ] **Unified “capabilities” or “models” endpoint** (or per-domain routes) returning for each mode: `chat`, `seo_structured`, `image`, `tts` — `{ models: [...], voices?: [...] }` with stable ids for UI.
@@ -148,6 +166,7 @@ Goal: generate a **listenable** version of the article (“read by a narrator”
 | **2** | Structured apply, history, usage, compaction; audit timeline | Apply to forms/editor; dashboards; optional audit compare |
 | **3** | Image generation → media URL | Image URL ready to insert |
 | **4** | TTS → article audio field + optional publish hook | Audio URL; voice/model from API |
+| **5** | Public agent-friendly delivery + Content Signals | `Content-Signal` + `Accept` Markdown on `/article/[slug]` |
 
 ---
 

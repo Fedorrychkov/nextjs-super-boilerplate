@@ -117,6 +117,11 @@ const ArticleSchema: Schema<IArticle> = new Schema<IArticle>(
       type: String,
       default: null,
     },
+    /** When false, `Content-Signal` uses `ai-train=no` on the public article response. Default true. */
+    allowAiTraining: {
+      type: Boolean,
+      default: true,
+    },
     createdAt: {
       type: Date,
       default: () => time().toISOString(),

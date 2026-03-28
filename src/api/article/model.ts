@@ -22,6 +22,11 @@ export type ArticleModel = {
   /** ArticleRevision id whose plain text was used for the last TTS run (detect stale vs current `revisionId`). */
   listenAudioSourceRevisionId?: string | null
   listenAudioGeneratedAt?: string | null
+  /**
+   * If false, public article HTTP responses use `Content-Signal: ai-train=no` (etc.).
+   * Default true — allow training-related signaling per publisher choice.
+   */
+  allowAiTraining?: boolean | null
 }
 
 export enum ArticleVisibility {

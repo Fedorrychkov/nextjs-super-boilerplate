@@ -186,6 +186,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
             id: articleId,
             visibility: form.visibility,
             allowedRoles: form.allowedRoles,
+            allowAiTraining: form.allowAiTraining,
           })
 
           notify(t('article.ui.articleUpdated'), 'success')
@@ -231,6 +232,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
             slug: form.slug,
             visibility: form.visibility,
             allowedRoles: form.allowedRoles,
+            allowAiTraining: form.allowAiTraining !== false,
           })
 
           notify(t('article.ui.articleCreated'), 'success')

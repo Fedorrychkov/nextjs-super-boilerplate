@@ -87,6 +87,7 @@
     "env-cmd": "^10.1.0",
     "framer-motion": "^12.23.9",
     "globals": "^16.4.0",
+    "gpt-tokenizer": "^3.4.0",
     "highlight.js": "^11.11.1",
     "husky": "^9.1.7",
     "ioredis": "^5.10.0",

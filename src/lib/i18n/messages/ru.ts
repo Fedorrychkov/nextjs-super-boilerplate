@@ -355,6 +355,9 @@ export const ru = {
       articleVisibilityPrivateHintText: 'Если вы выберете Частный, вы можете выбрать, какие роли могут иметь доступ к статье.',
       articleVisibilityLinkOnlyHintText: 'Если вы выберете Только по ссылке, статья будет доступна только по ссылке.',
       articleVisibilityPublicHintText: 'Если вы выберете Публичный, статья будет доступна всем.',
+      allowAiTrainingLabel: 'Разрешить использование контента для обучения ИИ (публичные страницы)',
+      allowAiTrainingDescription:
+        'Для статей с видимостью «Публичный» в HTTP-ответ добавляется заголовок Content-Signal: при включении — ai-train=yes, при выключении — ai-train=no. Сигналы для поиска и входа агентов пока остаются разрешёнными (можно ужесточить позже). По умолчанию: разрешено.',
       allowedRolesForPrivateArticles: 'Разрешенные роли для частных статей',
       content: 'Контент',
       contentEditor: 'Редактор контента',
