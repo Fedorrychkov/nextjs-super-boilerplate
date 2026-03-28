@@ -23,11 +23,12 @@ type Props = {
   editor?: Editor | null
   defaultContent?: string | null
   limit?: number | null
+  articleId?: string | null
   articleRevisionId?: string | null
 }
 
 export const DefaultEditor = (props: Props) => {
-  const { defaultContent = null, limit, editor: defaultEditor, articleRevisionId } = props
+  const { defaultContent = null, limit, editor: defaultEditor, articleId, articleRevisionId } = props
 
   const { editor: newEditor } = useDefaultEditor({ defaultContent, limit })
 
@@ -135,6 +136,7 @@ export const DefaultEditor = (props: Props) => {
         mode={imageDialogMode}
         open={imageDialogOpen}
         onOpenChange={onImageDialogOpenChange}
+        articleId={articleId}
         articleRevisionId={articleRevisionId}
       />
       <AudioEditorDialog

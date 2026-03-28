@@ -2,6 +2,7 @@ import { LLM_CONFIG } from '@config/env'
 import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
 import { getChatModelAllowlist } from '@lib/services/llm/chat-models'
+import { buildImageModelsPayloadForClient } from '@lib/services/llm/image-models'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { UserRole } from '~/api/user'
@@ -22,6 +23,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
       enabled,
       chat: { models },
       audit: { models },
+      image: { models: buildImageModelsPayloadForClient() },
     })
   })
 

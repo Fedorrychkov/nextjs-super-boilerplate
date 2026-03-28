@@ -1,13 +1,23 @@
+import type { MediaAssetModel } from '~/api/media'
+
 /** OpenAI / chat model id exposed to the client (allowlist). */
 export type LlmModelOption = {
   id: string
   label: string
 }
 
+export type LlmImageModelOption = {
+  id: string
+  label: string
+  defaultAspectRatioId: string
+  aspectRatios: Array<{ id: string; label: string; size: string }>
+}
+
 export type LlmModelsResponse = {
   enabled: boolean
   chat: { models: LlmModelOption[] }
   audit: { models: LlmModelOption[] }
+  image: { models: LlmImageModelOption[] }
 }
 
 export type LlmTokenUsage = {
@@ -63,7 +73,16 @@ export type ArticleAuditListResponse = {
   items: ArticleAuditListItem[]
 }
 
-export type LlmUsageSourceKind = 'chat_stream' | 'article_audit' | 'seo_suggest' | 'preview_suggest' | 'content_suggest' | 'listen_tts'
+export type LlmUsageSourceKind =
+  | 'chat_stream'
+  | 'article_audit'
+  | 'seo_suggest'
+  | 'preview_suggest'
+  | 'content_suggest'
+  | 'listen_tts'
+  | 'image_generate'
+  | 'image_prompt_stream'
+  | 'image_prompt_article'
 
 export type SeoSuggestResult = {
   metaTitle: string | null
@@ -100,6 +119,15 @@ export type ContentSuggestApiResponse = {
   suggest: ContentSuggestResult
   usage?: LlmTokenUsage
   model: string
+}
+
+export type LlmImageGenerateApiResponse = {
+  asset: MediaAssetModel
+  proxyUrl: string
+  usage?: LlmTokenUsage
+  model: string
+  aspectRatioId: string
+  promptUsed: string
 }
 
 export type LlmUsageTotalsPayload = {

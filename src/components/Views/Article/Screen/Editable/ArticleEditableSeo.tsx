@@ -325,6 +325,7 @@ export const ArticleEditableSeo = forwardRef<ArticleEditableSeoHandle, Props>(fu
               label={t('article.ui.ogImageUrl')}
               value={(watch('ogImageUrl') as string) ?? ''}
               assetId={(watch('ogImageAssetId') as string) ?? null}
+              articleId={article?.id ?? null}
               articleRevisionId={articleRevision?.id ?? null}
               disabled={isLoading || isDisabled}
               resourceType={MediaResourceType.IMAGE}

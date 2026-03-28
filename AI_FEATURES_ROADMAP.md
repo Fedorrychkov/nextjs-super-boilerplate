@@ -46,7 +46,7 @@ Goal: conversational assistance for **article body** and **SEO/preview settings*
 - [x] **Session/thread** tied to `articleId` + `revisionId` + user (`LlmChatSession` / `LlmChatMessage`); messages + **usage** on assistant turn; `GET /api/v1/llm/chat/history` + UI load on modal open.
 - [x] **Persist article audits** — `LlmArticleAudit` collection: structured result + `llmModel`, **usage**, `createdAt`, `userId`, `articleId` + `revisionId`; append-only **history** per revision (newest first in API).
 - [x] **Audit API + UI:** `GET /api/v1/llm/article-audit?articleId=&revisionId=` returns `{ items }`; `POST` saves after parse; modal loads **latest** audit for the revision on open (same as **«Аудит статьи»** re-run to append).
-- [x] **Cross-feature usage log** — `LlmUsageEvent` append-only rows (`source`: `chat_stream` | `article_audit` | `seo_suggest` | `preview_suggest` | `content_suggest` | `listen_tts`), tokens, `userId`, optional `articleId` / `revisionId`) for **admin cost / usage** dashboards.
+- [x] **Cross-feature usage log** — `LlmUsageEvent` append-only rows (`source`: `chat_stream` | `article_audit` | `seo_suggest` | `preview_suggest` | `content_suggest` | `listen_tts` | `image_generate` | `image_prompt_stream` | `image_prompt_article`), tokens, `userId`, optional `articleId` / `revisionId`) for **admin cost / usage** dashboards.
 - [ ] **No requirement** to send full chat history on every LLM request; use **rolling summary + recent turns** (see Phase 2) — design tables with this in mind.
 
 ### 1.5 Observability
@@ -72,21 +72,24 @@ Goal: conversational assistance for **article body** and **SEO/preview settings*
 
 ## Phase 3 — Image Generation (User Prompt → Media URL)
 
-Goal: user enters a **prompt**; server generates an image via OpenAI **Image API** (e.g. `gpt-image-1-mini` or `gpt-image-1.5` per user choice), uploads the result through the **media service**, returns **CDN URL** to the client.
+Goal: user enters a **prompt** (or derives one from the article); server generates an image via OpenAI **Image API** (`images.generate` with **`stream: true`** and `partial_images` on the server), uploads the result through the **media service**, returns **CDN URL** to the client.
 
-**References:** [Image generation](https://developers.openai.com/api/docs/guides/image-generation) (GPT Image models, sizes, quality, streaming partial images optional).
+**References:** [Image generation](https://developers.openai.com/api/docs/guides/image-generation) (GPT Image models, sizes, quality, streaming).
 
 ### 3.1 Backend
 
-- [ ] **Image generation service** (OpenAI `images.generate` or Responses API with `image_generation` tool — pick one stack and standardize).
-- [ ] **Model allowlist** per environment; API returns **`availableModels[]`** for image mode (e.g. `gpt-image-1-mini` vs `gpt-image-1.5`).
-- [ ] **Server-side upload** to media pipeline; persist `MediaAsset` (or equivalent); response includes **public URL** and asset id.
+- [x] **Image generation** — `llmService.generateImageFromPromptStream` → OpenAI `client.images.generate` (stream, final `image_generation.completed` + usage).
+- [x] **Model allowlist** — `LLM_IMAGE_MODELS` / `getImageModelAllowlist`; `GET /api/v1/llm/models` returns `image.models[]` with **per-model `aspectRatios`** (default **16:9**).
+- [x] **Routes** — `POST /api/v1/llm/image/generate` (custom prompt or **from article** via one-shot chat + `image_prompt_article` usage); `POST /api/v1/llm/image/prompt/stream` (SSE suggest prompt → `image_prompt_stream`).
+- [x] **Server-side upload** — `createMediaAssetFromBuffer`; response matches upload shape (`asset`, `proxyUrl`) + `promptUsed` / `usage`.
 - [ ] **Moderation / org verification** awareness (GPT Image may require org verification — document ops steps).
 
 ### 3.2 UI
 
-- [ ] **Generate image** flow from editor or SEO (OG image) with prompt field + model dropdown + **Insert** into target field.
-- [ ] Optional: streaming partial previews if enabled (`partial_images`) for better UX.
+- [x] **Media library modal** — `MediaUrlUploadField`: AI block when `articleId` + `revisionId` + image field (Preview thumbnail, SEO OG image, TipTap **Image** dialog).
+- [x] **Prompt suggest** — stream into textarea; **Generate** with model + aspect ratio.
+- [x] **Partial preview in UI** — `POST /api/v1/llm/image/generate/stream` (SSE) forwards OpenAI `image_generation.partial_image` as `data:` events; client shows progressive `data:` URL preview until `done` (upload + asset).
+- [ ] **Future:** **Image edit** with reference images (OpenAI edit/variation APIs) — new step after create-only flow is stable.
 
 ### 3.3 Product
 

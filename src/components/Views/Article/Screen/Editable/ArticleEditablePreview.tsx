@@ -173,6 +173,7 @@ export const ArticleEditablePreview = forwardRef<ArticleEditablePreviewHandle, P
             label={t('article.ui.articleThumbnailUrl')}
             value={(watch('thumbnailUrl') as string) ?? ''}
             assetId={(watch('thumbnailAssetId') as string) ?? null}
+            articleId={article?.id ?? null}
             articleRevisionId={articleRevision?.id ?? null}
             disabled={isLoading || isDisabled}
             resourceType={MediaResourceType.IMAGE}

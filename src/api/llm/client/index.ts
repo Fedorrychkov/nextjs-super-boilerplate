@@ -7,6 +7,7 @@ import {
   ContentSuggestApiResponse,
   LlmArticleUsageResponse,
   LlmChatHistoryResponse,
+  LlmImageGenerateApiResponse,
   LlmModelsResponse,
   LlmUsageDashboardResponse,
   PreviewSuggestApiResponse,
@@ -19,6 +20,8 @@ import {
   LlmArticleUsageFilter,
   LlmChatHistoryFilter,
   LlmChatStreamDto,
+  LlmImageGenerateDto,
+  LlmImagePromptStreamDto,
   LlmUsageDashboardFilter,
   PreviewSuggestDto,
   SeoSuggestDto,
@@ -109,6 +112,31 @@ export class ClientLlmApi {
    */
   async postChatStream(dto: LlmChatStreamDto): Promise<Response> {
     return fetch('/api/v1/llm/chat/stream', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dto),
+    })
+  }
+
+  async postImageGenerate(dto: LlmImageGenerateDto): Promise<LlmImageGenerateApiResponse> {
+    const response = await this.client.post<LlmImageGenerateApiResponse>('/api/v1/llm/image/generate', dto)
+
+    return response.data
+  }
+
+  /** SSE: `partial` frames (base64) then `done` with `asset` / `proxyUrl` (same as non-streaming generate). */
+  async postImageGenerateStream(dto: LlmImageGenerateDto): Promise<Response> {
+    return fetch('/api/v1/llm/image/generate/stream', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dto),
+    })
+  }
+
+  async postImagePromptStream(dto: LlmImagePromptStreamDto): Promise<Response> {
+    return fetch('/api/v1/llm/image/prompt/stream', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },

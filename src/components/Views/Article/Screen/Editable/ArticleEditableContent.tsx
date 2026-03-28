@@ -75,7 +75,7 @@ export const ArticleEditableContent = forwardRef<ArticleEditableContentHandle, P
           hidden: mode === 'markdown',
         })}
       >
-        <DefaultEditor editor={editor} limit={50_000} articleRevisionId={articleRevision?.id} />
+        <DefaultEditor editor={editor} limit={50_000} articleId={articleRevision?.articleId ?? null} articleRevisionId={articleRevision?.id} />
       </div>
       {mode === 'markdown' && <MarkdownEditor isDisabled={isDisabled} value={markdownInput} editor={editor} onChange={setMarkdownInput} limit={50_000} />}
       <div>

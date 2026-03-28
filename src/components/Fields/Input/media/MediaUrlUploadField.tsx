@@ -3,17 +3,21 @@
 import { AxiosError } from 'axios'
 import Image from 'next/image'
 import type { ReactNode } from 'react'
-import { useCallback, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from 'react-query'
 
+import { ClientLlmApi } from '~/api/llm'
 import { MediaAssetModel, MediaResourceType } from '~/api/media'
 import { ImageLoader } from '~/components/Containers'
-import { Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '~/components/ui'
+import { Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Textarea, Typography } from '~/components/ui'
 import { Input } from '~/components/ui/input'
 import { formatDataSizeShort, formatMediaUploadMaxLabel, isMediaFileWithinUploadLimit } from '~/constants/media-upload'
 import { useLocale, useT } from '~/providers'
 import { useNotify } from '~/providers/notify'
+import { useLlmModelsQuery } from '~/query/llm'
+import { buildLlmArticleUsageQueryKey } from '~/query/llm/query/useLlmArticleUsageQuery'
 import { useDeleteMediaMutation, useMediaAssetsQuery, useUploadMediaMutation } from '~/query/media'
+import { parseLlmSseStream } from '~/utils/parseLlmSseStream'
 
 import {
   DEFAULT_AUDIO_ACCEPT_MIME_TYPES,
@@ -44,6 +48,8 @@ type Props = {
   variant?: 'inline' | 'thumb' | 'seo' | 'original'
   acceptedMimeTypes?: string[]
   mediaListLimit?: number
+  /** With `articleRevisionId`, enables AI image generation inside the media library (when `NEXT_PUBLIC_LLM_ENABLED`). */
+  articleId?: string | null
   articleRevisionId?: string | null
   /** Extra busy state from the parent (e.g. article save or TTS generation). */
   toolbarBusy?: boolean
@@ -68,6 +74,7 @@ export const MediaUrlUploadField = (props: Props) => {
     variant = 'inline',
     acceptedMimeTypes: acceptedMimeTypesProps = DEFAULT_IMAGE_ACCEPT_MIME_TYPES,
     mediaListLimit = 60,
+    articleId = null,
     articleRevisionId,
     toolbarBusy = false,
     urlInputReadOnly = false,
@@ -103,6 +110,57 @@ export const MediaUrlUploadField = (props: Props) => {
   const { notify } = useNotify()
   const { uploadMediaMutation } = useUploadMediaMutation()
   const { deleteMediaMutation } = useDeleteMediaMutation()
+
+  const llmUiEnabled = process.env.NEXT_PUBLIC_LLM_ENABLED === 'true'
+  const showAiImagePanel = resourceType === MediaResourceType.IMAGE && llmUiEnabled && Boolean(articleId?.trim()) && Boolean(articleRevisionId?.trim())
+
+  const llmModelsQuery = useLlmModelsQuery(showAiImagePanel && isLibraryOpen)
+
+  const imageModels = useMemo(() => llmModelsQuery.data?.image?.models ?? [], [llmModelsQuery.data?.image?.models])
+
+  const [aiPrompt, setAiPrompt] = useState('')
+  const [aiPromptSource, setAiPromptSource] = useState<'custom' | 'fromArticle'>('custom')
+  const [aiImageModelId, setAiImageModelId] = useState('')
+  const [aiAspectId, setAiAspectId] = useState('16:9')
+  const [aiSuggestBusy, setAiSuggestBusy] = useState(false)
+  const [aiGenerateBusy, setAiGenerateBusy] = useState(false)
+  const [aiStreamPreviewUrl, setAiStreamPreviewUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!isLibraryOpen) {
+      setAiStreamPreviewUrl(null)
+    }
+  }, [isLibraryOpen])
+
+  useEffect(() => {
+    if (!imageModels.length) {
+      return
+    }
+
+    setAiImageModelId((prev) => {
+      if (prev && imageModels.some((m) => m.id === prev)) {
+        return prev
+      }
+
+      return imageModels[0].id
+    })
+  }, [imageModels])
+
+  const selectedImageModel = useMemo(() => imageModels.find((m) => m.id === aiImageModelId) ?? imageModels[0], [aiImageModelId, imageModels])
+
+  useEffect(() => {
+    if (!selectedImageModel) {
+      return
+    }
+
+    setAiAspectId((prev) => {
+      if (selectedImageModel.aspectRatios.some((a) => a.id === prev)) {
+        return prev
+      }
+
+      return selectedImageModel.defaultAspectRatioId
+    })
+  }, [selectedImageModel])
   const mediaAssetsQuery = useMediaAssetsQuery({
     resourceType,
     limit: mediaListLimit,
@@ -213,6 +271,149 @@ export const MediaUrlUploadField = (props: Props) => {
   const pickLocalFile = useCallback(() => {
     document.getElementById(mainFileInputId)?.click()
   }, [mainFileInputId])
+
+  type ImagePromptSse = { type?: string; text?: string; message?: string }
+
+  const handleAiSuggestPrompt = useCallback(async () => {
+    const aid = articleId?.trim()
+    const rid = articleRevisionId?.trim()
+
+    if (!aid || !rid || aiSuggestBusy || !llmModelsQuery.data?.enabled) {
+      return
+    }
+
+    const chatModel = llmModelsQuery.data.chat.models[0]?.id
+
+    if (!chatModel) {
+      notify(t('article.errors.llmNotConfigured'), 'destructive')
+
+      return
+    }
+
+    setAiSuggestBusy(true)
+    setAiPrompt('')
+
+    let acc = ''
+
+    try {
+      const api = new ClientLlmApi()
+      const res = await api.postImagePromptStream({
+        articleId: aid,
+        revisionId: rid,
+        model: chatModel,
+      })
+
+      if (!res.ok) {
+        const errBody = (await res.json().catch(() => ({}))) as { message?: string }
+
+        throw new Error(errBody.message || res.statusText)
+      }
+
+      await parseLlmSseStream<ImagePromptSse>(res, (ev) => {
+        if (ev.type === 'delta' && typeof ev.text === 'string') {
+          acc += ev.text
+          setAiPrompt(acc)
+        }
+
+        if (ev.type === 'error' && typeof ev.message === 'string') {
+          notify(ev.message, 'destructive')
+        }
+      })
+
+      void queryClient.invalidateQueries(buildLlmArticleUsageQueryKey({ articleId: aid, revisionId: rid }))
+    } catch (error) {
+      const message = error instanceof Error ? error.message : t('errors.unknown')
+
+      notify(message, 'destructive')
+    } finally {
+      setAiSuggestBusy(false)
+    }
+  }, [aiSuggestBusy, articleId, articleRevisionId, llmModelsQuery.data, notify, queryClient, t])
+
+  type ImageGenSse =
+    | { type: 'start'; requestId?: string }
+    | { type: 'partial'; b64?: string; mime?: string; index?: number }
+    | {
+        type: 'done'
+        asset?: MediaAssetModel
+        proxyUrl?: string
+      }
+    | { type: 'error'; message?: string }
+
+  const handleAiGenerateImage = useCallback(async () => {
+    const aid = articleId?.trim()
+    const rid = articleRevisionId?.trim()
+
+    if (!aid || !rid || !selectedImageModel) {
+      return
+    }
+
+    if (aiPromptSource === 'custom' && !aiPrompt.trim()) {
+      notify(t('article.errors.llmImagePromptRequired'), 'destructive')
+
+      return
+    }
+
+    setAiStreamPreviewUrl(null)
+    setAiGenerateBusy(true)
+
+    try {
+      const api = new ClientLlmApi()
+      const res = await api.postImageGenerateStream({
+        articleId: aid,
+        revisionId: rid,
+        imageModel: selectedImageModel.id,
+        aspectRatioId: aiAspectId,
+        promptSource: aiPromptSource,
+        ...(aiPromptSource === 'custom' ? { prompt: aiPrompt.trim() } : {}),
+      })
+
+      if (!res.ok) {
+        const errBody = (await res.json().catch(() => ({}))) as { message?: string }
+
+        throw new Error(errBody.message || res.statusText)
+      }
+
+      let finished = false
+
+      await parseLlmSseStream<ImageGenSse>(res, (ev) => {
+        if (ev.type === 'partial' && typeof ev.b64 === 'string' && typeof ev.mime === 'string') {
+          setAiStreamPreviewUrl(`data:${ev.mime};base64,${ev.b64}`)
+        }
+
+        if (ev.type === 'done' && ev.asset && typeof ev.proxyUrl === 'string') {
+          finished = true
+          const nextValue = `${ev.proxyUrl.replace(/\/$/, '')}/${variant}`
+
+          onChange({ value: nextValue, assetId: ev.asset.id, asset: ev.asset })
+        }
+
+        if (ev.type === 'error' && typeof ev.message === 'string') {
+          notify(ev.message, 'destructive')
+        }
+      })
+
+      if (finished) {
+        await queryClient.invalidateQueries('media-assets')
+        void queryClient.invalidateQueries(buildLlmArticleUsageQueryKey({ articleId: aid, revisionId: rid }))
+        notify(t('media.ui.aiImageGenerated'), 'success')
+        setIsLibraryOpen(false)
+      }
+    } catch (error) {
+      const message =
+        error instanceof AxiosError && error.response?.data && typeof error.response.data === 'object' && 'message' in error.response.data
+          ? String((error.response.data as { message?: unknown }).message ?? '')
+          : error instanceof Error
+            ? error.message
+            : ''
+
+      notify(message || t('media.errors.failedToUploadFile'), 'destructive')
+    } finally {
+      setAiGenerateBusy(false)
+    }
+  }, [aiAspectId, aiPrompt, aiPromptSource, articleId, articleRevisionId, notify, onChange, queryClient, selectedImageModel, t, variant])
+
+  const aiModalBusy = aiSuggestBusy || aiGenerateBusy
 
   const audioPreviewSrc =
     value && resourceType === MediaResourceType.AUDIO
@@ -371,12 +572,140 @@ export const MediaUrlUploadField = (props: Props) => {
               }}
             >
               <div className="flex flex-row gap-2">
-                <Button type="button" variant="secondary" size="sm-md" disabled={disabled || isBusy} onClick={() => modalFileInputRef.current?.click()}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm-md"
+                  disabled={disabled || isBusy || aiModalBusy}
+                  onClick={() => modalFileInputRef.current?.click()}
+                >
                   {t('common.upload')}
                 </Button>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">{helperText}</p>
             </div>
+            {showAiImagePanel ? (
+              <div className="rounded-md border border-dashed border-primary/30 bg-muted/20 p-3">
+                <Typography variant="Body/S/Semibold" className="mb-2">
+                  {t('media.ui.aiImageGenerateTitle')}
+                </Typography>
+                {llmModelsQuery.isLoading ? (
+                  <p className="text-xs text-muted-foreground">{t('common.loading')}</p>
+                ) : llmModelsQuery.isError ? (
+                  <p className="text-xs text-destructive">{t('errors.unknown')}</p>
+                ) : !llmModelsQuery.data?.enabled ? (
+                  <p className="text-xs text-muted-foreground">{t('article.errors.llmNotConfigured')}</p>
+                ) : !imageModels.length ? (
+                  <p className="text-xs text-muted-foreground">{t('media.ui.aiImageNoModels')}</p>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs font-medium text-foreground">{t('media.ui.aiImagePromptSource')}</span>
+                      <div className="flex flex-row flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          size="sm-md"
+                          variant={aiPromptSource === 'custom' ? 'default' : 'secondary'}
+                          disabled={disabled || aiModalBusy}
+                          onClick={() => setAiPromptSource('custom')}
+                        >
+                          {t('media.ui.aiImagePromptCustom')}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm-md"
+                          variant={aiPromptSource === 'fromArticle' ? 'default' : 'secondary'}
+                          disabled={disabled || aiModalBusy}
+                          onClick={() => setAiPromptSource('fromArticle')}
+                        >
+                          {t('media.ui.aiImagePromptFromArticle')}
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium" htmlFor={`${mainFileInputId}-ai-model`}>
+                          {t('media.ui.aiImageModel')}
+                        </label>
+                        <select
+                          id={`${mainFileInputId}-ai-model`}
+                          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                          value={selectedImageModel?.id ?? ''}
+                          disabled={disabled || aiModalBusy}
+                          onChange={(e) => setAiImageModelId(e.target.value)}
+                        >
+                          {imageModels.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium" htmlFor={`${mainFileInputId}-ai-aspect`}>
+                          {t('media.ui.aiImageAspect')}
+                        </label>
+                        <select
+                          id={`${mainFileInputId}-ai-aspect`}
+                          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                          value={aiAspectId}
+                          disabled={disabled || aiModalBusy || !selectedImageModel}
+                          onChange={(e) => setAiAspectId(e.target.value)}
+                        >
+                          {(selectedImageModel?.aspectRatios ?? []).map((a) => (
+                            <option key={a.id} value={a.id}>
+                              {a.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs font-medium">{t('media.ui.aiImagePrompt')}</span>
+                      <Textarea
+                        value={aiPrompt}
+                        onChange={(e) => setAiPrompt(e.target.value)}
+                        rows={4}
+                        disabled={disabled || aiModalBusy}
+                        placeholder={t('media.ui.aiImagePromptPlaceholder')}
+                        className="text-sm"
+                      />
+                      {aiPromptSource === 'fromArticle' ? <p className="text-xs text-muted-foreground">{t('media.ui.aiImageFromArticleFieldHint')}</p> : null}
+                      <div className="flex flex-row flex-wrap gap-2">
+                        <Button type="button" variant="outline" size="sm-md" disabled={disabled || aiModalBusy} onClick={() => void handleAiSuggestPrompt()}>
+                          {aiSuggestBusy ? t('media.ui.aiImageSuggestBusy') : t('media.ui.aiImageSuggestPrompt')}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{t('media.ui.aiImageSuggestHint')}</p>
+                    </div>
+                    {aiStreamPreviewUrl || aiGenerateBusy ? (
+                      <div className="rounded-md border bg-muted/30 p-2">
+                        <span className="text-xs font-medium text-muted-foreground">{t('media.ui.aiImageStreamPreview')}</span>
+                        <div className="relative mt-1 flex min-h-[100px] max-h-56 items-center justify-center overflow-hidden rounded bg-background">
+                          {aiStreamPreviewUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element -- data URL from OpenAI partial stream
+                            <img src={aiStreamPreviewUrl} alt="" className="max-h-56 w-full object-contain" />
+                          ) : null}
+                          {aiGenerateBusy && !aiStreamPreviewUrl ? (
+                            <span className="absolute inset-0 flex items-center justify-center bg-background/60 px-2 text-center text-xs text-muted-foreground">
+                              {t('media.ui.aiImageStreamWaitingPartial')}
+                            </span>
+                          ) : null}
+                          {aiGenerateBusy && aiStreamPreviewUrl ? (
+                            <span className="absolute bottom-1 right-1 rounded bg-background/85 px-1.5 py-0.5 text-[10px] text-muted-foreground shadow">
+                              {t('media.ui.aiImageStreamRefining')}
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : null}
+                    <Button type="button" size="sm-md" disabled={disabled || aiModalBusy} onClick={() => void handleAiGenerateImage()}>
+                      {aiGenerateBusy ? t('media.ui.aiImageGenerateBusy') : t('media.ui.aiImageGenerate')}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : null}
             <div className="max-h-[420px] overflow-y-auto rounded-md border p-3">
               {mediaAssetsQuery.isLoading && <p className="text-sm text-muted-foreground">{t('common.loading')}</p>}
               {mediaAssetsQuery.isError && <p className="text-sm text-destructive">{t('media.errors.failedToLoadMediaList')}</p>}

@@ -35,6 +35,8 @@ const {
   NEXT_PUBLIC_LLM_ENABLED = process.env.NEXT_PUBLIC_LLM_ENABLED === 'true',
   /** Comma-separated OpenAI chat model ids (optional). Defaults in `getChatModelAllowlist`. */
   LLM_CHAT_MODELS = process.env.LLM_CHAT_MODELS || '',
+  /** Comma-separated GPT Image model ids for `images.generate` (optional). Defaults in `getImageModelAllowlist`. */
+  LLM_IMAGE_MODELS = process.env.LLM_IMAGE_MODELS || '',
   /** Per-user LLM chat requests per `LLM_CHAT_RATE_DURATION_SEC` window (Redis or memory). */
   LLM_CHAT_RATE_LIMIT_POINTS = Number(process.env.LLM_CHAT_RATE_LIMIT_POINTS || 30),
   LLM_CHAT_RATE_DURATION_SEC = Number(process.env.LLM_CHAT_RATE_DURATION_SEC || 60),
@@ -96,6 +98,7 @@ const LLM_CONFIG = {
   apiKey: LLM_API_KEY,
   enabled: NEXT_PUBLIC_LLM_ENABLED,
   chatModelsCsv: LLM_CHAT_MODELS,
+  imageModelsCsv: LLM_IMAGE_MODELS,
   chatRateLimitPoints: Number.isFinite(LLM_CHAT_RATE_LIMIT_POINTS) ? LLM_CHAT_RATE_LIMIT_POINTS : 30,
   chatRateDurationSec: Number.isFinite(LLM_CHAT_RATE_DURATION_SEC) ? LLM_CHAT_RATE_DURATION_SEC : 60,
 }

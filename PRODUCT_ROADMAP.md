@@ -190,6 +190,8 @@ Shipped as part of the LLM stack — see **`AI_FEATURES_ROADMAP.md`** (Phase 1�
 - [ ] **Idempotency / debounce:** avoid double-counting on React Strict Mode double-mount or quick back-navigation — e.g. one increment per **browser tab session** per article per day (see below) or a short TTL key in Redis (`articleId` + `visitorKey` + window).
 - [ ] **SSR vs client:** if the page is cached (`unstable_cache`), do **not** bake the counter into cached HTML; load count via client fetch or edge middleware + async write so counts stay approximate-under-load but consistent in DB.
 
+#### Total reactions, by every client usage without user.id identities, maybe only by browser
+
 #### Unique visitors (design options — pick one or combine)
 
 | Approach | Pros | Cons |

@@ -215,6 +215,98 @@ export class LLMService {
       throw new Error('Unknown error occurred while listing models')
     }
   }
+
+  /**
+   * Low-level stream of GPT Image `images.generate` events (partial previews + final frame).
+   * @see https://developers.openai.com/api/docs/guides/image-generation
+   */
+  async *iterateImageGenerationStream(params: { model: string; prompt: string; size: '1024x1024' | '1536x1024' | '1024x1536' }): AsyncGenerator<
+    | {
+        kind: 'partial'
+        b64Json: string
+        outputFormat: 'png' | 'jpeg' | 'webp'
+        partialImageIndex: number
+      }
+    | {
+        kind: 'completed'
+        b64Json: string
+        outputFormat: 'png' | 'jpeg' | 'webp'
+        usage: { promptTokens: number; completionTokens: number; totalTokens: number }
+      }
+  > {
+    const client = this.getClient()
+
+    if (!client) {
+      throw new Error('LLM is not enabled. Please set NEXT_PUBLIC_LLM_ENABLED to true in environment variables.')
+    }
+
+    const stream = await client.images.generate({
+      model: params.model,
+      prompt: params.prompt,
+      size: params.size,
+      stream: true,
+      partial_images: 3,
+      quality: 'medium',
+      output_format: 'png',
+    })
+
+    for await (const event of stream) {
+      if (event.type === 'image_generation.partial_image') {
+        yield {
+          kind: 'partial',
+          b64Json: event.b64_json,
+          outputFormat: event.output_format,
+          partialImageIndex: event.partial_image_index,
+        }
+      } else if (event.type === 'image_generation.completed') {
+        const u = event.usage
+
+        yield {
+          kind: 'completed',
+          b64Json: event.b64_json,
+          outputFormat: event.output_format,
+          usage: {
+            promptTokens: u.input_tokens,
+            completionTokens: u.output_tokens,
+            totalTokens: u.total_tokens,
+          },
+        }
+      }
+    }
+  }
+
+  /**
+   * GPT Image: streaming `images.generate` (partial frames + final `image_generation.completed` with usage).
+   */
+  async generateImageFromPromptStream(params: { model: string; prompt: string; size: '1024x1024' | '1536x1024' | '1024x1536' }): Promise<{
+    b64Json: string
+    outputFormat: 'png' | 'jpeg' | 'webp'
+    usage: { promptTokens: number; completionTokens: number; totalTokens: number }
+  }> {
+    let completed:
+      | {
+          b64Json: string
+          outputFormat: 'png' | 'jpeg' | 'webp'
+          usage: { promptTokens: number; completionTokens: number; totalTokens: number }
+        }
+      | undefined
+
+    for await (const ev of this.iterateImageGenerationStream(params)) {
+      if (ev.kind === 'completed') {
+        completed = {
+          b64Json: ev.b64Json,
+          outputFormat: ev.outputFormat,
+          usage: ev.usage,
+        }
+      }
+    }
+
+    if (!completed?.b64Json) {
+      throw new Error('Image generation returned no final image')
+    }
+
+    return completed
+  }
 }
 
 export const llmService = new LLMService()

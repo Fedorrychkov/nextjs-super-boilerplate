@@ -19,7 +19,7 @@ export const ArticleEditorLlmUsageChip = (props: Props) => {
   const filter = enabled ? { articleId, revisionId } : null
   const usageQuery = useLlmArticleUsageQuery(filter, enabled)
 
-  const { chatTokens, auditTokens, structuredTokens, ttsTokens } = useMemo(() => {
+  const { chatTokens, auditTokens, structuredTokens, imageTokens, ttsTokens } = useMemo(() => {
     const by = usageQuery.data?.bySource ?? []
     const chat = by.find((x) => x.source === 'chat_stream')?.totalTokens ?? 0
     const audit = by.find((x) => x.source === 'article_audit')?.totalTokens ?? 0
@@ -27,9 +27,13 @@ export const ArticleEditorLlmUsageChip = (props: Props) => {
       (by.find((x) => x.source === 'seo_suggest')?.totalTokens ?? 0) +
       (by.find((x) => x.source === 'preview_suggest')?.totalTokens ?? 0) +
       (by.find((x) => x.source === 'content_suggest')?.totalTokens ?? 0)
+    const image =
+      (by.find((x) => x.source === 'image_generate')?.totalTokens ?? 0) +
+      (by.find((x) => x.source === 'image_prompt_stream')?.totalTokens ?? 0) +
+      (by.find((x) => x.source === 'image_prompt_article')?.totalTokens ?? 0)
     const tts = by.find((x) => x.source === 'listen_tts')?.totalTokens ?? 0
 
-    return { chatTokens: chat, auditTokens: audit, structuredTokens: structured, ttsTokens: tts }
+    return { chatTokens: chat, auditTokens: audit, structuredTokens: structured, imageTokens: image, ttsTokens: tts }
   }, [usageQuery.data?.bySource])
 
   if (!enabled) {
@@ -65,6 +69,7 @@ export const ArticleEditorLlmUsageChip = (props: Props) => {
         chat: chatTokens.toLocaleString(),
         audit: auditTokens.toLocaleString(),
         structured: structuredTokens.toLocaleString(),
+        image: imageTokens.toLocaleString(),
         tts: ttsTokens.toLocaleString(),
       })}
     </Typography>

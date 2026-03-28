@@ -11,6 +11,12 @@ export type LlmUsageSource =
   | 'content_suggest'
   /** OpenAI Speech (TTS); `promptTokens` / `totalTokens` store input character count (billing unit), not chat tokens. */
   | 'listen_tts'
+  /** GPT Image `images.generate` (stream); token fields follow OpenAI image usage. */
+  | 'image_generate'
+  /** SSE: suggest image prompt from article (chat completion stream). */
+  | 'image_prompt_stream'
+  /** One-shot chat prompt derived from article before `image_generate` when user picks “from article”. */
+  | 'image_prompt_article'
 
 export interface ILlmUsageEvent extends Document {
   source: LlmUsageSource
@@ -33,7 +39,17 @@ const LlmUsageEventSchema = new Schema<ILlmUsageEvent>(
   {
     source: {
       type: String,
-      enum: ['chat_stream', 'article_audit', 'seo_suggest', 'preview_suggest', 'content_suggest', 'listen_tts'],
+      enum: [
+        'chat_stream',
+        'article_audit',
+        'seo_suggest',
+        'preview_suggest',
+        'content_suggest',
+        'listen_tts',
+        'image_generate',
+        'image_prompt_stream',
+        'image_prompt_article',
+      ],
       required: true,
       index: true,
     },

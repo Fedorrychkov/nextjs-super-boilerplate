@@ -610,6 +610,28 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
               )}
             </HorizontalContainer>
           ) : null}
+          {isDisabledEditing && (
+            <AlertBlock
+              notify={{
+                type: 'info',
+                message: (
+                  <div className="flex flex-col gap-2 items-start">
+                    <Typography variant="Body/S/Regular" className="text-neutral-1000">
+                      {t('article.ui.youAreNotAllowedToEditTheLastPublishedArticlePleaseStartTheNewVersion')}
+                    </Typography>
+                    {!isHasDraftRevision ? (
+                      <Button variant="default" size="sm-md" onClick={handleStartNewVersion}>
+                        {t('article.ui.startNewVersion')}
+                      </Button>
+                    ) : null}
+                    <Typography variant="Body/S/Regular" className="text-neutral-1000">
+                      {t('article.ui.orRepublishEarlyVersion')}
+                    </Typography>
+                  </div>
+                ),
+              }}
+            />
+          )}
           {isLlmUiEnabled() && articleId && activeRevisionId ? (
             <div className="flex flex-row flex-wrap items-center gap-x-3 gap-y-2">
               {articleRevision?.status === ArticleRevisionStatus.DRAFT ? (
@@ -634,28 +656,6 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
           {articleId && activeRevisionId ? (
             <ArticleAdminListenAudioControls articleId={articleId} article={article} activeRevisionId={activeRevisionId} />
           ) : null}
-          {isDisabledEditing && (
-            <AlertBlock
-              notify={{
-                type: 'info',
-                message: (
-                  <div className="flex flex-col gap-2 items-start">
-                    <Typography variant="Body/S/Regular" className="text-neutral-1000">
-                      {t('article.ui.youAreNotAllowedToEditTheLastPublishedArticlePleaseStartTheNewVersion')}
-                    </Typography>
-                    {!isHasDraftRevision ? (
-                      <Button variant="default" size="sm-md" onClick={handleStartNewVersion}>
-                        {t('article.ui.startNewVersion')}
-                      </Button>
-                    ) : null}
-                    <Typography variant="Body/S/Regular" className="text-neutral-1000">
-                      {t('article.ui.orRepublishEarlyVersion')}
-                    </Typography>
-                  </div>
-                ),
-              }}
-            />
-          )}
           {articleRevisions?.list?.length ? (
             <>
               {articleRevisions?.list?.map((revision) => (

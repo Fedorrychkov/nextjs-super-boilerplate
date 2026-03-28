@@ -42,3 +42,18 @@ export type LlmArticleUsageFilter = {
   articleId: string
   revisionId: string
 }
+
+export type LlmImageGenerateDto = {
+  articleId: string
+  revisionId: string
+  imageModel?: string
+  aspectRatioId?: string
+  promptSource: 'custom' | 'fromArticle'
+  prompt?: string
+}
+
+export type LlmImagePromptStreamDto = {
+  articleId: string
+  revisionId: string
+  model?: string
+}

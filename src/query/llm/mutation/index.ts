@@ -1,4 +1,5 @@
 export * from './useArticleAuditMutation'
 export * from './useContentSuggestMutation'
+export * from './useLlmImageGenerateMutation'
 export * from './usePreviewSuggestMutation'
 export * from './useSeoSuggestMutation'
