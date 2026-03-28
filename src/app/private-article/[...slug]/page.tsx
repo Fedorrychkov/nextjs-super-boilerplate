@@ -11,6 +11,8 @@ import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
 import { defaultExtensions } from '~/components/Blocks/Editor/extensions'
 import { ArticlePublishedDate } from '~/components/Views/Article/Block/server/ArticlePublishedDate'
+import { ArticlePublicListenAudio } from '~/components/Views/Article/Public/ArticlePublicListenAudio'
+import { ArticleViewTracker } from '~/components/Views/Article/Public/ArticleViewTracker'
 import { FALLBACK_THUMBNAIL_IMAGE } from '~/constants'
 import { finalizeArticleBodyHtml } from '~/lib/editor/finalizeArticleBodyHtml'
 import { resolveArticleCanonicalUrl } from '~/lib/seo/articleCanonical'
@@ -140,8 +142,10 @@ const PrivateArticleRoot = async (props: PageProps<{ slug: string[] }>) => {
 
   return (
     <>
+      <ArticleViewTracker slug={slugResolved} surface="private" />
       <JsonLd data={articleJsonLd} />
       <ArticlePublishedDate publishedAt={publishedAt} className="mb-4 text-muted-foreground" />
+      <ArticlePublicListenAudio assetId={response.article.listenAudioAssetId} />
       <div className="max-w-full tiptap readonly" lang={articleLanguage} dangerouslySetInnerHTML={{ __html: generatedPageString }} />
     </>
   )

@@ -1,6 +1,7 @@
 import connectDB from '@lib/db/client'
 import Article from '@lib/db/models/Article'
 import ArticleRevision from '@lib/db/models/ArticleRevision'
+import { articleDocumentToApiJson } from '@lib/db/utils/articleApiJson'
 import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
 import { revalidatePath, revalidateTag } from 'next/cache'
@@ -83,14 +84,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     revalidatePath('/sitemap.xml')
     revalidatePath('/rss.xml')
 
-    return response.json({
-      ...data.toObject(),
-      revisionId: data.revisionId?.toString() ?? null,
-      id: data._id.toString(),
-      publishedAt: data?.publishedAt ? time(data.publishedAt).toISOString() : null,
-      updatedAt: data?.updatedAt ? time(data.updatedAt).toISOString() : null,
-      createdAt: data?.createdAt ? time(data.createdAt).toISOString() : null,
-    })
+    return response.json(articleDocumentToApiJson(data))
   })
 
 export const PUT = withGlobalRateLimit(withAuthMiddleware(handler))

@@ -22,6 +22,7 @@ interface InputProps {
   prefixStyling?: boolean | string
   suffixStyling?: boolean | string
   disabled?: boolean
+  readOnly?: boolean
   error?: string | boolean
   label?: string
   value?: string
@@ -42,6 +43,7 @@ export const Input = ({
   prefixStyling = true,
   suffixStyling = true,
   disabled = false,
+  readOnly = false,
   error,
   label,
   value,
@@ -114,6 +116,7 @@ export const Input = ({
           id={id}
           placeholder={placeholder}
           disabled={disabled}
+          readOnly={readOnly}
           value={_value}
           onChange={_onChange}
           onFocus={onFocus}

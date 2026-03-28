@@ -4,6 +4,8 @@ import type { EditorView } from '@tiptap/pm/view'
 import { Editor, useEditor } from '@tiptap/react'
 import { useCallback, useMemo, useState } from 'react'
 
+import { formatDataSizeShort, formatMediaUploadMaxLabel } from '~/constants/media-upload'
+import { useLocale, useT } from '~/providers'
 import { useNotify } from '~/providers/notify'
 import { Logger } from '~/utils/logger'
 
@@ -26,9 +28,24 @@ export const useDefaultEditor = (props: Props) => {
   const [markdownInput, setMarkdownInput] = useState<string | null>(null)
   const [mode, setMode] = useState<'default' | 'markdown'>(defaultMode)
   const { notify } = useNotify()
+  const t = useT()
+  const locale = useLocale()
 
   const logger = useMemo(() => defaultLogger ?? new Logger(['useDefaultEditor', '[src/components/Blocks/Editor/hooks/useDefaultEditor.ts]']), [defaultLogger])
-  const extensions = useMemo(() => defaultExtensions(limit), [limit])
+  const extensions = useMemo(
+    () =>
+      defaultExtensions(limit, {
+        onMediaFileTooLarge: (file) =>
+          notify(
+            t('media.errors.fileExceedsMaxSize', {
+              size: formatDataSizeShort(file.size, locale),
+              maxLabel: formatMediaUploadMaxLabel(locale),
+            }),
+            'destructive',
+          ),
+      }),
+    [limit, locale, notify, t],
+  )
 
   const editor = useEditor({
     extensions,
@@ -112,6 +129,34 @@ export const useDefaultEditor = (props: Props) => {
     }
   }, [editor, logger])
 
+  /** Replace document from Markdown (visual editor); returns false if editor or Markdown extension is unavailable. */
+  const applyMarkdown = useCallback(
+    (raw: string) => {
+      if (!editor) {
+        return false
+      }
+
+      const md = normalizeMarkdownForTiptap(raw)
+
+      if (!editor.markdown) {
+        return false
+      }
+
+      try {
+        editor.commands.setContent(md, { contentType: 'markdown' })
+        setMode('default')
+        setMarkdownInput(md)
+
+        return true
+      } catch (err) {
+        logger.error(err)
+
+        return false
+      }
+    },
+    [editor, logger],
+  )
+
   /**
    * Method for set value and mode
    */
@@ -137,5 +182,6 @@ export const useDefaultEditor = (props: Props) => {
     setMode,
     markdownInput,
     setMarkdownInput,
+    applyMarkdown,
   }
 }

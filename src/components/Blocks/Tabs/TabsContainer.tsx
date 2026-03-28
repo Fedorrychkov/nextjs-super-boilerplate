@@ -22,11 +22,18 @@ type Props = {
   activeTab?: string | null
   searchMutable?: boolean
   currentTab?: string | null
+  /**
+   * @default 'lazy'
+   * @description
+   * - 'now' - render tab immediately
+   * - 'lazy' - render tab after first selection
+   */
+  mode?: 'now' | 'lazy'
   onTabChange?: (tabValue: string) => void
 }
 
 export const TabsContainer = (props: Props) => {
-  const { className, tabs, activeTab: activeTabProp, searchMutable = true, onTabChange, currentTab } = props
+  const { className, tabs, activeTab: activeTabProp, searchMutable = true, onTabChange, currentTab, mode = 'lazy' } = props
   const searchParamsState = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
@@ -95,7 +102,8 @@ export const TabsContainer = (props: Props) => {
       </div>
       <div className="flex flex-col gap-2">
         {tabs.map((tab) => {
-          const isActivated = activatedTabs.includes(tab.value)
+          const isActivated = mode === 'lazy' ? activatedTabs.includes(tab.value) : true
+
           const isActive = finalActiveTab === tab.value
 
           if (!isActivated || !tab?.children) return null

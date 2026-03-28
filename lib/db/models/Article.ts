@@ -10,8 +10,10 @@ import { UserRole } from '~/api/user'
 import type { PaginationMeta } from '~/types/pagination'
 import { time } from '~/utils/time'
 
-export interface IArticle extends Document, Omit<ArticleModel, 'id' | 'revisionId'> {
+export interface IArticle extends Document, Omit<ArticleModel, 'id' | 'revisionId' | 'listenAudioAssetId' | 'listenAudioSourceRevisionId'> {
   revisionId?: mongoose.Types.ObjectId | null
+  listenAudioAssetId?: mongoose.Types.ObjectId | null
+  listenAudioSourceRevisionId?: mongoose.Types.ObjectId | null
 }
 
 export interface IArticleModel extends Model<IArticle> {
@@ -99,6 +101,32 @@ const ArticleSchema: Schema<IArticle> = new Schema<IArticle>(
     publishedAt: {
       type: Date,
       default: null,
+    },
+    listenAudioAssetId: {
+      type: Schema.Types.ObjectId,
+      ref: 'MediaAsset',
+      default: null,
+      index: true,
+    },
+    listenAudioSourceRevisionId: {
+      type: Schema.Types.ObjectId,
+      ref: 'ArticleRevision',
+      default: null,
+    },
+    listenAudioGeneratedAt: {
+      type: String,
+      default: null,
+    },
+    /** When false, `Content-Signal` uses `ai-train=no` on the public article response. Default true. */
+    allowAiTraining: {
+      type: Boolean,
+      default: true,
+    },
+    /** Sum of recorded reader views across all revisions (product analytics, not billing-grade). */
+    viewCountTotal: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
     createdAt: {
       type: Date,

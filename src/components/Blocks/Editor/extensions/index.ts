@@ -1,3 +1,4 @@
+import type { Editor } from '@tiptap/core'
 import Blockquote from '@tiptap/extension-blockquote'
 import Bold from '@tiptap/extension-bold'
 import Code from '@tiptap/extension-code'
@@ -25,40 +26,119 @@ import ts from 'highlight.js/lib/languages/typescript'
 import html from 'highlight.js/lib/languages/xml'
 import { all, createLowlight } from 'lowlight'
 
+import { MediaResourceType } from '~/api/media'
+import { DEFAULT_AUDIO_ACCEPT_MIME_TYPES, DEFAULT_IMAGE_ACCEPT_MIME_TYPES, DEFAULT_VIDEO_ACCEPT_MIME_TYPES } from '~/components/Fields/Input/media/constants'
+import { isMediaFileWithinUploadLimit } from '~/constants/media-upload'
 import { logger } from '~/utils/logger'
 
 import { isAllowedHref } from '../link/linkPolicy'
+import { uploadEditorMediaFile } from '../uploadEditorMedia'
+import { ArticleAudio } from './articleAudio'
 import { ArticleImage } from './articleImage'
+import { ArticleVideo } from './articleVideo'
 import { EditorTextAlign } from './editorTextAlign'
 import { HeadingMarkdownBody } from './headingMarkdownBody'
 import { OrderedListPlain } from './orderedListPlain'
 import { ParagraphMarkdownBody } from './paragraphMarkdownBody'
 
-const allowedMimeTypes: string[] = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
+const allowedMimeTypes: string[] = [...DEFAULT_IMAGE_ACCEPT_MIME_TYPES, ...DEFAULT_AUDIO_ACCEPT_MIME_TYPES, ...DEFAULT_VIDEO_ACCEPT_MIME_TYPES]
 
-async function uploadImageFile(file: File): Promise<{ proxyUrl: string; assetId: string } | null> {
-  const formData = new FormData()
-  formData.append('file', file)
-  formData.append('resourceType', 'image')
-
-  const response = await fetch('/api/v1/media/upload', {
-    method: 'POST',
-    body: formData,
-  })
-
-  if (!response.ok) {
-    logger.error('Failed to upload image', { status: response.status })
-
-    return null
+function resourceTypeForFile(file: File): MediaResourceType | null {
+  if (file.type.startsWith('audio/')) {
+    return MediaResourceType.AUDIO
   }
 
-  const data = (await response.json()) as { proxyUrl?: string; asset?: { id?: string } }
-
-  if (!data.proxyUrl || !data.asset?.id) {
-    return null
+  if (file.type.startsWith('video/')) {
+    return MediaResourceType.VIDEO
   }
 
-  return { proxyUrl: data.proxyUrl, assetId: data.asset.id }
+  if (file.type.startsWith('image/')) {
+    return MediaResourceType.IMAGE
+  }
+
+  return null
+}
+
+export type DefaultExtensionsOptions = {
+  onMediaFileTooLarge?: (file: File) => void
+}
+
+async function insertUploadedMediaAt(currentEditor: Editor, pos: number, file: File, onMediaFileTooLarge?: (file: File) => void): Promise<void> {
+  if (!isMediaFileWithinUploadLimit(file)) {
+    onMediaFileTooLarge?.(file)
+
+    return
+  }
+
+  const resourceType = resourceTypeForFile(file)
+
+  if (!resourceType) {
+    return
+  }
+
+  const uploaded = await uploadEditorMediaFile(file, resourceType)
+
+  if (!uploaded) {
+    return
+  }
+
+  const src = uploaded.proxyPath || uploaded.proxyUrl
+
+  if (resourceType === MediaResourceType.IMAGE) {
+    const base = (uploaded.proxyUrl || src).replace(/\/$/, '')
+
+    currentEditor
+      .chain()
+      .insertContentAt(pos, {
+        type: 'image',
+        attrs: {
+          src: `${base}/inline`,
+          assetId: uploaded.assetId,
+          resourceType: MediaResourceType.IMAGE,
+        },
+      })
+      .focus()
+      .run()
+
+    return
+  }
+
+  if (resourceType === MediaResourceType.AUDIO) {
+    currentEditor
+      .chain()
+      .insertContentAt(pos, {
+        type: 'audio',
+        attrs: {
+          src,
+          assetId: uploaded.assetId,
+          resourceType: MediaResourceType.AUDIO,
+          controls: true,
+          preload: 'metadata',
+        },
+      })
+      .focus()
+      .run()
+
+    return
+  }
+
+  if (resourceType === MediaResourceType.VIDEO) {
+    currentEditor
+      .chain()
+      .insertContentAt(pos, {
+        type: 'articleVideo',
+        attrs: {
+          src,
+          assetId: uploaded.assetId,
+          resourceType: MediaResourceType.VIDEO,
+          controls: true,
+          preload: 'metadata',
+          align: 'center',
+        },
+      })
+      .focus()
+      .run()
+  }
 }
 
 // create a lowlight instance with all languages loaded
@@ -72,7 +152,7 @@ lowlight.register('css', css)
 lowlight.register('js', js)
 lowlight.register('ts', ts)
 
-export const defaultExtensions = (limit?: number | null) => [
+export const defaultExtensions = (limit?: number | null, options?: DefaultExtensionsOptions) => [
   StarterKit.configure({
     heading: false,
     link: false,
@@ -98,6 +178,8 @@ export const defaultExtensions = (limit?: number | null) => [
   }),
   OrderedListPlain,
   ArticleImage.configure({ inline: false }),
+  ArticleAudio,
+  ArticleVideo,
   EditorTextAlign,
   TableKit,
   Text,
@@ -150,62 +232,22 @@ export const defaultExtensions = (limit?: number | null) => [
     allowedMimeTypes,
     onDrop: (currentEditor, files, pos) => {
       files.forEach((file) => {
-        uploadImageFile(file)
-          .then((uploaded) => {
-            if (!uploaded) {
-              return
-            }
-
-            currentEditor
-              .chain()
-              .insertContentAt(pos, {
-                type: 'image',
-                attrs: {
-                  src: `${uploaded.proxyUrl}/inline`,
-                  assetId: uploaded.assetId,
-                  resourceType: 'image',
-                },
-              })
-              .focus()
-              .run()
-          })
-          .catch((error) => {
-            logger.error(error)
-          })
+        void insertUploadedMediaAt(currentEditor, pos, file, options?.onMediaFileTooLarge).catch((error) => {
+          logger.error(error)
+        })
       })
     },
     onPaste: (currentEditor, files, htmlContent) => {
       files.forEach((file) => {
         if (htmlContent) {
-          // if there is htmlContent, stop manual insertion & let other extensions handle insertion via inputRule
-          // you could extract the pasted file from this url string and upload it to a server for example
           logger.debug(htmlContent)
 
           return false
         }
 
-        uploadImageFile(file)
-          .then((uploaded) => {
-            if (!uploaded) {
-              return
-            }
-
-            currentEditor
-              .chain()
-              .insertContentAt(currentEditor.state.selection.anchor, {
-                type: 'image',
-                attrs: {
-                  src: `${uploaded.proxyUrl}/inline`,
-                  assetId: uploaded.assetId,
-                  resourceType: 'image',
-                },
-              })
-              .focus()
-              .run()
-          })
-          .catch((error) => {
-            logger.error(error)
-          })
+        void insertUploadedMediaAt(currentEditor, currentEditor.state.selection.anchor, file, options?.onMediaFileTooLarge).catch((error) => {
+          logger.error(error)
+        })
       })
     },
   }),

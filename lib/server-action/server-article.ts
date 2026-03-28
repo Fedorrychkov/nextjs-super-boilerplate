@@ -3,6 +3,7 @@ import { shouldSkipDbDuringBuild } from '@lib/build-phase'
 import connectDB from '@lib/db/client'
 import Article from '@lib/db/models/Article'
 import ArticleRevision from '@lib/db/models/ArticleRevision'
+import { articleDocumentToApiJson } from '@lib/db/utils/articleApiJson'
 import { emptyPublicArticlesList, getPublicArticlesListEnriched } from '@lib/services/public-articles-list.service'
 import { AxiosError } from 'axios'
 import { headers } from 'next/headers'
@@ -68,7 +69,7 @@ export async function getServerForPublicArticle(
     }
 
     return {
-      article: { ...article.toObject(), id: article._id.toString(), revisionId: article.revisionId?.toString() ?? null },
+      article: articleDocumentToApiJson(article),
       revision: { ...articleRevision.toObject(), id: articleRevision._id.toString(), articleId: articleRevision.articleId?.toString() ?? null },
     }
   } catch (error) {

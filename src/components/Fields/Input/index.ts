@@ -1,4 +1,4 @@
 export * from './InputField'
-export * from './MediaUrlUploadField'
+export * from './media'
 export * from './MultiselectField'
 export * from './TextAreaField'

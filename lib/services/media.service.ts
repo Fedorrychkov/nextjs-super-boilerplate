@@ -22,6 +22,23 @@ const inferResourceType = (mimeType?: string | null, fallback: MediaResourceType
   return fallback
 }
 
+export async function createMediaAssetFromBuffer(params: {
+  buffer: Buffer
+  filename: string
+  contentType: string
+  createdBy?: string | null
+  resourceType?: MediaResourceType
+}) {
+  const bytes = new Uint8Array(params.buffer)
+  const file = new File([bytes], params.filename, { type: params.contentType })
+
+  return createMediaAsset({
+    file,
+    createdBy: params.createdBy,
+    resourceType: params.resourceType ?? MediaResourceType.AUDIO,
+  })
+}
+
 export async function createMediaAsset(params: { file: File; createdBy?: string | null; resourceType?: MediaResourceType }) {
   await connectDB()
 

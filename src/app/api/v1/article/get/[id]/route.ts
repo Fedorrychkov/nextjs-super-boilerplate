@@ -1,5 +1,6 @@
 import connectDB from '@lib/db/client'
 import Article from '@lib/db/models/Article'
+import { articleDocumentToApiJson } from '@lib/db/utils/articleApiJson'
 import { apiErrorHandlerContainer, RouteHandlerContext, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
 import { NextRequest, NextResponse } from 'next/server'
@@ -32,11 +33,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult, context?: 
       return NextResponse.json({ message: t('article.errors.notFound') }, { status: 404 })
     }
 
-    return response.json({
-      ...article.toObject(),
-      revisionId: article.revisionId?.toString() ?? null,
-      id: article._id.toString(),
-    })
+    return response.json(articleDocumentToApiJson(article))
   })
 
 export const GET = withGlobalRateLimit(withAuthMiddleware(handler))

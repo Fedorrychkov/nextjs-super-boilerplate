@@ -59,12 +59,13 @@ type Props = {
   open: boolean
   mode: ImageEditorDialogMode
   onOpenChange: (open: boolean) => void
+  articleId?: string | null
   articleRevisionId?: string | null
 }
 
 export const ImageEditorDialog = (props: Props) => {
   const t = useT()
-  const { editor, open, mode, onOpenChange, articleRevisionId } = props
+  const { editor, open, mode, onOpenChange, articleId, articleRevisionId } = props
   const [form, setForm] = useState<FormState>(emptyForm)
   /** In edit mode: for external URL you can change src; for data: — not allowed */
   const [srcEditable, setSrcEditable] = useState(true)
@@ -235,6 +236,7 @@ export const ImageEditorDialog = (props: Props) => {
               assetId={form.assetId || null}
               resourceType={MediaResourceType.IMAGE}
               variant="inline"
+              articleId={articleId ?? null}
               articleRevisionId={articleRevisionId}
               onChange={(next) => {
                 if (!next?.value && next?.removed) {

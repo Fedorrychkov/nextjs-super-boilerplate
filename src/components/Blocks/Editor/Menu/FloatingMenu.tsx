@@ -10,17 +10,22 @@ type Props = {
   editor: Editor
   onLinkDialogOpen?: () => void
   onImageDialogOpen?: () => void
+  onAudioDialogOpen?: () => void
+  onVideoDialogOpen?: () => void
 }
 
 export const CustomFloatingMenu = (props: Props) => {
-  const { editor, onLinkDialogOpen, onImageDialogOpen } = props
+  const { editor, onLinkDialogOpen, onImageDialogOpen, onAudioDialogOpen, onVideoDialogOpen } = props
 
   const { buttons } = useMenuConfigs({
     editor,
     enabledFeautures: [...features],
+    disabledFeatures: ['horizontalRule', 'breakLine'],
     featureOptions: {
       ...(onLinkDialogOpen ? { openLinkDialog: onLinkDialogOpen } : {}),
       ...(onImageDialogOpen ? { openImageDialog: onImageDialogOpen } : {}),
+      ...(onAudioDialogOpen ? { openAudioDialog: onAudioDialogOpen } : {}),
+      ...(onVideoDialogOpen ? { openVideoDialog: onVideoDialogOpen } : {}),
     },
   })
 

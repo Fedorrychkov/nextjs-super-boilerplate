@@ -9,11 +9,14 @@ import { notFound } from 'next/navigation'
 import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
 import { defaultExtensions } from '~/components/Blocks/Editor/extensions'
+import { ArticlePublishedDate } from '~/components/Views/Article/Block/server/ArticlePublishedDate'
+import { ArticlePublicListenAudio } from '~/components/Views/Article/Public/ArticlePublicListenAudio'
 import { FALLBACK_THUMBNAIL_IMAGE } from '~/constants'
 import { finalizeArticleBodyHtml } from '~/lib/editor/finalizeArticleBodyHtml'
 import { resolveArticleCanonicalUrl } from '~/lib/seo/articleCanonical'
 import { resolveArticleLanguage } from '~/lib/seo/articleLanguage'
 import { seoConfig } from '~/lib/seo/config'
+import { getArticleJsonLd, JsonLd } from '~/lib/seo/jsonld'
 import { jsonParseSafety } from '~/utils/jsonSafe'
 import { Logger } from '~/utils/logger'
 
@@ -109,9 +112,34 @@ const PreviewRoot = async (props: PageProps<{ slug: string[] }>) => {
 
   const generatedPageString = finalizeArticleBodyHtml(await renderToHTMLString({ content, extensions: defaultExtensions() }))
   const articleMetadata = response.revision.metadata as { seo?: ArticleRevisionSeoMetadata } | undefined
-  const articleLanguage = resolveArticleLanguage(articleMetadata?.seo?.language)
+  const seoJson = articleMetadata?.seo ?? {}
+  const articleLanguage = resolveArticleLanguage(seoJson.language)
+  const slugResolved = response.article.slug ?? params.slug?.[0] ?? ''
+  const canonicalForJson = resolveArticleCanonicalUrl(seoConfig.siteUrl, slugResolved, response.article.visibility, seoJson.canonicalUrl)
 
-  return <div className="max-w-full tiptap readonly" lang={articleLanguage} dangerouslySetInnerHTML={{ __html: generatedPageString }} />
+  const articleJsonLd = getArticleJsonLd({
+    slug: slugResolved,
+    title: response.revision.title ?? response.article.slug ?? 'Article',
+    description: response.revision.description,
+    image: response.revision.thumbnailUrl || FALLBACK_THUMBNAIL_IMAGE,
+    datePublished: response.revision.publishedAt ?? response.article.publishedAt,
+    dateModified: response.revision.updatedAt ?? response.article.updatedAt,
+    canonicalUrl: canonicalForJson,
+    keywords: seoJson.keywords,
+    language: articleLanguage,
+    isAccessibleForFree: false,
+  })
+
+  const publishedAt = response.revision.publishedAt ?? response.article.publishedAt
+
+  return (
+    <>
+      <JsonLd data={articleJsonLd} />
+      <ArticlePublishedDate publishedAt={publishedAt} className="mb-4 text-muted-foreground" />
+      <ArticlePublicListenAudio assetId={response.article.listenAudioAssetId} />
+      <div className="max-w-full tiptap readonly" lang={articleLanguage} dangerouslySetInnerHTML={{ __html: generatedPageString }} />
+    </>
+  )
 }
 
 export default PreviewRoot
