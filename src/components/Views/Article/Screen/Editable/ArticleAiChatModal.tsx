@@ -8,10 +8,11 @@ import { extractPlainTextFromRevisionContent } from '@lib/services/llm/extract-p
 import { BotIcon } from 'lucide-react'
 
 import type { ArticleRevisionModel, ArticleRevisionSeoMetadata } from '~/api/article-revision'
-import type { LlmTokenUsage, PreviewSuggestResult, SeoSuggestResult } from '~/api/llm'
+import type { ContentSuggestResult, LlmTokenUsage, PreviewSuggestResult, SeoSuggestResult } from '~/api/llm'
 import { ClientLlmApi } from '~/api/llm'
 import { articleAuditToMarkdown } from '~/components/Views/Article/Screen/Editable/articleAuditToMarkdown'
 import { ArticleAiChatAssistantMessage } from '~/components/Views/Article/Screen/Editable/ArticleAiChatAssistantMessage'
+import type { ArticleEditableContentHandle } from '~/components/Views/Article/Screen/Editable/ArticleEditableContent'
 import type { ArticleEditablePreviewHandle } from '~/components/Views/Article/Screen/Editable/ArticleEditablePreview'
 import type { ArticleEditableSeoHandle } from '~/components/Views/Article/Screen/Editable/ArticleEditableSeo'
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, Textarea, Typography } from '~/components/ui'
@@ -19,6 +20,7 @@ import {
   buildLlmArticleAuditsQueryKey,
   buildLlmArticleUsageQueryKey,
   useArticleAuditMutation,
+  useContentSuggestMutation,
   useLlmArticleAuditsQuery,
   useLlmChatHistoryQuery,
   useLlmModelsQuery,
@@ -37,7 +39,7 @@ type ChatRole = 'user' | 'assistant'
 
 export type ChatTurn = { role: ChatRole; content: string }
 
-type InnerTab = 'chat' | 'audits'
+type InnerTab = 'chat' | 'audits' | 'body'
 
 type ShellTab = 'content' | 'seo' | 'preview'
 
@@ -97,6 +99,7 @@ type Props = {
   onOpenChange: (open: boolean) => void
   seoEditorRef: RefObject<ArticleEditableSeoHandle | null>
   previewEditorRef: RefObject<ArticleEditablePreviewHandle | null>
+  contentEditorRef: RefObject<ArticleEditableContentHandle | null>
 }
 
 type ApiErrorShape = { response?: { data?: { message?: string } } }
@@ -124,7 +127,7 @@ function seoSuggestToFullPartial(s: SeoSuggestResult): Partial<Pick<ArticleRevis
 }
 
 export const ArticleAiChatModal = (props: Props) => {
-  const { articleId, revisionId, articleRevision, open, onOpenChange, seoEditorRef, previewEditorRef } = props
+  const { articleId, revisionId, articleRevision, open, onOpenChange, seoEditorRef, previewEditorRef, contentEditorRef } = props
   const t = useT()
   const [models, setModels] = useState<{ id: string; label: string }[]>([])
   const [serverLlmEnabled, setServerLlmEnabled] = useState(false)
@@ -143,6 +146,9 @@ export const ArticleAiChatModal = (props: Props) => {
   const [previewSuggestError, setPreviewSuggestError] = useState<string | null>(null)
   const [lastSeoUsage, setLastSeoUsage] = useState<LlmTokenUsage | null>(null)
   const [lastPreviewUsage, setLastPreviewUsage] = useState<LlmTokenUsage | null>(null)
+  const [bodySuggest, setBodySuggest] = useState<ContentSuggestResult | null>(null)
+  const [bodySuggestError, setBodySuggestError] = useState<string | null>(null)
+  const [lastBodyUsage, setLastBodyUsage] = useState<LlmTokenUsage | null>(null)
   const [selectedAuditId, setSelectedAuditId] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const auditDetailRef = useRef<HTMLDivElement>(null)
@@ -155,8 +161,9 @@ export const ArticleAiChatModal = (props: Props) => {
   const { articleAuditMutation } = useArticleAuditMutation()
   const { seoSuggestMutation } = useSeoSuggestMutation()
   const { previewSuggestMutation } = usePreviewSuggestMutation()
+  const { contentSuggestMutation } = useContentSuggestMutation()
 
-  const structuredLoading = seoSuggestMutation.isLoading || previewSuggestMutation.isLoading
+  const structuredLoading = seoSuggestMutation.isLoading || previewSuggestMutation.isLoading || contentSuggestMutation.isLoading
 
   const auditLabels = useMemo(
     () => ({
@@ -211,6 +218,9 @@ export const ArticleAiChatModal = (props: Props) => {
     setPreviewSuggestError(null)
     setLastSeoUsage(null)
     setLastPreviewUsage(null)
+    setBodySuggest(null)
+    setBodySuggestError(null)
+    setLastBodyUsage(null)
   }, [revisionId])
 
   useEffect(() => {
@@ -417,6 +427,48 @@ export const ArticleAiChatModal = (props: Props) => {
     }
   }, [articleId, revisionId, model, models, queryClient, previewSuggestMutation, serverLlmEnabled, streaming, t])
 
+  const handleContentSuggestRun = useCallback(async () => {
+    if (contentSuggestMutation.isLoading || streaming || !serverLlmEnabled) {
+      return
+    }
+
+    const selectedModel = model || models[0]?.id
+
+    if (!selectedModel) {
+      setBodySuggestError(t('article.errors.llmNotConfigured'))
+
+      return
+    }
+
+    setBodySuggestError(null)
+
+    try {
+      const body = await contentSuggestMutation.mutateAsync({ articleId, revisionId, model: selectedModel })
+
+      setBodySuggest(body.suggest)
+      setLastBodyUsage(body.usage ?? null)
+      void queryClient.invalidateQueries(buildLlmArticleUsageQueryKey({ articleId, revisionId }))
+    } catch (e) {
+      const err = e as ApiErrorShape
+
+      setBodySuggestError(err.response?.data?.message ?? (e instanceof Error ? e.message : t('errors.unknown')))
+    }
+  }, [articleId, revisionId, model, models, queryClient, contentSuggestMutation, serverLlmEnabled, streaming, t])
+
+  const handleApplyBodyMarkdown = useCallback(() => {
+    if (!bodySuggest?.markdown) {
+      return
+    }
+
+    setBodySuggestError(null)
+
+    const ok = contentEditorRef.current?.applyMarkdown(bodySuggest.markdown)
+
+    if (!ok) {
+      setBodySuggestError(t('article.errors.aiContentApplyFailed'))
+    }
+  }, [bodySuggest, contentEditorRef, t])
+
   const historyLoading = historyQuery.isLoading
   const auditLoading = articleAuditMutation.isLoading
   const auditsLoading = articleAuditsQuery.isLoading
@@ -515,6 +567,16 @@ export const ArticleAiChatModal = (props: Props) => {
                     {t('article.ui.aiTabAudits')}
                     {auditItems.length > 0 ? <span className="ml-1.5 tabular-nums text-muted-foreground">({auditItems.length})</span> : null}
                   </button>
+                  <button
+                    type="button"
+                    className={cn(
+                      'flex-1 rounded-sm px-3 py-2 text-sm font-medium transition-colors',
+                      innerTab === 'body' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                    )}
+                    onClick={() => setInnerTab('body')}
+                  >
+                    {t('article.ui.aiTabBody')}
+                  </button>
                 </div>
 
                 {innerTab === 'chat' ? (
@@ -606,7 +668,7 @@ export const ArticleAiChatModal = (props: Props) => {
                       </div>
                     </div>
                   </>
-                ) : (
+                ) : innerTab === 'audits' ? (
                   <div className="flex min-h-0 flex-1 flex-col gap-3 sm:min-h-[min(60vh,560px)]">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <Typography variant="Body/S/Semibold" className="text-foreground">
@@ -687,6 +749,52 @@ export const ArticleAiChatModal = (props: Props) => {
                       </div>
                     </div>
 
+                    <div className="flex justify-end">
+                      <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
+                        {t('common.close')}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3 sm:min-h-[min(40vh,400px)]">
+                    <AlertInline message={t('article.ui.aiBodySuggestReplaceWarning')} />
+                    <Typography variant="Body/S/Regular" className="text-muted-foreground">
+                      {t('article.ui.aiBodySuggestIntro')}
+                    </Typography>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button type="button" variant="secondary" onClick={() => void handleContentSuggestRun()} disabled={streaming || structuredLoading}>
+                        {contentSuggestMutation.isLoading ? t('article.ui.aiStructuredGenerating') : t('article.ui.aiBodySuggestGenerate')}
+                      </Button>
+                      <Button type="button" onClick={() => handleApplyBodyMarkdown()} disabled={!bodySuggest?.markdown}>
+                        {t('article.ui.aiBodySuggestApply')}
+                      </Button>
+                    </div>
+                    {bodySuggestError ? <AlertInline message={bodySuggestError} destructive /> : null}
+                    {lastBodyUsage ? (
+                      <Typography variant="Body/XS/Regular" className="text-muted-foreground">
+                        {t('article.ui.aiUsage', {
+                          total: lastBodyUsage.totalTokens,
+                          prompt: lastBodyUsage.promptTokens,
+                          completion: lastBodyUsage.completionTokens,
+                        })}
+                      </Typography>
+                    ) : null}
+                    <div className="max-h-[min(55vh,520px)] min-h-[160px] overflow-y-auto rounded-md border border-border bg-muted/15 p-3">
+                      {!bodySuggest ? (
+                        <Typography variant="Body/S/Regular" className="text-muted-foreground">
+                          {t('article.ui.aiBodySuggestEmpty')}
+                        </Typography>
+                      ) : (
+                        <div className="flex flex-col gap-2">
+                          {bodySuggest.rationale ? (
+                            <Typography variant="Body/XS/Regular" className="italic text-muted-foreground">
+                              {bodySuggest.rationale}
+                            </Typography>
+                          ) : null}
+                          <pre className="whitespace-pre-wrap break-words font-mono text-xs text-foreground">{bodySuggest.markdown}</pre>
+                        </div>
+                      )}
+                    </div>
                     <div className="flex justify-end">
                       <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
                         {t('common.close')}

@@ -445,6 +445,13 @@ export const ru = {
       aiStructuredGenerating: 'Генерация…',
       aiSuggestApplyAll: 'Применить всё',
       aiSuggestApplyField: 'Применить',
+      aiTabBody: 'Текст',
+      aiBodySuggestIntro:
+        'Сгенерируйте полный текст статьи в Markdown из текущего контекста. Применение заменяет весь документ в редакторе (автосохранение сработает как обычно).',
+      aiBodySuggestGenerate: 'Предложить тело (Markdown)',
+      aiBodySuggestApply: 'Вставить в редактор',
+      aiBodySuggestEmpty: 'Черновика пока нет — запустите генерацию, чтобы увидеть Markdown перед применением.',
+      aiBodySuggestReplaceWarning: 'Применение перезаписывает всё тело статьи в редакторе. При необходимости сразу сохраните на вкладке «Контент».',
       aiAuditListEmpty: 'Для этой ревизии пока нет сохранённых аудитов. Запустите аудит.',
       aiAuditListTokens: '{total} ток.',
       aiEditorUsageSummary: 'Использование LLM по этой ревизии: {total} ток. (чат {chat}, аудит {audit}, структурированные {structured}) — только ваши вызовы.',
@@ -480,6 +487,7 @@ export const ru = {
       llmMessageRequired: 'Нужно хотя бы одно сообщение пользователя с текстом.',
       llmAuditParseFailed: 'Не удалось разобрать ответ аудита. Попробуйте ещё раз.',
       llmSuggestParseFailed: 'Не удалось разобрать структурированный ответ. Попробуйте ещё раз.',
+      aiContentApplyFailed: 'Не удалось применить Markdown в редакторе. Откройте вкладку «Контент» и попробуйте снова.',
     },
   },
   media: {
@@ -600,6 +608,7 @@ export const ru = {
       article_audit: 'Аудит статьи',
       seo_suggest: 'Подсказки SEO',
       preview_suggest: 'Подсказки превью',
+      content_suggest: 'Подсказки текста',
     },
     errors: {
       loadFailed: 'Не удалось загрузить данные об использовании.',

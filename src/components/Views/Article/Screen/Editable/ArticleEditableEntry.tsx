@@ -34,7 +34,7 @@ import { Logger } from '~/utils/logger'
 import { time } from '~/utils/time'
 
 import { ArticleAiChatModal, isLlmUiEnabled } from './ArticleAiChatModal'
-import { ArticleEditableContent } from './ArticleEditableContent'
+import { ArticleEditableContent, type ArticleEditableContentHandle } from './ArticleEditableContent'
 import { ArticleEditablePreview, type ArticleEditablePreviewHandle, SaveForm } from './ArticleEditablePreview'
 import { ArticleEditablePublish } from './ArticleEditablePublish'
 import { ArticleEditableSeo, type ArticleEditableSeoHandle, ArticleEditableSeoSavePayload } from './ArticleEditableSeo'
@@ -117,6 +117,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
   const [aiChatOpen, setAiChatOpen] = useState(false)
   const seoEditorRef = useRef<ArticleEditableSeoHandle>(null)
   const previewEditorRef = useRef<ArticleEditablePreviewHandle>(null)
+  const contentEditorRef = useRef<ArticleEditableContentHandle>(null)
   const router = useRouter()
   const { notify } = useNotify()
   const queryClient = useQueryClient()
@@ -381,6 +382,8 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
     [activeRevisionId, updateArticleRevisionMutation, notify, isDisabledEditing, t],
   )
 
+  const debouncedUpdateContent = useMemo(() => debounce(handleUpdateContent, 1000), [handleUpdateContent])
+
   const handlePreview = useCallback(() => {
     if (!article?.slug || !activeRevisionId) {
       return
@@ -433,7 +436,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
       articleRevision,
       onSavePreview: handleSavePreview,
       onSaveSeo: handleSaveSeo,
-      onUpdateContent: debounce(handleUpdateContent, 1000),
+      onUpdateContent: debouncedUpdateContent,
       onPreview: handlePreview,
       isContentEnabled: !!article,
       isSeoEnabled: !!article,
@@ -471,6 +474,15 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
         }
       }
 
+      if (step.value === 'content') {
+        return {
+          ...step,
+          children: (
+            <ArticleEditableContent ref={contentEditorRef} isDisabled={isDisabledEditing} articleRevision={articleRevision} onUpdate={debouncedUpdateContent} />
+          ),
+        }
+      }
+
       return step
     })
 
@@ -483,7 +495,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
     })
 
     return filteredSteps
-  }, [t, isDisabledEditing, articleId, article, articleRevision, handlePublish, handlePreview, handleSavePreview, handleSaveSeo, handleUpdateContent])
+  }, [t, isDisabledEditing, articleId, article, articleRevision, handlePublish, handlePreview, handleSavePreview, handleSaveSeo, debouncedUpdateContent])
 
   const finalActiveTab = useMemo(() => {
     const isTabValid = steps.some((step) => step.value === activeTab)
@@ -606,6 +618,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
                 onOpenChange={setAiChatOpen}
                 seoEditorRef={seoEditorRef}
                 previewEditorRef={previewEditorRef}
+                contentEditorRef={contentEditorRef}
               />
             </div>
           ) : null}
@@ -631,7 +644,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
               }}
             />
           )}
-          <TabsContainer searchMutable tabs={steps} activeTab={finalActiveTab} currentTab={activeTab} onTabChange={setActiveTab} />
+          <TabsContainer searchMutable tabs={steps} mode="now" activeTab={finalActiveTab} currentTab={activeTab} onTabChange={setActiveTab} />
         </>
       )}
     </div>

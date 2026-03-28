@@ -4,6 +4,7 @@ import { AxiosInstance } from 'axios'
 import {
   ArticleAuditApiResponse,
   ArticleAuditListResponse,
+  ContentSuggestApiResponse,
   LlmArticleUsageResponse,
   LlmChatHistoryResponse,
   LlmModelsResponse,
@@ -13,6 +14,7 @@ import {
 } from '../model'
 import {
   ArticleAuditDto,
+  ContentSuggestDto,
   LlmArticleAuditListFilter,
   LlmArticleUsageFilter,
   LlmChatHistoryFilter,
@@ -91,6 +93,12 @@ export class ClientLlmApi {
 
   async postPreviewSuggest(dto: PreviewSuggestDto): Promise<PreviewSuggestApiResponse> {
     const response = await this.client.post<PreviewSuggestApiResponse>('/api/v1/llm/preview/suggest', dto)
+
+    return response.data
+  }
+
+  async postContentSuggest(dto: ContentSuggestDto): Promise<ContentSuggestApiResponse> {
+    const response = await this.client.post<ContentSuggestApiResponse>('/api/v1/llm/content/suggest', dto)
 
     return response.data
   }

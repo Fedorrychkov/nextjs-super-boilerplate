@@ -3,7 +3,7 @@ import mongoose, { type Document, type Model, Schema } from 'mongoose'
 import { time } from '~/utils/time'
 
 /** All server-side LLM calls that report token usage — for admin cost / usage monitoring. */
-export type LlmUsageSource = 'chat_stream' | 'article_audit' | 'seo_suggest' | 'preview_suggest'
+export type LlmUsageSource = 'chat_stream' | 'article_audit' | 'seo_suggest' | 'preview_suggest' | 'content_suggest'
 
 export interface ILlmUsageEvent extends Document {
   source: LlmUsageSource
@@ -24,7 +24,12 @@ export interface ILlmUsageEvent extends Document {
 
 const LlmUsageEventSchema = new Schema<ILlmUsageEvent>(
   {
-    source: { type: String, enum: ['chat_stream', 'article_audit', 'seo_suggest', 'preview_suggest'], required: true, index: true },
+    source: {
+      type: String,
+      enum: ['chat_stream', 'article_audit', 'seo_suggest', 'preview_suggest', 'content_suggest'],
+      required: true,
+      index: true,
+    },
     userId: { type: String, required: true, index: true },
     articleId: { type: Schema.Types.ObjectId, ref: 'Article', index: true },
     revisionId: { type: Schema.Types.ObjectId, ref: 'ArticleRevision', index: true },

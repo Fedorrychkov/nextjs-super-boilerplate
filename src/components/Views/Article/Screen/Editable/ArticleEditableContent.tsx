@@ -1,7 +1,7 @@
 'use client'
 
 import type { Editor } from '@tiptap/core'
-import { useCallback, useMemo } from 'react'
+import { forwardRef, useCallback, useImperativeHandle, useMemo } from 'react'
 
 import { ArticleRevisionModel } from '~/api/article-revision'
 import { DefaultEditor } from '~/components/Blocks/Editor/DefaultEditor'
@@ -14,6 +14,10 @@ import { jsonParseSafety } from '~/utils/jsonSafe'
 
 import { DEFAULT_EXAMPLE } from './example'
 
+export type ArticleEditableContentHandle = {
+  applyMarkdown: (markdown: string) => boolean
+}
+
 type Props = {
   className?: string
   title?: string | null
@@ -22,7 +26,7 @@ type Props = {
   isDisabled?: boolean
 }
 
-export const ArticleEditableContent = (props: Props) => {
+export const ArticleEditableContent = forwardRef<ArticleEditableContentHandle, Props>(function ArticleEditableContent(props, ref) {
   const t = useT()
   const { className = '', title = t('article.ui.contentEditor'), onUpdate, articleRevision, isDisabled } = props
 
@@ -30,7 +34,14 @@ export const ArticleEditableContent = (props: Props) => {
     return articleRevision?.content ? jsonParseSafety<string>(articleRevision.content) : ''
   }, [articleRevision])
 
-  const { editor, mode, handleSetMode, setMode, markdownInput, setMarkdownInput } = useDefaultEditor({ isDisabled, defaultContent, limit: 50_000, onUpdate })
+  const { editor, mode, handleSetMode, setMode, markdownInput, setMarkdownInput, applyMarkdown } = useDefaultEditor({
+    isDisabled,
+    defaultContent,
+    limit: 50_000,
+    onUpdate,
+  })
+
+  useImperativeHandle(ref, () => ({ applyMarkdown }), [applyMarkdown])
 
   const handleSave = useCallback(() => {
     if (mode === 'markdown') {
@@ -74,4 +85,4 @@ export const ArticleEditableContent = (props: Props) => {
       </div>
     </div>
   )
-}
+})

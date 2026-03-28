@@ -23,7 +23,10 @@ export const ArticleEditorLlmUsageChip = (props: Props) => {
     const by = usageQuery.data?.bySource ?? []
     const chat = by.find((x) => x.source === 'chat_stream')?.totalTokens ?? 0
     const audit = by.find((x) => x.source === 'article_audit')?.totalTokens ?? 0
-    const structured = (by.find((x) => x.source === 'seo_suggest')?.totalTokens ?? 0) + (by.find((x) => x.source === 'preview_suggest')?.totalTokens ?? 0)
+    const structured =
+      (by.find((x) => x.source === 'seo_suggest')?.totalTokens ?? 0) +
+      (by.find((x) => x.source === 'preview_suggest')?.totalTokens ?? 0) +
+      (by.find((x) => x.source === 'content_suggest')?.totalTokens ?? 0)
 
     return { chatTokens: chat, auditTokens: audit, structuredTokens: structured }
   }, [usageQuery.data?.bySource])

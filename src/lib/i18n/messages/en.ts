@@ -448,6 +448,13 @@ export const en = {
       aiStructuredGenerating: 'Generating…',
       aiSuggestApplyAll: 'Apply all',
       aiSuggestApplyField: 'Apply',
+      aiTabBody: 'Body',
+      aiBodySuggestIntro:
+        'Generate a full article body in Markdown from the current context. Applying replaces the entire editor document (autosave runs as usual).',
+      aiBodySuggestGenerate: 'Suggest Markdown body',
+      aiBodySuggestApply: 'Apply to editor',
+      aiBodySuggestEmpty: 'No draft yet — run generation to preview Markdown before applying.',
+      aiBodySuggestReplaceWarning: 'Applying overwrites the whole article body in the editor. Use Save on the Content tab if you want to persist immediately.',
       aiAuditListEmpty: 'No saved audits for this revision yet. Run an audit to add one.',
       aiAuditListTokens: '{total} tokens',
       aiEditorUsageSummary: 'LLM usage for this revision: {total} tokens (chat {chat}, audit {audit}, structured {structured}) — your account only.',
@@ -483,6 +490,7 @@ export const en = {
       llmMessageRequired: 'Send at least one user message with text.',
       llmAuditParseFailed: 'Could not parse the audit response. Please try again.',
       llmSuggestParseFailed: 'Could not parse the structured suggestion. Please try again.',
+      aiContentApplyFailed: 'Could not apply Markdown to the editor. Open the Content tab and try again.',
     },
   },
   media: {
@@ -603,6 +611,7 @@ export const en = {
       article_audit: 'Article audit',
       seo_suggest: 'SEO suggest',
       preview_suggest: 'Preview suggest',
+      content_suggest: 'Content suggest',
     },
     errors: {
       loadFailed: 'Failed to load usage data.',

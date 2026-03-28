@@ -112,6 +112,34 @@ export const useDefaultEditor = (props: Props) => {
     }
   }, [editor, logger])
 
+  /** Replace document from Markdown (visual editor); returns false if editor or Markdown extension is unavailable. */
+  const applyMarkdown = useCallback(
+    (raw: string) => {
+      if (!editor) {
+        return false
+      }
+
+      const md = normalizeMarkdownForTiptap(raw)
+
+      if (!editor.markdown) {
+        return false
+      }
+
+      try {
+        editor.commands.setContent(md, { contentType: 'markdown' })
+        setMode('default')
+        setMarkdownInput(md)
+
+        return true
+      } catch (err) {
+        logger.error(err)
+
+        return false
+      }
+    },
+    [editor, logger],
+  )
+
   /**
    * Method for set value and mode
    */
@@ -137,5 +165,6 @@ export const useDefaultEditor = (props: Props) => {
     setMode,
     markdownInput,
     setMarkdownInput,
+    applyMarkdown,
   }
 }

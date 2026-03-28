@@ -20,6 +20,8 @@ export type SeoSuggestDto = ArticleAuditDto
 
 export type PreviewSuggestDto = ArticleAuditDto
 
+export type ContentSuggestDto = ArticleAuditDto
+
 export type LlmChatStreamMessage = {
   role: 'user' | 'assistant'
   content: string
