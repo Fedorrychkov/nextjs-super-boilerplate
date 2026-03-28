@@ -1,6 +1,6 @@
 'use client'
 
-import { ActivityIcon, BarChart3Icon, BotIcon, HomeIcon, TextQuoteIcon, UserIcon, WrenchIcon } from 'lucide-react'
+import { ActivityIcon, BarChart3Icon, BotIcon, EyeIcon, HomeIcon, TextQuoteIcon, UserIcon, WrenchIcon } from 'lucide-react'
 import { useMemo } from 'react'
 
 import { UserRole } from '~/api/user'
@@ -54,6 +54,11 @@ export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
                   label: t(routes.rumDashboard.tKey),
                   icon: <ActivityIcon width={16} height={16} />,
                   href: routes.rumDashboard.path,
+                },
+                {
+                  label: t(routes.articleViewsDashboard.tKey),
+                  icon: <EyeIcon width={16} height={16} />,
+                  href: routes.articleViewsDashboard.path,
                 },
                 {
                   label: t(routes.aiReferralsDashboard.tKey),

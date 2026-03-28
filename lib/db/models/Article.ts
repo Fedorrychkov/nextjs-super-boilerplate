@@ -122,6 +122,12 @@ const ArticleSchema: Schema<IArticle> = new Schema<IArticle>(
       type: Boolean,
       default: true,
     },
+    /** Sum of recorded reader views across all revisions (product analytics, not billing-grade). */
+    viewCountTotal: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     createdAt: {
       type: Date,
       default: () => time().toISOString(),

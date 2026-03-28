@@ -47,6 +47,12 @@ export const routes = {
     tKey: 'navigation.rumDashboard' as const,
     needAuth: true,
   },
+  articleViewsDashboard: {
+    path: '/admin/article-views',
+    name: 'Article views',
+    tKey: 'navigation.articleViewsDashboard' as const,
+    needAuth: true,
+  },
   aiReferralsDashboard: {
     path: '/admin/ai-referrals',
     name: 'AI Referrals',

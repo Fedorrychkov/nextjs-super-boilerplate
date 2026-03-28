@@ -59,6 +59,8 @@ export type ArticleRevisionModel = {
    */
   status?: ArticleRevisionStatus | null
   publishedAt?: string | null
+  /** Views attributed to this revision while it was live. */
+  viewCount?: number | null
   createdAt?: string | null
   updatedAt?: string | null
 }

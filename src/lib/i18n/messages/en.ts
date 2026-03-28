@@ -91,6 +91,7 @@ export const en = {
     logout: 'Logout',
     refresh: 'Refresh',
     rumDashboard: 'RUM Dashboard',
+    articleViewsDashboard: 'Article views',
     aiReferralsDashboard: 'AI Referrals Dashboard',
     llmUsageDashboard: 'LLM usage',
     articles: 'Articles',
@@ -320,6 +321,7 @@ export const en = {
       updatedAt: 'Updated At',
       sortBy: 'Sort By',
       sortOrder: 'Sort Order',
+      viewCountTotal: 'Views',
     },
     statuses: {
       draft: 'Draft',
@@ -480,6 +482,36 @@ export const en = {
       listenAudioFieldLabel: 'Listen audio',
       listenAudioFieldHint: 'Generate AI narration, choose from the media library, or upload a file. The article stores the /cdn proxy URL.',
       listenAudioPickFile: 'Upload file',
+    },
+    views: {
+      ui: {
+        title: 'Article views',
+        subtitle:
+          'Lifetime view counts: total per article and per revision while that revision was published. Best-effort analytics; with Redis, about one count per visitor per 24h per article revision.',
+        totalViewsAllArticles: 'Total views (all articles)',
+        slug: 'Slug',
+        articleViews: 'Article total',
+        revisionsHint:
+          'Per-revision counts (historical). After republishing, new reads accrue on the new revision; sums across revisions may differ from the article total.',
+        revisionTitle: 'Title',
+        publishedAt: 'Published',
+        revisionViews: 'Revision views',
+        openAdmin: 'Admin',
+        loadFailed: 'Failed to load view stats.',
+        noArticles: 'No published articles yet.',
+      },
+      errors: {
+        invalid_body: 'Invalid request body',
+        slug_required: 'Article slug is required',
+        surface_invalid: 'Invalid surface (use public or private)',
+        surface_mismatch_public: 'This article is not public — use the private reader URL',
+        surface_mismatch_private: 'Use the public article URL for this article',
+        article_not_found: 'Article not found',
+        revision_not_found: 'Published revision not found',
+        visitor_key_required: 'Visitor key is required for anonymous view counting',
+        authentication_required: 'Sign in to record this view',
+        forbidden: 'You cannot record a view for this article',
+      },
     },
     errors: {
       selectTheTypeOfCard: 'Select the type of card',

@@ -12,7 +12,7 @@ This roadmap tracks the remaining work for the article platform and related qual
 - Media pipeline: Uploadcare via own API (`/api/v1/media`), `MediaAsset` in DB, proxy delivery (`/cdn/...`), editor paste/drop + Preview/SEO image fields, responsive `<picture>` / `srcset` on public article HTML; author upload **max size** aligned with `proxyClientMaxBodySize` (see `src/constants/media-upload.ts`), client checks + API **413** on oversize.
 - Optional **LLM** authoring (chat, structured SEO/preview/content suggest, article audit, listen-audio TTS): server-only keys, `NEXT_PUBLIC_LLM_ENABLED`; detail in **`AI_FEATURES_ROADMAP.md`**.
 - Public article HTML path: **`unstable_cache`** + **`revalidateTag`** on publish/revision update (`src/lib/cache/publicArticlePageCache.ts`). RUM (Phase 4) + optional analytics cookie consent.
-- Planned / partial (Phase 6): **view counter** + admin dashboards; **reactions** (roadmap-only / likely deferred). **Public agents:** **`Accept: text/markdown`** on **`/article/[slug]`** (`src/proxy.ts` rewrite → Markdown + YAML front matter; **`Vary: Accept`**); **`Content-Signal`** and **`x-markdown-tokens`** on Markdown. See **`AI_FEATURES_ROADMAP.md`** Phase 5.
+- Planned / partial (Phase 6): **article view counters** + **`/admin/article-views`** (shipped); **reactions** (roadmap-only / likely deferred). **Public agents:** **`Accept: text/markdown`** on **`/article/[slug]`** (`src/proxy.ts` rewrite → Markdown + YAML front matter; **`Vary: Accept`**); **`Content-Signal`** and **`x-markdown-tokens`** on Markdown. See **`AI_FEATURES_ROADMAP.md`** Phase 5.
 
 ## Immediate Execution (Can Start Now)
 
@@ -186,11 +186,11 @@ Shipped as part of the LLM stack — see **`AI_FEATURES_ROADMAP.md`** (Phase 1�
 
 #### Views — in scope (counter)
 
-- [ ] Persist **`viewCount`** (or a dedicated `ArticleViewStats` / rollup document) on the article; increment **once per successful article page load** on the canonical read path (`/article/[slug]` and private article routes — **not** `/preview/...` or draft editor).
-- [ ] **Server-side increment** preferred: e.g. `POST /api/v1/articles/:id/views` or fire-and-forget from a **Route Handler** after auth/authorization confirms the user may see the article (public: optional anonymous; private: authenticated + entitled).
-- [ ] **Idempotency / debounce:** avoid double-counting on React Strict Mode double-mount or quick back-navigation — e.g. one increment per **browser tab session** per article per day or a short TTL key in Redis (`articleId` + `visitorKey` + window).
-- [ ] **SSR vs client:** if the page is cached (`unstable_cache`), do **not** bake the counter into cached HTML; load count via client fetch or edge middleware + async write so counts stay approximate-under-load but consistent in DB.
-- [ ] **Admin / author UI:** surface **total views** (and time-window rollups if implemented) next to article metadata; align naming with any existing **Total Views** label in the product.
+- [x] Persist **`viewCountTotal`** on **`Article`** and **`viewCount`** on **`ArticleRevision`**; increments from **`POST /api/v1/article/view`** (client **`ArticleViewTracker`** on **`/article/[slug]`** and **`/private-article/[slug]`** only — not preview/editor).
+- [x] **Server-side** `recordArticleView` in **`lib/services/article-view.service.ts`**: validates **`surface`** `public` vs `private` vs article **visibility** (public / link_only / private + roles); optional JWT from cookie for private.
+- [x] **Dedupe:** Redis **`SET … NX EX ~24h`** per `articleId + revisionId + (user id | visitorKey)` when **`REDIS_URL`** set; sessionStorage UUID for anonymous **`visitorKey`**.
+- [x] **SSR vs cache:** counter not in cached HTML; **client POST** after mount.
+- [x] **Admin list:** column **Views** (`viewCountTotal`); **dashboard** **`/admin/article-views`** + **`GET /api/v1/article/views/dashboard`** and per-article revisions **`GET /api/v1/article/views/by-article/[articleId]`**.
 
 #### Reactions — roadmap only (likely deferred)
 
@@ -203,9 +203,9 @@ Shipped as part of the LLM stack — see **`AI_FEATURES_ROADMAP.md`** (Phase 1�
 
 #### Dashboards (views + future reactions)
 
-- [ ] **Global dashboard** (admin): totals, trends, top articles — analogous spirit to **`/admin/rum`** (`GET /api/v1/rum/dashboard`) and AI referrals boards.
-- [ ] **Per-article** view: lifetime + optional windowed counts; link from article editor or admin article list.
-- [ ] **Per-revision** view: when metrics are attributed to the revision that was live when the event occurred (views may remain article-level first; reactions would more often need revision scope).
+- [x] **Global dashboard** (admin): **`/admin/article-views`** — total views sum + table sorted by **`viewCountTotal`** (published articles).
+- [x] **Per-article / per-revision:** expand row → revision table with **`viewCount`** per revision + article **`viewCountTotal`** (lifetime; not time-windowed yet).
+- [ ] **Trends / time windows** (e.g. last 7 days) — not implemented.
 - [ ] Document **best-effort** semantics under cache and load (product analytics, not billing-grade) — same caveat as in the unique-visitor design below.
 
 #### Unique visitors (design options — pick one or combine)

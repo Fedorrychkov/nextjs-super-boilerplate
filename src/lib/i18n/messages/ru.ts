@@ -91,6 +91,7 @@ export const ru = {
     logout: 'Выход',
     refresh: 'Обновить',
     rumDashboard: 'RUM панель',
+    articleViewsDashboard: 'Просмотры статей',
     aiReferralsDashboard: 'Панель AI рефералов',
     llmUsageDashboard: 'Использование LLM',
     articles: 'Статьи',
@@ -319,6 +320,7 @@ export const ru = {
       updatedAt: 'Обновлено',
       sortBy: 'Сортировка по',
       sortOrder: 'Порядок сортировки',
+      viewCountTotal: 'Просмотры',
     },
     statuses: {
       draft: 'Черновик',
@@ -477,6 +479,36 @@ export const ru = {
       listenAudioFieldLabel: 'Озвучка статьи',
       listenAudioFieldHint: 'Сгенерируйте озвучку ИИ, выберите файл из медиатеки или загрузите аудио. В статье хранится proxy-URL вида /cdn/…',
       listenAudioPickFile: 'Загрузить файл',
+    },
+    views: {
+      ui: {
+        title: 'Просмотры статей',
+        subtitle:
+          'Накопленные просмотры: всего по статье и по каждой ревизии, пока она была опубликована. Оценочная аналитика; при Redis — примерно один учёт на посетителя за 24 ч на пару статья+ревизия.',
+        totalViewsAllArticles: 'Всего просмотров (по всем статьям)',
+        slug: 'Путь (URL)',
+        articleViews: 'Всего по статье',
+        revisionsHint:
+          'Просмотры по ревизиям (история). После перепубликации новые чтения идут в новую ревизию; сумма по ревизиям может отличаться от счётчика статьи.',
+        revisionTitle: 'Заголовок',
+        publishedAt: 'Опубликовано',
+        revisionViews: 'Просмотры ревизии',
+        openAdmin: 'В админке',
+        loadFailed: 'Не удалось загрузить статистику просмотров.',
+        noArticles: 'Нет опубликованных статей.',
+      },
+      errors: {
+        invalid_body: 'Некорректное тело запроса',
+        slug_required: 'Нужен путь (URL) статьи',
+        surface_invalid: 'Неверный surface (используйте public или private)',
+        surface_mismatch_public: 'Эта статья не публичная — откройте приватную ссылку чтения',
+        surface_mismatch_private: 'Для этой статьи используйте публичный URL',
+        article_not_found: 'Статья не найдена',
+        revision_not_found: 'Опубликованная ревизия не найдена',
+        visitor_key_required: 'Для анонимного учёта нужен visitor key',
+        authentication_required: 'Войдите, чтобы засчитать просмотр',
+        forbidden: 'Нельзя засчитать просмотр для этой статьи',
+      },
     },
     errors: {
       selectTheTypeOfCard: 'Выберите тип карточки',

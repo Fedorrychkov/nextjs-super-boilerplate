@@ -85,6 +85,12 @@ const ArticleRevisionSchema: Schema<IArticleRevision> = new Schema<IArticleRevis
       type: Date,
       default: null,
     },
+    /** Views recorded while this revision was the article’s published `revisionId`. */
+    viewCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     createdAt: {
       type: Date,
       default: () => time().toISOString(),

@@ -27,6 +27,8 @@ export type ArticleModel = {
    * Default true — allow training-related signaling per publisher choice.
    */
   allowAiTraining?: boolean | null
+  /** Lifetime view events summed for dashboards (`$inc` on record). */
+  viewCountTotal?: number | null
 }
 
 export enum ArticleVisibility {

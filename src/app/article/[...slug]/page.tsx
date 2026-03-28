@@ -9,6 +9,7 @@ import { ArticleVisibility } from '~/api/article'
 import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { ArticlePublishedDate } from '~/components/Views/Article/Block/server/ArticlePublishedDate'
 import { ArticlePublicListenAudio } from '~/components/Views/Article/Public/ArticlePublicListenAudio'
+import { ArticleViewTracker } from '~/components/Views/Article/Public/ArticleViewTracker'
 import { FALLBACK_THUMBNAIL_IMAGE } from '~/constants'
 import { getCachedPublicArticlePagePayload } from '~/lib/cache/publicArticlePageCache'
 import { trackAiReferralVisit } from '~/lib/seo/aiReferrals'
@@ -146,6 +147,7 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
 
   return (
     <>
+      <ArticleViewTracker slug={slugResolved} surface="public" />
       <JsonLd data={articleJsonLd} />
       <ArticlePublishedDate publishedAt={publishedAt} className="mb-4 text-muted-foreground" />
       <ArticlePublicListenAudio assetId={response.article.listenAudioAssetId} />
