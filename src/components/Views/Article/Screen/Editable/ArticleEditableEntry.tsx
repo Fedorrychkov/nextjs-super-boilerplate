@@ -6,13 +6,14 @@ import debounce from 'lodash/debounce'
 import { ActivityIcon, BotIcon, EyeIcon, FileTextIcon, InfoIcon, LockIcon, SearchIcon, SendIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from 'react-query'
 
 import { ArticleModel, ArticleStatus, ArticleVisibility } from '~/api/article'
 import { ArticleRevisionMediaMetadata, ArticleRevisionMetadata, ArticleRevisionModel, ArticleRevisionStatus, SortOrder } from '~/api/article-revision'
 import { MediaProvider, MediaResourceType } from '~/api/media'
 import { Tab, TabsContainer } from '~/components/Blocks/Tabs/TabsContainer'
+import { HorizontalContainer } from '~/components/Containers'
 import { SpinnerScreen } from '~/components/Loaders'
 import { AlertBlock, Button, Typography } from '~/components/ui'
 import { routes } from '~/constants'
@@ -33,6 +34,7 @@ import { jsonStringifySafety } from '~/utils/jsonSafe'
 import { Logger } from '~/utils/logger'
 import { time } from '~/utils/time'
 
+import { ArticleAdminListenAudioControls } from './ArticleAdminListenAudioControls'
 import { ArticleAiChatModal, isLlmUiEnabled } from './ArticleAiChatModal'
 import { ArticleEditableContent, type ArticleEditableContentHandle } from './ArticleEditableContent'
 import { ArticleEditablePreview, type ArticleEditablePreviewHandle, SaveForm } from './ArticleEditablePreview'
@@ -560,13 +562,13 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
       ) : (
         <>
           {articleRevisions?.list?.length ? (
-            <div className="flex flex-row gap-2">
+            <HorizontalContainer className="border-0 shadow-none pl-0">
               {articleRevisions?.list?.map((item) => (
                 <Button
                   key={item.id}
                   variant={item.id === activeRevisionId ? 'default' : 'secondary'}
-                  size="sm-md"
-                  className="flex flex-row gap-2 items-center"
+                  size="sm"
+                  className="flex flex-row gap-2 items-center mb-0"
                   onClick={() => setActiveRevisionId(item.id)}
                 >
                   <Typography
@@ -578,7 +580,14 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
                   >
                     {item.publishedAt ? time(item.publishedAt).format('DD.MM.YYYY HH:mm') : time(item.createdAt).format('DD.MM.YYYY HH:mm')}
                   </Typography>
-                  {item?.status === ArticleRevisionStatus.CONFIRMED ? <LockIcon className="w-6 h-6 shrink-0 bg-green-500 text-white rounded-md p-1" /> : null}
+                  {item?.status === ArticleRevisionStatus.CONFIRMED ? (
+                    <LockIcon
+                      className={cn(
+                        'w-6 h-6 shrink-0 bg-green-500 text-white rounded-md p-1',
+                        article?.revisionId === item.id ? 'bg-green-600' : 'bg-blue-500',
+                      )}
+                    />
+                  ) : null}
                 </Button>
               ))}
               {article?.slug && article?.visibility === ArticleVisibility.PUBLIC && article?.status === ArticleStatus.PUBLISHED && (
@@ -586,20 +595,20 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
                   <Link
                     href={`/admin/rum?pathname=/article/${article.slug}`}
                     target="_blank"
-                    className="flex items-center gap-2 p-2 rounded-lg text-secondary-400"
+                    className="flex text-nowrap items-center gap-2 px-2 rounded-lg text-secondary-400"
                   >
                     <ActivityIcon className="md:w-4 md:h-4 w-2 h-2 shrink-0" /> {t('navigation.rumDashboard')}
                   </Link>
                   <Link
                     href={`/admin/ai-referrals?pathname=/article/${article.slug}`}
                     target="_blank"
-                    className="flex items-center gap-2 p-2 rounded-lg text-secondary-400"
+                    className="flex text-nowrap items-center gap-2 px-2 rounded-lg text-secondary-400"
                   >
                     <BotIcon className="md:w-4 md:h-4 w-2 h-2 shrink-0" /> {t('navigation.aiReferralsDashboard')}
                   </Link>
                 </div>
               )}
-            </div>
+            </HorizontalContainer>
           ) : null}
           {isLlmUiEnabled() && articleId && activeRevisionId ? (
             <div className="flex flex-row flex-wrap items-center gap-x-3 gap-y-2">
@@ -622,13 +631,16 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
               />
             </div>
           ) : null}
+          {articleId && activeRevisionId ? (
+            <ArticleAdminListenAudioControls articleId={articleId} article={article} activeRevisionId={activeRevisionId} />
+          ) : null}
           {isDisabledEditing && (
             <AlertBlock
               notify={{
                 type: 'info',
                 message: (
                   <div className="flex flex-col gap-2 items-start">
-                    <Typography variant="Body/S/Regular" className="whitespace-nowrap text-nowrap text-neutral-1000">
+                    <Typography variant="Body/S/Regular" className="text-neutral-1000">
                       {t('article.ui.youAreNotAllowedToEditTheLastPublishedArticlePleaseStartTheNewVersion')}
                     </Typography>
                     {!isHasDraftRevision ? (
@@ -636,7 +648,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
                         {t('article.ui.startNewVersion')}
                       </Button>
                     ) : null}
-                    <Typography variant="Body/S/Regular" className="whitespace-nowrap text-nowrap text-neutral-1000">
+                    <Typography variant="Body/S/Regular" className="text-neutral-1000">
                       {t('article.ui.orRepublishEarlyVersion')}
                     </Typography>
                   </div>
@@ -644,7 +656,19 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
               }}
             />
           )}
-          <TabsContainer searchMutable tabs={steps} mode="now" activeTab={finalActiveTab} currentTab={activeTab} onTabChange={setActiveTab} />
+          {articleRevisions?.list?.length ? (
+            <>
+              {articleRevisions?.list?.map((revision) => (
+                <Fragment key={revision.id}>
+                  {revision.id === activeRevisionId ? (
+                    <TabsContainer searchMutable tabs={steps} mode="now" activeTab={finalActiveTab} currentTab={activeTab} onTabChange={setActiveTab} />
+                  ) : null}
+                </Fragment>
+              ))}
+            </>
+          ) : (
+            <TabsContainer searchMutable tabs={steps} mode="now" activeTab={finalActiveTab} currentTab={activeTab} onTabChange={setActiveTab} />
+          )}
         </>
       )}
     </div>

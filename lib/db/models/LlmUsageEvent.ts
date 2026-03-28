@@ -2,8 +2,15 @@ import mongoose, { type Document, type Model, Schema } from 'mongoose'
 
 import { time } from '~/utils/time'
 
-/** All server-side LLM calls that report token usage — for admin cost / usage monitoring. */
-export type LlmUsageSource = 'chat_stream' | 'article_audit' | 'seo_suggest' | 'preview_suggest' | 'content_suggest'
+/** All server-side LLM / OpenAI calls that report usage — for admin cost / usage monitoring. */
+export type LlmUsageSource =
+  | 'chat_stream'
+  | 'article_audit'
+  | 'seo_suggest'
+  | 'preview_suggest'
+  | 'content_suggest'
+  /** OpenAI Speech (TTS); `promptTokens` / `totalTokens` store input character count (billing unit), not chat tokens. */
+  | 'listen_tts'
 
 export interface ILlmUsageEvent extends Document {
   source: LlmUsageSource
@@ -26,7 +33,7 @@ const LlmUsageEventSchema = new Schema<ILlmUsageEvent>(
   {
     source: {
       type: String,
-      enum: ['chat_stream', 'article_audit', 'seo_suggest', 'preview_suggest', 'content_suggest'],
+      enum: ['chat_stream', 'article_audit', 'seo_suggest', 'preview_suggest', 'content_suggest', 'listen_tts'],
       required: true,
       index: true,
     },

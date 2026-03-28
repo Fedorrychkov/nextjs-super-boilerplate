@@ -63,7 +63,7 @@ export type ArticleAuditListResponse = {
   items: ArticleAuditListItem[]
 }
 
-export type LlmUsageSourceKind = 'chat_stream' | 'article_audit' | 'seo_suggest' | 'preview_suggest' | 'content_suggest'
+export type LlmUsageSourceKind = 'chat_stream' | 'article_audit' | 'seo_suggest' | 'preview_suggest' | 'content_suggest' | 'listen_tts'
 
 export type SeoSuggestResult = {
   metaTitle: string | null

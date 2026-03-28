@@ -102,20 +102,26 @@ Goal: generate a **listenable** version of the article (“read by a narrator”
 
 ### 4.1 Content pipeline
 
-- [ ] **Plain-text extraction** for TTS: strip Markdown/HTML/TipTap noise — one shared function used only for narration (avoid double-maintaining preview vs publish).
-- [ ] **Length limits** and chunking strategy if input exceeds model limits (concatenate audio or single truncated read — product decision).
+- [x] **Plain-text extraction** for TTS — `extractPlainTextFromRevisionContent` (TipTap JSON → plain text) in `article-listen-audio.service`.
+- [x] **Length limits** — OpenAI TTS cap (~4000 chars); **truncated single read** + UI warning when truncated; **chunking / concat** still optional.
 
 ### 4.2 Backend
 
-- [ ] **TTS endpoint** with `model`, `voice`, `format` (e.g. `mp3` or `wav` for latency); API returns **`availableVoices[]`** and **`availableModels[]`** for TTS mode.
-- [ ] **Upload generated audio** via media pipeline; extend media layer to treat **audio** MIME types (Uploadcare or existing storage — **audio support** explicitly in schema and validation).
-- [ ] **Persist on article model:** e.g. `audioAssetId` / `audioUrl` / duration (exact fields to be defined in schema migration).
+- [x] **TTS generation** — `POST /api/v1/article/listen-audio/generate` (ADMIN/EDITOR); OpenAI Speech (`tts-1`, mp3) in `openai-speech.service.ts`; voice allowlist server-side.
+- [ ] **Capabilities API** for TTS — expose **`availableVoices[]`** / models to the client (optional polish; voices are fixed allowlist today).
+- [x] **Upload generated audio** via `createMediaAssetFromBuffer` → Uploadcare + `MediaAsset` (`AUDIO`).
+- [x] **Persist on article:** `listenAudioAssetId`, `listenAudioSourceRevisionId`, `listenAudioGeneratedAt`; cache revalidate on generate.
 
 ### 4.3 UX
 
-- [ ] **Content tab:** “Generate article audio” (primary entry for simplicity).
-- [ ] **Publish flow (optional):** checkbox “Generate voice version after publish” (uses latest published revision’s text snapshot — define rules).
-- [ ] **Disclosure:** OpenAI usage policy requires clear disclosure that voice is **AI-generated** — show in player UI.
+- [x] **Editor:** generate / regenerate listen audio (head revision only) + stale hint when text revision changed; `ClientArticleApi.generateListenAudio` + mutation.
+- [x] **Public article page:** headphones control + `<audio>` via `/cdn/{assetId}` + **AI-generated voice** disclosure.
+- [ ] **Publish flow (optional):** checkbox “Generate voice version after publish”.
+- [x] **Disclosure** next to the public player (see copy in i18n).
+
+### 4.5 Sync with on-page text (“karaoke”) — future
+
+- [ ] **Word- or block-level highlight** during playback needs **time-aligned segments** (e.g. provider timestamps, forced alignment, or SSML/marked text + post-processing) — not shipped; rough progress-by-`currentTime` / duration is possible but inaccurate.
 
 ### 4.4 Integration with chat (optional)
 

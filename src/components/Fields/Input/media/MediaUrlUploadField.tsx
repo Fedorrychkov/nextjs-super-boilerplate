@@ -2,7 +2,8 @@
 
 import { AxiosError } from 'axios'
 import Image from 'next/image'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
+import { useCallback, useId, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from 'react-query'
 
 import { MediaAssetModel, MediaResourceType } from '~/api/media'
@@ -13,7 +14,24 @@ import { useT } from '~/providers'
 import { useNotify } from '~/providers/notify'
 import { useDeleteMediaMutation, useMediaAssetsQuery, useUploadMediaMutation } from '~/query/media'
 
-const DEFAULT_IMAGE_ACCEPT_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif', 'image/svg+xml', 'image/heic', 'image/heif']
+import {
+  DEFAULT_AUDIO_ACCEPT_MIME_TYPES,
+  DEFAULT_DOCUMENT_ACCEPT_MIME_TYPES,
+  DEFAULT_IMAGE_ACCEPT_MIME_TYPES,
+  DEFAULT_VIDEO_ACCEPT_MIME_TYPES,
+} from './constants'
+
+export type MediaUrlUploadToolbarRenderProps = {
+  disabled: boolean
+  isBusy: boolean
+  canRemove: boolean
+  assetId: string | null | undefined
+  value: string
+  openLibrary: () => void
+  /** Triggers the hidden file input on the main card (upload without opening the library modal first). */
+  pickLocalFile: () => void
+  remove: () => void
+}
 
 type Props = {
   label: string
@@ -26,6 +44,12 @@ type Props = {
   acceptedMimeTypes?: string[]
   mediaListLimit?: number
   articleRevisionId?: string | null
+  /** Extra busy state from the parent (e.g. article save or TTS generation). */
+  toolbarBusy?: boolean
+  /** When true, the URL field is read-only; value changes only via library / file / parent logic. */
+  urlInputReadOnly?: boolean
+  /** Replaces the default «Upload» (library) + «Remove» row with custom actions. */
+  renderToolbar?: (ctx: MediaUrlUploadToolbarRenderProps) => ReactNode
   onChange: (next: { value: string; removed?: boolean; assetId?: string | null; asset?: MediaAssetModel | null }) => void
 }
 
@@ -40,13 +64,37 @@ export const MediaUrlUploadField = (props: Props) => {
     hintText,
     resourceType = MediaResourceType.IMAGE,
     variant = 'inline',
-    acceptedMimeTypes = DEFAULT_IMAGE_ACCEPT_MIME_TYPES,
+    acceptedMimeTypes: acceptedMimeTypesProps = DEFAULT_IMAGE_ACCEPT_MIME_TYPES,
     mediaListLimit = 60,
     articleRevisionId,
+    toolbarBusy = false,
+    urlInputReadOnly = false,
+    renderToolbar,
     onChange,
   } = props
 
+  const acceptedMimeTypes = useMemo(() => {
+    if (resourceType === MediaResourceType.IMAGE) {
+      return DEFAULT_IMAGE_ACCEPT_MIME_TYPES
+    }
+
+    if (resourceType === MediaResourceType.VIDEO) {
+      return DEFAULT_VIDEO_ACCEPT_MIME_TYPES
+    }
+
+    if (resourceType === MediaResourceType.AUDIO) {
+      return DEFAULT_AUDIO_ACCEPT_MIME_TYPES
+    }
+
+    if (resourceType === MediaResourceType.DOCUMENT) {
+      return DEFAULT_DOCUMENT_ACCEPT_MIME_TYPES
+    }
+
+    return acceptedMimeTypesProps
+  }, [resourceType, acceptedMimeTypesProps])
+
   const modalFileInputRef = useRef<HTMLInputElement>(null)
+  const mainFileInputId = useId()
   const [isDragging, setIsDragging] = useState(false)
   const [isModalDragging, setIsModalDragging] = useState(false)
   const [isLibraryOpen, setIsLibraryOpen] = useState(false)
@@ -59,7 +107,7 @@ export const MediaUrlUploadField = (props: Props) => {
     enabled: isLibraryOpen,
   })
 
-  const isBusy = uploadMediaMutation.isLoading || deleteMediaMutation.isLoading
+  const isBusy = uploadMediaMutation.isLoading || deleteMediaMutation.isLoading || toolbarBusy
   const canRemove = Boolean(value || assetId)
   const acceptedMimeTypesString = useMemo(() => acceptedMimeTypes.join(','), [acceptedMimeTypes])
 
@@ -78,8 +126,9 @@ export const MediaUrlUploadField = (props: Props) => {
     async (file: File) => {
       try {
         const uploaded = await uploadMediaMutation.mutateAsync({ file, resourceType })
+        const nextValue = resourceType === MediaResourceType.IMAGE ? `${uploaded.asset.proxyPath.replace(/\/$/, '')}/${variant}` : uploaded.asset.proxyPath
 
-        onChange({ value: `${uploaded.proxyUrl}/${variant}`, assetId: uploaded.asset.id, asset: uploaded.asset })
+        onChange({ value: nextValue, assetId: uploaded.asset.id, asset: uploaded.asset })
         await queryClient.invalidateQueries('media-assets')
         notify(t('media.messages.fileUploaded'), 'success')
       } catch (_error) {
@@ -98,6 +147,8 @@ export const MediaUrlUploadField = (props: Props) => {
         await queryClient.invalidateQueries('media-assets')
 
         notify(t('media.messages.fileRemoved'), 'success')
+      } else {
+        onChange({ value: '', assetId: null, asset: null, removed: true })
       }
     } catch (error) {
       if (error instanceof AxiosError) {
@@ -141,6 +192,18 @@ export const MediaUrlUploadField = (props: Props) => {
     return t('media.ui.uploadFileHintText')
   }, [hintText, resourceType, t])
 
+  const openLibrary = useCallback(() => setIsLibraryOpen(true), [])
+  const pickLocalFile = useCallback(() => {
+    document.getElementById(mainFileInputId)?.click()
+  }, [mainFileInputId])
+
+  const audioPreviewSrc =
+    value && resourceType === MediaResourceType.AUDIO
+      ? value.startsWith('http')
+        ? value
+        : `${typeof window !== 'undefined' ? window.location.origin : ''}${value.startsWith('/') ? value : `/${value}`}`
+      : ''
+
   return (
     <div className="flex flex-col gap-2">
       <Input
@@ -148,11 +211,14 @@ export const MediaUrlUploadField = (props: Props) => {
         value={value}
         onChange={(next) => onChange({ value: next, assetId })}
         disabled={disabled || isBusy}
+        readOnly={urlInputReadOnly}
         placeholder="https://... or /cdn/..."
       />
       {!!value && (
         <div className="flex flex-row gap-2">
-          {value?.includes('cdn') && !value?.includes('http') ? (
+          {resourceType === MediaResourceType.AUDIO ? (
+            <audio className="h-10 w-full max-w-md" controls preload="metadata" src={audioPreviewSrc || undefined} />
+          ) : value?.includes('cdn') && !value?.includes('http') ? (
             <Image
               src={`${window?.location?.origin ?? ''}${value}`}
               alt="Media"
@@ -192,14 +258,44 @@ export const MediaUrlUploadField = (props: Props) => {
           }
         }}
       >
-        <div className="flex flex-row gap-2">
-          <Button type="button" variant="secondary" size="sm-md" disabled={disabled || isBusy} onClick={() => setIsLibraryOpen(true)}>
-            {t('common.upload')}
-          </Button>
-          {assetId && (
-            <Button type="button" variant="outline" size="sm-md" disabled={disabled || isBusy || !canRemove} onClick={handleRemove}>
-              {t('common.remove')}
-            </Button>
+        <input
+          id={mainFileInputId}
+          type="file"
+          className="hidden"
+          accept={acceptedMimeTypesString}
+          onChange={(event) => {
+            const file = event.target.files?.[0]
+
+            if (file) {
+              void handleUploadFile(file)
+            }
+
+            event.currentTarget.value = ''
+          }}
+        />
+        <div className="flex flex-row flex-wrap gap-2">
+          {renderToolbar ? (
+            renderToolbar({
+              disabled: Boolean(disabled),
+              isBusy,
+              canRemove,
+              assetId,
+              value,
+              openLibrary,
+              pickLocalFile,
+              remove: () => void handleRemove(),
+            })
+          ) : (
+            <>
+              <Button type="button" variant="secondary" size="sm-md" disabled={disabled || isBusy} onClick={openLibrary}>
+                {t('common.upload')}
+              </Button>
+              {assetId && (
+                <Button type="button" variant="outline" size="sm-md" disabled={disabled || isBusy || !canRemove} onClick={() => void handleRemove()}>
+                  {t('common.remove')}
+                </Button>
+              )}
+            </>
           )}
         </div>
         <p className="mt-2 text-xs text-muted-foreground">{helperText}</p>
@@ -207,8 +303,8 @@ export const MediaUrlUploadField = (props: Props) => {
       <Dialog open={isLibraryOpen} onOpenChange={setIsLibraryOpen}>
         <DialogContent className="sm:max-w-[900px]">
           <DialogHeader>
-            <DialogTitle>Media library</DialogTitle>
-            <DialogDescription>Choose from uploaded files or add a new one from your device.</DialogDescription>
+            <DialogTitle>{t('media.ui.mediaLibrary')}</DialogTitle>
+            <DialogDescription>{t('media.ui.mediaLibraryDescription')}</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-3">
             <input
@@ -259,10 +355,10 @@ export const MediaUrlUploadField = (props: Props) => {
               <p className="mt-2 text-xs text-muted-foreground">{helperText}</p>
             </div>
             <div className="max-h-[420px] overflow-y-auto rounded-md border p-3">
-              {mediaAssetsQuery.isLoading && <p className="text-sm text-muted-foreground">Loading media...</p>}
-              {mediaAssetsQuery.isError && <p className="text-sm text-destructive">Failed to load media list.</p>}
+              {mediaAssetsQuery.isLoading && <p className="text-sm text-muted-foreground">{t('common.loading')}</p>}
+              {mediaAssetsQuery.isError && <p className="text-sm text-destructive">{t('media.errors.failedToLoadMediaList')}</p>}
               {!mediaAssetsQuery.isLoading && !mediaAssetsQuery.isError && !mediaAssetsQuery.data?.items?.length && (
-                <p className="text-sm text-muted-foreground">No media found yet. Upload one to get started.</p>
+                <p className="text-sm text-muted-foreground">{t('media.errors.noMediaFoundYet')}</p>
               )}
               {!mediaAssetsQuery.isLoading && !mediaAssetsQuery.isError && !!mediaAssetsQuery.data?.items?.length && (
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">

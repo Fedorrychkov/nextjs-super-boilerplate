@@ -17,6 +17,11 @@ export type ArticleModel = {
   publishedAt?: string | null
   createdAt?: string | null
   updatedAt?: string | null
+  /** MediaAsset id (audio/mpeg) — AI listen / TTS narration of the article body. */
+  listenAudioAssetId?: string | null
+  /** ArticleRevision id whose plain text was used for the last TTS run (detect stale vs current `revisionId`). */
+  listenAudioSourceRevisionId?: string | null
+  listenAudioGeneratedAt?: string | null
 }
 
 export enum ArticleVisibility {
@@ -38,4 +43,13 @@ export enum ArticleStatus {
   DRAFT = 'draft',
   PUBLISHED = 'published',
   UNPUBLISHED = 'unpublished',
+}
+
+/** Response from `POST /api/v1/article/listen-audio/generate`. */
+export type ArticleListenAudioGenerateResponse = {
+  assetId: string
+  proxyPath: string
+  sourceRevisionId: string
+  textTruncated: boolean
+  generatedAt: string
 }

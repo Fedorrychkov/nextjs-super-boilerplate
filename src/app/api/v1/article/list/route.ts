@@ -1,5 +1,6 @@
 import connectDB from '@lib/db/client'
 import Article from '@lib/db/models/Article'
+import { articleDocumentToApiJson } from '@lib/db/utils/articleApiJson'
 import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
 import { NextRequest, NextResponse } from 'next/server'
@@ -29,11 +30,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
 
     return response.json({
       ...data,
-      list: data.list.map((article) => ({
-        ...article.toObject(),
-        revisionId: article.revisionId?.toString(),
-        id: article._id.toString(),
-      })),
+      list: data.list.map((article) => articleDocumentToApiJson(article)),
     })
   })
 

@@ -457,8 +457,22 @@ export const en = {
       aiBodySuggestReplaceWarning: 'Applying overwrites the whole article body in the editor. Use Save on the Content tab if you want to persist immediately.',
       aiAuditListEmpty: 'No saved audits for this revision yet. Run an audit to add one.',
       aiAuditListTokens: '{total} tokens',
-      aiEditorUsageSummary: 'LLM usage for this revision: {total} tokens (chat {chat}, audit {audit}, structured {structured}) — your account only.',
+      aiEditorUsageSummary:
+        'LLM usage for this revision: {total} units (chat {chat}, audit {audit}, structured {structured}, listen {tts} TTS chars) — your account only.',
       aiEditorUsageEmpty: 'No LLM usage recorded for this revision yet.',
+      listenAudioShowPlayer: 'Listen to article',
+      listenAudioHidePlayer: 'Hide player',
+      listenAudioAiDisclosure: 'Narration is generated automatically from the article text (AI voice). It may differ from the published layout.',
+      listenAudioGenerate: 'Generate listen audio',
+      listenAudioRegenerate: 'Regenerate listen audio',
+      listenAudioGenerating: 'Generating audio…',
+      listenAudioGenerated: 'Listen audio saved',
+      listenAudioTruncatedWarning: 'Only the first part of the text was sent to speech (length limit).',
+      listenAudioStaleHint: 'The article text changed after this audio was generated. Regenerate for an up-to-date narration.',
+      listenAudioWrongRevisionHint: 'Switch to the revision currently linked to the article to generate or refresh audio.',
+      listenAudioFieldLabel: 'Listen audio',
+      listenAudioFieldHint: 'Generate AI narration, choose from the media library, or upload a file. The article stores the /cdn proxy URL.',
+      listenAudioPickFile: 'Upload file',
     },
     errors: {
       selectTheTypeOfCard: 'Select the type of card',
@@ -495,6 +509,8 @@ export const en = {
   },
   media: {
     ui: {
+      mediaLibrary: 'Media library',
+      mediaLibraryDescription: 'Choose from uploaded files or add a new one from your device.',
       uploadImageFileHintText: 'Upload, paste, or drop an image file. Field stores proxy URL and asset reference.',
       uploadImageFileHintTextShort: 'Upload/paste/drop image or provide a URL.',
       uploadFileHintText: 'Upload, paste, or drop a file. Field stores proxy URL and asset reference.',
@@ -540,6 +556,8 @@ export const en = {
       mediaNotFound: 'Media not found',
       failedToUploadFile: 'Failed to upload file',
       failedToRemoveFile: 'Failed to remove file',
+      failedToLoadMediaList: 'Failed to load media list',
+      noMediaFoundYet: 'No media found yet. Upload one to get started.',
     },
   },
   push: {
@@ -612,6 +630,7 @@ export const en = {
       seo_suggest: 'SEO suggest',
       preview_suggest: 'Preview suggest',
       content_suggest: 'Content suggest',
+      listen_tts: 'Article listen (TTS)',
     },
     errors: {
       loadFailed: 'Failed to load usage data.',
