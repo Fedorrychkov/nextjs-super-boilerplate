@@ -134,7 +134,7 @@ Goal: generate a **listenable** version of the article (“read by a narrator”
 
 ## Phase 5 — Public content for AI agents (Markdown negotiation + Content Signals)
 
-**Product alignment:** **`PRODUCT_ROADMAP.md`** Phase 6 §5 (Markdown for agents, `Content-Signal`, public-only surfaces).
+**Product alignment:** [**`PRODUCT_ROADMAP.md`**](./PRODUCT_ROADMAP.md) Phase 6 §5 (Markdown for agents, `Content-Signal`, public-only surfaces).
 
 **References:** Cloudflare [Introducing Markdown for Agents](https://blog.cloudflare.com/markdown-for-agents/), [Markdown for Agents (docs)](https://developers.cloudflare.com/fundamentals/reference/markdown-for-agents/), [Content Signals](https://contentsignals.org/), Cloudflare [Content Signals Policy](https://blog.cloudflare.com/content-signals-policy/).
 
