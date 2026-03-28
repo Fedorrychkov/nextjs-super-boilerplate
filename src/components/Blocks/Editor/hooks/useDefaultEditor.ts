@@ -4,6 +4,8 @@ import type { EditorView } from '@tiptap/pm/view'
 import { Editor, useEditor } from '@tiptap/react'
 import { useCallback, useMemo, useState } from 'react'
 
+import { formatDataSizeShort, formatMediaUploadMaxLabel } from '~/constants/media-upload'
+import { useLocale, useT } from '~/providers'
 import { useNotify } from '~/providers/notify'
 import { Logger } from '~/utils/logger'
 
@@ -26,9 +28,24 @@ export const useDefaultEditor = (props: Props) => {
   const [markdownInput, setMarkdownInput] = useState<string | null>(null)
   const [mode, setMode] = useState<'default' | 'markdown'>(defaultMode)
   const { notify } = useNotify()
+  const t = useT()
+  const locale = useLocale()
 
   const logger = useMemo(() => defaultLogger ?? new Logger(['useDefaultEditor', '[src/components/Blocks/Editor/hooks/useDefaultEditor.ts]']), [defaultLogger])
-  const extensions = useMemo(() => defaultExtensions(limit), [limit])
+  const extensions = useMemo(
+    () =>
+      defaultExtensions(limit, {
+        onMediaFileTooLarge: (file) =>
+          notify(
+            t('media.errors.fileExceedsMaxSize', {
+              size: formatDataSizeShort(file.size, locale),
+              maxLabel: formatMediaUploadMaxLabel(locale),
+            }),
+            'destructive',
+          ),
+      }),
+    [limit, locale, notify, t],
+  )
 
   const editor = useEditor({
     extensions,

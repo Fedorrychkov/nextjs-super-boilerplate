@@ -9,6 +9,8 @@ export type FeatureConfigOptions = {
   openLinkDialog?: () => void
   /** Open image dialog (mode "from zero") */
   openImageDialog?: () => void
+  openAudioDialog?: () => void
+  openVideoDialog?: () => void
 }
 
 export const getFeatureConfig = (
@@ -122,6 +124,18 @@ export const getFeatureConfig = (
             },
           })
           .run()
+      },
+    },
+    audio: {
+      label: t?.('common.audio') ?? 'Audio',
+      onClick: () => {
+        options?.openAudioDialog?.()
+      },
+    },
+    video: {
+      label: t?.('common.video') ?? 'Video',
+      onClick: () => {
+        options?.openVideoDialog?.()
       },
     },
   }

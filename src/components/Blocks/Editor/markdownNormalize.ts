@@ -5,6 +5,9 @@
  * headings then parse as plain paragraph text (raw `##` in the editor).
  *
  * These helpers normalize markdown before `setContent(..., { contentType: 'markdown' })`.
+ *
+ * **Embedded media (TipTap):** block lines `@audio(/cdn/…)` and `@video(/cdn/…)` or
+ * `@video(videoUrl|posterUrl)` round-trip with the `audio` / `articleVideo` nodes.
  */
 
 /** Lines that are only a thematic break (`---`, `***`, `___`) — strip leading indent so they are not treated as nested under a task item. */

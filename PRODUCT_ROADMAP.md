@@ -9,7 +9,8 @@ This roadmap tracks the remaining work for the article platform and related qual
 - Preview page is `noindex/nofollow`.
 - Sitemap and RSS now include published public articles from DB.
 - Publish flow already triggers search engine notifications for indexable public articles.
-- Media pipeline: Uploadcare via own API (`/api/v1/media`), `MediaAsset` in DB, proxy delivery (`/cdn/...`), editor paste/drop + Preview/SEO image fields, responsive `<picture>` / `srcset` on public article HTML.
+- Media pipeline: Uploadcare via own API (`/api/v1/media`), `MediaAsset` in DB, proxy delivery (`/cdn/...`), editor paste/drop + Preview/SEO image fields, responsive `<picture>` / `srcset` on public article HTML; author upload **max size** aligned with `proxyClientMaxBodySize` (see `src/constants/media-upload.ts`), client checks + API **413** on oversize.
+- Optional **LLM** authoring (chat, structured SEO/preview/content suggest, article audit, listen-audio TTS): server-only keys, `NEXT_PUBLIC_LLM_ENABLED`; detail in **`AI_FEATURES_ROADMAP.md`**.
 - Public article HTML path: **`unstable_cache`** + **`revalidateTag`** on publish/revision update (`src/lib/cache/publicArticlePageCache.ts`). RUM (Phase 4) + optional analytics cookie consent.
 
 ## Immediate Execution (Can Start Now)
@@ -67,7 +68,7 @@ This roadmap tracks the remaining work for the article platform and related qual
 
 - [x] Add image paste/drop upload flow in editor (auto-upload and replace local blobs with CDN links).
 - [x] Add thumbnail upload action in step 1 (Preview) and/or SEO step (alongside URL input).
-- [ ] Define upload error/retry UX and validation (size/type) for author-facing media actions.
+- [x] Author-facing media upload **validation** (max file size, hints under upload UI, client block + API **413**); MIME narrowed via `accept`. Dedicated **retry** UX for failed uploads not finalized (generic mutation behavior only).
 
 ---
 
@@ -95,10 +96,13 @@ This roadmap tracks the remaining work for the article platform and related qual
 
 ### 4. AI-assisted SEO authoring (optional module)
 
-- [ ] Add AI suggestions for SEO fields (title, description, OG title/description) with explicit user confirmation.
-- [ ] Add AI-assisted keyword suggestions based on article content.
-- [ ] Add provider abstraction and feature flags (disabled by default for self-hosted/open-source baseline).
-- [ ] Add audit trail for AI-generated drafts (what was suggested and what was accepted).
+Shipped as part of the LLM stack — see **`AI_FEATURES_ROADMAP.md`** (Phase 1–2: chat, structured suggest, modal tabs). **OpenAI-only** on the server; UI gated by `NEXT_PUBLIC_LLM_ENABLED`.
+
+- [x] AI suggestions for SEO fields (meta title/description, OG title/description, **keywords**) with explicit user confirmation — `POST /api/v1/llm/seo/suggest`, **SEO** tab in `ArticleAiChatModal`, per-field / apply-all.
+- [x] AI-assisted **keyword** suggestions from article content (same structured SEO response).
+- [x] **Feature flags / opt-in** — `NEXT_PUBLIC_LLM_ENABLED`, server-only `LLM_API_KEY`; chat model allowlist via env (`LLM_CHAT_MODELS`, etc.).
+- [ ] **Pluggable multi-provider** LLM abstraction (second vendor behind the same API) — still a single OpenAI-backed `LLMService` today.
+- [x] **Usage / audit trail** — append-only `LlmUsageEvent` (tokens, source, user, article/revision where applicable); persisted **article quality** audits (`LlmArticleAudit`); chat history per revision. *Not stored:* fine-grained “accepted vs dismissed” per SEO field (optional future product depth).
 
 ---
 

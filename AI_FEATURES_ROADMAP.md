@@ -39,14 +39,14 @@ Goal: conversational assistance for **article body** and **SEO/preview settings*
 - [x] **Chat surface** — `ArticleAiChatModal` from article editor; streamed assistant text.
 - [x] **Gating:** UI only when `NEXT_PUBLIC_LLM_ENABLED === 'true'` **and** `articleId` + `revisionId` exist (no AI on brand-new article before save).
 - [x] **Empty content:** short-body hint when extracted plain text is under ~40 characters.
-- [ ] **“Apply” (Phase 1 minimal):** copy-paste or partial apply; full structured apply can be Phase 2.
+- [x] **Structured apply (Phase 2, shipped):** SEO / Preview / Content tabs with generate + Apply — see Phase 2 below. *Optional polish:* Phase-1-style “copy snippet” shortcuts in chat only.
 
 ### 1.4 Persistence (minimal for Phase 1)
 
 - [x] **Session/thread** tied to `articleId` + `revisionId` + user (`LlmChatSession` / `LlmChatMessage`); messages + **usage** on assistant turn; `GET /api/v1/llm/chat/history` + UI load on modal open.
 - [x] **Persist article audits** — `LlmArticleAudit` collection: structured result + `llmModel`, **usage**, `createdAt`, `userId`, `articleId` + `revisionId`; append-only **history** per revision (newest first in API).
 - [x] **Audit API + UI:** `GET /api/v1/llm/article-audit?articleId=&revisionId=` returns `{ items }`; `POST` saves after parse; modal loads **latest** audit for the revision on open (same as **«Аудит статьи»** re-run to append).
-- [x] **Cross-feature usage log** — `LlmUsageEvent` append-only rows (`source`: `chat_stream` | `article_audit`, tokens, `userId`, optional `articleId` / `revisionId`, links to session or audit) for future **admin cost / usage** dashboards.
+- [x] **Cross-feature usage log** — `LlmUsageEvent` append-only rows (`source`: `chat_stream` | `article_audit` | `seo_suggest` | `preview_suggest` | `content_suggest` | `listen_tts`), tokens, `userId`, optional `articleId` / `revisionId`) for **admin cost / usage** dashboards.
 - [ ] **No requirement** to send full chat history on every LLM request; use **rolling summary + recent turns** (see Phase 2) — design tables with this in mind.
 
 ### 1.5 Observability
@@ -55,13 +55,13 @@ Goal: conversational assistance for **article body** and **SEO/preview settings*
 - [x] **Admin usage dashboard** — `GET /api/v1/llm/usage/dashboard?days=` (ADMIN only); UI `/admin/llm-usage`: totals, by source, top users, recent events from `LlmUsageEvent`.
 - [x] **Per-revision usage in editor** — `GET /api/v1/llm/usage/article?articleId=&revisionId=` (current user); short summary next to the AI assistant button; invalidated after chat/audit from the modal.
 
-**Phase 1 exit criteria:** Editor can open AI chat, stream replies, switch model from API-provided list, and context includes article + SEO where available; all calls go through backend.
+**Phase 1 exit criteria:** Editor can open AI chat, stream replies, switch model from API-provided list, and context includes article + SEO where available; all calls go through backend. *(Structured SEO/Preview/Content apply is tracked under Phase 2 and is shipped.)*
 
 ---
 
 ## Phase 2 — Structured Apply, History, and Usage Board
 
-- [x] **JSON / structured outputs** — `POST /api/v1/llm/seo/suggest`, `POST /api/v1/llm/preview/suggest`, `POST /api/v1/llm/content/suggest` (JSON mode): SEO meta/OG, preview title/description, and **full body Markdown**; **Apply** into SEO / preview / TipTap via refs (`ArticleEditableContent.applyMarkdown`). *Optional later:* TipTap JSON patch / partial diff instead of full replace.
+- [x] **JSON / structured outputs** — `POST /api/v1/llm/seo/suggest`, `POST /api/v1/llm/preview/suggest`, `POST /api/v1/llm/content/suggest` (JSON mode): SEO meta/OG/**keywords**, preview title/description, and **full body Markdown**; **Apply** into SEO / preview / TipTap via refs (`ArticleEditableContent.applyMarkdown`). *Optional later:* TipTap JSON patch / partial diff instead of full replace. *(Aligns with product roadmap **Phase 3 §4** — AI-assisted SEO.)*
 - [x] **Tab-aware modal:** `ArticleAiChatModal` shell tabs **Content** (chat + audits) | **SEO** | **Preview** with generate + structured preview + per-field / apply-all.
 - [ ] **Audit timeline / compare (optional polish):** once audits are **persisted** (see Phase 1.4), UI to browse **multiple saved audits** per article or revision (e.g. timeline, diff of scores/summary) for **before/after** editing workflows.
 - [ ] **Conversation compaction:** rolling summary + last N messages; optional “compact now” to refresh summary.
@@ -132,7 +132,7 @@ Goal: generate a **listenable** version of the article (“read by a narrator”
 ## Cross-Cutting — Media and Models API
 
 - [ ] **Unified “capabilities” or “models” endpoint** (or per-domain routes) returning for each mode: `chat`, `seo_structured`, `image`, `tts` — `{ models: [...], voices?: [...] }` with stable ids for UI.
-- [ ] **Media:** document and implement **audio** alongside images (upload, CDN URL, MIME checks, quotas).
+- [x] **Media — audio:** upload via same `/api/v1/media` pipeline (`AUDIO` resource type), CDN URL, editor + public playback; MIME via `accept` + validation paths. *Quotas / formal ops doc still optional.*
 - [x] **Env:** `NEXT_PUBLIC_LLM_ENABLED` and `LLM_API_KEY` documented in `.env.example`; strict opt-in for the public flag (`NEXT_PUBLIC_LLM_ENABLED === 'true'` in `config/env.ts`).
 
 ---
@@ -141,7 +141,7 @@ Goal: generate a **listenable** version of the article (“read by a narrator”
 
 | Phase | Focus | Client sees |
 | ----- | ----- | ----------- |
-| **1** | Text chat + streaming + SEO/article context + quality prompts; **planned:** persisted audits per revision | Streamed text; model list from API; audits comparable across edits (when persisted) |
+| **1** | Text chat + streaming + SEO/article context + quality prompts; persisted audits + usage per revision | Streamed text; model list from API; article audits + `LlmUsageEvent` history |
 | **2** | Structured apply, history, usage, compaction; audit timeline | Apply to forms/editor; dashboards; optional audit compare |
 | **3** | Image generation → media URL | Image URL ready to insert |
 | **4** | TTS → article audio field + optional publish hook | Audio URL; voice/model from API |

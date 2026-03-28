@@ -18,4 +18,6 @@ export const features = [
   'horizontalRule',
   'breakLine',
   'image',
+  'audio',
+  'video',
 ] as const

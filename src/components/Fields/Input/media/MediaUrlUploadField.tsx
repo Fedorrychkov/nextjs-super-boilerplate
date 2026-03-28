@@ -10,7 +10,8 @@ import { MediaAssetModel, MediaResourceType } from '~/api/media'
 import { ImageLoader } from '~/components/Containers'
 import { Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '~/components/ui'
 import { Input } from '~/components/ui/input'
-import { useT } from '~/providers'
+import { formatDataSizeShort, formatMediaUploadMaxLabel, isMediaFileWithinUploadLimit } from '~/constants/media-upload'
+import { useLocale, useT } from '~/providers'
 import { useNotify } from '~/providers/notify'
 import { useDeleteMediaMutation, useMediaAssetsQuery, useUploadMediaMutation } from '~/query/media'
 
@@ -55,6 +56,7 @@ type Props = {
 
 export const MediaUrlUploadField = (props: Props) => {
   const t = useT()
+  const locale = useLocale()
   const queryClient = useQueryClient()
   const {
     label,
@@ -122,8 +124,22 @@ export const MediaUrlUploadField = (props: Props) => {
     [resourceType, variant],
   )
 
+  const maxUploadLabel = useMemo(() => formatMediaUploadMaxLabel(locale), [locale])
+
   const handleUploadFile = useCallback(
     async (file: File) => {
+      if (!isMediaFileWithinUploadLimit(file)) {
+        notify(
+          t('media.errors.fileExceedsMaxSize', {
+            size: formatDataSizeShort(file.size, locale),
+            maxLabel: maxUploadLabel,
+          }),
+          'destructive',
+        )
+
+        return
+      }
+
       try {
         const uploaded = await uploadMediaMutation.mutateAsync({ file, resourceType })
         const nextValue = resourceType === MediaResourceType.IMAGE ? `${uploaded.asset.proxyPath.replace(/\/$/, '')}/${variant}` : uploaded.asset.proxyPath
@@ -131,11 +147,17 @@ export const MediaUrlUploadField = (props: Props) => {
         onChange({ value: nextValue, assetId: uploaded.asset.id, asset: uploaded.asset })
         await queryClient.invalidateQueries('media-assets')
         notify(t('media.messages.fileUploaded'), 'success')
-      } catch (_error) {
-        notify(t('media.errors.failedToUploadFile'), 'destructive')
+        setIsLibraryOpen(false)
+      } catch (error) {
+        const message =
+          error instanceof AxiosError && error.response?.data && typeof error.response.data === 'object' && 'message' in error.response.data
+            ? String((error.response.data as { message?: unknown }).message ?? '')
+            : ''
+
+        notify(message || t('media.errors.failedToUploadFile'), 'destructive')
       }
     },
-    [notify, onChange, queryClient, t, resourceType, uploadMediaMutation, variant],
+    [locale, maxUploadLabel, notify, onChange, queryClient, t, resourceType, uploadMediaMutation, variant, setIsLibraryOpen],
   )
 
   const handleRemove = useCallback(async () => {
@@ -181,16 +203,11 @@ export const MediaUrlUploadField = (props: Props) => {
   )
 
   const helperText = useMemo(() => {
-    if (hintText) {
-      return hintText
-    }
+    const sizeHint = t('media.ui.uploadMaxFileSizeHint', { maxLabel: maxUploadLabel })
+    const base = hintText ? hintText : resourceType === MediaResourceType.IMAGE ? t('media.ui.uploadImageFileHintText') : t('media.ui.uploadFileHintText')
 
-    if (resourceType === MediaResourceType.IMAGE) {
-      return t('media.ui.uploadImageFileHintText')
-    }
-
-    return t('media.ui.uploadFileHintText')
-  }, [hintText, resourceType, t])
+    return `${base} ${sizeHint}`
+  }, [hintText, maxUploadLabel, resourceType, t])
 
   const openLibrary = useCallback(() => setIsLibraryOpen(true), [])
   const pickLocalFile = useCallback(() => {
@@ -219,14 +236,20 @@ export const MediaUrlUploadField = (props: Props) => {
           {resourceType === MediaResourceType.AUDIO ? (
             <audio className="h-10 w-full max-w-md" controls preload="metadata" src={audioPreviewSrc || undefined} />
           ) : value?.includes('cdn') && !value?.includes('http') ? (
-            <Image
-              src={`${window?.location?.origin ?? ''}${value}`}
-              alt="Media"
-              width={100}
-              height={100}
-              className="w-full h-full max-w-40 max-h-40 object-contain"
-              unoptimized
-            />
+            <>
+              {resourceType === MediaResourceType.VIDEO ? (
+                <video className="w-full max-w-md" controls preload="metadata" src={value} />
+              ) : (
+                <Image
+                  src={`${window?.location?.origin ?? ''}${value}`}
+                  alt="Media"
+                  width={100}
+                  height={100}
+                  className="w-full h-full max-w-40 max-h-40 object-contain"
+                  unoptimized
+                />
+              )}
+            </>
           ) : (
             <ImageLoader src={value} className="w-full h-full max-w-40 max-h-40 object-contain" />
           )}

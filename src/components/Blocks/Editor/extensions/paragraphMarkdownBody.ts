@@ -20,6 +20,14 @@ export const ParagraphMarkdownBody = Paragraph.extend({
       return helpers.parseChildren([tokens[0]])
     }
 
+    if (tokens.length === 1 && tokens[0].type === 'articleAudioEmbed') {
+      return helpers.parseChildren([tokens[0]])
+    }
+
+    if (tokens.length === 1 && tokens[0].type === 'articleVideoEmbed') {
+      return helpers.parseChildren([tokens[0]])
+    }
+
     let content = helpers.parseInline(tokens)
     const t = token as MarkedParagraphToken
 

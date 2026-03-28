@@ -8,10 +8,10 @@ export function buildPreviewSuggestMessages(params: { article: ArticleModel; rev
   system: string
   user: string
 } {
-  const context = buildArticleContextBlock(params)
+  const context = buildArticleContextBlock({ ...params, bodyPlainMode: 'excludeMedia' })
 
   const system = [
-    'You are an editorial assistant. Propose a clearer article title and short description (preview card text) from the context.',
+    'You are an editorial assistant. Propose a clearer article title and short description (preview card text) from the context (body is plain text only; embedded media blocks are omitted).',
     'Output must be valid JSON only, following the schema in the user message.',
   ].join('\n')
 

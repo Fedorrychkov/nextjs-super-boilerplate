@@ -8,10 +8,10 @@ export function buildSeoSuggestMessages(params: { article: ArticleModel; revisio
   system: string
   user: string
 } {
-  const context = buildArticleContextBlock(params)
+  const context = buildArticleContextBlock({ ...params, bodyPlainMode: 'excludeMedia' })
 
   const system = [
-    'You are an SEO specialist for a CMS. Propose improved meta and Open Graph text fields based on the article context.',
+    'You are an SEO specialist for a CMS. Propose improved meta and Open Graph text fields based on the article context (body is plain text only; embedded media blocks are omitted).',
     'Output must be valid JSON only, following the schema in the user message.',
   ].join('\n')
 

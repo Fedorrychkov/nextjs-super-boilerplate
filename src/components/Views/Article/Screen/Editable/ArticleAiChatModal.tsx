@@ -39,9 +39,9 @@ type ChatRole = 'user' | 'assistant'
 
 export type ChatTurn = { role: ChatRole; content: string }
 
-type InnerTab = 'chat' | 'audits' | 'body'
+type InnerTab = 'chat' | 'body'
 
-type ShellTab = 'content' | 'seo' | 'preview'
+type ShellTab = 'content' | 'seo' | 'preview' | 'audit'
 
 type StreamEvent =
   | { type: 'start'; requestId: string }
@@ -244,12 +244,12 @@ export const ArticleAiChatModal = (props: Props) => {
   }, [messages, streaming])
 
   useEffect(() => {
-    if (innerTab !== 'audits' || !auditMarkdown) {
+    if (shellTab !== 'audit' || !auditMarkdown) {
       return
     }
 
     auditDetailRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [innerTab, selectedAuditItem?.id, auditMarkdown])
+  }, [shellTab, selectedAuditItem?.id, auditMarkdown])
 
   const handleSend = useCallback(async () => {
     const text = input.trim()
@@ -351,7 +351,7 @@ export const ArticleAiChatModal = (props: Props) => {
         setSelectedAuditId(refetched.data.items[0].id)
       }
 
-      setInnerTab('audits')
+      setShellTab('audit')
     } catch (e) {
       const err = e as ApiErrorShape
       const msg = err.response?.data?.message ?? (e instanceof Error ? e.message : t('errors.unknown'))
@@ -507,11 +507,11 @@ export const ArticleAiChatModal = (props: Props) => {
                 </select>
               </label>
 
-              <div className="flex gap-1 rounded-md border border-border bg-muted/30 p-1">
+              <div className="flex flex-wrap gap-1 rounded-md border border-border bg-muted/30 p-1">
                 <button
                   type="button"
                   className={cn(
-                    'flex-1 rounded-sm px-3 py-2 text-sm font-medium transition-colors',
+                    'min-w-0 flex-1 rounded-sm px-2 py-2 text-xs font-medium transition-colors sm:px-3 sm:text-sm',
                     shellTab === 'content' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
                   )}
                   onClick={() => setShellTab('content')}
@@ -521,7 +521,7 @@ export const ArticleAiChatModal = (props: Props) => {
                 <button
                   type="button"
                   className={cn(
-                    'flex-1 rounded-sm px-3 py-2 text-sm font-medium transition-colors',
+                    'min-w-0 flex-1 rounded-sm px-2 py-2 text-xs font-medium transition-colors sm:px-3 sm:text-sm',
                     shellTab === 'seo' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
                   )}
                   onClick={() => setShellTab('seo')}
@@ -531,12 +531,23 @@ export const ArticleAiChatModal = (props: Props) => {
                 <button
                   type="button"
                   className={cn(
-                    'flex-1 rounded-sm px-3 py-2 text-sm font-medium transition-colors',
+                    'min-w-0 flex-1 rounded-sm px-2 py-2 text-xs font-medium transition-colors sm:px-3 sm:text-sm',
                     shellTab === 'preview' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
                   )}
                   onClick={() => setShellTab('preview')}
                 >
                   {t('article.ui.aiShellPreview')}
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    'min-w-0 flex-1 rounded-sm px-2 py-2 text-xs font-medium transition-colors sm:px-3 sm:text-sm',
+                    shellTab === 'audit' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                  )}
+                  onClick={() => setShellTab('audit')}
+                >
+                  {t('article.ui.aiShellAudit')}
+                  {auditItems.length > 0 ? <span className="ml-1 tabular-nums text-muted-foreground">({auditItems.length})</span> : null}
                 </button>
               </div>
             </div>
@@ -555,17 +566,6 @@ export const ArticleAiChatModal = (props: Props) => {
                     onClick={() => setInnerTab('chat')}
                   >
                     {t('article.ui.aiTabChat')}
-                  </button>
-                  <button
-                    type="button"
-                    className={cn(
-                      'flex-1 rounded-sm px-3 py-2 text-sm font-medium transition-colors',
-                      innerTab === 'audits' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
-                    )}
-                    onClick={() => setInnerTab('audits')}
-                  >
-                    {t('article.ui.aiTabAudits')}
-                    {auditItems.length > 0 ? <span className="ml-1.5 tabular-nums text-muted-foreground">({auditItems.length})</span> : null}
                   </button>
                   <button
                     type="button"
@@ -668,93 +668,6 @@ export const ArticleAiChatModal = (props: Props) => {
                       </div>
                     </div>
                   </>
-                ) : innerTab === 'audits' ? (
-                  <div className="flex min-h-0 flex-1 flex-col gap-3 sm:min-h-[min(60vh,560px)]">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <Typography variant="Body/S/Semibold" className="text-foreground">
-                        {t('article.ui.aiAuditResultTitle')}
-                      </Typography>
-                      <Button type="button" variant="secondary" onClick={() => void handleAudit()} disabled={streaming || auditLoading}>
-                        {auditLoading ? t('article.ui.aiAuditing') : t('article.ui.aiAuditArticle')}
-                      </Button>
-                    </div>
-
-                    {auditError ? <AlertInline message={auditError} destructive /> : null}
-
-                    <div className="flex min-h-0 flex-1 flex-col gap-2 sm:flex-row sm:gap-3">
-                      <div
-                        className={cn(
-                          'flex max-h-[min(48vh,480px)] shrink-0 flex-col overflow-hidden rounded-md border border-border bg-muted/20 sm:max-h-none sm:w-52 sm:max-w-[40%]',
-                        )}
-                      >
-                        <div className="border-b border-border px-2 py-2">
-                          <Typography variant="Body/XS/Regular" className="text-muted-foreground">
-                            {t('article.ui.aiTabAudits')}
-                          </Typography>
-                        </div>
-                        <div className="min-h-0 flex-1 overflow-y-auto p-2">
-                          {auditsLoading && auditItems.length === 0 ? (
-                            <Typography variant="Body/S/Regular" className="text-muted-foreground">
-                              {t('article.ui.aiHistoryLoading')}
-                            </Typography>
-                          ) : auditItems.length === 0 ? (
-                            <Typography variant="Body/S/Regular" className="text-muted-foreground">
-                              {t('article.ui.aiAuditListEmpty')}
-                            </Typography>
-                          ) : (
-                            <ul className="flex flex-col gap-1">
-                              {auditItems.map((item) => {
-                                const isSelected = selectedAuditItem?.id === item.id
-                                const label = time(item.createdAt).format('DD.MM.YYYY HH:mm')
-
-                                return (
-                                  <li key={item.id}>
-                                    <button
-                                      type="button"
-                                      onClick={() => setSelectedAuditId(item.id)}
-                                      className={cn(
-                                        'w-full rounded-md border px-2 py-2 text-left text-sm transition-colors',
-                                        isSelected
-                                          ? 'border-primary/60 bg-primary/10 text-foreground'
-                                          : 'border-transparent bg-muted/40 text-foreground hover:bg-muted/70',
-                                      )}
-                                    >
-                                      <div className="font-medium leading-tight">{label}</div>
-                                      <div className="mt-0.5 truncate text-xs text-muted-foreground">{item.model}</div>
-                                      {item.usage ? (
-                                        <div className="mt-1 text-xs text-muted-foreground">
-                                          {t('article.ui.aiAuditListTokens', { total: item.usage.totalTokens })}
-                                        </div>
-                                      ) : null}
-                                    </button>
-                                  </li>
-                                )
-                              })}
-                            </ul>
-                          )}
-                        </div>
-                      </div>
-
-                      <div
-                        ref={auditDetailRef}
-                        className="min-h-[200px] min-w-0 flex-1 overflow-y-auto rounded-md border border-border bg-muted/15 p-3 sm:max-h-none sm:max-h-[min(60vh,560px)]"
-                      >
-                        {auditMarkdown ? (
-                          <ArticleAiChatAssistantMessage content={auditMarkdown} />
-                        ) : (
-                          <Typography variant="Body/S/Regular" className="text-muted-foreground">
-                            {t('article.ui.aiAuditListEmpty')}
-                          </Typography>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end">
-                      <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
-                        {t('common.close')}
-                      </Button>
-                    </div>
-                  </div>
                 ) : (
                   <div className="flex flex-col gap-3 sm:min-h-[min(40vh,400px)]">
                     <AlertInline message={t('article.ui.aiBodySuggestReplaceWarning')} />
@@ -803,6 +716,95 @@ export const ArticleAiChatModal = (props: Props) => {
                   </div>
                 )}
               </>
+            )}
+
+            {shellTab === 'audit' && (
+              <div className="flex min-h-0 flex-1 flex-col gap-3 sm:min-h-[min(60vh,560px)]">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Typography variant="Body/S/Semibold" className="text-foreground">
+                    {t('article.ui.aiAuditResultTitle')}
+                  </Typography>
+                  <Button type="button" variant="secondary" onClick={() => void handleAudit()} disabled={streaming || auditLoading}>
+                    {auditLoading ? t('article.ui.aiAuditing') : t('article.ui.aiAuditArticle')}
+                  </Button>
+                </div>
+
+                {auditError ? <AlertInline message={auditError} destructive /> : null}
+
+                <div className="flex min-h-0 flex-1 flex-col gap-2 sm:flex-row sm:gap-3">
+                  <div
+                    className={cn(
+                      'flex max-h-[min(48vh,480px)] shrink-0 flex-col overflow-hidden rounded-md border border-border bg-muted/20 sm:max-h-none sm:w-52 sm:max-w-[40%]',
+                    )}
+                  >
+                    <div className="border-b border-border px-2 py-2">
+                      <Typography variant="Body/XS/Regular" className="text-muted-foreground">
+                        {t('article.ui.aiTabAudits')}
+                      </Typography>
+                    </div>
+                    <div className="min-h-0 flex-1 overflow-y-auto p-2">
+                      {auditsLoading && auditItems.length === 0 ? (
+                        <Typography variant="Body/S/Regular" className="text-muted-foreground">
+                          {t('article.ui.aiHistoryLoading')}
+                        </Typography>
+                      ) : auditItems.length === 0 ? (
+                        <Typography variant="Body/S/Regular" className="text-muted-foreground">
+                          {t('article.ui.aiAuditListEmpty')}
+                        </Typography>
+                      ) : (
+                        <ul className="flex flex-col gap-1">
+                          {auditItems.map((item) => {
+                            const isSelected = selectedAuditItem?.id === item.id
+                            const label = time(item.createdAt).format('DD.MM.YYYY HH:mm')
+
+                            return (
+                              <li key={item.id}>
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedAuditId(item.id)}
+                                  className={cn(
+                                    'w-full rounded-md border px-2 py-2 text-left text-sm transition-colors',
+                                    isSelected
+                                      ? 'border-primary/60 bg-primary/10 text-foreground'
+                                      : 'border-transparent bg-muted/40 text-foreground hover:bg-muted/70',
+                                  )}
+                                >
+                                  <div className="font-medium leading-tight">{label}</div>
+                                  <div className="mt-0.5 truncate text-xs text-muted-foreground">{item.model}</div>
+                                  {item.usage ? (
+                                    <div className="mt-1 text-xs text-muted-foreground">
+                                      {t('article.ui.aiAuditListTokens', { total: item.usage.totalTokens })}
+                                    </div>
+                                  ) : null}
+                                </button>
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+
+                  <div
+                    ref={auditDetailRef}
+                    className="min-h-[200px] min-w-0 flex-1 overflow-y-auto rounded-md border border-border bg-muted/15 p-3 sm:max-h-none sm:max-h-[min(60vh,560px)]"
+                  >
+                    {auditMarkdown ? (
+                      <ArticleAiChatAssistantMessage content={auditMarkdown} />
+                    ) : (
+                      <Typography variant="Body/S/Regular" className="text-muted-foreground">
+                        {t('article.ui.aiAuditListEmpty')}
+                      </Typography>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
+                    {t('common.close')}
+                  </Button>
+                </div>
+              </div>
             )}
 
             {shellTab === 'seo' && (

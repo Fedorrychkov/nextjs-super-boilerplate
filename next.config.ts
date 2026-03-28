@@ -42,7 +42,7 @@ const securityHeaders = [
       `connect-src ${connectSrcDomains.join(' ')}`,
       'frame-src \'self\' https://mc.yandex.ru https://mc.yandex.com https://www.google.com https://accounts.google.com',
       'frame-ancestors \'self\' https://web.telegram.org https://*.telegram.org',
-      'media-src \'self\' https://mc.yandex.ru https://mc.yandex.com https://ucarecdn.com',
+      'media-src \'self\' blob: https://mc.yandex.ru https://mc.yandex.com https://ucarecdn.com',
       'worker-src \'self\' https://mc.yandex.ru https://mc.yandex.com',
       'child-src \'self\' https://mc.yandex.ru https://mc.yandex.com',
       'object-src \'none\'',
@@ -89,6 +89,8 @@ const nextConfig = {
   },
   experimental: {
     optimizePackageImports: ['framer-motion', 'cmdk', 'lucide-react'],
+    // Default 10MB truncates multipart bodies → formData() fails. Keep in sync with src/constants/media-upload.ts.
+    proxyClientMaxBodySize: '200mb',
   },
   images: {
     remotePatterns: [

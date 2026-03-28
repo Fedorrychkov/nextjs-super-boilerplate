@@ -8,11 +8,11 @@ import { buildArticleContextBlock } from './build-article-chat-context'
  * System + user messages for structured article audit (JSON response).
  */
 export function buildArticleAuditMessages(params: { article: ArticleModel; revision: ArticleRevisionModel }): { system: string; user: string } {
-  const contextBlock = buildArticleContextBlock(params)
+  const contextBlock = buildArticleContextBlock({ ...params, bodyPlainMode: 'excludeMedia' })
 
   const system = [
     'You are an editorial and SEO auditor for a CMS.',
-    'Analyse preview metadata (title, description, slug visibility), article body, and SEO fields together.',
+    'Analyse preview metadata (title, description, slug visibility), article body (text only — embedded media are omitted), and SEO fields together.',
     'Be concise; recommendations must be actionable.',
     'Respond with ONLY valid JSON — no markdown fences, no text before or after the JSON object.',
     '',
