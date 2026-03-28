@@ -6,7 +6,7 @@ import debounce from 'lodash/debounce'
 import { ActivityIcon, BotIcon, EyeIcon, FileTextIcon, InfoIcon, LockIcon, SearchIcon, SendIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from 'react-query'
 
 import { ArticleModel, ArticleStatus, ArticleVisibility } from '~/api/article'
@@ -35,9 +35,9 @@ import { time } from '~/utils/time'
 
 import { ArticleAiChatModal, isLlmUiEnabled } from './ArticleAiChatModal'
 import { ArticleEditableContent } from './ArticleEditableContent'
-import { ArticleEditablePreview, SaveForm } from './ArticleEditablePreview'
+import { ArticleEditablePreview, type ArticleEditablePreviewHandle, SaveForm } from './ArticleEditablePreview'
 import { ArticleEditablePublish } from './ArticleEditablePublish'
-import { ArticleEditableSeo, ArticleEditableSeoSavePayload } from './ArticleEditableSeo'
+import { ArticleEditableSeo, type ArticleEditableSeoHandle, ArticleEditableSeoSavePayload } from './ArticleEditableSeo'
 import { ArticleEditorLlmUsageChip } from './ArticleEditorLlmUsageChip'
 
 const getSteps = (props: {
@@ -115,6 +115,8 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
   const { articleId, revisionId, className = '', activeTab: activeTabProp } = props
   const [activeTab, setActiveTab] = useState<string | null>(activeTabProp ?? null)
   const [aiChatOpen, setAiChatOpen] = useState(false)
+  const seoEditorRef = useRef<ArticleEditableSeoHandle>(null)
+  const previewEditorRef = useRef<ArticleEditablePreviewHandle>(null)
   const router = useRouter()
   const { notify } = useNotify()
   const queryClient = useQueryClient()
@@ -425,7 +427,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
   }, [isDisabledEditing, article, articleId, activeRevisionId, articleRevision, updateArticleMutation, updateArticleRevisionMutation, notify, t])
 
   const steps = useMemo(() => {
-    const steps = getSteps({
+    const rawSteps = getSteps({
       t,
       article,
       articleRevision,
@@ -443,7 +445,36 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
       isDisabledEditing,
     })
 
-    const filteredSteps = steps.filter((step) => {
+    const stepsWithAiRefs = rawSteps.map((step) => {
+      if (step.value === 'preview-information') {
+        return {
+          ...step,
+          children: (
+            <ArticleEditablePreview
+              ref={previewEditorRef}
+              btnLabel={!article ? t('common.next') : t('common.saveChanges')}
+              article={article}
+              articleRevision={articleRevision}
+              onSave={handleSavePreview}
+              isDisabled={isDisabledEditing}
+            />
+          ),
+        }
+      }
+
+      if (step.value === 'seo') {
+        return {
+          ...step,
+          children: (
+            <ArticleEditableSeo ref={seoEditorRef} isDisabled={isDisabledEditing} articleRevision={articleRevision} article={article} onSave={handleSaveSeo} />
+          ),
+        }
+      }
+
+      return step
+    })
+
+    const filteredSteps = stepsWithAiRefs.filter((step) => {
       if (articleId && step.value === 'seo' && (!article || !articleRevision)) {
         return false
       }
@@ -573,6 +604,8 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
                 articleRevision={articleRevision}
                 open={aiChatOpen}
                 onOpenChange={setAiChatOpen}
+                seoEditorRef={seoEditorRef}
+                previewEditorRef={previewEditorRef}
               />
             </div>
           ) : null}

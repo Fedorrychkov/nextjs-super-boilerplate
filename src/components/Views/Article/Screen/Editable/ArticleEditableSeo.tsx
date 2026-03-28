@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo } from 'react'
+import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef } from 'react'
 import { FormProvider, useForm } from 'react-hook-form'
 
 import { ArticleModel, ArticleVisibility } from '~/api/article'
@@ -86,6 +86,10 @@ const formToSeoPayload = (data: SeoForm): ArticleRevisionSeoMetadata => ({
   language: data.language?.[0]?.value?.trim() || null,
 })
 
+export type ArticleEditableSeoHandle = {
+  applyPartial: (partial: Partial<Pick<ArticleRevisionSeoMetadata, 'metaTitle' | 'metaDescription' | 'ogTitle' | 'ogDescription' | 'keywords'>>) => void
+}
+
 export type ArticleEditableSeoSavePayload = {
   metadata: ArticleRevisionMetadataPatch
 }
@@ -104,9 +108,10 @@ type Props = {
   onSave?: (payload: ArticleEditableSeoSavePayload) => void
 }
 
-export const ArticleEditableSeo = (props: Props) => {
+export const ArticleEditableSeo = forwardRef<ArticleEditableSeoHandle, Props>(function ArticleEditableSeo(props, ref) {
   const { articleRevision, isLoading, onSave, article, isDisabled } = props
   const t = useT()
+  const formRef = useRef<HTMLFormElement>(null)
 
   const defaultValues = useMemo(() => toFormValues(readSeoFromRevision(articleRevision), article), [articleRevision, article])
   const languageOptions = useMemo<Option[]>(
@@ -126,6 +131,36 @@ export const ArticleEditableSeo = (props: Props) => {
   const { register, formState, handleSubmit: onSubmit } = form
   const { setValue, watch } = form
   const { errors } = formState
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      applyPartial(partial) {
+        if (partial.metaTitle !== undefined) {
+          setValue('metaTitle', partial.metaTitle ?? '', { shouldDirty: true })
+        }
+
+        if (partial.metaDescription !== undefined) {
+          setValue('metaDescription', partial.metaDescription ?? '', { shouldDirty: true })
+        }
+
+        if (partial.ogTitle !== undefined) {
+          setValue('ogTitle', partial.ogTitle ?? '', { shouldDirty: true })
+        }
+
+        if (partial.ogDescription !== undefined) {
+          setValue('ogDescription', partial.ogDescription ?? '', { shouldDirty: true })
+        }
+
+        if (partial.keywords !== undefined) {
+          setValue('keywords', partial.keywords ?? '', { shouldDirty: true })
+        }
+
+        formRef?.current?.requestSubmit()
+      },
+    }),
+    [setValue],
+  )
 
   const canonicalUrl = useMemo(() => {
     const site = process.env.NEXT_PUBLIC_SITE_URL ?? ''
@@ -169,7 +204,7 @@ export const ArticleEditableSeo = (props: Props) => {
       </Typography>
 
       <FormProvider {...form}>
-        <form onSubmit={onSubmit(handleSubmit)} className="w-full flex flex-col gap-6">
+        <form onSubmit={onSubmit(handleSubmit)} className="w-full flex flex-col gap-6" ref={formRef}>
           <section className="flex flex-col gap-4">
             <Typography variant="Body/L/Semibold">{t('article.ui.searchGoogleAndOthers')}</Typography>
 
@@ -356,4 +391,4 @@ export const ArticleEditableSeo = (props: Props) => {
       </FormProvider>
     </div>
   )
-}
+})

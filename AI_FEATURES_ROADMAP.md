@@ -61,8 +61,8 @@ Goal: conversational assistance for **article body** and **SEO/preview settings*
 
 ## Phase 2 — Structured Apply, History, and Usage Board
 
-- [ ] **JSON / structured outputs** for SEO field updates (schema aligned with `ArticleRevisionSeo` / forms) and optional content patch (Markdown or TipTap JSON) with **Apply** buttons.
-- [ ] **Tab-aware modal:** same shell; actions differ for **Content** vs **SEO** vs **Preview** metadata.
+- [x] **JSON / structured outputs** — `POST /api/v1/llm/seo/suggest` and `POST /api/v1/llm/preview/suggest` (JSON mode): SEO meta/OG subset aligned with editor + preview title/description; **Apply** into `ArticleEditableSeo` / `ArticleEditablePreview` via refs. *Deferred:* body patch (Markdown or TipTap JSON) with Apply.
+- [x] **Tab-aware modal:** `ArticleAiChatModal` shell tabs **Content** (chat + audits) | **SEO** | **Preview** with generate + structured preview + per-field / apply-all.
 - [ ] **Audit timeline / compare (optional polish):** once audits are **persisted** (see Phase 1.4), UI to browse **multiple saved audits** per article or revision (e.g. timeline, diff of scores/summary) for **before/after** editing workflows.
 - [ ] **Conversation compaction:** rolling summary + last N messages; optional “compact now” to refresh summary.
 - [ ] **Usage analytics (Phase 2+):** charts, export, cost estimates per model — basic admin list is in Phase 1.5.

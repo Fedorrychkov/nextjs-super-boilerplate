@@ -8,8 +8,19 @@ import {
   LlmChatHistoryResponse,
   LlmModelsResponse,
   LlmUsageDashboardResponse,
+  PreviewSuggestApiResponse,
+  SeoSuggestApiResponse,
 } from '../model'
-import { ArticleAuditDto, LlmArticleAuditListFilter, LlmArticleUsageFilter, LlmChatHistoryFilter, LlmChatStreamDto, LlmUsageDashboardFilter } from '../types'
+import {
+  ArticleAuditDto,
+  LlmArticleAuditListFilter,
+  LlmArticleUsageFilter,
+  LlmChatHistoryFilter,
+  LlmChatStreamDto,
+  LlmUsageDashboardFilter,
+  PreviewSuggestDto,
+  SeoSuggestDto,
+} from '../types'
 
 export class ClientLlmApi {
   private readonly client: AxiosInstance
@@ -68,6 +79,18 @@ export class ClientLlmApi {
 
   async postArticleAudit(dto: ArticleAuditDto): Promise<ArticleAuditApiResponse> {
     const response = await this.client.post<ArticleAuditApiResponse>('/api/v1/llm/article-audit', dto)
+
+    return response.data
+  }
+
+  async postSeoSuggest(dto: SeoSuggestDto): Promise<SeoSuggestApiResponse> {
+    const response = await this.client.post<SeoSuggestApiResponse>('/api/v1/llm/seo/suggest', dto)
+
+    return response.data
+  }
+
+  async postPreviewSuggest(dto: PreviewSuggestDto): Promise<PreviewSuggestApiResponse> {
+    const response = await this.client.post<PreviewSuggestApiResponse>('/api/v1/llm/preview/suggest', dto)
 
     return response.data
   }

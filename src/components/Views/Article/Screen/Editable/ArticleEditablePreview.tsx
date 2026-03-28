@@ -1,7 +1,7 @@
 'use client'
 
 import capitalize from 'lodash/capitalize'
-import { useCallback, useEffect } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react'
 import { FormProvider, useForm } from 'react-hook-form'
 import slugify from 'slugify'
 
@@ -16,6 +16,10 @@ import { handleRegister } from '~/hooks/useRegister'
 import { useT } from '~/providers'
 
 export type SaveForm = Omit<Form, 'allowedRoles' | 'visibility'> & { allowedRoles?: UserRole[] | null; visibility?: ArticleVisibility | null }
+
+export type ArticleEditablePreviewHandle = {
+  applyPartial: (partial: { title?: string | null; description?: string | null }) => void
+}
 
 type Form = {
   title?: string | null
@@ -47,9 +51,10 @@ type Props = {
   onSave?: (form: SaveForm) => void
 }
 
-export const ArticleEditablePreview = (props: Props) => {
+export const ArticleEditablePreview = forwardRef<ArticleEditablePreviewHandle, Props>(function ArticleEditablePreview(props, ref) {
   const t = useT()
   const { article, articleRevision, isLoading, btnLabel, onSave, isDisabled } = props
+  const formRef = useRef<HTMLFormElement>(null)
 
   const defaultValues: Form = {
     title: articleRevision?.title ?? null,
@@ -68,6 +73,24 @@ export const ArticleEditablePreview = (props: Props) => {
 
   const { register, formState, handleSubmit: onSubmit, setValue, watch } = form
   const { errors } = formState
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      applyPartial(partial) {
+        if (partial.title !== undefined) {
+          setValue('title', partial.title ?? '', { shouldDirty: true })
+        }
+
+        if (partial.description !== undefined) {
+          setValue('description', partial.description ?? '', { shouldDirty: true })
+        }
+
+        formRef?.current?.requestSubmit()
+      },
+    }),
+    [setValue],
+  )
   // eslint-disable-next-line react-hooks/incompatible-library
   const visibility = watch('visibility')
   const slug = watch('slug')
@@ -112,7 +135,7 @@ export const ArticleEditablePreview = (props: Props) => {
         />
       )}
       <FormProvider {...form}>
-        <form onSubmit={onSubmit(handleSubmit)} className="w-full flex flex-col gap-5">
+        <form onSubmit={onSubmit(handleSubmit)} className="w-full flex flex-col gap-5" ref={formRef}>
           <DefaultFieldContainer
             {...handleRegister({
               ...register('title', {
@@ -231,4 +254,4 @@ export const ArticleEditablePreview = (props: Props) => {
       </FormProvider>
     </div>
   )
-}
+})

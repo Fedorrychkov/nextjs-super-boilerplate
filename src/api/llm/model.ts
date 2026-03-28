@@ -63,7 +63,33 @@ export type ArticleAuditListResponse = {
   items: ArticleAuditListItem[]
 }
 
-export type LlmUsageSourceKind = 'chat_stream' | 'article_audit'
+export type LlmUsageSourceKind = 'chat_stream' | 'article_audit' | 'seo_suggest' | 'preview_suggest'
+
+export type SeoSuggestResult = {
+  metaTitle: string | null
+  metaDescription: string | null
+  ogTitle: string | null
+  ogDescription: string | null
+  keywords: string | null
+}
+
+export type PreviewSuggestResult = {
+  title: string | null
+  description: string | null
+  rationale: string | null
+}
+
+export type SeoSuggestApiResponse = {
+  suggest: SeoSuggestResult
+  usage?: LlmTokenUsage
+  model: string
+}
+
+export type PreviewSuggestApiResponse = {
+  suggest: PreviewSuggestResult
+  usage?: LlmTokenUsage
+  model: string
+}
 
 export type LlmUsageTotalsPayload = {
   eventCount: number

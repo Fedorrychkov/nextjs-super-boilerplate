@@ -15,6 +15,11 @@ export type ArticleAuditDto = {
   model?: string
 }
 
+/** Same body shape as article audit — scoped article + revision + optional model. */
+export type SeoSuggestDto = ArticleAuditDto
+
+export type PreviewSuggestDto = ArticleAuditDto
+
 export type LlmChatStreamMessage = {
   role: 'user' | 'assistant'
   content: string
