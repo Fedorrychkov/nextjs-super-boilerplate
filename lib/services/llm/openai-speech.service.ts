@@ -1,5 +1,7 @@
 import { LLM_CONFIG } from '@config/env'
 
+import { getOpenAiFetch } from './openai-fetch-proxy'
+
 /** OpenAI TTS input limit for `tts-1` / `tts-1-hd` (characters). */
 export const OPENAI_TTS_MAX_INPUT_CHARS = 4000
 
@@ -31,7 +33,7 @@ export async function synthesizeOpenAiSpeechMp3(params: { text: string; voice?: 
     throw new Error('TTS input is empty')
   }
 
-  const response = await fetch(OPENAI_SPEECH_URL, {
+  const response = await getOpenAiFetch(LLM_CONFIG)(OPENAI_SPEECH_URL, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${LLM_CONFIG.apiKey}`,

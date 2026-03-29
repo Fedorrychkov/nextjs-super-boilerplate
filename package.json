@@ -113,6 +113,7 @@
     "slugify": "^1.6.8",
     "tailwind-merge": "^3.3.1",
     "typescript": "^5.9.3",
+    "undici": "^7.24.5",
     "uuid": "^13.0.0",
     "web-push": "^3.6.7",
     "web-vitals": "^4.2.4",
