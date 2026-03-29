@@ -422,6 +422,14 @@ export const MediaUrlUploadField = (props: Props) => {
         : `${typeof window !== 'undefined' ? window.location.origin : ''}${value.startsWith('/') ? value : `/${value}`}`
       : ''
 
+  /** Same resolution as audio: absolute URL as-is, site-relative path joined with origin. */
+  const videoPreviewSrc =
+    value && resourceType === MediaResourceType.VIDEO
+      ? value.startsWith('http')
+        ? value
+        : `${typeof window !== 'undefined' ? window.location.origin : ''}${value.startsWith('/') ? value : `/${value}`}`
+      : ''
+
   return (
     <div className="flex flex-col gap-2">
       <Input
@@ -436,21 +444,17 @@ export const MediaUrlUploadField = (props: Props) => {
         <div className="flex flex-row gap-2">
           {resourceType === MediaResourceType.AUDIO ? (
             <audio className="h-10 w-full max-w-md" controls preload="metadata" src={audioPreviewSrc || undefined} />
+          ) : resourceType === MediaResourceType.VIDEO ? (
+            <video className="w-full max-w-md" controls preload="metadata" src={videoPreviewSrc || undefined} />
           ) : value?.includes('cdn') && !value?.includes('http') ? (
-            <>
-              {resourceType === MediaResourceType.VIDEO ? (
-                <video className="w-full max-w-md" controls preload="metadata" src={value} />
-              ) : (
-                <Image
-                  src={`${window?.location?.origin ?? ''}${value}`}
-                  alt="Media"
-                  width={100}
-                  height={100}
-                  className="w-full h-full max-w-40 max-h-40 object-contain"
-                  unoptimized
-                />
-              )}
-            </>
+            <Image
+              src={`${window?.location?.origin ?? ''}${value}`}
+              alt="Media"
+              width={100}
+              height={100}
+              className="w-full h-full max-w-40 max-h-40 object-contain"
+              unoptimized
+            />
           ) : (
             <ImageLoader src={value} className="w-full h-full max-w-40 max-h-40 object-contain" />
           )}

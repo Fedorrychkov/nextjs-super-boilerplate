@@ -35,6 +35,7 @@ export const DefaultEditor = (props: Props) => {
   const editor = defaultEditor ?? newEditor
 
   const [linkDialogOpen, setLinkDialogOpen] = useState(false)
+  const [linkDialogSelection] = useState<{ from: number; to: number } | null>(null)
   const [imageDialogOpen, setImageDialogOpen] = useState(false)
   const [imageDialogMode, setImageDialogMode] = useState<ImageEditorDialogMode>('create')
   const [audioDialogOpen, setAudioDialogOpen] = useState(false)
@@ -130,7 +131,7 @@ export const DefaultEditor = (props: Props) => {
         onVideoDialogOpen={openVideoDialogCreate}
         onLinkDialogOpen={openLinkDialog}
       />
-      <LinkEditorDialog editor={editor} open={linkDialogOpen} onOpenChange={setLinkDialogOpen} />
+      <LinkEditorDialog editor={editor} open={linkDialogOpen} onOpenChange={setLinkDialogOpen} capturedSelection={linkDialogSelection} />
       <ImageEditorDialog
         editor={editor}
         mode={imageDialogMode}
