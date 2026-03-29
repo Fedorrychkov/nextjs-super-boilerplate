@@ -10,7 +10,7 @@ Minimal Next.js template with deploy (GitHub Actions), optional Docker stack (ng
 - [Local run](#local-run)
 - [Development](#development)
 - [Deploy](#deploy)
-- [Infrastructure roadmap](#infrastructure-roadmap)
+- [Roadmaps](#roadmaps)
 - [Domain and DNS](#domain-and-dns-a-record)
 - [VPS requirements and setup](#vps-requirements-and-setup)
 - [Bundle optimization and monitoring](#bundle-optimization-and-monitoring)
@@ -372,17 +372,33 @@ For step-by-step instructions (Mongo reset, clean script, certbot email), see [d
 
 ---
 
-## Infrastructure roadmap
+## Roadmaps
 
-For a high-level overview of the current deployment approach and two evolution paths:
+Product, AI, and infrastructure planning documents live in **[`docs/`](./docs/)**.
+
+### Product roadmap
+
+[**`docs/PRODUCT_ROADMAP.md`**](./docs/PRODUCT_ROADMAP.md) — editor, SEO, publishing, analytics, public listing, article views, Markdown / Content Signals for agents, locale, and related product phases.
+
+### AI features roadmap
+
+[**`docs/AI_FEATURES_ROADMAP.md`**](./docs/AI_FEATURES_ROADMAP.md) — LLM chat, structured SEO/preview/content, image generation, listen-audio (TTS), usage dashboards, and public agent-facing delivery (`Content-Signal`, `Accept: text/markdown`).
+
+### Infrastructure deployment
+
+Overview of the current deployment approach and two evolution paths:
 
 - **Plan A – Hardened single-server stack (Terraform + better ops)**
 - **Plan B – Cluster-ready Kubernetes stack (K8s + ingress + GitOps)**
 
-see:
+Links:
 
-- English: [`INFRASTRUCTURE_PLAN.md`](./INFRASTRUCTURE_PLAN.md)
-- Russian: [`INFRASTRUCTURE_PLAN_RU.md`](./INFRASTRUCTURE_PLAN_RU.md)
+- English: [**`docs/INFRASTRUCTURE_PLAN.md`**](./docs/INFRASTRUCTURE_PLAN.md)
+- Russian: [**`docs/INFRASTRUCTURE_PLAN_RU.md`**](./docs/INFRASTRUCTURE_PLAN_RU.md)
+
+### Infrastructure backlog (Russian)
+
+[**`docs/INFRASTRUCTURE_TODO_RU.md`**](./docs/INFRASTRUCTURE_TODO_RU.md) — ops checklist and backlog for VPS / CI / Docker (RU).
 
 ---
 

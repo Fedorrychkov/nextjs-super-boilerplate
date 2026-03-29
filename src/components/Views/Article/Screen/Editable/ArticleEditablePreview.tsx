@@ -1,7 +1,7 @@
 'use client'
 
 import capitalize from 'lodash/capitalize'
-import { useCallback, useEffect } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react'
 import { FormProvider, useForm } from 'react-hook-form'
 import slugify from 'slugify'
 
@@ -9,13 +9,17 @@ import { ArticleModel, ArticleVisibility } from '~/api/article'
 import { ArticleRevisionMediaMetadata, ArticleRevisionModel } from '~/api/article-revision'
 import { MediaResourceType } from '~/api/media'
 import { UserRole } from '~/api/user'
-import { DefaultFieldContainer, DefaultMultiselectField, DefaultTextAreaContainer, MediaUrlUploadField } from '~/components/Fields'
+import { DefaultCheckbox, DefaultFieldContainer, DefaultMultiselectField, DefaultTextAreaContainer, MediaUrlUploadField } from '~/components/Fields'
 import { AlertBlock, Button, Option, Typography } from '~/components/ui'
 import { routes } from '~/constants'
 import { handleRegister } from '~/hooks/useRegister'
 import { useT } from '~/providers'
 
 export type SaveForm = Omit<Form, 'allowedRoles' | 'visibility'> & { allowedRoles?: UserRole[] | null; visibility?: ArticleVisibility | null }
+
+export type ArticleEditablePreviewHandle = {
+  applyPartial: (partial: { title?: string | null; description?: string | null }) => void
+}
 
 type Form = {
   title?: string | null
@@ -28,6 +32,8 @@ type Form = {
    * If Private, we can choose which roles can access the article
    */
   allowedRoles?: Option[] | null
+  /** Stored on Article; drives `Content-Signal: ai-train=…` on public pages. Default true. */
+  allowAiTraining?: boolean | null
 }
 
 const visibilityOptions = [
@@ -47,9 +53,10 @@ type Props = {
   onSave?: (form: SaveForm) => void
 }
 
-export const ArticleEditablePreview = (props: Props) => {
+export const ArticleEditablePreview = forwardRef<ArticleEditablePreviewHandle, Props>(function ArticleEditablePreview(props, ref) {
   const t = useT()
   const { article, articleRevision, isLoading, btnLabel, onSave, isDisabled } = props
+  const formRef = useRef<HTMLFormElement>(null)
 
   const defaultValues: Form = {
     title: articleRevision?.title ?? null,
@@ -59,6 +66,7 @@ export const ArticleEditablePreview = (props: Props) => {
     slug: article?.slug ?? null,
     visibility: article?.visibility ? [{ value: article.visibility, label: article.visibility }] : [{ value: ArticleVisibility.PUBLIC, label: 'Public' }],
     allowedRoles: article?.allowedRoles ? article.allowedRoles.map((role) => ({ value: role, label: role })) : [],
+    allowAiTraining: article?.allowAiTraining !== false,
   }
 
   const form = useForm<Form>({
@@ -68,6 +76,24 @@ export const ArticleEditablePreview = (props: Props) => {
 
   const { register, formState, handleSubmit: onSubmit, setValue, watch } = form
   const { errors } = formState
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      applyPartial(partial) {
+        if (partial.title !== undefined) {
+          setValue('title', partial.title ?? '', { shouldDirty: true })
+        }
+
+        if (partial.description !== undefined) {
+          setValue('description', partial.description ?? '', { shouldDirty: true })
+        }
+
+        formRef?.current?.requestSubmit()
+      },
+    }),
+    [setValue],
+  )
   // eslint-disable-next-line react-hooks/incompatible-library
   const visibility = watch('visibility')
   const slug = watch('slug')
@@ -92,6 +118,7 @@ export const ArticleEditablePreview = (props: Props) => {
         allowedRoles: allowedRoles?.length ? allowedRoles : null,
         visibility: data.visibility?.[0]?.value as ArticleVisibility,
         thumbnailAssetId: data.thumbnailAssetId ?? null,
+        allowAiTraining: Boolean(data.allowAiTraining),
       })
     },
     [onSave],
@@ -112,7 +139,7 @@ export const ArticleEditablePreview = (props: Props) => {
         />
       )}
       <FormProvider {...form}>
-        <form onSubmit={onSubmit(handleSubmit)} className="w-full flex flex-col gap-5">
+        <form onSubmit={onSubmit(handleSubmit)} className="w-full flex flex-col gap-5" ref={formRef}>
           <DefaultFieldContainer
             {...handleRegister({
               ...register('title', {
@@ -150,6 +177,7 @@ export const ArticleEditablePreview = (props: Props) => {
             label={t('article.ui.articleThumbnailUrl')}
             value={(watch('thumbnailUrl') as string) ?? ''}
             assetId={(watch('thumbnailAssetId') as string) ?? null}
+            articleId={article?.id ?? null}
             articleRevisionId={articleRevision?.id ?? null}
             disabled={isLoading || isDisabled}
             resourceType={MediaResourceType.IMAGE}
@@ -222,6 +250,18 @@ export const ArticleEditablePreview = (props: Props) => {
               name="allowedRoles"
             />
           )}
+          {visibility?.[0]?.value === ArticleVisibility.PUBLIC && (
+            <DefaultCheckbox
+              {...handleRegister({
+                ...register('allowAiTraining'),
+                errors,
+              })}
+              name="allowAiTraining"
+              label={t('article.ui.allowAiTrainingLabel')}
+              description={t('article.ui.allowAiTrainingDescription')}
+              disabled={isLoading || isDisabled}
+            />
+          )}
           <div>
             <Button variant="secondary" size="default" disabled={isLoading || isDisabled}>
               {btnLabel ?? t('common.saveChanges')}
@@ -231,4 +271,4 @@ export const ArticleEditablePreview = (props: Props) => {
       </FormProvider>
     </div>
   )
-}
+})

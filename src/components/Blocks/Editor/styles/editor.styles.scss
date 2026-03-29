@@ -373,6 +373,60 @@
   figure.tiptap-article-image--right figcaption.tiptap-article-image__caption {
     text-align: right;
   }
+
+  .tiptap-article-audio {
+    margin: 1.25rem 0;
+    max-width: 100%;
+
+    audio {
+      width: 100%;
+      max-width: 42rem;
+      vertical-align: middle;
+    }
+  }
+
+  figure.tiptap-article-video {
+    margin: 1.25rem 0;
+    max-width: 100%;
+
+    &.tiptap-article-video--left {
+      margin-right: auto;
+      margin-left: 0;
+    }
+
+    &.tiptap-article-video--center {
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    &.tiptap-article-video--right {
+      margin-left: auto;
+      margin-right: 0;
+    }
+
+    video {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+    }
+  }
+
+  figcaption.tiptap-article-video__caption {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    color: var(--color-neutral-600);
+    text-align: center;
+  }
+
+  figure.tiptap-article-video--left figcaption.tiptap-article-video__caption {
+    text-align: left;
+  }
+
+  figure.tiptap-article-video--right figcaption.tiptap-article-video__caption {
+    text-align: right;
+  }
 }
 
 /* Floating menu */

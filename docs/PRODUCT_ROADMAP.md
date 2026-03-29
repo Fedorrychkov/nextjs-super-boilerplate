@@ -9,8 +9,10 @@ This roadmap tracks the remaining work for the article platform and related qual
 - Preview page is `noindex/nofollow`.
 - Sitemap and RSS now include published public articles from DB.
 - Publish flow already triggers search engine notifications for indexable public articles.
-- Media pipeline: Uploadcare via own API (`/api/v1/media`), `MediaAsset` in DB, proxy delivery (`/cdn/...`), editor paste/drop + Preview/SEO image fields, responsive `<picture>` / `srcset` on public article HTML.
+- Media pipeline: Uploadcare via own API (`/api/v1/media`), `MediaAsset` in DB, proxy delivery (`/cdn/...`), editor paste/drop + Preview/SEO image fields, responsive `<picture>` / `srcset` on public article HTML; author upload **max size** aligned with `proxyClientMaxBodySize` (see `src/constants/media-upload.ts`), client checks + API **413** on oversize.
+- Optional **LLM** authoring (chat, structured SEO/preview/content suggest, article audit, listen-audio TTS): server-only keys, `NEXT_PUBLIC_LLM_ENABLED`; detail in [**`AI_FEATURES_ROADMAP.md`**](./AI_FEATURES_ROADMAP.md).
 - Public article HTML path: **`unstable_cache`** + **`revalidateTag`** on publish/revision update (`src/lib/cache/publicArticlePageCache.ts`). RUM (Phase 4) + optional analytics cookie consent.
+- Planned / partial (Phase 6): **article view counters** + **`/admin/article-views`** (shipped); **reactions** (roadmap-only / likely deferred). **Public agents:** **`Accept: text/markdown`** on **`/article/[slug]`** (`src/proxy.ts` rewrite → Markdown + YAML front matter; **`Vary: Accept`**); **`Content-Signal`** and **`x-markdown-tokens`** on Markdown. See [**`AI_FEATURES_ROADMAP.md`**](./AI_FEATURES_ROADMAP.md) Phase 5.
 
 ## Immediate Execution (Can Start Now)
 
@@ -67,7 +69,7 @@ This roadmap tracks the remaining work for the article platform and related qual
 
 - [x] Add image paste/drop upload flow in editor (auto-upload and replace local blobs with CDN links).
 - [x] Add thumbnail upload action in step 1 (Preview) and/or SEO step (alongside URL input).
-- [ ] Define upload error/retry UX and validation (size/type) for author-facing media actions.
+- [x] Author-facing media upload **validation** (max file size, hints under upload UI, client block + API **413**); MIME narrowed via `accept`. Dedicated **retry** UX for failed uploads not finalized (generic mutation behavior only).
 
 ---
 
@@ -95,10 +97,13 @@ This roadmap tracks the remaining work for the article platform and related qual
 
 ### 4. AI-assisted SEO authoring (optional module)
 
-- [ ] Add AI suggestions for SEO fields (title, description, OG title/description) with explicit user confirmation.
-- [ ] Add AI-assisted keyword suggestions based on article content.
-- [ ] Add provider abstraction and feature flags (disabled by default for self-hosted/open-source baseline).
-- [ ] Add audit trail for AI-generated drafts (what was suggested and what was accepted).
+Shipped as part of the LLM stack — see [**`AI_FEATURES_ROADMAP.md`**](./AI_FEATURES_ROADMAP.md) (Phase 1–2: chat, structured suggest, modal tabs). **OpenAI-only** on the server; UI gated by `NEXT_PUBLIC_LLM_ENABLED`.
+
+- [x] AI suggestions for SEO fields (meta title/description, OG title/description, **keywords**) with explicit user confirmation — `POST /api/v1/llm/seo/suggest`, **SEO** tab in `ArticleAiChatModal`, per-field / apply-all.
+- [x] AI-assisted **keyword** suggestions from article content (same structured SEO response).
+- [x] **Feature flags / opt-in** — `NEXT_PUBLIC_LLM_ENABLED`, server-only `LLM_API_KEY`; chat model allowlist via env (`LLM_CHAT_MODELS`, etc.).
+- [ ] **Pluggable multi-provider** LLM abstraction (second vendor behind the same API) — still a single OpenAI-backed `LLMService` today.
+- [x] **Usage / audit trail** — append-only `LlmUsageEvent` (tokens, source, user, article/revision where applicable); persisted **article quality** audits (`LlmArticleAudit`); chat history per revision. *Not stored:* fine-grained “accepted vs dismissed” per SEO field (optional future product depth).
 
 ---
 
@@ -174,6 +179,63 @@ This roadmap tracks the remaining work for the article platform and related qual
 - [x] Introduce key-based UI translations and local locale files for author/public pages.
 - [x] Add i18n conventions for content-related labels, validation messages, and notifications.
 - [ ] Define migration plan for replacing hardcoded UI strings with translation keys.
+
+### 4. Article views, reactions (optional), and analytics dashboards
+
+**Goal:** measure **real reads** and (optionally) engagement, without counting **preview** or editor sessions. **Dashboards** should mirror the RUM pattern: **global board** + **drill-down by article** and **by revision** where data is revision-scoped.
+
+#### Views — in scope (counter)
+
+- [x] Persist **`viewCountTotal`** on **`Article`** and **`viewCount`** on **`ArticleRevision`**; increments from **`POST /api/v1/article/view`** (client **`ArticleViewTracker`** on **`/article/[slug]`** and **`/private-article/[slug]`** only — not preview/editor).
+- [x] **Server-side** `recordArticleView` in **`lib/services/article-view.service.ts`**: validates **`surface`** `public` vs `private` vs article **visibility** (public / link_only / private + roles); optional JWT from cookie for private.
+- [x] **Dedupe:** Redis **`SET … NX EX ~24h`** per `articleId + revisionId + (user id | visitorKey)` when **`REDIS_URL`** set; sessionStorage UUID for anonymous **`visitorKey`**.
+- [x] **SSR vs cache:** counter not in cached HTML; **client POST** after mount.
+- [x] **Admin list:** column **Views** (`viewCountTotal`); **dashboard** **`/admin/article-views`** + **`GET /api/v1/article/views/dashboard`** and per-article revisions **`GET /api/v1/article/views/by-article/[articleId]`**.
+
+#### Reactions — roadmap only (likely deferred)
+
+*Product decision: reactions are **probably not** shipping in the near term; keep requirements here for a possible later phase.*
+
+- [ ] Define reaction types (e.g. 👍 / helpful / bookmark-style) and whether they are **anonymous** (browser/session key) vs **authenticated** only.
+- [ ] Store aggregates per **article** and optionally per **published revision** if reactions should follow “which version was read”.
+- [ ] Same **dashboard** surfaces as views: global summary + per-article + per-revision (when applicable).
+- [ ] Rate limits and abuse controls (IP / session / user) consistent with view endpoint policy.
+
+#### Dashboards (views + future reactions)
+
+- [x] **Global dashboard** (admin): **`/admin/article-views`** — total views sum + table sorted by **`viewCountTotal`** (published articles).
+- [x] **Per-article / per-revision:** expand row → revision table with **`viewCount`** per revision + article **`viewCountTotal`** (lifetime; not time-windowed yet).
+- [ ] **Trends / time windows** (e.g. last 7 days) — not implemented.
+- [ ] Document **best-effort** semantics under cache and load (product analytics, not billing-grade) — same caveat as in the unique-visitor design below.
+
+#### Unique visitors (design options — pick one or combine)
+
+| Approach | Pros | Cons |
+| -------- | ---- | ---- |
+| **Anonymous signed cookie** (`visitor_id` set on first `GET` via API) | Stable per browser profile, no login required for public | Cookie banner / consent if non-essential; cleared when user clears cookies |
+| **`localStorage` UUID** + send with view API | No cookie; survives reloads in same origin | Lost on clear-site-data; not cross-device |
+| **Authenticated user id** | Best for **private** articles (natural unique key) | Logged-out public traffic still needs anonymous key |
+| **Redis / DB dedupe** (`articleId` + `visitorKey` + date bucket) | True “unique per day/week” without trusting client alone | Storage and TTL policy; `visitorKey` from cookie or hash |
+| **IP + UA + day** (hashed, salted) | Rough uniques without cookies | GDPR/privacy review; VPN/shared IP collisions; less accurate |
+
+**Recommendation:** for **public** articles use a **first-party anonymous id** (HttpOnly cookie or `localStorage` + header) created by `/api/v1/visitor` or set on first view POST; for **private** articles prefer **`userId`** from session as the dedupe key (optionally still merge with anonymous if you allow preview-style links later). Store **daily or weekly uniques** in a rollup table or Redis HyperLogLog if you need scale without storing every row.
+
+- [ ] If **unique visitors** ship, surface them in the same **§4 dashboards** (global + per-article); view totals are already specified above.
+- [ ] Document that metrics are **best-effort** under load and cache (acceptable for product analytics, not billing-grade).
+
+### 5. Markdown for AI agents and “can AI learn / use this?” (public only)
+
+**References:** Cloudflare [Introducing Markdown for Agents](https://blog.cloudflare.com/markdown-for-agents/) (why Markdown beats raw HTML for agents, token cost, `Accept: text/markdown`), [Markdown for Agents — Cloudflare Docs](https://developers.cloudflare.com/fundamentals/reference/markdown-for-agents/), [Content Signals](https://contentsignals.org/) / Cloudflare [Content Signals Policy](https://blog.cloudflare.com/content-signals-policy/).
+
+**Scope:** **only public (and entitled crawlable) articles** — same visibility rules as today. Preview, drafts, private, and link-only **must not** return an alternate Markdown “agent feed” without proper auth, or should return **403/404**.
+
+- [x] **Content negotiation** on the public article read path: `preferMarkdownAccept` in **`src/proxy.ts`**; when Markdown wins, **`NextResponse.rewrite`** to **`GET /api/v1/public/article/markdown?slug=`** (same URL in the browser: **`/article/[slug]`**).
+- [x] **Markdown body:** TipTap JSON → Markdown via **`renderPublicArticleBodyMarkdown`** (`@tiptap/static-renderer/pm/markdown` + same **`defaultExtensions`** as HTML); **`buildPublicArticleMarkdownDocument`** adds YAML front matter (`title`, `description`, `slug`, `canonical`, `language`, `allow_ai_training`, ISO dates).
+- [x] **Headers (Markdown responses):** `Content-Type: text/markdown; charset=utf-8`, **`Vary: Accept`**, **`Content-Signal`** — set in **`src/app/api/v1/public/article/markdown/route.ts`**; HTML responses also get **`Vary: Accept`** from **`src/proxy.ts`**.
+- [x] **`x-markdown-tokens`** — token count for the full Markdown document via **`gpt-tokenizer`** (`countPublicArticleMarkdownTokens`, **o200k_base**); set on **`src/app/api/v1/public/article/markdown/route.ts`**.
+- [x] **Publisher-controlled training flag** — per-article **`allowAiTraining`** (default **true**) in **Preview**; **`Content-Signal`** on HTML (**`src/proxy.ts`** + content-signal API) and on Markdown (markdown route). See [**`AI_FEATURES_ROADMAP.md`**](./AI_FEATURES_ROADMAP.md) Phase 5.
+- [x] **Caching:** payload cache (`getCachedPublicArticlePagePayload`) stores both **HTML and Markdown** bodies; responses send **`Vary: Accept`** so CDNs do not serve HTML to a Markdown `Accept` (and vice versa).
+- [ ] **Operations note:** set **`APP_INTERNAL_ORIGIN`** in deploy so **`src/proxy.ts`** can resolve the internal API URL when `request.nextUrl.origin` is wrong (e.g. Docker). If the site uses **Cloudflare “Markdown for Agents”** at the edge, avoid conflicting double conversion — prefer **one** source of truth (origin-first Markdown vs edge HTML→MD).
 
 ---
 

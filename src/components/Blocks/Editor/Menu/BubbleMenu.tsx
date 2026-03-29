@@ -16,9 +16,11 @@ type Props = {
   onLinkDialogOpen?: () => void
   /** Modal to add image by URL */
   onImageDialogOpen?: () => void
+  onAudioDialogOpen?: () => void
+  onVideoDialogOpen?: () => void
 }
 
-const DEFAULT_HIDE_WHEN_ACTIVE: string[] = ['image']
+const DEFAULT_HIDE_WHEN_ACTIVE: string[] = ['image', 'audio', 'articleVideo']
 
 /**
  * Default logic from @tiptap/extension-bubble-menu + additional filter by node types.
@@ -47,15 +49,17 @@ function bubbleMenuShouldShow(props: BubbleMenuShouldShowProps, hideWhenActive: 
 }
 
 export const CustomBubbleMenu = (props: Props) => {
-  const { editor, hideWhenActive = DEFAULT_HIDE_WHEN_ACTIVE, onLinkDialogOpen, onImageDialogOpen } = props
+  const { editor, hideWhenActive = DEFAULT_HIDE_WHEN_ACTIVE, onLinkDialogOpen, onImageDialogOpen, onAudioDialogOpen, onVideoDialogOpen } = props
 
   const { buttons } = useMenuConfigs({
     editor,
     enabledFeautures: [...features],
-    disabledFeatures: ['image', 'horizontalRule', 'breakLine'],
+    disabledFeatures: ['image', 'audio', 'video', 'horizontalRule', 'breakLine'],
     featureOptions: {
       ...(onLinkDialogOpen ? { openLinkDialog: onLinkDialogOpen } : {}),
       ...(onImageDialogOpen ? { openImageDialog: onImageDialogOpen } : {}),
+      ...(onAudioDialogOpen ? { openAudioDialog: onAudioDialogOpen } : {}),
+      ...(onVideoDialogOpen ? { openVideoDialog: onVideoDialogOpen } : {}),
     },
   })
 

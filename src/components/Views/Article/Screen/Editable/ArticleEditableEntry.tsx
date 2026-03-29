@@ -6,13 +6,14 @@ import debounce from 'lodash/debounce'
 import { ActivityIcon, BotIcon, EyeIcon, FileTextIcon, InfoIcon, LockIcon, SearchIcon, SendIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useCallback, useMemo, useState } from 'react'
+import { Fragment, useCallback, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from 'react-query'
 
 import { ArticleModel, ArticleStatus, ArticleVisibility } from '~/api/article'
 import { ArticleRevisionMediaMetadata, ArticleRevisionMetadata, ArticleRevisionModel, ArticleRevisionStatus, SortOrder } from '~/api/article-revision'
 import { MediaProvider, MediaResourceType } from '~/api/media'
 import { Tab, TabsContainer } from '~/components/Blocks/Tabs/TabsContainer'
+import { HorizontalContainer } from '~/components/Containers'
 import { SpinnerScreen } from '~/components/Loaders'
 import { AlertBlock, Button, Typography } from '~/components/ui'
 import { routes } from '~/constants'
@@ -33,10 +34,13 @@ import { jsonStringifySafety } from '~/utils/jsonSafe'
 import { Logger } from '~/utils/logger'
 import { time } from '~/utils/time'
 
-import { ArticleEditableContent } from './ArticleEditableContent'
-import { ArticleEditablePreview, SaveForm } from './ArticleEditablePreview'
+import { ArticleAdminListenAudioControls } from './ArticleAdminListenAudioControls'
+import { ArticleAiChatModal, isLlmUiEnabled } from './ArticleAiChatModal'
+import { ArticleEditableContent, type ArticleEditableContentHandle } from './ArticleEditableContent'
+import { ArticleEditablePreview, type ArticleEditablePreviewHandle, SaveForm } from './ArticleEditablePreview'
 import { ArticleEditablePublish } from './ArticleEditablePublish'
-import { ArticleEditableSeo, ArticleEditableSeoSavePayload } from './ArticleEditableSeo'
+import { ArticleEditableSeo, type ArticleEditableSeoHandle, ArticleEditableSeoSavePayload } from './ArticleEditableSeo'
+import { ArticleEditorLlmUsageChip } from './ArticleEditorLlmUsageChip'
 
 const getSteps = (props: {
   article?: ArticleModel | null
@@ -112,6 +116,10 @@ export type ArticleEditableEntryProps = {
 export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
   const { articleId, revisionId, className = '', activeTab: activeTabProp } = props
   const [activeTab, setActiveTab] = useState<string | null>(activeTabProp ?? null)
+  const [aiChatOpen, setAiChatOpen] = useState(false)
+  const seoEditorRef = useRef<ArticleEditableSeoHandle>(null)
+  const previewEditorRef = useRef<ArticleEditablePreviewHandle>(null)
+  const contentEditorRef = useRef<ArticleEditableContentHandle>(null)
   const router = useRouter()
   const { notify } = useNotify()
   const queryClient = useQueryClient()
@@ -178,6 +186,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
             id: articleId,
             visibility: form.visibility,
             allowedRoles: form.allowedRoles,
+            allowAiTraining: form.allowAiTraining,
           })
 
           notify(t('article.ui.articleUpdated'), 'success')
@@ -223,6 +232,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
             slug: form.slug,
             visibility: form.visibility,
             allowedRoles: form.allowedRoles,
+            allowAiTraining: form.allowAiTraining !== false,
           })
 
           notify(t('article.ui.articleCreated'), 'success')
@@ -376,6 +386,8 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
     [activeRevisionId, updateArticleRevisionMutation, notify, isDisabledEditing, t],
   )
 
+  const debouncedUpdateContent = useMemo(() => debounce(handleUpdateContent, 1000), [handleUpdateContent])
+
   const handlePreview = useCallback(() => {
     if (!article?.slug || !activeRevisionId) {
       return
@@ -422,13 +434,13 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
   }, [isDisabledEditing, article, articleId, activeRevisionId, articleRevision, updateArticleMutation, updateArticleRevisionMutation, notify, t])
 
   const steps = useMemo(() => {
-    const steps = getSteps({
+    const rawSteps = getSteps({
       t,
       article,
       articleRevision,
       onSavePreview: handleSavePreview,
       onSaveSeo: handleSaveSeo,
-      onUpdateContent: debounce(handleUpdateContent, 1000),
+      onUpdateContent: debouncedUpdateContent,
       onPreview: handlePreview,
       isContentEnabled: !!article,
       isSeoEnabled: !!article,
@@ -440,7 +452,45 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
       isDisabledEditing,
     })
 
-    const filteredSteps = steps.filter((step) => {
+    const stepsWithAiRefs = rawSteps.map((step) => {
+      if (step.value === 'preview-information') {
+        return {
+          ...step,
+          children: (
+            <ArticleEditablePreview
+              ref={previewEditorRef}
+              btnLabel={!article ? t('common.next') : t('common.saveChanges')}
+              article={article}
+              articleRevision={articleRevision}
+              onSave={handleSavePreview}
+              isDisabled={isDisabledEditing}
+            />
+          ),
+        }
+      }
+
+      if (step.value === 'seo') {
+        return {
+          ...step,
+          children: (
+            <ArticleEditableSeo ref={seoEditorRef} isDisabled={isDisabledEditing} articleRevision={articleRevision} article={article} onSave={handleSaveSeo} />
+          ),
+        }
+      }
+
+      if (step.value === 'content') {
+        return {
+          ...step,
+          children: (
+            <ArticleEditableContent ref={contentEditorRef} isDisabled={isDisabledEditing} articleRevision={articleRevision} onUpdate={debouncedUpdateContent} />
+          ),
+        }
+      }
+
+      return step
+    })
+
+    const filteredSteps = stepsWithAiRefs.filter((step) => {
       if (articleId && step.value === 'seo' && (!article || !articleRevision)) {
         return false
       }
@@ -449,7 +499,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
     })
 
     return filteredSteps
-  }, [t, isDisabledEditing, articleId, article, articleRevision, handlePublish, handlePreview, handleSavePreview, handleSaveSeo, handleUpdateContent])
+  }, [t, isDisabledEditing, articleId, article, articleRevision, handlePublish, handlePreview, handleSavePreview, handleSaveSeo, debouncedUpdateContent])
 
   const finalActiveTab = useMemo(() => {
     const isTabValid = steps.some((step) => step.value === activeTab)
@@ -514,13 +564,13 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
       ) : (
         <>
           {articleRevisions?.list?.length ? (
-            <div className="flex flex-row gap-2">
+            <HorizontalContainer className="border-0 shadow-none pl-0">
               {articleRevisions?.list?.map((item) => (
                 <Button
                   key={item.id}
                   variant={item.id === activeRevisionId ? 'default' : 'secondary'}
-                  size="sm-md"
-                  className="flex flex-row gap-2 items-center"
+                  size="sm"
+                  className="flex flex-row gap-2 items-center mb-0"
                   onClick={() => setActiveRevisionId(item.id)}
                 >
                   <Typography
@@ -532,7 +582,14 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
                   >
                     {item.publishedAt ? time(item.publishedAt).format('DD.MM.YYYY HH:mm') : time(item.createdAt).format('DD.MM.YYYY HH:mm')}
                   </Typography>
-                  {item?.status === ArticleRevisionStatus.CONFIRMED ? <LockIcon className="w-6 h-6 shrink-0 bg-green-500 text-white rounded-md p-1" /> : null}
+                  {item?.status === ArticleRevisionStatus.CONFIRMED ? (
+                    <LockIcon
+                      className={cn(
+                        'w-6 h-6 shrink-0 bg-green-500 text-white rounded-md p-1',
+                        article?.revisionId === item.id ? 'bg-green-600' : 'bg-blue-500',
+                      )}
+                    />
+                  ) : null}
                 </Button>
               ))}
               {article?.slug && article?.visibility === ArticleVisibility.PUBLIC && article?.status === ArticleStatus.PUBLISHED && (
@@ -540,20 +597,20 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
                   <Link
                     href={`/admin/rum?pathname=/article/${article.slug}`}
                     target="_blank"
-                    className="flex items-center gap-2 p-2 rounded-lg text-secondary-400"
+                    className="flex text-nowrap items-center gap-2 px-2 rounded-lg text-secondary-400"
                   >
                     <ActivityIcon className="md:w-4 md:h-4 w-2 h-2 shrink-0" /> {t('navigation.rumDashboard')}
                   </Link>
                   <Link
                     href={`/admin/ai-referrals?pathname=/article/${article.slug}`}
                     target="_blank"
-                    className="flex items-center gap-2 p-2 rounded-lg text-secondary-400"
+                    className="flex text-nowrap items-center gap-2 px-2 rounded-lg text-secondary-400"
                   >
                     <BotIcon className="md:w-4 md:h-4 w-2 h-2 shrink-0" /> {t('navigation.aiReferralsDashboard')}
                   </Link>
                 </div>
               )}
-            </div>
+            </HorizontalContainer>
           ) : null}
           {isDisabledEditing && (
             <AlertBlock
@@ -561,7 +618,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
                 type: 'info',
                 message: (
                   <div className="flex flex-col gap-2 items-start">
-                    <Typography variant="Body/S/Regular" className="whitespace-nowrap text-nowrap text-neutral-1000">
+                    <Typography variant="Body/S/Regular" className="text-neutral-1000">
                       {t('article.ui.youAreNotAllowedToEditTheLastPublishedArticlePleaseStartTheNewVersion')}
                     </Typography>
                     {!isHasDraftRevision ? (
@@ -569,7 +626,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
                         {t('article.ui.startNewVersion')}
                       </Button>
                     ) : null}
-                    <Typography variant="Body/S/Regular" className="whitespace-nowrap text-nowrap text-neutral-1000">
+                    <Typography variant="Body/S/Regular" className="text-neutral-1000">
                       {t('article.ui.orRepublishEarlyVersion')}
                     </Typography>
                   </div>
@@ -577,7 +634,43 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
               }}
             />
           )}
-          <TabsContainer searchMutable tabs={steps} activeTab={finalActiveTab} currentTab={activeTab} onTabChange={setActiveTab} />
+          {isLlmUiEnabled() && articleId && activeRevisionId ? (
+            <div className="flex flex-row flex-wrap items-center gap-x-3 gap-y-2">
+              {articleRevision?.status === ArticleRevisionStatus.DRAFT ? (
+                <Button type="button" variant="outline" size="sm-md" className="gap-2" onClick={() => setAiChatOpen(true)}>
+                  <BotIcon className="size-4 shrink-0" />
+                  {t('article.ui.aiAssistant')}
+                </Button>
+              ) : null}
+              <ArticleEditorLlmUsageChip articleId={articleId} revisionId={activeRevisionId} enabled />
+              <ArticleAiChatModal
+                articleId={articleId}
+                revisionId={activeRevisionId}
+                articleRevision={articleRevision}
+                open={aiChatOpen}
+                onOpenChange={setAiChatOpen}
+                seoEditorRef={seoEditorRef}
+                previewEditorRef={previewEditorRef}
+                contentEditorRef={contentEditorRef}
+              />
+            </div>
+          ) : null}
+          {articleId && activeRevisionId ? (
+            <ArticleAdminListenAudioControls articleId={articleId} article={article} activeRevisionId={activeRevisionId} />
+          ) : null}
+          {articleRevisions?.list?.length ? (
+            <>
+              {articleRevisions?.list?.map((revision) => (
+                <Fragment key={revision.id}>
+                  {revision.id === activeRevisionId ? (
+                    <TabsContainer searchMutable tabs={steps} mode="now" activeTab={finalActiveTab} currentTab={activeTab} onTabChange={setActiveTab} />
+                  ) : null}
+                </Fragment>
+              ))}
+            </>
+          ) : (
+            <TabsContainer searchMutable tabs={steps} mode="now" activeTab={finalActiveTab} currentTab={activeTab} onTabChange={setActiveTab} />
+          )}
         </>
       )}
     </div>

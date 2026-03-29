@@ -29,8 +29,17 @@ const {
   /** Server-only deploy revision (CI injects `COMMIT_HASH` into env; not exposed to the client). */
   COMMIT_HASH = process.env.COMMIT_HASH || process.env.VERCEL_GIT_COMMIT_SHA || '',
   RUM_ENABLED = process.env.RUM_ENABLED !== 'false',
-  NEXT_PUBLIC_RUM_ENABLED = process.env.NEXT_PUBLIC_RUM_ENABLED !== 'false',
+  NEXT_PUBLIC_RUM_ENABLED = process.env.NEXT_PUBLIC_RUM_ENABLED == 'false',
   NEXT_PUBLIC_ORGANIZATION_SAME_AS = process.env.NEXT_PUBLIC_ORGANIZATION_SAME_AS || '',
+  LLM_API_KEY = process.env.LLM_API_KEY || '',
+  NEXT_PUBLIC_LLM_ENABLED = process.env.NEXT_PUBLIC_LLM_ENABLED === 'true',
+  /** Comma-separated OpenAI chat model ids (optional). Defaults in `getChatModelAllowlist`. */
+  LLM_CHAT_MODELS = process.env.LLM_CHAT_MODELS || '',
+  /** Comma-separated GPT Image model ids for `images.generate` (optional). Defaults in `getImageModelAllowlist`. */
+  LLM_IMAGE_MODELS = process.env.LLM_IMAGE_MODELS || '',
+  /** Per-user LLM chat requests per `LLM_CHAT_RATE_DURATION_SEC` window (Redis or memory). */
+  LLM_CHAT_RATE_LIMIT_POINTS = Number(process.env.LLM_CHAT_RATE_LIMIT_POINTS || 30),
+  LLM_CHAT_RATE_DURATION_SEC = Number(process.env.LLM_CHAT_RATE_DURATION_SEC || 60),
 } = process.env
 
 const isDevelop = [APP_ENV, NEXT_PUBLIC_APP_ENV].includes('development')
@@ -85,6 +94,15 @@ const RUM_CONFIG = {
   publicEnabled: NEXT_PUBLIC_RUM_ENABLED,
 }
 
+const LLM_CONFIG = {
+  apiKey: LLM_API_KEY,
+  enabled: NEXT_PUBLIC_LLM_ENABLED,
+  chatModelsCsv: LLM_CHAT_MODELS,
+  imageModelsCsv: LLM_IMAGE_MODELS,
+  chatRateLimitPoints: Number.isFinite(LLM_CHAT_RATE_LIMIT_POINTS) ? LLM_CHAT_RATE_LIMIT_POINTS : 30,
+  chatRateDurationSec: Number.isFinite(LLM_CHAT_RATE_DURATION_SEC) ? LLM_CHAT_RATE_DURATION_SEC : 60,
+}
+
 export {
   APP_ENV,
   APP_INTERNAL_ORIGIN,
@@ -99,6 +117,7 @@ export {
   isProd,
   isStage,
   JWT_CONFIG,
+  LLM_CONFIG,
   MFA_CONFIG,
   MONGODB_CONFIG,
   NEXT_PUBLIC_ORGANIZATION_SAME_AS,

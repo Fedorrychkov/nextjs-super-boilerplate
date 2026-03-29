@@ -3,7 +3,7 @@ import { AxiosInstance } from 'axios'
 
 import { PaginationMeta } from '~/types'
 
-import { ArticleModel } from '../model'
+import { ArticleListenAudioGenerateResponse, ArticleModel } from '../model'
 import { ArticleFilter } from '../types'
 
 export * from './publicArticleList'
@@ -42,6 +42,12 @@ export class ClientArticleApi {
 
   async updateArticle(id: string, dto: Partial<ArticleModel>): Promise<ArticleModel> {
     const response = await this.client.put('/api/v1/article/update', { id, ...dto })
+
+    return response.data
+  }
+
+  async generateListenAudio(dto: { articleId: string; voice?: string }): Promise<ArticleListenAudioGenerateResponse> {
+    const response = await this.client.post<ArticleListenAudioGenerateResponse>('/api/v1/article/listen-audio/generate', dto)
 
     return response.data
   }

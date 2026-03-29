@@ -132,6 +132,7 @@ export const ArticleListTable = ({ isLoading, data }: Props) => {
                 </Badge>
               </TableCell>
             )}
+            {columnKeys?.includes('viewCountTotal') && <TableCell className="whitespace-nowrap tabular-nums">{item.viewCountTotal ?? 0}</TableCell>}
             {columnKeys?.includes('time') && (
               <TableCell className="whitespace-nowrap">
                 <div className="flex flex-col gap-1">
