@@ -1,6 +1,8 @@
 import { LLM_CONFIG } from '@config/env'
 import OpenAI from 'openai'
 
+import { getOpenAiFetch } from './openai-fetch-proxy'
+
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant'
   content: string
@@ -50,6 +52,7 @@ export class LLMService {
       if (LLM_CONFIG.enabled) {
         this.client = new OpenAI({
           apiKey: LLM_CONFIG.apiKey,
+          fetch: getOpenAiFetch(LLM_CONFIG),
         })
       }
     }

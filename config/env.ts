@@ -40,6 +40,7 @@ const {
   /** Per-user LLM chat requests per `LLM_CHAT_RATE_DURATION_SEC` window (Redis or memory). */
   LLM_CHAT_RATE_LIMIT_POINTS = Number(process.env.LLM_CHAT_RATE_LIMIT_POINTS || 30),
   LLM_CHAT_RATE_DURATION_SEC = Number(process.env.LLM_CHAT_RATE_DURATION_SEC || 60),
+  PROXY_ACCESSES = process.env.PROXY_ACCESSES || '',
 } = process.env
 
 const isDevelop = [APP_ENV, NEXT_PUBLIC_APP_ENV].includes('development')
@@ -101,6 +102,8 @@ const LLM_CONFIG = {
   imageModelsCsv: LLM_IMAGE_MODELS,
   chatRateLimitPoints: Number.isFinite(LLM_CHAT_RATE_LIMIT_POINTS) ? LLM_CHAT_RATE_LIMIT_POINTS : 30,
   chatRateDurationSec: Number.isFinite(LLM_CHAT_RATE_DURATION_SEC) ? LLM_CHAT_RATE_DURATION_SEC : 60,
+  /** JSON array of `host:port:user:pass` (optional `:geo`); OpenAI traffic uses `getOpenAiFetch` — random proxy per request if length > 1. */
+  proxyAccessesJson: PROXY_ACCESSES.trim(),
 }
 
 export {
@@ -122,6 +125,7 @@ export {
   MONGODB_CONFIG,
   NEXT_PUBLIC_ORGANIZATION_SAME_AS,
   NEXT_PUBLIC_SITE_URL,
+  PROXY_ACCESSES,
   PUSH_CONFIG,
   RATE_LIMIT_CONFIG,
   REDIS_URL,
