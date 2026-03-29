@@ -65,6 +65,16 @@ The `clean` command stops and removes all containers used by the script (nginx, 
 
 ---
 
+## Nginx: 413 Content Too Large on file uploads (media, API)
+
+**Cause:** nginx defaults **`client_max_body_size`** to **1m**. Larger request bodies never reach Next.js — nginx returns **413** first.
+
+**Fix in this repo:** templates `.docker/nginx/nginx.conf.template.http`, `.docker/nginx/nginx.conf.template.https`, and `.docker/nginx/nginx.conf.local.template.https` set **`client_max_body_size 200m`** (aligned with `src/constants/media-upload.ts` and `experimental.proxyClientMaxBodySize` in `next.config.ts`). After updating files on the server, regenerate nginx config and restart the container (e.g. redeploy, or `docker-compose ... exec nginx nginx -t` then `restart nginx`).
+
+**If you use a custom nginx** in front of the app — add in `http` or `server`: `client_max_body_size 200m;` (or your limit), then `nginx -t` and reload.
+
+---
+
 ## MongoDB: Authentication Errors and Recreating the Database
 
 ### Mongo logs: "UserNotFound", "Authentication failed", "Could not find user \"admin\" for db \"admin\""

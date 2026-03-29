@@ -65,6 +65,16 @@
 
 ---
 
+## Nginx: 413 Content Too Large при загрузке файлов (медиа, API)
+
+**Причина:** у nginx по умолчанию **`client_max_body_size`** равен **1m**. Запросы больше этого размера не доходят до Next.js — ответ **413** отдаёт сам nginx.
+
+**Решение в этом репозитории:** в шаблонах `.docker/nginx/nginx.conf.template.http`, `.docker/nginx/nginx.conf.template.https` и `.docker/nginx/nginx.conf.local.template.https` задано **`client_max_body_size 200m`** (в одной логике с `src/constants/media-upload.ts` и `experimental.proxyClientMaxBodySize` в `next.config.ts`). После обновления файлов на сервере пересоздайте конфиг nginx и перезапустите контейнер (например повторный деплой или `docker-compose -f docker-compose.local.yml exec nginx nginx -t && docker-compose -f docker-compose.local.yml restart nginx`).
+
+**Если фронт стоит за своим nginx** (не из compose этого проекта) — добавьте в блок `http` или `server`: `client_max_body_size 200m;` (или своё значение в байтах/`m`), затем `nginx -t` и reload.
+
+---
+
 ## MongoDB: ошибки аутентификации и пересоздание
 
 ### В логах Mongo: «UserNotFound», «Authentication failed», «Could not find user "admin" for db "admin"»

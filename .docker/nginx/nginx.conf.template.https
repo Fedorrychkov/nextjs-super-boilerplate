@@ -4,6 +4,9 @@ http {
     include       /etc/nginx/mime.types;
     default_type  application/octet-stream;
 
+    # Default nginx is 1m → 413 on media/API uploads. Match MEDIA_UPLOAD_MAX_BYTES / next.config proxyClientMaxBodySize.
+    client_max_body_size 200m;
+
     # Larger server names hash (fixes warnings)
     server_names_hash_bucket_size 128;
     server_names_hash_max_size 512;

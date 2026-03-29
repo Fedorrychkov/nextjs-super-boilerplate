@@ -126,7 +126,7 @@ export const ArticleEditablePreview = forwardRef<ArticleEditablePreviewHandle, P
 
   return (
     <div className="flex flex-col gap-4">
-      {article?.version && (
+      {article?.version ? (
         <AlertBlock
           notify={{
             type: 'warning',
@@ -137,7 +137,7 @@ export const ArticleEditablePreview = forwardRef<ArticleEditablePreviewHandle, P
             ),
           }}
         />
-      )}
+      ) : null}
       <FormProvider {...form}>
         <form onSubmit={onSubmit(handleSubmit)} className="w-full flex flex-col gap-5" ref={formRef}>
           <DefaultFieldContainer
