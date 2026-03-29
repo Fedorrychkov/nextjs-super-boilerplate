@@ -6,7 +6,7 @@ import debounce from 'lodash/debounce'
 import { ActivityIcon, BotIcon, EyeIcon, FileTextIcon, InfoIcon, LockIcon, SearchIcon, SendIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Fragment, useCallback, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from 'react-query'
 
 import { ArticleModel, ArticleStatus, ArticleVisibility } from '~/api/article'
@@ -163,6 +163,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
   const { createArticleRevisionMutation } = useCreateArticleRevisionMutation()
   const { updateArticleMutation } = useUpdateArticleMutation()
   const { updateArticleRevisionMutation } = useUpdateArticleRevisionMutation()
+  const updateArticleRevisionMutateAsync = updateArticleRevisionMutation.mutateAsync
 
   const isGlobalLoading =
     (articleId && (isArticleLoading || !isArticleFetched)) ||
@@ -364,7 +365,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
         if (activeRevisionId) {
           notify(t('article.ui.updatingArticleRevisionContent'), 'info')
 
-          await updateArticleRevisionMutation.mutateAsync({
+          await updateArticleRevisionMutateAsync({
             id: activeRevisionId,
             content: jsonStringifySafety(editor.getJSON()),
           })
@@ -383,10 +384,32 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
         notify(t('errors.unknown'), 'destructive')
       }
     },
-    [activeRevisionId, updateArticleRevisionMutation, notify, isDisabledEditing, t],
+    [activeRevisionId, updateArticleRevisionMutateAsync, notify, isDisabledEditing, t],
   )
 
-  const debouncedUpdateContent = useMemo(() => debounce(handleUpdateContent, 1000), [handleUpdateContent])
+  const handleUpdateContentRef = useRef(handleUpdateContent)
+  const debouncedSaveRef = useRef<ReturnType<typeof debounce<(editor: Editor) => void>> | null>(null)
+
+  useEffect(() => {
+    handleUpdateContentRef.current = handleUpdateContent
+  }, [handleUpdateContent])
+
+  useLayoutEffect(() => {
+    debouncedSaveRef.current = debounce((editor: Editor) => {
+      void handleUpdateContentRef.current(editor)
+    }, 1000)
+
+    return () => {
+      debouncedSaveRef.current?.cancel()
+    }
+  }, [])
+
+  const debouncedUpdateContent = useCallback((editor: Editor) => {
+    debouncedSaveRef.current?.(editor)
+  }, [])
+
+  /** `getSteps` content tab is replaced below; placeholder avoids passing debounced callback into `getSteps` (eslint react-compiler false positive on ref). */
+  const noopContentEditorUpdate = useCallback((_editor: Editor) => {}, [])
 
   const handlePreview = useCallback(() => {
     if (!article?.slug || !activeRevisionId) {
@@ -440,7 +463,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
       articleRevision,
       onSavePreview: handleSavePreview,
       onSaveSeo: handleSaveSeo,
-      onUpdateContent: debouncedUpdateContent,
+      onUpdateContent: noopContentEditorUpdate,
       onPreview: handlePreview,
       isContentEnabled: !!article,
       isSeoEnabled: !!article,
@@ -499,7 +522,19 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
     })
 
     return filteredSteps
-  }, [t, isDisabledEditing, articleId, article, articleRevision, handlePublish, handlePreview, handleSavePreview, handleSaveSeo, debouncedUpdateContent])
+  }, [
+    t,
+    isDisabledEditing,
+    articleId,
+    article,
+    articleRevision,
+    handlePublish,
+    handlePreview,
+    handleSavePreview,
+    handleSaveSeo,
+    debouncedUpdateContent,
+    noopContentEditorUpdate,
+  ])
 
   const finalActiveTab = useMemo(() => {
     const isTabValid = steps.some((step) => step.value === activeTab)
