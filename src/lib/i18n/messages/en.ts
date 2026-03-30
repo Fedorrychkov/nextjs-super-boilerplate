@@ -111,6 +111,43 @@ export const en = {
     openUiKit: 'Open UI Kit',
     tryAuth: 'Dashboard',
     orThe: 'or the',
+    metaTitle: 'Next.js App Router starter — auth, articles, admin, deploy',
+    metaDescription:
+      'Next.js App Router boilerplate: JWT/OAuth, MongoDB articles with SEO tooling, admin dashboard, UI kit, CI/CD. Clone on GitHub, try the demo, read in-repo docs.',
+    leadSupplement:
+      'This project is a pragmatic starting point for teams who want App Router, typed APIs, and sensible defaults (rate limits, uploads, notifications) without rebuilding fundamentals. Use it for a marketing site, a logged-in product, or a content-driven publication — the same codebase powers this demo.',
+    sectionFeaturesHeading: 'What you get',
+    sectionFeaturesIntro: 'The stack is opinionated where it saves time and flexible where your product differs:',
+    featureAuth: 'Authentication: credentials, OAuth, sessions, and protected routes.',
+    featureArticles: 'Articles: public and private posts, revisions, Markdown editor, and server-side SEO metadata.',
+    featureAdmin: 'Admin: users, articles, notifications, analytics, and operational tooling.',
+    featureDeploy: 'Deploy: Docker-friendly, GitHub Actions, and environment profiles (local / stage / prod).',
+    featureDevEx: 'Developer experience: strict TypeScript, shared UI kit route, and a clear service layout.',
+    sectionStackHeading: 'Stack and scope',
+    sectionStackBody:
+      'Built on Next.js (App Router), React, and Tailwind CSS; MongoDB and Redis for persistence and queues where needed; optional Uploadcare for media. Business logic lives in services and server actions so routes stay thin. The home page, article listing, auth flows, and UI kit are first-class routes you can extend or replace.',
+    sectionLearnHeading: 'Documentation and repository',
+    sectionLearnBody:
+      'Start with the README on GitHub for setup and environment variables. Product direction lives in docs such as PRODUCT_ROADMAP and AI_FEATURES_ROADMAP; infrastructure is covered in infra docs. For a longer narrative, use the deep-dive articles:',
+    linkReadme: 'README on GitHub',
+    linkDocsFolder: 'docs/ in the repository',
+    linkArticleEn: 'Deep-dive article (EN)',
+    linkArticleRu: 'Deep-dive article (RU)',
+    sectionAgentsHeading: 'For developers and agents',
+    sectionAgentsBody:
+      'Public articles support Markdown and negotiated responses for tooling. This site exposes llms.txt with pointers to the repo, documentation, and sitemap so crawlers and assistants can find entry points. Machine-readable summary:',
+    linkLlmsTxt: 'llms.txt',
+    sectionAboutHeading: 'Trust and maintenance',
+    sectionAboutBody:
+      'The project is maintained in the open; issues and PRs are welcome on GitHub. When you deploy your own instance, set NEXT_PUBLIC_SITE_URL and related SEO variables so titles, canonical URLs, and structured data match your domain.',
+    linkArticlesIndex: 'Browse published articles',
+    linkLiveDemo: 'Live demo (reference deploy)',
+  },
+  cookie: {
+    cookieConsentBannerText:
+      'We collect optional anonymous performance metrics (Core Web Vitals: LCP, INP, CLS, and related signals) to improve speed and stability. This is not used for advertising. Choose "Accept" to help us, or "Essential only" to decline.',
+    cookieConsentBannerEssentialOnly: 'Essential only',
+    cookieConsentBannerAcceptAnalytics: 'Accept analytics',
   },
   profile: {
     errors: {

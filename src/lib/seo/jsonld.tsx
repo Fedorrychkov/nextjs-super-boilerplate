@@ -1,9 +1,9 @@
 /* eslint-disable react-refresh/only-export-components */
-import type { Article, Organization, WebSite, WithContext } from 'schema-dts'
+import type { Article, Organization, SoftwareApplication, WebSite, WithContext } from 'schema-dts'
 
 import { jsonStringifySafety } from '~/utils/jsonSafe'
 
-import { seoConfig } from './config'
+import { BOILERPLATE_GITHUB_REPO_URL, seoConfig } from './config'
 
 export const getOrganizationJsonLd = (): WithContext<Organization> => ({
   '@context': 'https://schema.org',
@@ -19,6 +19,21 @@ export const getWebSiteJsonLd = (): WithContext<WebSite> => ({
   name: seoConfig.siteName,
   url: seoConfig.siteUrl,
   inLanguage: seoConfig.defaultLocale,
+})
+
+/** Open-source boilerplate as a software product (homepage rich result / entity hints). */
+export const getSoftwareApplicationJsonLd = (description: string): WithContext<SoftwareApplication> => ({
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: seoConfig.siteName,
+  description,
+  url: seoConfig.siteUrl,
+  applicationCategory: 'DeveloperApplication',
+  operatingSystem: 'Any',
+  installUrl: BOILERPLATE_GITHUB_REPO_URL,
+  sameAs: BOILERPLATE_GITHUB_REPO_URL,
+  isAccessibleForFree: true,
+  license: `${BOILERPLATE_GITHUB_REPO_URL}/blob/main/LICENSE`,
 })
 
 export const getArticleJsonLd = (props: {

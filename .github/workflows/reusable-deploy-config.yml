@@ -307,6 +307,7 @@ jobs:
           command_timeout: 25m
           script: |
             set -e
+            export COMPOSE_HTTP_TIMEOUT=300
             if [ "$DEPLOY_MODE" = "registry" ]; then
               if [ -z "$GHCR_USERNAME" ] || [ -z "$GHCR_TOKEN" ]; then
                 echo "Error: GHCR_USERNAME and GHCR_TOKEN secrets are required when deploy_mode=registry"
@@ -428,6 +429,7 @@ jobs:
           password: ${{ secrets.server_password }}
           port: 22
           script: |
+            export COMPOSE_HTTP_TIMEOUT=300
             if [ -d "$HOME/app.bak" ]; then
               echo "Cleaning app.bak after successful deploy..."
               rm -rf "$HOME/app.bak"
@@ -447,6 +449,7 @@ jobs:
           password: ${{ secrets.server_password }}
           port: 22
           script: |
+            export COMPOSE_HTTP_TIMEOUT=300
             echo "Logs certbot-init:"
             cd $HOME/app || true
             docker-compose -f docker-compose.local.yml logs certbot-init || true

@@ -8,19 +8,24 @@ import { detectLocaleFromNextCookiesAndHeaders } from '~/lib/i18n/detectLocale'
 import { seoConfig } from '~/lib/seo/config'
 import { QueryProvider } from '~/providers'
 import { AuthProvider } from '~/providers/auth'
-import { CookieConsentBanner, CookieConsentProvider } from '~/providers/cookie-consent'
+import { CookieConsentProvider } from '~/providers/cookie-consent'
+import { DeferredClientChrome } from '~/providers/DeferredClientChrome'
 import { I18nProvider } from '~/providers/i18n'
 import { NotifyProvider } from '~/providers/notify'
-import { WebVitalsReporter } from '~/providers/Rum/WebVitalsReporter'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
-  subsets: ['latin'],
+  /** RU-локаль без лишнего FOUT на кириллице (небольшой прирост веса шрифта). */
+  subsets: ['latin', 'cyrillic'],
+  display: 'swap',
+  adjustFontFallback: true,
 })
 
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
   subsets: ['latin'],
+  display: 'swap',
+  adjustFontFallback: true,
 })
 
 const METADATA_FALLBACK_IMAGE = '/images/web-app-manifest-192x192.png'
@@ -91,8 +96,7 @@ export default async function RootLayout({
             <NotifyProvider>
               <CookieConsentProvider>
                 <I18nProvider locale={locale}>
-                  <WebVitalsReporter />
-                  <CookieConsentBanner />
+                  <DeferredClientChrome />
                   {children}
                 </I18nProvider>
               </CookieConsentProvider>

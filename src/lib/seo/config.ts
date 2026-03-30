@@ -4,6 +4,12 @@ import { getDefaultLocale } from '../i18n'
 
 const FALLBACK_SITE_URL = NEXT_PUBLIC_SITE_URL
 
+/** Canonical GitHub repository for this boilerplate (SEO, JSON-LD, homepage links). */
+export const BOILERPLATE_GITHUB_REPO_URL = 'https://github.com/Fedorrychkov/nextjs-super-boilerplate' as const
+
+/** Public demo instance (see README); use for marketing links — set your own when forking. */
+export const BOILERPLATE_DEMO_URL = 'https://nextjs-super-boilerplate.visn-ai.io' as const
+
 export const seoConfig = {
   siteName: 'Production Ready Next.js Boilerplate',
   siteUrl: FALLBACK_SITE_URL,

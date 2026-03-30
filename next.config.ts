@@ -77,6 +77,10 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  compiler: {
+    /** Убирает случайные `console.log` из прод-сборки; `error`/`warn` оставляем. */
+    removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
+  },
   // Add security headers
   async headers() {
     return [
@@ -88,7 +92,21 @@ const nextConfig = {
     ]
   },
   experimental: {
-    optimizePackageImports: ['framer-motion', 'cmdk', 'lucide-react'],
+    /** Tree-shake barrel-heavy packages (smaller client chunks). */
+    optimizePackageImports: [
+      'framer-motion',
+      'cmdk',
+      'lucide-react',
+      'radix-ui',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-tooltip',
+      '@radix-ui/react-checkbox',
+      '@radix-ui/react-slot',
+    ],
+    /** Inlines critical CSS + defers the rest (`preload: 'media'`). Next still `require('critters')`; we install Beasties under that name (`npm:beasties`). */
+    optimizeCss: true,
+    /** Inline route CSS to cut render-blocking stylesheets (Next 16 experimental). */
+    inlineCss: true,
     // Default 10MB truncates multipart bodies → formData() fails. Keep in sync with src/constants/media-upload.ts.
     proxyClientMaxBodySize: '200mb',
   },
