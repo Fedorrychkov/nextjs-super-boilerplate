@@ -111,6 +111,43 @@ export const ru = {
     openUiKit: 'Открыть UI Kit',
     tryAuth: 'Внутренняя панель',
     orThe: 'или',
+    metaTitle: 'Open-source Next.js: авторизация, статьи, админка, деплой',
+    metaDescription:
+      'Бойлерплейт Next.js App Router: JWT/OAuth, статьи в MongoDB с SEO в редакторе, админка, UI kit, CI/CD. Клонируйте с GitHub, смотрите демо, docs — в репозитории.',
+    leadSupplement:
+      'Проект даёт практичную основу для команд, которым нужны App Router, типизированные API и разумные дефолты (лимиты, загрузки, уведомления) без сборки фундамента с нуля. Подойдёт для маркетингового сайта, продукта с личным кабинетом или контентного издания — этот демо-сайт собран на том же коде.',
+    sectionFeaturesHeading: 'Что внутри',
+    sectionFeaturesIntro: 'Стек сужен там, где это экономит время, и остаётся гибким там, где отличается ваш продукт:',
+    featureAuth: 'Авторизация: логин/пароль, OAuth, сессии и защищённые разделы.',
+    featureArticles: 'Статьи: публичные и приватные материалы, ревизии, Markdown в редакторе и SEO-метаданные на сервере.',
+    featureAdmin: 'Админка: пользователи, статьи, уведомления, аналитика и операционные инструменты.',
+    featureDeploy: 'Деплой: Docker, GitHub Actions и профили окружений (local / stage / prod).',
+    featureDevEx: 'DX: строгий TypeScript, общий UI kit и предсказуемая раскладка сервисов.',
+    sectionStackHeading: 'Стек и охват',
+    sectionStackBody:
+      'Next.js (App Router), React и Tailwind CSS; MongoDB и Redis для данных и очередей; при необходимости Uploadcare для медиа. Бизнес-логика в сервисах и server actions, маршруты остаются тонкими. Главная, список статей, авторизация и UI kit — полноценные маршруты, которые можно расширять или заменять.',
+    sectionLearnHeading: 'Документация и репозиторий',
+    sectionLearnBody:
+      'Начните с README на GitHub: установка и переменные окружения. Направление продукта — в docs (например PRODUCT_ROADMAP, AI_FEATURES_ROADMAP); инфраструктура — в отдельных infra-доках. Развёрнутое объяснение — в статьях:',
+    linkReadme: 'README на GitHub',
+    linkDocsFolder: 'каталог docs/ в репозитории',
+    linkArticleEn: 'Статья (EN)',
+    linkArticleRu: 'Статья (RU)',
+    sectionAgentsHeading: 'Для разработчиков и агентов',
+    sectionAgentsBody:
+      'Публичные статьи поддерживают Markdown и согласование ответов для инструментов. На сайте есть llms.txt со ссылками на репозиторий, документацию и sitemap — чтобы краулеры и ассистенты находили точки входа. Машиночитаемое резюме:',
+    linkLlmsTxt: 'llms.txt',
+    sectionAboutHeading: 'Доверие и сопровождение',
+    sectionAboutBody:
+      'Проект ведётся открыто; issues и PR приветствуются на GitHub. При деплое своего инстанса задайте NEXT_PUBLIC_SITE_URL и прочие SEO-переменные, чтобы заголовки, канонические URL и структурированные данные совпадали с вашим доменом.',
+    linkArticlesIndex: 'К опубликованным статьям',
+    linkLiveDemo: 'Живое демо (эталонный деплой)',
+  },
+  cookie: {
+    cookieConsentBannerText:
+      'Мы собираем анонимные метрики производительности (Core Web Vitals: LCP, INP, CLS, и другие сигналы) для улучшения скорости и стабильности. Эти данные не используются для рекламы. Выберите "Принять аналитику" для помощи нам, или "Только обязательные" для отказа.',
+    cookieConsentBannerEssentialOnly: 'Только обязательные',
+    cookieConsentBannerAcceptAnalytics: 'Принять аналитику',
   },
   profile: {
     errors: {

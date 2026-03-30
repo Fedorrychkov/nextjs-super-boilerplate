@@ -3,9 +3,11 @@
 import { Button } from '~/components/ui/button'
 import { Typography } from '~/components/ui/Typography/Typography'
 
+import { useT } from '../i18n'
 import { useCookieConsent } from './useCookieConsent'
 
 export function CookieConsentBanner() {
+  const t = useT()
   const { showBanner, grantAnalytics, denyAnalytics } = useCookieConsent()
 
   if (!showBanner) {
@@ -21,16 +23,14 @@ export function CookieConsentBanner() {
     >
       <div className="mx-auto flex max-w-4xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <Typography variant="Body/S/Regular" className="text-muted-foreground max-w-2xl">
-          {
-            'We collect optional anonymous performance metrics (Core Web Vitals: LCP, INP, CLS, and related signals) to improve speed and stability. This is not used for advertising. Choose "Accept" to help us, or "Essential only" to decline.'
-          }
+          {t('cookie.cookieConsentBannerText')}
         </Typography>
         <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:justify-end">
           <Button type="button" variant="outline" size="sm" onClick={denyAnalytics}>
-            Essential only
+            {t('cookie.cookieConsentBannerEssentialOnly')}
           </Button>
           <Button type="button" size="sm" onClick={grantAnalytics}>
-            Accept analytics
+            {t('cookie.cookieConsentBannerAcceptAnalytics')}
           </Button>
         </div>
       </div>

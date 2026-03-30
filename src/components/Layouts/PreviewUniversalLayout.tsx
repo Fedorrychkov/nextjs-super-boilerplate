@@ -45,7 +45,7 @@ export const PreviewUniversalLayout = async (props: Props) => {
         </div>
       )}
       <div className="flex flex-col min-h-screen items-center justify-center font-sans">
-        <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between bg-white md:px-16 px-4 py-32 dark:bg-black sm:items-start rounded-md">
+        <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between bg-white md:px-16 px-4 py-10 dark:bg-black sm:items-start rounded-md gap-4">
           {children}
         </main>
         {content}

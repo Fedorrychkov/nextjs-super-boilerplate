@@ -1,0 +1,23 @@
+# Production Ready Next.js Boilerplate
+
+> Open-source Next.js (App Router) starter: authentication, MongoDB-backed articles with SEO-aware editing, admin dashboard, UI kit, CI/CD-oriented deploy, and optional LLM integration.
+
+## Primary links
+
+- Source code: https://github.com/Fedorrychkov/nextjs-super-boilerplate
+- Documentation folder: https://github.com/Fedorrychkov/nextjs-super-boilerplate/tree/main/docs
+- README: https://github.com/Fedorrychkov/nextjs-super-boilerplate/blob/main/README.md
+- Product roadmap: https://github.com/Fedorrychkov/nextjs-super-boilerplate/blob/main/docs/PRODUCT_ROADMAP.md
+- GEO / discoverability roadmap: https://github.com/Fedorrychkov/nextjs-super-boilerplate/blob/main/docs/IMPROVEMENTS_ROADMAP.md
+
+## Human-readable articles (author blog, Markdown)
+
+- EN: https://github.com/Fedorrychkov/fedorrychkov/blob/main/articles/standalone-nextjs-production-ready-boilerplate/ARTICLE_EN.md
+- RU: https://github.com/Fedorrychkov/fedorrychkov/blob/main/articles/standalone-nextjs-production-ready-boilerplate/ARTICLE_RU.md
+
+## This site (public demo)
+
+- Demo app: https://nextjs-super-boilerplate.visn-ai.io
+- Sitemap (replace origin with your deployment): https://nextjs-super-boilerplate.visn-ai.io/sitemap.xml
+
+Canonical path on each deployment: `/llms.txt` (static file in `public/`). Replace the demo origin in the sitemap line with `NEXT_PUBLIC_SITE_URL` when self-hosting.
