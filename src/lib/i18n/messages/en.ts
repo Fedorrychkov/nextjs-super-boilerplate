@@ -114,30 +114,32 @@ export const en = {
     metaTitle: 'Next.js App Router starter — auth, articles, admin, deploy',
     metaDescription:
       'Next.js App Router boilerplate: JWT/OAuth, MongoDB articles with SEO tooling, admin dashboard, UI kit, CI/CD. Clone on GitHub, try the demo, read in-repo docs.',
-    leadSupplement:
-      'This project is a pragmatic starting point for teams who want App Router, typed APIs, and sensible defaults (rate limits, uploads, notifications) without rebuilding fundamentals. Use it for a marketing site, a logged-in product, or a content-driven publication — the same codebase powers this demo.',
-    sectionFeaturesHeading: 'What you get',
+    definitionParagraph1:
+      'Production Ready Next.js Boilerplate is a free, open-source starter for building production-grade web apps with Next.js App Router. It ships authentication (credentials and OAuth), a MongoDB-backed article system with revisions and server-side SEO metadata, an admin area for users and content, notifications, analytics-oriented tooling, and deployment patterns suited to Docker, GitHub Actions, and common hosting. The codebase is MIT-licensed: clone it, adapt the data layer when you fork, and use it for a marketing site, a logged-in product, or a content publication.',
+    definitionParagraph2:
+      'This public demo runs the same stack as the repository—browse articles, try the UI kit and auth flows, and use llms.txt for machine-readable discovery. Business logic lives in services and server actions so routes stay thin; strict TypeScript and shared UI primitives keep the baseline consistent.',
+    sectionFeaturesHeading: 'What does this Next.js boilerplate include?',
     sectionFeaturesIntro: 'The stack is opinionated where it saves time and flexible where your product differs:',
     featureAuth: 'Authentication: credentials, OAuth, sessions, and protected routes.',
     featureArticles: 'Articles: public and private posts, revisions, Markdown editor, and server-side SEO metadata.',
     featureAdmin: 'Admin: users, articles, notifications, analytics, and operational tooling.',
     featureDeploy: 'Deploy: Docker-friendly, GitHub Actions, and environment profiles (local / stage / prod).',
     featureDevEx: 'Developer experience: strict TypeScript, shared UI kit route, and a clear service layout.',
-    sectionStackHeading: 'Stack and scope',
+    sectionStackHeading: 'What tech stack and scope does it use?',
     sectionStackBody:
       'Built on Next.js (App Router), React, and Tailwind CSS; MongoDB and Redis for persistence and queues where needed; optional Uploadcare for media. Business logic lives in services and server actions so routes stay thin. The home page, article listing, auth flows, and UI kit are first-class routes you can extend or replace.',
-    sectionLearnHeading: 'Documentation and repository',
+    sectionLearnHeading: 'Where are documentation and the repository?',
     sectionLearnBody:
       'Start with the README on GitHub for setup and environment variables. Product direction lives in docs such as PRODUCT_ROADMAP and AI_FEATURES_ROADMAP; infrastructure is covered in infra docs. For a longer narrative, use the deep-dive articles:',
     linkReadme: 'README on GitHub',
     linkDocsFolder: 'docs/ in the repository',
     linkArticleEn: 'Deep-dive article (EN)',
     linkArticleRu: 'Deep-dive article (RU)',
-    sectionAgentsHeading: 'For developers and agents',
+    sectionAgentsHeading: 'How does this demo help developers and AI agents?',
     sectionAgentsBody:
       'Public articles support Markdown and negotiated responses for tooling. This site exposes llms.txt with pointers to the repo, documentation, and sitemap so crawlers and assistants can find entry points. Machine-readable summary:',
     linkLlmsTxt: 'llms.txt',
-    sectionAboutHeading: 'Trust and maintenance',
+    sectionAboutHeading: 'Is the project actively maintained?',
     sectionAboutBody:
       'The project is maintained in the open; issues and PRs are welcome on GitHub. When you deploy your own instance, set NEXT_PUBLIC_SITE_URL and related SEO variables so titles, canonical URLs, and structured data match your domain.',
     linkArticlesIndex: 'Browse published articles',
