@@ -1,4 +1,5 @@
 import { ArrowLeftIcon, HomeIcon, PlusIcon, SearchIcon, UserIcon } from 'lucide-react'
+import type { Metadata } from 'next'
 
 import { CopyContainer } from '~/components/Blocks/CopyContainer'
 import { PrettyContainer } from '~/components/Blocks/RenderContainer'
@@ -13,9 +14,33 @@ import { Skeleton, SpinnerScreen } from '~/components/Loaders'
 import { BottomNavigation, HeaderNavigation, SettingsNavigation } from '~/components/Navigation'
 import { AlertBlock, Button, TableCell, TableRow, Typography } from '~/components/ui'
 import { getServerT } from '~/lib/i18n/server'
+import { getAlternateOgLocale, toOgLocale } from '~/lib/seo/articleLanguage'
+import { seoConfig } from '~/lib/seo/config'
 
 import { Sticky } from './Sticky'
 import { TextAreaWithState } from './TextAreaWithState'
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { t, locale } = await getServerT()
+  const title = t('uiKit.title')
+  const description = t('uiKit.description')
+  const base = seoConfig.siteUrl.replace(/\/+$/, '')
+
+  return {
+    title,
+    description,
+    alternates: { canonical: '/ui-kit' },
+    openGraph: {
+      type: 'website',
+      siteName: seoConfig.siteName,
+      url: `${base}/ui-kit`,
+      title,
+      description,
+      locale: toOgLocale(locale),
+      alternateLocale: [getAlternateOgLocale(locale)],
+    },
+  }
+}
 
 const UiKitRoot = async () => {
   const { t } = await getServerT()
