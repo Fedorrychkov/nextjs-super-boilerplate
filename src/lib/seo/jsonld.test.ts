@@ -10,6 +10,12 @@ type OrganizationLeaf = {
   url: string
 }
 
+type PersonLeaf = {
+  '@type': 'Person'
+  name: string
+  url: string
+}
+
 type WebSiteLeaf = {
   '@type': 'WebSite'
   name: string
@@ -59,10 +65,23 @@ test('getArticleJsonLd returns Article shape with required fields and https URLs
   assert.equal(ld.isAccessibleForFree, true)
   assert.equal(ld.inLanguage, seoConfig.defaultLocale)
 
-  assert.equal((ld.author as OrganizationLeaf)['@type'], 'Person')
+  assert.equal((ld.author as PersonLeaf)['@type'], 'Person')
   assert.equal((ld.publisher as OrganizationLeaf)['@type'], 'Organization')
-  assertAbsoluteHttpUrl((ld.author as OrganizationLeaf)?.url as string, 'author.url')
+  assertAbsoluteHttpUrl((ld.author as PersonLeaf)?.url as string, 'author.url')
   assertAbsoluteHttpUrl((ld.publisher as OrganizationLeaf)?.url as string, 'publisher.url')
+})
+
+test('getArticleJsonLd resolves relative image to absolute URL', () => {
+  const ld = getArticleJsonLd({
+    slug: 'x',
+    title: 'T',
+    canonicalUrl: 'https://example.com/article/x',
+    image: '/cdn/foo/thumb',
+  })
+
+  const base = seoConfig.siteUrl.replace(/\/+$/u, '')
+  assert.equal(ld.image, `${base}/cdn/foo/thumb`)
+  assertAbsoluteHttpUrl(String(ld.image), 'image')
 })
 
 test('getArticleJsonLd omits optional keywords when empty', () => {

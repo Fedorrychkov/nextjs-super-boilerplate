@@ -13,11 +13,12 @@ import { ArticleViewTracker } from '~/components/Views/Article/Public/ArticleVie
 import { FALLBACK_THUMBNAIL_IMAGE } from '~/constants'
 import { getCachedPublicArticlePagePayload } from '~/lib/cache/publicArticlePageCache'
 import { getServerT } from '~/lib/i18n/server'
+import { toAbsoluteSiteUrl } from '~/lib/seo/absoluteUrl'
 import { trackAiReferralVisit } from '~/lib/seo/aiReferrals'
 import { getAlternateOgLocale, resolveArticleLanguage, toOgLocale } from '~/lib/seo/articleLanguage'
 import { resolvePublicArticlePageMeta } from '~/lib/seo/articleMeta'
 import { AUTHOR_GITHUB_URL, AUTHOR_NAME } from '~/lib/seo/config'
-import { getArticleJsonLd, JsonLd } from '~/lib/seo/jsonld'
+import { getArticleBreadcrumbJsonLd, getArticleJsonLd, JsonLd } from '~/lib/seo/jsonld'
 import { Logger } from '~/utils/logger'
 
 const logger = new Logger(['ArticlePublicRoot', '[src/app/article/[...slug]/page.tsx]'])
@@ -56,35 +57,49 @@ export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Pr
     seo: seoData,
   })
 
+  /** Align `<title>`, JSON-LD `headline`, and OG/Twitter titles (GEO / rich-result consistency). */
+  const canonicalTitle = meta.title
+  const publishedAt = response.revision.publishedAt ?? response.article.publishedAt
+  const modifiedAt = response.revision.updatedAt ?? response.article.updatedAt
+  const ogImage = toAbsoluteSiteUrl(meta.image)
+
   return {
-    title: meta.title,
+    title: canonicalTitle,
     description: meta.description,
     alternates: {
       canonical: meta.canonical,
     },
     robots: {
       index: seoData?.noindex !== true,
-      follow: seoData?.nofollow !== true,
+      /** Public demo articles: pass link equity to cited resources; use editor only if you truly need nofollow. */
+      follow: true,
       noarchive: false,
       nocache: false,
       noimageindex: false,
     },
     openGraph: {
       type: 'article',
-      title: meta.ogTitle,
+      url: meta.canonical,
+      title: canonicalTitle,
       description: meta.ogDescription,
-      images: meta.image ? [meta.image] : undefined,
+      images: ogImage ? [{ url: ogImage }] : undefined,
       locale: toOgLocale(articleLanguage),
       alternateLocale: [getAlternateOgLocale(articleLanguage)],
+      publishedTime: publishedAt ?? undefined,
+      modifiedTime: modifiedAt ?? undefined,
+      authors: [AUTHOR_GITHUB_URL],
     },
     twitter: {
       card: seoData?.twitterCard || 'summary_large_image',
-      title: meta.ogTitle,
+      title: canonicalTitle,
       description: meta.ogDescription,
-      images: meta.image ? [meta.image] : undefined,
+      images: ogImage ? [ogImage] : undefined,
     },
     other: {
       'article:language': articleLanguage,
+      ...(publishedAt ? { 'article:published_time': publishedAt } : {}),
+      ...(modifiedAt ? { 'article:modified_time': modifiedAt } : {}),
+      'article:author': AUTHOR_GITHUB_URL,
     },
   }
 }
@@ -119,9 +134,11 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
 
   const { t } = await getServerT()
 
+  const canonicalTitle = pageMeta.title
+
   const articleJsonLd = getArticleJsonLd({
     slug: slugResolved,
-    title: response.revision.title ?? response.article.slug ?? 'Article',
+    title: canonicalTitle,
     description: response.revision.description,
     image: response.revision.thumbnailUrl || FALLBACK_THUMBNAIL_IMAGE,
     datePublished: response.revision.publishedAt ?? response.article.publishedAt,
@@ -130,6 +147,13 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
     keywords: seoJson.keywords,
     language: articleLanguage,
     isAccessibleForFree: true,
+  })
+
+  const breadcrumbJsonLd = getArticleBreadcrumbJsonLd({
+    articleName: canonicalTitle,
+    canonicalUrl: pageMeta.canonical,
+    homeLabel: t('navigation.home'),
+    articlesLabel: t('navigation.articles'),
   })
 
   const publishedAt = response.revision.publishedAt ?? response.article.publishedAt
@@ -153,6 +177,7 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
   return (
     <>
       <ArticleViewTracker slug={slugResolved} surface="public" />
+      <JsonLd data={breadcrumbJsonLd} />
       <JsonLd data={articleJsonLd} />
       <p className="mb-2 text-sm text-muted-foreground">
         <span>{t('article.ui.authorBylinePrefix')}</span>{' '}

@@ -66,7 +66,7 @@ const toFormValues = (seo: ArticleRevisionSeoMetadata, article?: ArticleModel | 
     ? [{ value: seo.twitterCard, label: twitterCardOptions.find((o) => o.value === seo.twitterCard)?.label ?? String(seo.twitterCard) }]
     : [{ value: 'summary_large_image', label: twitterCardOptions[0].label }],
   noindex: article?.visibility ? [ArticleVisibility.PRIVATE, ArticleVisibility.LINK_ONLY].includes(article.visibility) : Boolean(seo.noindex),
-  nofollow: true,
+  nofollow: seo.nofollow ?? false,
   keywords: seo.keywords ?? '',
   language: seo.language ? [{ value: seo.language, label: seo.language.toUpperCase() }] : [],
 })
