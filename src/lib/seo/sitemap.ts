@@ -23,12 +23,26 @@ export type PublicSeoArticle = {
   description?: string | null
 }
 
+const baseUrl = seoConfig.siteUrl.replace(/\/+$/, '')
+
 export const getStaticRoutes = (): MetadataRoute.Sitemap => [
   {
-    url: seoConfig.siteUrl,
+    url: baseUrl,
     lastModified: new Date(),
-    changeFrequency: 'daily',
+    changeFrequency: 'weekly',
     priority: 1,
+  },
+  {
+    url: `${baseUrl}/articles`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly',
+    priority: 0.9,
+  },
+  {
+    url: `${baseUrl}/ui-kit`,
+    lastModified: new Date(),
+    changeFrequency: 'monthly',
+    priority: 0.6,
   },
 ]
 
@@ -36,7 +50,7 @@ export const mapArticlesToSitemap = (articles: ArticleLike[]): MetadataRoute.Sit
   articles.map((article) => ({
     url: buildDefaultArticleUrl(seoConfig.siteUrl, article.slug, ArticleVisibility.PUBLIC),
     lastModified: article.updatedAt ? new Date(article.updatedAt) : new Date(),
-    changeFrequency: 'daily',
+    changeFrequency: 'weekly',
     priority: 0.8,
   }))
 

@@ -8,8 +8,9 @@ import { PreviewUniversalLayout } from '~/components/Layouts/PreviewUniversalLay
 import { Typography } from '~/components/ui/Typography'
 import { ArticleItem } from '~/components/Views/Article/Block/server/ArticleItem'
 import { getServerT } from '~/lib/i18n/server'
+import { getAlternateOgLocale, toOgLocale } from '~/lib/seo/articleLanguage'
 import { BOILERPLATE_DEMO_URL, BOILERPLATE_GITHUB_REPO_URL, seoConfig } from '~/lib/seo/config'
-import { getOrganizationJsonLd, getSoftwareApplicationJsonLd, getWebSiteJsonLd, JsonLd } from '~/lib/seo/jsonld'
+import { getFaqPageJsonLd, getOrganizationJsonLd, getPersonJsonLd, getSoftwareApplicationJsonLd, getWebSiteJsonLd, JsonLd } from '~/lib/seo/jsonld'
 
 const METADATA_FALLBACK_IMAGE = '/images/web-app-manifest-192x192.png'
 
@@ -20,9 +21,10 @@ const ARTICLE_RU_URL = 'https://github.com/Fedorrychkov/fedorrychkov/blob/main/a
 export const dynamic = 'force-dynamic'
 
 export async function generateMetadata(): Promise<Metadata> {
-  const { t } = await getServerT()
+  const { t, locale } = await getServerT()
   const title = t('home.metaTitle')
   const description = t('home.metaDescription')
+  const ogLocale = toOgLocale(locale)
 
   return {
     title,
@@ -34,6 +36,8 @@ export async function generateMetadata(): Promise<Metadata> {
       title,
       description,
       images: [{ url: METADATA_FALLBACK_IMAGE }],
+      locale: ogLocale,
+      alternateLocale: [getAlternateOgLocale(locale)],
     },
     twitter: {
       card: 'summary_large_image',
@@ -51,8 +55,16 @@ export default async function Home() {
   const { t } = await getServerT()
 
   const organizationJsonLd = getOrganizationJsonLd()
+  const personJsonLd = getPersonJsonLd()
   const webSiteJsonLd = getWebSiteJsonLd()
   const softwareJsonLd = getSoftwareApplicationJsonLd(t('home.metaDescription'))
+  const faqJsonLd = getFaqPageJsonLd([
+    { question: t('home.faq1Question'), answer: t('home.faq1Answer') },
+    { question: t('home.faq2Question'), answer: t('home.faq2Answer') },
+    { question: t('home.faq3Question'), answer: t('home.faq3Answer') },
+    { question: t('home.faq4Question'), answer: t('home.faq4Answer') },
+    { question: t('home.faq5Question'), answer: t('home.faq5Answer') },
+  ])
 
   const articles = await getServerForPublicArticlesPaginated({ limit: 4, offset: 0 })
 
@@ -62,8 +74,10 @@ export default async function Home() {
   return (
     <>
       <JsonLd data={organizationJsonLd} />
+      <JsonLd data={personJsonLd} />
       <JsonLd data={webSiteJsonLd} />
       <JsonLd data={softwareJsonLd} />
+      <JsonLd data={faqJsonLd} />
       <PreviewUniversalLayout
         content={
           <div className="flex flex-col gap-4 my-10 container max-w-3xl px-4">
@@ -191,6 +205,34 @@ export default async function Home() {
                 {t('home.linkLlmsTxt')}
               </Link>
             </p>
+          </section>
+
+          <section aria-labelledby="home-faq">
+            <h2 id="home-faq" className="text-xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
+              {t('home.faqHeading')}
+            </h2>
+            <dl className="mt-4 space-y-6 max-w-prose">
+              <div>
+                <dt className="text-base font-medium text-zinc-950 dark:text-zinc-50">{t('home.faq1Question')}</dt>
+                <dd className="mt-2 text-base leading-7 text-zinc-600 dark:text-zinc-400">{t('home.faq1Answer')}</dd>
+              </div>
+              <div>
+                <dt className="text-base font-medium text-zinc-950 dark:text-zinc-50">{t('home.faq2Question')}</dt>
+                <dd className="mt-2 text-base leading-7 text-zinc-600 dark:text-zinc-400">{t('home.faq2Answer')}</dd>
+              </div>
+              <div>
+                <dt className="text-base font-medium text-zinc-950 dark:text-zinc-50">{t('home.faq3Question')}</dt>
+                <dd className="mt-2 text-base leading-7 text-zinc-600 dark:text-zinc-400">{t('home.faq3Answer')}</dd>
+              </div>
+              <div>
+                <dt className="text-base font-medium text-zinc-950 dark:text-zinc-50">{t('home.faq4Question')}</dt>
+                <dd className="mt-2 text-base leading-7 text-zinc-600 dark:text-zinc-400">{t('home.faq4Answer')}</dd>
+              </div>
+              <div>
+                <dt className="text-base font-medium text-zinc-950 dark:text-zinc-50">{t('home.faq5Question')}</dt>
+                <dd className="mt-2 text-base leading-7 text-zinc-600 dark:text-zinc-400">{t('home.faq5Answer')}</dd>
+              </div>
+            </dl>
           </section>
 
           <section aria-labelledby="home-trust">

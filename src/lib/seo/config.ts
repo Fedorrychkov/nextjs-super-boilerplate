@@ -10,6 +10,10 @@ export const BOILERPLATE_GITHUB_REPO_URL = 'https://github.com/Fedorrychkov/next
 /** Public demo instance (see README); use for marketing links — set your own when forking. */
 export const BOILERPLATE_DEMO_URL = 'https://nextjs-super-boilerplate.visn-ai.io' as const
 
+/** Single author for public articles / JSON-LD (demo site). */
+export const AUTHOR_NAME = 'Fedor Rychkov' as const
+export const AUTHOR_GITHUB_URL = 'https://github.com/Fedorrychkov' as const
+
 export const seoConfig = {
   siteName: 'Production Ready Next.js Boilerplate',
   siteUrl: FALLBACK_SITE_URL,

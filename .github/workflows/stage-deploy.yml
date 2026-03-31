@@ -9,38 +9,68 @@ permissions: write-all
 concurrency:
   group: stage-deploy
   cancel-in-progress: true
-
 jobs:
-  call-reusable:
-    uses: ./.github/workflows/reusable-deploy-config.yml
-    with:
-      domain: app.example.com
-      api_env: stage
-      env_file: .env.stage
-      nginx_mode: https
-      certbot_test_mode: false
-      migrations_run: false
-      blue_green_enabled: false
-      deploy_mode: 'registry'
-      node_version: 24
-      registry_subname: 'registry.example'
-      notigy_enabled: true
-      tag: 'tag.example'
-      redis_enabled: true
-      metrics_enabled: false
-      mongo_enabled: true
-      certbot_email: example@example.com
+  ci-cd:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ⬇️ Checkout repo
+        uses: actions/checkout@v2
 
-    secrets:
-      server_host: ${{ secrets.STAGE_WEB_HOST }}
-      server_username: ${{ secrets.STAGE_WEB_USERNAME }}
-      server_password: ${{ secrets.STAGE_WEB_PASSWORD }}
-      env: ${{ secrets.WEB_ENV_STAGE }}
-      ghcr_username: ${{ secrets.GHCR_USERNAME }}
-      ghcr_token: ${{ secrets.GHCR_TOKEN }}
-      tg_token: ${{ secrets.TG_TOKEN }}
-      tg_chat_id: ${{ secrets.TG_CHAT_ID }}
-      tg_thread_id: ${{ secrets.TG_THREAD_ID }}
-      grafana_admin_user: ${{ secrets.GRAFANA_ADMIN_USER }}
-      grafana_admin_password: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
-      certbot_email: ${{ secrets.CERTBOT_EMAIL || 'example@example.com' }}
+      - name: ⎔ Setup node
+        uses: actions/setup-node@v2
+        with:
+          node-version: 24
+
+      - name: 📥 Install dependencies
+        run: |
+          npm install --legacy-peer-deps
+
+      - name: 🧪 Unit tests (sanitize)
+        run: npm run test
+
+# name: Stage Deploy
+# on:
+#   push:
+#     branches:
+#       - develop
+
+# permissions: write-all
+
+# concurrency:
+#   group: stage-deploy
+#   cancel-in-progress: true
+
+# jobs:
+#   call-reusable:
+#     uses: ./.github/workflows/reusable-deploy-config.yml
+#     with:
+#       domain: app.example.com
+#       api_env: stage
+#       env_file: .env.stage
+#       nginx_mode: https
+#       certbot_test_mode: false
+#       migrations_run: false
+#       blue_green_enabled: false
+#       deploy_mode: 'registry'
+#       node_version: 24
+#       registry_subname: 'registry.example'
+#       notigy_enabled: true
+#       tag: 'tag.example'
+#       redis_enabled: true
+#       metrics_enabled: false
+#       mongo_enabled: true
+#       certbot_email: example@example.com
+
+#     secrets:
+#       server_host: ${{ secrets.STAGE_WEB_HOST }}
+#       server_username: ${{ secrets.STAGE_WEB_USERNAME }}
+#       server_password: ${{ secrets.STAGE_WEB_PASSWORD }}
+#       env: ${{ secrets.WEB_ENV_STAGE }}
+#       ghcr_username: ${{ secrets.GHCR_USERNAME }}
+#       ghcr_token: ${{ secrets.GHCR_TOKEN }}
+#       tg_token: ${{ secrets.TG_TOKEN }}
+#       tg_chat_id: ${{ secrets.TG_CHAT_ID }}
+#       tg_thread_id: ${{ secrets.TG_THREAD_ID }}
+#       grafana_admin_user: ${{ secrets.GRAFANA_ADMIN_USER }}
+#       grafana_admin_password: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+#       certbot_email: ${{ secrets.CERTBOT_EMAIL || 'example@example.com' }}

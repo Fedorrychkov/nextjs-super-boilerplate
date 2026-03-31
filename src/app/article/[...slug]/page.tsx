@@ -12,9 +12,11 @@ import { ArticlePublicListenAudio } from '~/components/Views/Article/Public/Arti
 import { ArticleViewTracker } from '~/components/Views/Article/Public/ArticleViewTracker'
 import { FALLBACK_THUMBNAIL_IMAGE } from '~/constants'
 import { getCachedPublicArticlePagePayload } from '~/lib/cache/publicArticlePageCache'
+import { getServerT } from '~/lib/i18n/server'
 import { trackAiReferralVisit } from '~/lib/seo/aiReferrals'
-import { resolveArticleLanguage } from '~/lib/seo/articleLanguage'
+import { getAlternateOgLocale, resolveArticleLanguage, toOgLocale } from '~/lib/seo/articleLanguage'
 import { resolvePublicArticlePageMeta } from '~/lib/seo/articleMeta'
+import { AUTHOR_GITHUB_URL, AUTHOR_NAME } from '~/lib/seo/config'
 import { getArticleJsonLd, JsonLd } from '~/lib/seo/jsonld'
 import { Logger } from '~/utils/logger'
 
@@ -72,7 +74,8 @@ export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Pr
       title: meta.ogTitle,
       description: meta.ogDescription,
       images: meta.image ? [meta.image] : undefined,
-      locale: articleLanguage,
+      locale: toOgLocale(articleLanguage),
+      alternateLocale: [getAlternateOgLocale(articleLanguage)],
     },
     twitter: {
       card: seoData?.twitterCard || 'summary_large_image',
@@ -114,6 +117,8 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
     seo: seoJson,
   })
 
+  const { t } = await getServerT()
+
   const articleJsonLd = getArticleJsonLd({
     slug: slugResolved,
     title: response.revision.title ?? response.article.slug ?? 'Article',
@@ -149,6 +154,12 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
     <>
       <ArticleViewTracker slug={slugResolved} surface="public" />
       <JsonLd data={articleJsonLd} />
+      <p className="mb-2 text-sm text-muted-foreground">
+        <span>{t('article.ui.authorBylinePrefix')}</span>{' '}
+        <a href={AUTHOR_GITHUB_URL} rel="author noopener noreferrer" className="font-medium text-foreground underline underline-offset-2 hover:no-underline">
+          {AUTHOR_NAME}
+        </a>
+      </p>
       <ArticlePublishedDate publishedAt={publishedAt} className="mb-4 text-muted-foreground" />
       <ArticlePublicListenAudio assetId={response.article.listenAudioAssetId} />
       <div className="max-w-full tiptap readonly" lang={articleLanguage} dangerouslySetInnerHTML={{ __html: bodyHtml }} />

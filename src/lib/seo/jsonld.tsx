@@ -1,9 +1,9 @@
 /* eslint-disable react-refresh/only-export-components */
-import type { Article, Organization, SoftwareApplication, WebSite, WithContext } from 'schema-dts'
+import type { Article, FAQPage, Organization, Person, SoftwareApplication, WebSite, WithContext } from 'schema-dts'
 
 import { jsonStringifySafety } from '~/utils/jsonSafe'
 
-import { BOILERPLATE_GITHUB_REPO_URL, seoConfig } from './config'
+import { AUTHOR_GITHUB_URL, AUTHOR_NAME, BOILERPLATE_GITHUB_REPO_URL, seoConfig } from './config'
 
 export const getOrganizationJsonLd = (): WithContext<Organization> => ({
   '@context': 'https://schema.org',
@@ -22,6 +22,14 @@ export const getWebSiteJsonLd = (): WithContext<WebSite> => ({
 })
 
 /** Open-source boilerplate as a software product (homepage rich result / entity hints). */
+export const getPersonJsonLd = (): WithContext<Person> => ({
+  '@context': 'https://schema.org',
+  '@type': 'Person',
+  name: AUTHOR_NAME,
+  url: AUTHOR_GITHUB_URL,
+  ...(seoConfig.organizationSameAs.length ? { sameAs: seoConfig.organizationSameAs } : {}),
+})
+
 export const getSoftwareApplicationJsonLd = (description: string): WithContext<SoftwareApplication> => ({
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
@@ -63,9 +71,9 @@ export const getArticleJsonLd = (props: {
   ...(props.keywords?.trim() ? { keywords: props.keywords.trim() } : {}),
   ...(props.isAccessibleForFree !== undefined ? { isAccessibleForFree: props.isAccessibleForFree } : {}),
   author: {
-    '@type': 'Organization',
-    name: seoConfig.siteName,
-    url: seoConfig.siteUrl,
+    '@type': 'Person',
+    name: AUTHOR_NAME,
+    url: AUTHOR_GITHUB_URL,
   },
   publisher: {
     '@type': 'Organization',
@@ -74,6 +82,19 @@ export const getArticleJsonLd = (props: {
     ...(seoConfig.organizationSameAs.length ? { sameAs: seoConfig.organizationSameAs } : {}),
   },
   inLanguage: props.language?.trim() || seoConfig.defaultLocale,
+})
+
+export const getFaqPageJsonLd = (items: { question: string; answer: string }[]): WithContext<FAQPage> => ({
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: items.map((item) => ({
+    '@type': 'Question',
+    name: item.question,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: item.answer,
+    },
+  })),
 })
 
 export const JsonLd = ({ data }: { data: unknown }) => (

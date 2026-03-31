@@ -142,6 +142,19 @@ export const en = {
       'The project is maintained in the open; issues and PRs are welcome on GitHub. When you deploy your own instance, set NEXT_PUBLIC_SITE_URL and related SEO variables so titles, canonical URLs, and structured data match your domain.',
     linkArticlesIndex: 'Browse published articles',
     linkLiveDemo: 'Live demo (reference deploy)',
+    faqHeading: 'FAQ',
+    faq1Question: 'Is this boilerplate free for commercial use?',
+    faq1Answer: 'Yes. It is MIT-licensed — you can use it in private and commercial projects, modify it, and redistribute it under the same license.',
+    faq2Question: 'What authentication options are included?',
+    faq2Answer:
+      'Credential-based auth, OAuth integrations, sessions, and protected routes are part of the stack; see the README for environment variables and provider wiring.',
+    faq3Question: 'Can I deploy to Vercel, Docker, or a VPS?',
+    faq3Answer: 'Yes. The repo includes Docker-oriented docs and CI patterns; deploy anywhere Node.js runs — Vercel, a VPS, or containers.',
+    faq4Question: 'Does it require MongoDB?',
+    faq4Answer: 'The demo uses MongoDB for users and articles. If you fork, you can replace the data layer — services are structured to keep routes thin.',
+    faq5Question: 'How is this different from create-next-app?',
+    faq5Answer:
+      'create-next-app gives a minimal scaffold. This project adds auth, article CMS with revisions and SEO tooling, admin surfaces, notifications, and production-oriented defaults.',
   },
   cookie: {
     cookieConsentBannerText:
@@ -378,6 +391,8 @@ export const en = {
       noRevisions: 'No revisions',
       totalRevisions: 'Total revisions',
       articles: 'Articles',
+      authorBylinePrefix: 'By',
+      publicArticlesIndexDescription: 'Published Markdown articles from this demo: public URLs, server-rendered HTML, and SEO metadata from the editor.',
       clearFilters: 'Clear filters',
       loading: 'Loading…',
       loadMore: 'Load more',

@@ -12,6 +12,10 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ['/api/', '/logout', '/login', '/refresh', '/profile', '/admin/', '/private-article/', '/preview/'],
       },
       {
+        userAgent: 'YandexBot',
+        allow: '/',
+      },
+      {
         userAgent: 'GPTBot',
         allow: '/',
       },
