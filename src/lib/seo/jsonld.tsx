@@ -1,8 +1,9 @@
 /* eslint-disable react-refresh/only-export-components */
-import type { Article, FAQPage, Organization, Person, SoftwareApplication, WebSite, WithContext } from 'schema-dts'
+import type { Article, BreadcrumbList, FAQPage, Organization, Person, SoftwareApplication, WebSite, WithContext } from 'schema-dts'
 
 import { jsonStringifySafety } from '~/utils/jsonSafe'
 
+import { toAbsoluteSiteUrl } from './absoluteUrl'
 import { AUTHOR_GITHUB_URL, AUTHOR_NAME, BOILERPLATE_GITHUB_REPO_URL, seoConfig } from './config'
 
 export const getOrganizationJsonLd = (): WithContext<Organization> => ({
@@ -65,7 +66,7 @@ export const getArticleJsonLd = (props: {
   mainEntityOfPage: props.canonicalUrl,
   headline: props.title,
   description: props.description ?? undefined,
-  image: props.image ?? undefined,
+  image: toAbsoluteSiteUrl(props.image ?? undefined),
   datePublished: props.datePublished ?? undefined,
   dateModified: props.dateModified ?? undefined,
   ...(props.keywords?.trim() ? { keywords: props.keywords.trim() } : {}),
@@ -83,6 +84,26 @@ export const getArticleJsonLd = (props: {
   },
   inLanguage: props.language?.trim() || seoConfig.defaultLocale,
 })
+
+export const getArticleBreadcrumbJsonLd = (params: {
+  /** Same as `<title>` / `headline` — short label for last crumb */
+  articleName: string
+  canonicalUrl: string
+  homeLabel?: string
+  articlesLabel?: string
+}): WithContext<BreadcrumbList> => {
+  const base = seoConfig.siteUrl.replace(/\/+$/, '')
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: params.homeLabel ?? 'Home', item: `${base}/` },
+      { '@type': 'ListItem', position: 2, name: params.articlesLabel ?? 'Articles', item: `${base}/articles` },
+      { '@type': 'ListItem', position: 3, name: params.articleName, item: params.canonicalUrl },
+    ],
+  }
+}
 
 export const getFaqPageJsonLd = (items: { question: string; answer: string }[]): WithContext<FAQPage> => ({
   '@context': 'https://schema.org',
