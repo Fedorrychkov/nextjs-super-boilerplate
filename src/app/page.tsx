@@ -7,12 +7,11 @@ import Link from 'next/link'
 import { PreviewUniversalLayout } from '~/components/Layouts/PreviewUniversalLayout'
 import { Typography } from '~/components/ui/Typography'
 import { ArticleItem } from '~/components/Views/Article/Block/server/ArticleItem'
+import { FALLBACK_THUMBNAIL_IMAGE } from '~/constants'
 import { getServerT } from '~/lib/i18n/server'
 import { getAlternateOgLocale, toOgLocale } from '~/lib/seo/articleLanguage'
 import { BOILERPLATE_DEMO_URL, BOILERPLATE_GITHUB_REPO_URL, seoConfig } from '~/lib/seo/config'
 import { getFaqPageJsonLd, getOrganizationJsonLd, getPersonJsonLd, getSoftwareApplicationJsonLd, getWebSiteJsonLd, JsonLd } from '~/lib/seo/jsonld'
-
-const METADATA_FALLBACK_IMAGE = '/images/web-app-manifest-192x192.png'
 
 const ARTICLE_EN_URL = 'https://github.com/Fedorrychkov/fedorrychkov/blob/main/articles/standalone-nextjs-production-ready-boilerplate/ARTICLE_EN.md'
 const ARTICLE_RU_URL = 'https://github.com/Fedorrychkov/fedorrychkov/blob/main/articles/standalone-nextjs-production-ready-boilerplate/ARTICLE_RU.md'
@@ -35,7 +34,7 @@ export async function generateMetadata(): Promise<Metadata> {
       url: seoConfig.siteUrl,
       title,
       description,
-      images: [{ url: METADATA_FALLBACK_IMAGE }],
+      images: [{ url: FALLBACK_THUMBNAIL_IMAGE }],
       locale: ogLocale,
       alternateLocale: [getAlternateOgLocale(locale)],
     },
@@ -43,7 +42,7 @@ export async function generateMetadata(): Promise<Metadata> {
       card: 'summary_large_image',
       title,
       description,
-      images: [METADATA_FALLBACK_IMAGE],
+      images: [FALLBACK_THUMBNAIL_IMAGE],
     },
     alternates: {
       canonical: '/',
@@ -102,6 +101,10 @@ export default async function Home() {
           <h1 className="max-w-xl text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
             {t('home.minimalProductionReadyNextjsBoilerplate')}
           </h1>
+          <div className="max-w-prose space-y-4 text-base leading-7 text-zinc-600 dark:text-zinc-400">
+            <p>{t('home.definitionParagraph1')}</p>
+            <p>{t('home.definitionParagraph2')}</p>
+          </div>
           <p className="max-w-prose text-lg leading-8 text-zinc-600 dark:text-zinc-400">
             {t('home.lookingForAStartingPointOrMoreInstructionsHeadOverTo')}{' '}
             <a href={BOILERPLATE_GITHUB_REPO_URL} className="font-medium text-zinc-950 dark:text-zinc-50">
@@ -112,7 +115,6 @@ export default async function Home() {
               {t('home.aboutBoilerplate')}
             </a>{' '}
           </p>
-          <p className="max-w-prose text-base leading-7 text-zinc-600 dark:text-zinc-400">{t('home.leadSupplement')}</p>
         </div>
         <div className="mt-14 flex flex-col gap-4 text-base font-medium sm:flex-row">
           <Link

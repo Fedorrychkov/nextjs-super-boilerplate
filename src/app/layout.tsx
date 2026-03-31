@@ -4,6 +4,7 @@ import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { cookies, headers } from 'next/headers'
 
+import { FALLBACK_THUMBNAIL_IMAGE } from '~/constants'
 import { detectLocaleFromNextCookiesAndHeaders } from '~/lib/i18n/detectLocale'
 import { seoConfig } from '~/lib/seo/config'
 import { QueryProvider } from '~/providers'
@@ -27,8 +28,6 @@ const geistMono = Geist_Mono({
   display: 'swap',
   adjustFontFallback: true,
 })
-
-const METADATA_FALLBACK_IMAGE = '/images/web-app-manifest-192x192.png'
 
 export const metadata: Metadata = {
   metadataBase: new URL(seoConfig.siteUrl),
@@ -62,13 +61,13 @@ export const metadata: Metadata = {
     url: seoConfig.siteUrl,
     title: seoConfig.defaultTitle,
     description: seoConfig.defaultDescription,
-    images: [METADATA_FALLBACK_IMAGE],
+    images: [{ url: FALLBACK_THUMBNAIL_IMAGE }],
   },
   twitter: {
     card: 'summary_large_image',
     title: seoConfig.defaultTitle,
     description: seoConfig.defaultDescription,
-    images: [METADATA_FALLBACK_IMAGE],
+    images: [FALLBACK_THUMBNAIL_IMAGE],
   },
 }
 
