@@ -1,16 +1,69 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+
 import { Button } from '~/components/ui/button'
 import { Typography } from '~/components/ui/Typography/Typography'
 
 import { useT } from '../i18n'
 import { useCookieConsent } from './useCookieConsent'
 
+/** Не перекрывать первый экран/LCP: показ после первого жеста или по таймеру. */
+const BANNER_FALLBACK_DELAY_MS = 10_000
+
+const INTERACTION_EVENTS = ['scroll', 'click', 'keydown', 'touchstart', 'pointerdown'] as const
+
+function useDeferredBannerVisibility(showBanner: boolean) {
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    if (!showBanner) {
+      queueMicrotask(() => {
+        setVisible(false)
+      })
+
+      return
+    }
+
+    let cancelled = false
+
+    const removeListeners = (handler: () => void) => {
+      for (const type of INTERACTION_EVENTS) {
+        window.removeEventListener(type, handler, { capture: true })
+      }
+    }
+
+    const reveal = (handler: () => void) => {
+      if (cancelled) return
+      setVisible(true)
+      window.clearTimeout(timer)
+      removeListeners(handler)
+    }
+
+    const onInteract = () => reveal(onInteract)
+
+    const timer = window.setTimeout(() => reveal(onInteract), BANNER_FALLBACK_DELAY_MS)
+
+    for (const type of INTERACTION_EVENTS) {
+      window.addEventListener(type, onInteract, { capture: true, passive: true })
+    }
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+      removeListeners(onInteract)
+    }
+  }, [showBanner])
+
+  return visible
+}
+
 export function CookieConsentBanner() {
   const t = useT()
   const { showBanner, grantAnalytics, denyAnalytics } = useCookieConsent()
+  const gateOpen = useDeferredBannerVisibility(showBanner)
 
-  if (!showBanner) {
+  if (!showBanner || !gateOpen) {
     return null
   }
 

@@ -1,11 +1,27 @@
 # Production Ready Next App Boilerplate
 
-Minimal Next.js template with deploy (GitHub Actions), optional Docker stack (nginx, certbot, Redis, MongoDB, metrics), and auth + UI kit example.
+Next.js 16 (App Router) app with production deploy (GitHub Actions), optional Docker stack (nginx, certbot, Redis, MongoDB, metrics), JWT auth, article CMS (editor, preview, publish), public SEO (metadata, JSON-LD, sitemap, RSS), optional LLM-assisted authoring (server-side keys), and admin UI.
 
 **Detailed article:** [RU](https://github.com/Fedorrychkov/fedorrychkov/blob/main/articles/standalone-nextjs-production-ready-boilerplate/ARTICLE_RU.md) · [EN](https://github.com/Fedorrychkov/fedorrychkov/blob/main/articles/standalone-nextjs-production-ready-boilerplate/ARTICLE_EN.md)
 
+## What's included
+
+- **Runtime:** Node.js **≥ 22** (see `package.json` `engines`), Next.js **16**, lockfile: `pnpm-lock.yaml`.
+- **Data & ops:** MongoDB; deploy via GitHub Actions (stage/prod) with nginx, optional HTTPS (Let’s Encrypt), Redis, metrics (Prometheus, Grafana, Loki, etc.).
+- **Product:** Auth + roles, multi-step article editor, preview/publish, public article pages, RSS and sitemap, admin article views; optional OpenAI-backed chat/audit in the editor when `NEXT_PUBLIC_LLM_ENABLED=true` (see [`docs/AI_FEATURES_ROADMAP.md`](./docs/AI_FEATURES_ROADMAP.md)).
+- **SEO & agents:** Route metadata, JSON-LD, `public/llms.txt`, Markdown negotiation for public articles (`Accept: text/markdown`; see AI roadmap).
+- **All docs in one place:** **[`docs/README.md`](./docs/README.md)** (roadmaps, FAQ, GEO).
+
+## Scope
+
+- **Good fit** if you want a **self-hosted** full-stack + content stack with CI/CD and Docker, not a hosted page builder.
+- **Not included:** Stripe/billing, multi-tenant SaaS monetization, or a drop-in alternative to opinionated kits (e.g. T3, ShipFast) — wire payments or swap pieces as needed. Security and UGC hardening are phased; see **[`docs/PRODUCT_ROADMAP.md`](./docs/PRODUCT_ROADMAP.md)** rather than assuming a completed third-party audit.
+
 ## Table of contents
 
+- [What's included](#whats-included)
+- [Scope](#scope)
+- [Documentation index](./docs/README.md)
 - [Demo](#demo)
 - [Local run](#local-run)
 - [Development](#development)
@@ -39,6 +55,7 @@ To use an external MongoDB instead of local, set `MONGO_URI` in `.env.local` and
 
 - **Lint:** `pnpm run lint` / `pnpm run lint:fix`
 - **Typecheck:** `pnpm run typecheck`
+- **Tests:** `pnpm run test`
 - **Format:** `pnpm run format`
 
 ### Connecting to MongoDB from your dev machine
@@ -374,7 +391,7 @@ For step-by-step instructions (Mongo reset, clean script, certbot email), see [d
 
 ## Roadmaps
 
-Product, AI, and infrastructure planning documents live in **[`docs/`](./docs/)**.
+Product, AI, and infrastructure planning documents live in **[`docs/`](./docs/)**. Full index: **[`docs/README.md`](./docs/README.md)**.
 
 ### Product roadmap
 
@@ -383,6 +400,10 @@ Product, AI, and infrastructure planning documents live in **[`docs/`](./docs/)*
 ### AI features roadmap
 
 [**`docs/AI_FEATURES_ROADMAP.md`**](./docs/AI_FEATURES_ROADMAP.md) — LLM chat, structured SEO/preview/content, image generation, listen-audio (TTS), usage dashboards, and public agent-facing delivery (`Content-Signal`, `Accept: text/markdown`).
+
+### GEO & discoverability
+
+[**`docs/IMPROVEMENTS_ROADMAP.md`**](./docs/IMPROVEMENTS_ROADMAP.md) — homepage copy, `llms.txt`, JSON-LD/social signals, performance notes (non-feature SEO/GEO backlog).
 
 ### Infrastructure deployment
 
@@ -415,7 +436,7 @@ Links:
 
 [TimeWeb Host Status](https://timeweb.cloud/live)
 
-[Digital Oucean Status](https://status.digitalocean.com/)
+[DigitalOcean Status](https://status.digitalocean.com/)
 
 [Github Status](https://www.githubstatus.com/)
 
