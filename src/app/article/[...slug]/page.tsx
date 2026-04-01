@@ -2,7 +2,6 @@ import '../../../components/Blocks/Editor/styles/editor.styles.scss'
 
 import { PageProps } from '@lib/page'
 import type { Metadata } from 'next'
-import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 
 import { ArticleVisibility } from '~/api/article'
@@ -14,7 +13,6 @@ import { FALLBACK_THUMBNAIL_IMAGE } from '~/constants'
 import { getCachedPublicArticlePagePayload } from '~/lib/cache/publicArticlePageCache'
 import { getServerT } from '~/lib/i18n/server'
 import { toAbsoluteSiteUrl } from '~/lib/seo/absoluteUrl'
-import { trackAiReferralVisit } from '~/lib/seo/aiReferrals'
 import { getAlternateOgLocale, resolveArticleLanguage, toOgLocale } from '~/lib/seo/articleLanguage'
 import { resolvePublicArticlePageMeta } from '~/lib/seo/articleMeta'
 import { AUTHOR_GITHUB_URL, AUTHOR_NAME } from '~/lib/seo/config'
@@ -157,22 +155,6 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
   })
 
   const publishedAt = response.revision.publishedAt ?? response.article.publishedAt
-  const requestHeaders = await headers()
-  const referrer = requestHeaders.get('referer')
-  const userAgent = requestHeaders.get('user-agent')
-
-  try {
-    await trackAiReferralVisit({
-      pathname: `/article/${slugResolved}`,
-      referrer,
-      userAgent,
-    })
-  } catch (error) {
-    logger.warn('Failed to persist AI referral', {
-      slug: slugResolved,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    })
-  }
 
   return (
     <>

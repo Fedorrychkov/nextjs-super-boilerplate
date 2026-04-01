@@ -10,8 +10,20 @@ import { time } from '~/utils/time'
 
 import { jsonStringifySafety } from './utils/jsonSafe'
 
+/** Для root layout / SEO (utm, AI referral): pathname и query недоступны из `headers()` без проброса. */
+function buildForwardedRequestHeaders(request: NextRequest): Headers {
+  const h = new Headers(request.headers)
+
+  h.set('x-pathname', request.nextUrl.pathname)
+  h.set('x-search', request.nextUrl.search)
+
+  return h
+}
+
 export async function proxy(request: NextRequest) {
   const logger = new Logger(['proxy', '[src/proxy.ts]'])
+
+  const forwardedHeaders = buildForwardedRequestHeaders(request)
 
   const clientIP = request.headers.get('x-client-ip')
   const processedBy = request.headers.get('x-processed-by')
@@ -57,7 +69,7 @@ export async function proxy(request: NextRequest) {
     rewriteUrl.pathname = '/api/v1/public/article/markdown'
     rewriteUrl.search = `?slug=${encodeURIComponent(publicArticleSlug)}`
 
-    const rewriteHeaders = new Headers(request.headers)
+    const rewriteHeaders = new Headers(forwardedHeaders)
 
     rewriteHeaders.set(ARTICLE_MARKDOWN_REWRITE_SLUG_HEADER, publicArticleSlug)
 
@@ -80,7 +92,9 @@ export async function proxy(request: NextRequest) {
     timestamp: time().toISOString(),
   }
 
-  const response = NextResponse.next()
+  const response = NextResponse.next({
+    request: { headers: forwardedHeaders },
+  })
 
   // Set Authorization header from httpOnly cookies
   // Next.js middleware can read httpOnly cookies, unlike client-side JavaScript
