@@ -25,28 +25,105 @@ export const detectAiReferralSource = (referrer: string): AiReferralSource | nul
   return matchedRule?.source ?? null
 }
 
-export const trackAiReferralVisit = async (params: { pathname: string; referrer: string | null; userAgent?: string | null }): Promise<void> => {
-  const referrer = params.referrer?.trim()
-
-  if (!referrer) {
-    return
+/** Extract `utm_source` from a full URL or return null. */
+export function extractUtmSourceFromPageUrl(pageUrl: string | null | undefined): string | null {
+  if (!pageUrl?.trim()) {
+    return null
   }
 
-  const source = detectAiReferralSource(referrer)
+  try {
+    const u = new URL(pageUrl)
+
+    return u.searchParams.get('utm_source')?.trim() || null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Map marketing `utm_source` values (ChatGPT, Perplexity UTM experiments, etc.) to dashboard buckets.
+ * Returns null if the value does not look AI-related — we do not record generic campaigns.
+ */
+export function detectAiReferralSourceFromUtm(utmSource: string | null | undefined): AiReferralSource | null {
+  if (!utmSource?.trim()) {
+    return null
+  }
+
+  const s = utmSource.trim().toLowerCase()
+
+  if (s.includes('chatgpt') || s.includes('chatgpt.com')) {
+    return 'chatgpt'
+  }
+
+  if (s.includes('openai') || s === 'gpt' || /^gpt[-_]/i.test(s)) {
+    return 'chatgpt'
+  }
+
+  if (s.includes('perplexity')) {
+    return 'perplexity'
+  }
+
+  if (s.includes('copilot') || s.includes('bing')) {
+    return 'copilot'
+  }
+
+  if (s.includes('gemini') || s === 'bard' || s.includes('google_ai')) {
+    return 'gemini'
+  }
+
+  if (s.includes('claude') || s.includes('anthropic')) {
+    return 'claude'
+  }
+
+  return null
+}
+
+export type TrackAiReferralVisitParams = {
+  pathname: string
+  referrer: string | null
+  userAgent?: string | null
+  /** Full URL of the page (includes query); used to read `utm_source`. */
+  pageUrl?: string | null
+}
+
+/**
+ * Prefer UTM when it maps to an AI source; otherwise use HTTP Referer.
+ * Persists `referrer` as the full `pageUrl` when attribution is UTM, else the real Referer URL.
+ */
+export const trackAiReferralVisit = async (params: TrackAiReferralVisitParams): Promise<void> => {
+  const utmRaw = extractUtmSourceFromPageUrl(params.pageUrl ?? undefined)
+  const sourceFromUtm = detectAiReferralSourceFromUtm(utmRaw)
+  const referrerTrimmed = params.referrer?.trim() || null
+  const sourceFromReferrer = referrerTrimmed ? detectAiReferralSource(referrerTrimmed) : null
+
+  const source: AiReferralSource | null = sourceFromUtm ?? sourceFromReferrer
 
   if (!source) {
     return
   }
 
-  const referrerUrl = new URL(referrer)
+  const attributedViaUtm = Boolean(sourceFromUtm)
+
+  let referrerStored: string
+  let referrerHostStored: string
+
+  if (attributedViaUtm) {
+    const page = params.pageUrl?.trim() || `${params.pathname}${utmRaw ? `?utm_source=${encodeURIComponent(utmRaw)}` : ''}`
+    referrerStored = page.slice(0, 2048)
+    referrerHostStored = 'utm'
+  } else {
+    const referrerUrl = new URL(referrerTrimmed!)
+    referrerStored = referrerTrimmed!.slice(0, 2048)
+    referrerHostStored = referrerUrl.host.toLowerCase()
+  }
 
   await connectDB()
 
   await AiReferralVisit.create({
     source,
     pathname: params.pathname,
-    referrer,
-    referrerHost: referrerUrl.host.toLowerCase(),
+    referrer: referrerStored,
+    referrerHost: referrerHostStored,
     userAgent: params.userAgent?.trim() || null,
   })
 }

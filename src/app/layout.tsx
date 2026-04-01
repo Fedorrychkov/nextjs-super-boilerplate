@@ -7,6 +7,7 @@ import { cookies, headers } from 'next/headers'
 import { FALLBACK_THUMBNAIL_IMAGE } from '~/constants'
 import { detectLocaleFromNextCookiesAndHeaders } from '~/lib/i18n/detectLocale'
 import { seoConfig } from '~/lib/seo/config'
+import { trackAiReferralFromRequestHeaders } from '~/lib/seo/trackAiReferralInRootLayout'
 import { QueryProvider } from '~/providers'
 import { AuthProvider } from '~/providers/auth'
 import { CookieConsentProvider } from '~/providers/cookie-consent'
@@ -86,6 +87,8 @@ export default async function RootLayout({
     cookies: await cookies(),
     headers: await headers(),
   })
+
+  await trackAiReferralFromRequestHeaders()
 
   return (
     <html lang={locale}>
