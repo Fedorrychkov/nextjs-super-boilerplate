@@ -75,7 +75,7 @@ export function detectAiReferralSourceFromUtm(utmSource: string | null | undefin
     return 'claude'
   }
 
-  return null
+  return 'other'
 }
 
 export type TrackAiReferralVisitParams = {
