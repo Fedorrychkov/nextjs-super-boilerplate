@@ -17,5 +17,5 @@ test('detectAiReferralSourceFromUtm maps common AI campaign values', () => {
   assert.equal(detectAiReferralSourceFromUtm('bing_copilot'), 'copilot')
   assert.equal(detectAiReferralSourceFromUtm('gemini'), 'gemini')
   assert.equal(detectAiReferralSourceFromUtm('claude'), 'claude')
-  assert.equal(detectAiReferralSourceFromUtm('newsletter'), null)
+  assert.equal(detectAiReferralSourceFromUtm('newsletter'), 'other')
 })
