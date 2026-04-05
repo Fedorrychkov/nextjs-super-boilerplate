@@ -15,7 +15,7 @@ const logger = new Logger(['NotificationBlock', '[src/components/Views/Notificat
 export const NotificationBlock = () => {
   const t = useT()
   const { unlockAudio, notify } = useNotify()
-  const { subscribed, subscribe, unsubscribe } = usePush()
+  const { subscribed, subscribe, unsubscribe, permission } = usePush()
 
   const handleSubscribe = async () => {
     try {
@@ -34,6 +34,10 @@ export const NotificationBlock = () => {
   const handleTest = () => {
     const api = new ClientSubscriptionApi()
     api.test({ type: 'test' })
+  }
+
+  if (permission === 'unsupported') {
+    return null
   }
 
   return (
