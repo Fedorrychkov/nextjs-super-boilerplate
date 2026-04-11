@@ -3,12 +3,13 @@ import AiReferralVisit from '@lib/db/models/AiReferralVisit'
 import { AI_REFERRAL_SOURCES } from '~/api/ai-referrals/model'
 import { AiReferralDashboardPayload, AiRefferralFilter } from '~/api/ai-referrals/types'
 
+import { getAiReferralTimeBounds } from './ai-referrals-time-window'
+
 export async function buildAiReferralsDashboard(filter: AiRefferralFilter): Promise<AiReferralDashboardPayload> {
-  const until = new Date()
   const { days, pathname } = filter
   const windowDays = days || 7
 
-  const since = new Date(until.getTime() - windowDays * 24 * 60 * 60 * 1000)
+  const { since, until } = getAiReferralTimeBounds(windowDays)
   const match = { createdAt: { $gte: since, $lte: until } } as Record<string, unknown>
   const normalizedPathname = pathname?.trim()
 

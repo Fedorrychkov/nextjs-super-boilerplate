@@ -27,7 +27,7 @@ export const LlmUsageDashboardScreen = () => {
   const dayOptions = useMemo(() => DAY_OPTIONS(t), [t])
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-2 py-4 md:px-8">
+    <div className="mx-auto flex w-full max-w-full flex-col gap-6 px-2 py-4 md:px-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <TitleWithBadge
           title={t('navigation.llmUsageDashboard')}

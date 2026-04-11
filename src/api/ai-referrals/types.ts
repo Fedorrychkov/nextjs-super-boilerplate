@@ -24,3 +24,32 @@ export type AiRefferralFilter = {
   pathname?: string | null
   source?: AiReferralSource | null
 }
+
+export type AiReferralVisitListItem = {
+  id: string
+  source: AiReferralSource
+  pathname: string
+  referrer: string
+  referrerHost: string
+  createdAt: string | null
+}
+
+export type AiReferralPathnameVisitsPage = {
+  items: AiReferralVisitListItem[]
+  nextCursor: string | null
+}
+
+export type AiReferralQueryParamValueStat = {
+  value: string
+  count: number
+}
+
+export type AiReferralQueryParamKeyStat = {
+  key: string
+  visitCount: number
+  values: AiReferralQueryParamValueStat[]
+}
+
+export type AiReferralPathnameQueryStatsPayload = {
+  keys: AiReferralQueryParamKeyStat[]
+}

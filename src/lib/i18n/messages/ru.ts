@@ -794,9 +794,23 @@ export const ru = {
       pathname: 'Путь',
       events: 'События',
       noDataForSelectedPeriod: 'Нет данных за выбранный период',
+      detail: {
+        tabReferrers: 'Сырые referrer',
+        tabParams: 'Параметры в URL',
+        loadMore: 'Загрузить ещё',
+        loading: 'Загрузка…',
+        aggregating: 'Считаем параметры по всем событиям…',
+        noReferrers: 'Нет записей за период',
+        noParams: 'В referrer не найдено query-параметров',
+        visitsWithParam: 'Визитов с этим параметром',
+        value: 'Значение',
+        toggleAria: 'Показать детализацию по пути',
+      },
     },
     errors: {
       failedToLoadData: 'Не удалось загрузить данные. Проверьте авторизацию и попробуйте снова.',
+      failedToLoadDetail: 'Не удалось загрузить детализацию.',
+      pathnameRequired: 'Укажите pathname',
     },
   },
   seo: {
