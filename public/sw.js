@@ -1,8 +1,9 @@
 // Lightweight Service Worker for Web Push notifications + basic offline support
 
-const STATIC_CACHE = 'static-v1'
-const HTML_CACHE = 'html-v1'
-const API_PUBLIC_CACHE = 'api-public-v1'
+// Bump suffix when changing caching rules so activate() drops old buckets (avoids stale/error payloads).
+const STATIC_CACHE = 'static-v2'
+const HTML_CACHE = 'html-v2'
+const API_PUBLIC_CACHE = 'api-public-v2'
 const APP_ICON = '/images/favicon.svg'
 
 // Shell-pages, for precache (can be expanded to your project)
@@ -175,22 +176,34 @@ async function cacheFirst(request) {
 		return cached
 	}
 
-	const response = await fetch(request)
+	// On miss, bypass HTTP disk cache so we do not reuse a stale 404/502 for hashed assets.
+	const response = await fetch(request, { cache: 'no-store' })
 
-	if (response && response.ok) {
+	if (response && response.status === 200 && response.ok) {
 		cache.put(request, response.clone())
 	}
 
 	return response
 }
 
+function isCacheableHtmlResponse(response) {
+	if (!response || response.status !== 200 || !response.ok) {
+		return false
+	}
+
+	const type = response.headers.get('Content-Type') || ''
+
+	return type.includes('text/html')
+}
+
 async function networkFirstHtml(request) {
 	const cache = await caches.open(HTML_CACHE)
 
 	try {
-		const response = await fetch(request)
+		// Avoid browser HTTP cache returning a persisted 5xx/4xx for this URL (e.g. after a bad deploy or proxy glitch).
+		const response = await fetch(request, { cache: 'no-store' })
 
-		if (response && response.ok) {
+		if (isCacheableHtmlResponse(response)) {
 			cache.put(request, response.clone())
 		}
 
@@ -209,13 +222,23 @@ async function networkFirstHtml(request) {
 	}
 }
 
+function isCacheableJsonResponse(response) {
+	if (!response || response.status !== 200 || !response.ok) {
+		return false
+	}
+
+	const type = response.headers.get('Content-Type') || ''
+
+	return type.includes('application/json') || type.includes('text/json')
+}
+
 async function networkFirstApi(request) {
 	const cache = await caches.open(API_PUBLIC_CACHE)
 
 	try {
-		const response = await fetch(request)
+		const response = await fetch(request, { cache: 'no-store' })
 
-		if (response && response.ok) {
+		if (isCacheableJsonResponse(response)) {
 			cache.put(request, response.clone())
 		}
 

@@ -4,6 +4,9 @@ on:
     branches:
       - main
 
+  # Manual run: Actions → Production Deploy → Run workflow (branch can be selected in UI)
+  workflow_dispatch:
+
 permissions: write-all
 
 concurrency:

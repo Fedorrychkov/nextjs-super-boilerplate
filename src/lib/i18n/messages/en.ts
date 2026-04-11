@@ -797,9 +797,23 @@ export const en = {
       pathname: 'Pathname',
       events: 'Events',
       noDataForSelectedPeriod: 'No data for the selected period',
+      detail: {
+        tabReferrers: 'Raw referrers',
+        tabParams: 'URL query params',
+        loadMore: 'Load more',
+        loading: 'Loading…',
+        aggregating: 'Aggregating params across all events…',
+        noReferrers: 'No rows for this period',
+        noParams: 'No query parameters found in referrers',
+        visitsWithParam: 'Visits with this param',
+        value: 'Value',
+        toggleAria: 'Show path details',
+      },
     },
     errors: {
       failedToLoadData: 'Failed to load data. Check your authorization and try again.',
+      failedToLoadDetail: 'Failed to load path details.',
+      pathnameRequired: 'pathname is required',
     },
   },
   seo: {
