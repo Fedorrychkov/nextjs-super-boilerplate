@@ -3,7 +3,7 @@ import { AxiosInstance } from 'axios'
 
 import { PaginationMeta } from '~/types'
 
-import { UserModel } from '../model'
+import { AuthUserSnapshot, UserModel } from '../model'
 import { UpdateUserDto, UserFilter, UserMfaStatusDto, UserPushStatusDto } from '../types'
 
 export class ClientUserApi {
@@ -19,13 +19,22 @@ export class ClientUserApi {
     return response.data
   }
 
+  async getUser(userId: string): Promise<UserModel> {
+    const response = await this.client.get(`/api/v1/user/get/${userId}`)
+
+    return response.data
+  }
+
   async getUsers(filter: Partial<UserFilter>): Promise<PaginationMeta<UserModel>> {
     const response = await this.client.get('/api/v1/user/list', { params: filter })
 
     return response.data
   }
 
-  async updateUser(id: string, body: UpdateUserDto): Promise<{ success: true; message: string; user: Pick<UserModel, 'id' | 'email' | 'role' | 'status'> }> {
+  async updateUser(
+    id: string,
+    body: UpdateUserDto,
+  ): Promise<{ success: true; message: string; user: AuthUserSnapshot & { createdAt?: string | null; updatedAt?: string | null } }> {
     const response = await this.client.put(`/api/v1/user/update/${id}`, body)
 
     return response.data

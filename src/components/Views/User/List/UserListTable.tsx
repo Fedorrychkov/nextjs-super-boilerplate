@@ -1,6 +1,7 @@
 'use client'
 
 import { PencilIcon } from 'lucide-react'
+import Link from 'next/link'
 
 import { UserModel, UserRole, UserStatus } from '~/api/user'
 import { CopyContainer } from '~/components/Blocks/CopyContainer'
@@ -44,6 +45,9 @@ export const UserListTable = ({ isLoading, data, onSelect }: Props) => {
                         <PencilIcon className="w-4 h-4" />
                       </Button>
                     )}
+                    <Button asChild variant="outline" size="icon">
+                      <Link href={`/admin/users/${item.id}`}>↗</Link>
+                    </Button>
                     <CustomTooltip
                       content={
                         <div>

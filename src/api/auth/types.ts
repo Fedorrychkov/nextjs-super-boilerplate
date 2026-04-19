@@ -13,3 +13,8 @@ export type RegisterDto = {
 export interface RegisterByAdminDto extends RegisterDto {
   role: UserRole
 }
+
+export type SignUpCompleteDto = {
+  email: string
+  code: string
+}

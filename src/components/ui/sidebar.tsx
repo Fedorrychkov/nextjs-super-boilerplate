@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { Fragment, useState } from 'react'
 
-import { useAuth } from '~/providers'
+import { useAuth, useT } from '~/providers'
 import { cn } from '~/utils/cn'
 import { matchesPathname } from '~/utils/matchPath'
 
@@ -100,6 +100,8 @@ const XIcon = () => (
 )
 
 const Footer = () => {
+  const t = useT()
+
   const router = useRouter()
   const handleLogout = () => {
     router.replace('/logout')
@@ -108,7 +110,7 @@ const Footer = () => {
   return (
     <div className="p-4 border-t border-gray-200">
       <button onClick={handleLogout} className="w-full cursor-pointer font-medium text-sm p-2 text-center bg-blue-100 rounded-xl hover:bg-blue-200">
-        Sign out
+        {t('common.signOut')}
       </button>
     </div>
   )

@@ -15,6 +15,7 @@ const logger = new Logger(['LoginWithParams', '[src/app/login/page.tsx]'])
 
 const SignInBlock = React.lazy(() => import('~/components/Views/Auth/Blocks/SignInBlock').then((module) => ({ default: module.SignInBlock })))
 const SignUpBlock = React.lazy(() => import('~/components/Views/Auth/Blocks/SignUpBlock').then((module) => ({ default: module.SignUpBlock })))
+const SignUpVerifyBlock = React.lazy(() => import('~/components/Views/Auth/Blocks/SignUpVerifyBlock').then((module) => ({ default: module.SignUpVerifyBlock })))
 const MfaCodeBlock = React.lazy(() => import('~/components/Views/Auth/Blocks/MfaCodeBlock').then((module) => ({ default: module.MfaCodeBlock })))
 
 // Component for handling searchParams
@@ -24,6 +25,8 @@ const LoginWithParams = () => {
   const nextPath = searchParams.get('nextPath')
   const searchVariant = searchParams.get('variant')
   const [variant, setVariant] = useState<'sign-in' | 'sign-up'>(searchVariant === 'sign-up' ? 'sign-up' : 'sign-in')
+  const [signUpStep, setSignUpStep] = useState<'credentials' | 'verify'>('credentials')
+  const [signUpEmail, setSignUpEmail] = useState('')
   const [loginStep, setLoginStep] = useState<'credentials' | 'mfa'>('credentials')
   const [mfaChallengeId, setMfaChallengeId] = useState<string | null>(null)
   const { notify } = useNotify()
@@ -46,7 +49,7 @@ const LoginWithParams = () => {
 
   const { loginMutation } = useLoginMutation()
   const { loginMfaMutation } = useLoginMfaMutation()
-  const { signUpMutation } = useSignUpMutation()
+  const { signUpRequestMutation, signUpCompleteMutation } = useSignUpMutation()
 
   const handleSignIn = async (email: string, password: string) => {
     try {
@@ -116,31 +119,115 @@ const LoginWithParams = () => {
     }
   }
 
-  const handleSignUp = async (email: string, password: string) => {
+  const handleSignUpRequest = async (email: string, password: string) => {
     try {
-      const response = await signUpMutation.mutateAsync({
-        email,
-        password,
-      })
+      const response = await signUpRequestMutation.mutateAsync({ email, password })
 
-      if (response.success) {
+      if (response.success && response.nextStep === 'logged_in' && 'user' in response) {
+        await refetch?.()
+
         if (nextPath) {
           router.replace(nextPath)
         } else {
           router.replace('/')
         }
-      } else {
-        logger.error('SignUp failed')
+
+        return
+      }
+
+      if (response.success && response.nextStep === 'verify') {
+        setSignUpEmail(email)
+        setSignUpStep('verify')
+        const base = response.message ?? t('auth.messages.signUpCodeSent')
+        const withDev = 'devCode' in response && response.devCode ? `${base} (dev: ${response.devCode})` : base
+
+        notify(withDev, 'success')
       }
     } catch (error) {
-      notify(t('auth.errors.signUpFailed'), 'warning')
       logger.error(error)
+
+      if (error instanceof AxiosError) {
+        const afterSec = error.response?.data?.retryAfterSeconds ?? error.response?.data?.retryAfterSec
+
+        if (error.response?.status === 429 && afterSec) {
+          const duration = time().add(Number(afterSec), 'seconds')
+
+          notify(t('auth.errors.signUpTooManyAttempts', { after: duration.format('HH:mm:ss') }), 'destructive')
+
+          return
+        }
+
+        if (afterSec) {
+          const duration = time().add(Number(afterSec), 'seconds')
+
+          notify(`${error.response?.data?.message ?? t('auth.errors.signUpFailed')} ${duration.format('HH:mm:ss')}.`, 'warning')
+
+          return
+        }
+
+        notify(error.response?.data?.message ?? t('auth.errors.signUpFailed'), 'warning')
+
+        return
+      }
+
+      notify(t('auth.errors.signUpFailed'), 'warning')
+    }
+  }
+
+  const handleSignUpComplete = async (code: string) => {
+    try {
+      const response = await signUpCompleteMutation.mutateAsync({ email: signUpEmail, code })
+
+      if (response.success) {
+        await refetch?.()
+        setSignUpStep('credentials')
+        setSignUpEmail('')
+
+        if (nextPath) {
+          router.replace(nextPath)
+        } else {
+          router.replace('/')
+        }
+      }
+    } catch (error) {
+      logger.error(error)
+
+      if (error instanceof AxiosError) {
+        const afterSec = error.response?.data?.retryAfterSeconds ?? error.response?.data?.retryAfterSec
+
+        if (error.response?.status === 429 && afterSec) {
+          const duration = time().add(Number(afterSec), 'seconds')
+
+          notify(t('auth.errors.signUpTooManyAttempts', { after: duration.format('HH:mm:ss') }), 'destructive')
+
+          return
+        }
+
+        if (afterSec) {
+          const duration = time().add(Number(afterSec), 'seconds')
+
+          notify(`${error.response?.data?.message ?? t('auth.errors.signUpFailed')} ${duration.format('HH:mm:ss')}.`, 'warning')
+
+          return
+        }
+
+        notify(error.response?.data?.message ?? t('auth.errors.signUpFailed'), 'warning')
+
+        return
+      }
+
+      notify(t('auth.errors.signUpFailed'), 'warning')
     }
   }
 
   const handleChange = useCallback(
-    (variant: 'sign-in' | 'sign-up') => () => {
-      setVariant(variant)
+    (next: 'sign-in' | 'sign-up') => () => {
+      setVariant(next)
+
+      if (next === 'sign-in') {
+        setSignUpStep('credentials')
+        setSignUpEmail('')
+      }
     },
     [],
   )
@@ -171,12 +258,26 @@ const LoginWithParams = () => {
         </Suspense>
       )}
 
-      {variant === 'sign-up' && (
+      {variant === 'sign-up' && signUpStep === 'credentials' && (
         <Suspense fallback={<SpinnerScreen />}>
           <SignUpBlock
-            isLoading={signUpMutation.isLoading || loginMutation.isLoading || isLoading}
-            onSubmit={handleSignUp}
+            isLoading={signUpRequestMutation.isLoading || loginMutation.isLoading || isLoading}
+            onSubmit={handleSignUpRequest}
             onChange={handleChange('sign-in')}
+          />
+        </Suspense>
+      )}
+
+      {variant === 'sign-up' && signUpStep === 'verify' && (
+        <Suspense fallback={<SpinnerScreen />}>
+          <SignUpVerifyBlock
+            email={signUpEmail}
+            isLoading={signUpCompleteMutation.isLoading || loginMutation.isLoading || isLoading}
+            onSubmit={handleSignUpComplete}
+            onBack={() => {
+              setSignUpStep('credentials')
+              setSignUpEmail('')
+            }}
           />
         </Suspense>
       )}

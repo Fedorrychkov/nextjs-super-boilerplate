@@ -186,7 +186,7 @@ type ToggleProps = {
   onToggle: () => void
 }
 
-export const AiReferralPathnameDetailToggle = ({ pathname, expanded, onToggle }: ToggleProps) => {
+export const AiReferralPathnameDetailToggle = ({ expanded, onToggle }: ToggleProps) => {
   const t = useT()
 
   return (

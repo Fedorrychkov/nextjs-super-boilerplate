@@ -25,3 +25,6 @@ export enum UserRole {
    */
   EDITOR = 'editor',
 }
+
+/** Fields returned by auth login / register / profile / verify-token APIs. */
+export type AuthUserSnapshot = Pick<UserModel, 'id' | 'email' | 'role' | 'status'>

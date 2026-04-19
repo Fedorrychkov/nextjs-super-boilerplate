@@ -11,10 +11,13 @@ export class BruteForceError extends Error {
 
 export class ValidationError extends Error {
   statusCode = 400
+  /** Merged into JSON body as extra fields (e.g. `remainingAttempts`). */
+  details?: Record<string, unknown>
 
-  constructor(message: string) {
+  constructor(message: string, details?: Record<string, unknown>) {
     super(message)
     this.name = 'ValidationError'
+    this.details = details
   }
 }
 

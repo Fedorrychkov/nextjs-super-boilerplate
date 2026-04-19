@@ -18,3 +18,9 @@ export function useQueryBuilder<TData, TError>({ key, enabled, method, options }
 
   return props
 }
+
+export const cacheTimes = {
+  little: 10_000,
+  medium: 120_000,
+  large: 600_000,
+}
