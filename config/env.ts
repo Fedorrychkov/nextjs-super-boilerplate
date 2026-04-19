@@ -41,6 +41,18 @@ const {
   LLM_CHAT_RATE_LIMIT_POINTS = Number(process.env.LLM_CHAT_RATE_LIMIT_POINTS || 30),
   LLM_CHAT_RATE_DURATION_SEC = Number(process.env.LLM_CHAT_RATE_DURATION_SEC || 60),
   PROXY_ACCESSES = process.env.PROXY_ACCESSES || '',
+  /** HMAC pepper for sign-up email codes (fallback: JWT_SECRET). */
+  REGISTRATION_CODE_PEPPER = process.env.REGISTRATION_CODE_PEPPER || '',
+  /** `console` — log only; `elastic` — Elastic Email API (templates + body). */
+  EMAIL_SEND_MODE = process.env.EMAIL_SEND_MODE || 'console',
+  EMAIL_API_KEY = process.env.EMAIL_API_KEY || '',
+  /** Sender for Elastic (must match a verified domain), e.g. `Noreply <noreply@yourdomain.com>`. */
+  EMAIL_FROM = process.env.EMAIL_FROM || 'Noreply <noreply@localhost>',
+  /** Elastic template names for sign-up code (`{code}` merge field). Defaults match dashboard names. */
+  EMAIL_TEMPLATE_VERIFY_EMAIL_EN = process.env.EMAIL_TEMPLATE_VERIFY_EMAIL_EN,
+  EMAIL_TEMPLATE_VERIFY_EMAIL_RU = process.env.EMAIL_TEMPLATE_VERIFY_EMAIL_RU,
+  EMAIL_REPLY_TO = process.env.EMAIL_REPLY_TO || '',
+  REGISTRATION_MODE = process.env.REGISTRATION_MODE || '',
 } = process.env
 
 const isDevelop = [APP_ENV, NEXT_PUBLIC_APP_ENV].includes('development')
@@ -106,11 +118,28 @@ const LLM_CONFIG = {
   proxyAccessesJson: PROXY_ACCESSES.trim(),
 }
 
+const REGISTRATION_CONFIG = {
+  mode: REGISTRATION_MODE,
+  /** Pepper for OTP HMAC; defaults to JWT secret when unset. */
+  codePepper: REGISTRATION_CODE_PEPPER || JWT_SECRET,
+  emailSendMode: EMAIL_SEND_MODE,
+}
+
+const EMAIL_CONFIG = {
+  sendMode: EMAIL_SEND_MODE,
+  emailApiKey: EMAIL_API_KEY,
+  from: EMAIL_FROM,
+  replyTo: EMAIL_REPLY_TO.trim(),
+  templateVerifyEmailEn: EMAIL_TEMPLATE_VERIFY_EMAIL_EN,
+  templateVerifyEmailRu: EMAIL_TEMPLATE_VERIFY_EMAIL_RU,
+}
+
 export {
   APP_ENV,
   APP_INTERNAL_ORIGIN,
   CDN_CONFIG,
   COMMIT_HASH,
+  EMAIL_CONFIG,
   FIRST_ADMIN_CONFIG,
   GOOGLE_INDEXING_CLIENT_EMAIL,
   GOOGLE_INDEXING_PRIVATE_KEY,
@@ -129,5 +158,6 @@ export {
   PUSH_CONFIG,
   RATE_LIMIT_CONFIG,
   REDIS_URL,
+  REGISTRATION_CONFIG,
   RUM_CONFIG,
 }

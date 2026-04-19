@@ -4,10 +4,12 @@ import RefreshToken from '@lib/db/models/RefreshToken'
 import User, { IUser } from '@lib/db/models/User'
 import { ForbiddenError, NotFoundError, UnauthorizedError, ValidationError } from '@lib/error/custom-errors'
 import { generateAccessToken, generateRefreshToken, getTokenExpiration, verifyRefreshToken } from '@lib/jwt/utils'
+import type { HydratedDocument } from 'mongoose'
 
 import { AuthResponse } from '~/api/auth/model'
 import { LoginEmailDto, RegisterByAdminDto, RegisterDto } from '~/api/auth/types'
-import { UserModel, UserRole, UserStatus } from '~/api/user'
+import { AuthUserSnapshot, UserRole, UserStatus } from '~/api/user'
+import { TFunction } from '~/lib/i18n'
 
 export class AuthService {
   private async updateUserLanguage(userId: string, languageCode?: string | null): Promise<void> {
@@ -21,13 +23,13 @@ export class AuthService {
   /**
    * Registration of a user
    */
-  async register(data: RegisterDto, isAdmin: boolean = false, options?: { languageCode?: string | null }): Promise<AuthResponse> {
+  async register(data: RegisterDto, isAdmin: boolean = false, options?: { languageCode?: string | null; t: TFunction }): Promise<AuthResponse> {
     await connectDB()
 
     const existingUser = await User.findOne({ email: data.email.toLowerCase() })
 
     if (existingUser) {
-      throw new ValidationError('User with this email already exists')
+      throw new ValidationError(options?.t?.('auth.errors.userWithThisEmailAlreadyExists') ?? 'User with this email already exists')
     }
 
     const user = await User.create({
@@ -41,19 +43,50 @@ export class AuthService {
     return this.generateAuthResponse(user, options)
   }
 
-  async registerByAdmin(data: RegisterByAdminDto): Promise<Pick<UserModel, 'id' | 'email' | 'role' | 'status'>> {
+  /**
+   * Create user after email OTP; `passwordHash` is bcrypt — must not be re-hashed (see User pre-save `$locals.skipPasswordHash`).
+   */
+  async registerWithVerifiedPasswordHash(
+    data: { email: string; passwordHash: string },
+    options?: { languageCode?: string | null; t: TFunction },
+  ): Promise<AuthResponse> {
+    await connectDB()
+
+    const email = data.email.toLowerCase()
+    const existingUser = await User.findOne({ email })
+
+    if (existingUser) {
+      throw new ValidationError(options?.t?.('auth.errors.userWithThisEmailAlreadyExists') ?? 'User with this email already exists')
+    }
+
+    const user = new User({
+      email,
+      role: UserRole.USER,
+      status: UserStatus.ACTIVE,
+      password: data.passwordHash,
+      languageCode: options?.languageCode ?? null,
+    })
+    const hydrated = user as HydratedDocument<IUser>
+
+    hydrated.$locals = { ...hydrated.$locals, skipPasswordHash: true }
+    await user.save()
+
+    return this.generateAuthResponse(user, options)
+  }
+
+  async registerByAdmin(data: RegisterByAdminDto, t: TFunction): Promise<AuthUserSnapshot> {
     await connectDB()
 
     const existingUser = await User.findOne({ email: data.email.toLowerCase() })
 
     if (existingUser) {
-      throw new ValidationError('User with this email already exists')
+      throw new ValidationError(t('auth.errors.userWithThisEmailAlreadyExists'))
     }
 
     const isValidRole = Object.values(UserRole).includes(data.role)
 
     if (!isValidRole) {
-      throw new ValidationError('Invalid role')
+      throw new ValidationError(t('auth.errors.invalidRole'))
     }
 
     const user = await User.create({

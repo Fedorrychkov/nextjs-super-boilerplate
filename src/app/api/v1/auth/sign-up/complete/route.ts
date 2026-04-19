@@ -1,38 +1,33 @@
-import { FIRST_ADMIN_CONFIG } from '@config/env'
 import { setAuthCookies } from '@lib/cookies'
 import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
 import { ensureCanRegister } from '@lib/security/bruteforce'
 import { getClientKey } from '@lib/security/rate-limit'
 import { authService } from '@lib/services/auth.service'
-import { NextRequest, NextResponse } from 'next/server'
+import { completeSignupWithCode } from '@lib/services/registration/sign-up-verification.service'
+import { NextRequest } from 'next/server'
 
-import { RegisterDto } from '~/api/auth/types'
+import { SignUpCompleteDto } from '~/api/auth/types'
 import { getPreferredLanguageCodeFromAcceptLanguage } from '~/lib/i18n/detectLocale'
 import { getServerTFromNextRequest } from '~/lib/i18n/server'
 
 const handler = (request: NextRequest) => {
   return apiErrorHandlerContainer(request)(async (res, req) => {
     const { t } = getServerTFromNextRequest(request)
-
-    const body: RegisterDto = await req.json()
+    const body: SignUpCompleteDto = await req.json()
     const languageCode = getPreferredLanguageCodeFromAcceptLanguage(req.headers.get('accept-language'))
     const ip = getClientKey(req)
+
     await ensureCanRegister(ip)
 
-    const email = body.email
-    const password = body.password
+    const { email, passwordHash } = await completeSignupWithCode(
+      {
+        email: body.email,
+        code: body.code,
+      },
+      t,
+    )
 
-    /**
-     * If the email is the first admin and the password is not the first admin password, return an error
-     * This is to prevent the first admin from being able to register other admins
-     */
-    if (email === FIRST_ADMIN_CONFIG.login && password !== FIRST_ADMIN_CONFIG.password) {
-      return NextResponse.json({ message: t('errors.insufficientPermissions') }, { status: 403 })
-    }
-
-    const isValidAdmin = email === FIRST_ADMIN_CONFIG.login && password === FIRST_ADMIN_CONFIG.password
-
-    const authResponse = await authService.register(body, isValidAdmin, { languageCode })
+    const authResponse = await authService.registerWithVerifiedPasswordHash({ email, passwordHash }, { languageCode, t })
 
     const response = res.json(
       {

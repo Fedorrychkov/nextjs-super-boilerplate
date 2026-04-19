@@ -84,7 +84,7 @@ export const apiErrorHandlerContainer =
           message: error.message,
         })
 
-        return res.json({ message: error.message }, { status: error.statusCode })
+        return res.json({ message: error.message, ...(error.details ?? {}) }, { status: error.statusCode })
       }
 
       if (error instanceof NotFoundError) {

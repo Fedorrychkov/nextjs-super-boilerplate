@@ -56,6 +56,7 @@ export const en = {
     requiredField: 'Required field',
     emailMustContainAtAndDomain: 'Email must contain @ and domain',
     notSet: 'Not set',
+    signOut: 'Sign out',
     sortOrderes: {
       asc: 'Ascending',
       desc: 'Descending',
@@ -256,9 +257,16 @@ export const en = {
       enterYourPasswordYouCanAlsoEnterACurrent2FACodeForExtraVerification: 'Enter your password. You can also enter a current 2FA code for extra verification.',
       twoFactorAuthenticationCodeOptional: '2FA code (optional)',
       disabling2fa: 'Disabling…',
+      signUpVerifyTitle: 'Confirm your email',
+      signUpVerifyDescription: 'We sent a 6-digit code to {email}. Enter it below to finish registration.',
+      signUpVerifyPlaceholder: '000000',
+      signUpVerifyBack: 'Use a different email',
     },
     messages: {
       loggedOutSuccessfully: 'Logged out successfully',
+      signUpCodeSent: 'Check your email for the verification code.',
+      signUpCodeSentDescription: 'We sent a 6-digit code to {email}. Enter it below to finish registration.',
+      singUpsentTitle: 'Your registration code',
     },
     errors: {
       failedToDisable2FACheckPassword: 'Failed to disable 2FA. Check password.',
@@ -278,6 +286,14 @@ export const en = {
       enterValidEmail: 'Enter a valid email',
       failedToStart2FASetup: 'Failed to start 2FA setup',
       invalidCodeTryAgain: 'Invalid code. Try again.',
+      signUpEnterSixDigitCode: 'Enter the 6-digit code from the email.',
+      signUpTooManyAttempts: 'Too many attempts. Try again after {after}.',
+      userWithThisEmailAlreadyExists: 'User with this email already exists',
+      invalidRole: 'Invalid role',
+      noPendingRegistrationForThisEmailRequestNewCode: 'No pending registration for this email. Request a new code.',
+      invalidRegistrationStatePleaseStartAgain: 'Invalid registration state. Please start again.',
+      signUpEmailFailed: 'We could not complete registration. Please try again later or contact support if the problem persists.',
+      signUpSendLimitReached: 'Registration code send limit reached. Please wait before trying again.',
     },
   },
   totp: {
@@ -294,6 +310,13 @@ export const en = {
     },
   },
   user: {
+    adminProfile: {
+      title: 'User profile',
+      baseTitle: 'Main information',
+      tabs: {
+        base: 'Main',
+      },
+    },
     roles: {
       admin: 'Admin',
       user: 'User',

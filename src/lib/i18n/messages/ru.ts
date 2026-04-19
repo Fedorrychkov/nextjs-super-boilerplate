@@ -56,6 +56,7 @@ export const ru = {
     emailMustContainAtAndDomain: 'Email должен содержать @ и домен',
     dateFromCannotBeGreaterThanDateTo: 'Дата {fromDate} не может быть больше даты {toDate}',
     notSet: 'Не установлено',
+    signOut: 'Выйти',
     sortOrderes: {
       asc: 'По возрастанию',
       desc: 'По убыванию',
@@ -255,9 +256,16 @@ export const ru = {
       enterYourPasswordYouCanAlsoEnterACurrent2FACodeForExtraVerification: 'Введите пароль. Для дополнительной проверки можно также ввести текущий 2FA-код.',
       twoFactorAuthenticationCodeOptional: '2FA-код (необязательно)',
       disabling2fa: 'Отключаем…',
+      signUpVerifyTitle: 'Подтвердите ваш email',
+      signUpVerifyDescription: 'Мы отправили 6-значный код на {email}. Введите его ниже, чтобы завершить регистрацию.',
+      signUpVerifyPlaceholder: '000000',
+      signUpVerifyBack: 'Использовать другой email',
     },
     messages: {
       loggedOutSuccessfully: 'Вы успешно вышли из аккаунта',
+      signUpCodeSent: 'Проверьте ваш email для кода подтверждения.',
+      signUpCodeSentDescription: 'Мы отправили 6-значный код на {email}. Введите его ниже, чтобы завершить регистрацию.',
+      singUpsentTitle: 'Ваш код регистрации',
     },
     errors: {
       failedToDisable2FACheckPassword: 'Не удалось отключить 2FA. Проверьте пароль.',
@@ -277,6 +285,14 @@ export const ru = {
       enterValidEmail: 'Введите корректный email',
       failedToStart2FASetup: 'Не удалось начать настройку 2FA',
       invalidCodeTryAgain: 'Неверный код. Попробуйте еще раз.',
+      signUpEnterSixDigitCode: 'Введите 6-значный код из email.',
+      signUpTooManyAttempts: 'Слишком много попыток. Повторите через {after}.',
+      userWithThisEmailAlreadyExists: 'Пользователь с этим email уже существует',
+      invalidRole: 'Неверная роль',
+      noPendingRegistrationForThisEmailRequestNewCode: 'Нет ожидающей регистрации для этого email. Запросите новый код.',
+      invalidRegistrationStatePleaseStartAgain: 'Неверное состояние регистрации. Пожалуйста, начать заново.',
+      signUpEmailFailed: 'Не удалось завершить регистрацию. Пожалуйста, попробуйте позже или обратитесь в поддержку, если проблема persists.',
+      signUpSendLimitReached: 'Превышен лимит отправки кодов регистрации. Пожалуйста, подождите перед повторной попыткой.',
     },
   },
   totp: {
@@ -293,6 +309,13 @@ export const ru = {
     },
   },
   user: {
+    adminProfile: {
+      title: 'Профиль пользователя',
+      baseTitle: 'Основная информация',
+      tabs: {
+        base: 'Основная',
+      },
+    },
     roles: {
       admin: 'Администратор',
       user: 'Пользователь',

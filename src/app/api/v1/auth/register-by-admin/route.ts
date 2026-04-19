@@ -21,11 +21,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) => {
     const ip = getClientKey(req)
     await ensureCanRegister(ip)
 
-    const email = body.email
-    const password = body.password
-    const role = body.role
-
-    const authResponse = await authService.registerByAdmin({ email, password, role })
+    const authResponse = await authService.registerByAdmin(body, t)
 
     const response = res.json(
       {
