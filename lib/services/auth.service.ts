@@ -1,9 +1,9 @@
 import { JWT_CONFIG } from '@config/env'
 import connectDB from '@lib/db/client'
-import RefreshToken from '@lib/db/models/RefreshToken'
+import RefreshToken, { IRefreshToken } from '@lib/db/models/RefreshToken'
 import User, { IUser } from '@lib/db/models/User'
 import { ForbiddenError, NotFoundError, UnauthorizedError, ValidationError } from '@lib/error/custom-errors'
-import { generateAccessToken, generateRefreshToken, getTokenExpiration, verifyRefreshToken } from '@lib/jwt/utils'
+import { generateAccessToken, generateRefreshToken, getTokenExpiration, verifyAccessToken, verifyRefreshToken } from '@lib/jwt/utils'
 import type { HydratedDocument } from 'mongoose'
 
 import { AuthResponse } from '~/api/auth/model'
@@ -111,10 +111,41 @@ export class AuthService {
   }
 
   async refreshTokens(refreshTokenString: string): Promise<AuthResponse> {
+    const { user, storedToken } = await this.validateRefreshToken(refreshTokenString)
+
+    await RefreshToken.deleteOne({ _id: storedToken._id })
+
+    return this.generateAuthResponse(user)
+  }
+
+  /**
+   * Verify access token signature and ensure user still exists and is active.
+   * Reusable server-side auth check (guards, server actions) without internal HTTP call.
+   */
+  async validateAccessToken(accessToken: string): Promise<IUser> {
+    await connectDB()
+
+    const payload = verifyAccessToken(accessToken)
+    const user = await User.findById(payload.sub)
+
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      throw new NotFoundError('User not found or inactive')
+    }
+
+    return user
+  }
+
+  /**
+   * Verify refresh token signature + presence in DB token store + user status.
+   * This matches refresh endpoint semantics and can be reused from guards.
+   */
+  async validateRefreshToken(refreshTokenString: string): Promise<{
+    user: IUser
+    storedToken: IRefreshToken
+  }> {
     await connectDB()
 
     const payload = verifyRefreshToken(refreshTokenString)
-
     const storedToken = await RefreshToken.findOne({
       token: refreshTokenString,
       userId: payload.sub,
@@ -135,9 +166,7 @@ export class AuthService {
       throw new NotFoundError('User not found or inactive')
     }
 
-    await RefreshToken.deleteOne({ _id: storedToken._id })
-
-    return this.generateAuthResponse(user)
+    return { user, storedToken }
   }
 
   async logout(refreshTokenString: string, userId: string): Promise<void> {
