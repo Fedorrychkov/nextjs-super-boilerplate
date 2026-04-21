@@ -98,6 +98,14 @@ UserSchema.pre('save', async function () {
     throw new ValidationError('Password is required')
   }
 
+  const doc = this as HydratedDocument<IUser>
+
+  if (doc.$locals?.skipPasswordHash) {
+    delete doc.$locals.skipPasswordHash
+
+    return
+  }
+
   const salt = await bcrypt.genSalt(10)
   this.password = await bcrypt.hash(this.password, salt)
 })

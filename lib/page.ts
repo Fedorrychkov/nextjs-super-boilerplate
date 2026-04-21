@@ -1,14 +1,11 @@
-import { APP_INTERNAL_ORIGIN } from '@config/env'
-import { AxiosError } from 'axios'
 import { cookies, headers } from 'next/headers'
 import { redirect, RedirectType } from 'next/navigation'
 
-import { ClientAuthApi } from '~/api/auth'
 import { UserRole } from '~/api/user'
 import { routes } from '~/constants'
 import { Logger } from '~/utils/logger'
 
-import { getAxiosHeaders } from './getAxiosHeaders'
+import { authService } from './services/auth.service'
 
 export type PageProps<T extends Record<string, unknown> | undefined = undefined> = {
   params: Promise<T>
@@ -62,8 +59,6 @@ export const defaultGuard = async <T extends Record<string, unknown> | undefined
   const host = headersStore.get('host') || ''
   const protocol = headersStore.get('x-forwarded-proto') || 'http'
   const origin = `${protocol}://${host}`
-  // Use internal origin for server-side API calls when set (e.g. Docker: public hostname may be unresolvable → EAI_AGAIN)
-  const apiOrigin = APP_INTERNAL_ORIGIN || origin
   const path = buildPathnameBySegments(segments, params)
 
   const url = new URL(`${origin}/${path ? `${path === '/' ? '' : path}` : ''}`)
@@ -83,8 +78,6 @@ export const defaultGuard = async <T extends Record<string, unknown> | undefined
     nextPath,
   })
 
-  const api = new ClientAuthApi(apiOrigin)
-
   try {
     if (!accessToken && !refreshToken) {
       const cleanNavigatePath = navigatePath && navigatePath !== '//' ? navigatePath : routes.login.path
@@ -92,14 +85,12 @@ export const defaultGuard = async <T extends Record<string, unknown> | undefined
       return redirect(`${cleanNavigatePath}?nextPath=${cleanPathname}`, RedirectType.replace)
     }
 
-    const newHeaders = getAxiosHeaders({ ...Object.fromEntries(headersStore) })
-
     try {
       if (!accessToken) {
         throw new Error('No access token, try to refresh')
       }
 
-      const { user } = await api.verifyToken(newHeaders, accessToken.value)
+      const user = await authService.validateAccessToken(accessToken.value)
 
       if (roles && roles.length > 0 && !roles.includes(user.role)) {
         logger.info('defaultGuard redirect to fallbackNavigatePath to / main page')
@@ -119,7 +110,7 @@ export const defaultGuard = async <T extends Record<string, unknown> | undefined
 
       if (refreshToken) {
         try {
-          await api.verifyToken(newHeaders, refreshToken.value)
+          await authService.validateRefreshToken(refreshToken.value)
 
           logger.info('defaultGuard redirect to refresh', nextPath, nextPath)
 
@@ -129,11 +120,7 @@ export const defaultGuard = async <T extends Record<string, unknown> | undefined
             throw error
           }
 
-          if (error instanceof AxiosError) {
-            logger.info('defaultGuard error verifyToken, redirect to logout', error.response?.data, nextPath)
-          } else {
-            logger.info('defaultGuard error verifyToken, redirect to logout', error, nextPath)
-          }
+          logger.info('defaultGuard error verifyRefreshToken, redirect to logout', error, nextPath)
 
           return redirect(`/logout?nextPath=${nextPath}`, RedirectType.replace)
         }
@@ -148,11 +135,7 @@ export const defaultGuard = async <T extends Record<string, unknown> | undefined
       throw error // Re-throw for Next.js
     }
 
-    if (error instanceof AxiosError) {
-      logger.error('defaultGuard error global', error.response?.data, nextPath)
-    } else {
-      logger.error('defaultGuard error global', error, nextPath)
-    }
+    logger.error('defaultGuard error global', error, nextPath)
 
     return false
   }

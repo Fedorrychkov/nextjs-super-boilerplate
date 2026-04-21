@@ -6,14 +6,17 @@ import { AuthSuccessResult } from '@lib/security/auth'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 
+import { ArticleStatus, ArticleVisibility } from '~/api/article'
 import { ArticleRevisionMetadata, ArticleRevisionModel, ArticleRevisionStatus } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
 import { routes } from '~/constants'
 import { publicArticleCacheTag } from '~/lib/cache/publicArticlePageCache'
 import { getServerTFromNextRequest } from '~/lib/i18n/server'
 import { validateCanonicalUrlForStorage } from '~/lib/seo/articleCanonical'
+import { resolveIndexingUrlsForArticleTransition } from '~/lib/seo/articleIndexingNotify'
 import { normalizeArticleLanguage } from '~/lib/seo/articleLanguage'
 import { seoConfig } from '~/lib/seo/config'
+import { notifySearchEngines } from '~/lib/seo/indexing'
 import { time } from '~/utils/time'
 
 const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
@@ -40,6 +43,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     const isPublishing = body.status === ArticleRevisionStatus.CONFIRMED && !articleRevision.publishedAt
 
     const existingMeta = (articleRevision.metadata as ArticleRevisionMetadata | null | undefined) ?? {}
+    const previousSeoForIndexing = existingMeta.seo ?? null
     const mergedSeo = { ...(existingMeta.seo ?? {}), ...(body.metadata?.seo ?? {}) }
     const canonicalValidation = validateCanonicalUrlForStorage(mergedSeo.canonicalUrl, seoConfig.siteUrl, t)
     const language = normalizeArticleLanguage(mergedSeo.language)
@@ -72,11 +76,38 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
       return NextResponse.json({ message: t('article.errors.articleRevisionNotFound') }, { status: 404 })
     }
 
-    const parentArticle = await Article.findById(data.articleId)
+    const parentArticle = await Article.findById(data.articleId).select('status visibility slug translationGroupId revisionId').lean()
 
     if (parentArticle?.slug && String(parentArticle.revisionId) === String(data._id)) {
-      revalidateTag(publicArticleCacheTag(parentArticle.slug), 'max')
-      revalidatePath(routes.articlePublic.path.replace(':slug', parentArticle.slug))
+      revalidateTag(publicArticleCacheTag(String(parentArticle.slug)), 'max')
+      revalidatePath(routes.articlePublic.path.replace(':slug', String(parentArticle.slug)))
+
+      const isPublishedPublic =
+        parentArticle.status === ArticleStatus.PUBLISHED && parentArticle.visibility === ArticleVisibility.PUBLIC && Boolean(String(parentArticle.slug).trim())
+
+      if (isPublishedPublic) {
+        const newSeo = mergedMetadata.seo ?? null
+        const urlsForIndexing = await resolveIndexingUrlsForArticleTransition({
+          before: {
+            status: parentArticle.status,
+            visibility: parentArticle.visibility,
+            slug: parentArticle.slug,
+            translationGroupId: parentArticle.translationGroupId,
+            revisionSeo: previousSeoForIndexing,
+          },
+          after: {
+            status: parentArticle.status,
+            visibility: parentArticle.visibility,
+            slug: parentArticle.slug,
+            translationGroupId: parentArticle.translationGroupId,
+            revisionSeo: newSeo,
+          },
+        })
+
+        if (urlsForIndexing.length > 0) {
+          await notifySearchEngines(urlsForIndexing)
+        }
+      }
     }
 
     revalidatePath('/sitemap.xml')

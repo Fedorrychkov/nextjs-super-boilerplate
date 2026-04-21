@@ -9,6 +9,8 @@ export type InputFieldProps = {
   placeholder?: string
   hintText?: string | React.ReactNode
   additionalComponent?: string | React.ReactNode
+  additionalLeftComponent?: string | React.ReactNode
+  additionalRightComponent?: string | React.ReactNode
   additionalAlignment?: 'left' | 'right'
   label?: string
   type?: 'text' | 'email' | 'password' | 'number'
@@ -25,13 +27,17 @@ export type InputFieldProps = {
     input?: string
     root?: string
   }
+  /** HTML `list` — pairs with `<datalist id={…}>`. */
+  list?: string
 }
 
 export const InputField = forwardRef<HTMLInputElement, InputFieldProps>((props, ref) => {
   const {
     label,
-    additionalAlignment = 'right',
+    additionalAlignment = null,
     additionalComponent = null,
+    additionalLeftComponent = null,
+    additionalRightComponent = null,
     classNames,
     placeholder,
     type,
@@ -45,6 +51,7 @@ export const InputField = forwardRef<HTMLInputElement, InputFieldProps>((props, 
     name,
     hintText,
     onKeyDown,
+    list,
     ...restProps
   } = props
 
@@ -57,10 +64,13 @@ export const InputField = forwardRef<HTMLInputElement, InputFieldProps>((props, 
       </Label>
       <div
         className={cn('relative', {
-          'flex w-full gap-4': !!additionalComponent,
+          'flex w-full gap-4': !!additionalComponent || !!additionalLeftComponent || !!additionalRightComponent,
           'flex-row-reverse': !!additionalComponent && additionalAlignment === 'left',
         })}
       >
+        {additionalLeftComponent ? (
+          <div className={cn('h-fit absolute top-0 bottom-0 left-0 h-full flex items-center justify-center')}>{additionalLeftComponent}</div>
+        ) : null}
         <Input
           ref={ref}
           id={id}
@@ -82,6 +92,7 @@ export const InputField = forwardRef<HTMLInputElement, InputFieldProps>((props, 
           placeholder={placeholder}
           type={type}
           required={required}
+          list={list}
           aria-describedby={`${id}-description`}
           {...restProps}
         />
@@ -94,6 +105,9 @@ export const InputField = forwardRef<HTMLInputElement, InputFieldProps>((props, 
           >
             {additionalComponent}
           </div>
+        ) : null}
+        {additionalRightComponent ? (
+          <div className={cn('h-fit absolute top-0 bottom-0 right-0 h-full flex items-center justify-center')}>{additionalRightComponent}</div>
         ) : null}
       </div>
       {error && (

@@ -4,7 +4,10 @@ import './styles/editor.styles.scss'
 
 import DragHandle from '@tiptap/extension-drag-handle-react'
 import { Editor, EditorContent } from '@tiptap/react'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
+
+import { StickyContainer } from '~/components/Containers'
+import { useStickyContainer } from '~/hooks/useStickyContainer'
 
 import { useDefaultEditor } from './hooks/useDefaultEditor'
 import { ImageEditorDialog, type ImageEditorDialogMode } from './image/ImageEditorDialog'
@@ -12,7 +15,7 @@ import { LinkEditorDialog } from './link/LinkEditorDialog'
 import { AudioEditorDialog, type AudioEditorDialogMode } from './media/AudioEditorDialog'
 import { VideoEditorDialog, type VideoEditorDialogMode } from './media/VideoEditorDialog'
 import { CustomBubbleMenu } from './Menu/BubbleMenu'
-import { CustomFloatingMenu } from './Menu/FloatingMenu'
+import { EditorMainToolbar } from './Menu/EditorMainToolbar'
 import { ImageBubbleMenu } from './Menu/ImageBubbleMenu'
 import { MediaBlockBubbleMenu } from './Menu/MediaBlockBubbleMenu'
 import { CharacterCount } from './Widgets/CharacterCount'
@@ -101,6 +104,16 @@ export const DefaultEditor = (props: Props) => {
     }
   }, [])
 
+  const containerRef = useRef<HTMLDivElement>(null)
+  const headerRef = useRef<HTMLDivElement>(null)
+
+  useStickyContainer({
+    elementRef: headerRef,
+    rootRef: containerRef,
+    isEnabled: true,
+    direction: 'top',
+  })
+
   if (!editor) return null
 
   return (
@@ -124,13 +137,19 @@ export const DefaultEditor = (props: Props) => {
       />
       <ImageBubbleMenu editor={editor} onOpenSettings={openImageDialogEdit} />
       <MediaBlockBubbleMenu editor={editor} onOpenAudioSettings={openAudioDialogEdit} onOpenVideoSettings={openVideoDialogEdit} />
-      <CustomFloatingMenu
-        editor={editor}
-        onImageDialogOpen={openImageDialogCreate}
-        onAudioDialogOpen={openAudioDialogCreate}
-        onVideoDialogOpen={openVideoDialogCreate}
-        onLinkDialogOpen={openLinkDialog}
-      />
+      <div className="flex flex-col gap-2" ref={containerRef}>
+        <StickyContainer ref={headerRef} direction="bottom">
+          <EditorMainToolbar
+            editor={editor}
+            onImageDialogOpen={openImageDialogCreate}
+            onAudioDialogOpen={openAudioDialogCreate}
+            onVideoDialogOpen={openVideoDialogCreate}
+            onLinkDialogOpen={openLinkDialog}
+          />
+        </StickyContainer>
+        <EditorContent editor={editor} />
+        <CharacterCount editor={editor} limit={limit} />
+      </div>
       <LinkEditorDialog editor={editor} open={linkDialogOpen} onOpenChange={setLinkDialogOpen} capturedSelection={linkDialogSelection} />
       <ImageEditorDialog
         editor={editor}
@@ -154,8 +173,6 @@ export const DefaultEditor = (props: Props) => {
         onOpenChange={onVideoDialogOpenChange}
         articleRevisionId={articleRevisionId}
       />
-      <EditorContent editor={editor} />
-      <CharacterCount editor={editor} limit={limit} />
     </>
   )
 }

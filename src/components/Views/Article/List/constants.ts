@@ -24,6 +24,10 @@ export const columns: Column[] = [
     accessorKey: 'visibility',
   },
   {
+    header: 'Locale / group',
+    accessorKey: 'translations',
+  },
+  {
     header: 'Views',
     accessorKey: 'viewCountTotal',
   },

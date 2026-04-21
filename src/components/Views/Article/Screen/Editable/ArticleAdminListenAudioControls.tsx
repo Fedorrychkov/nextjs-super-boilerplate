@@ -101,7 +101,6 @@ export const ArticleAdminListenAudioControls = (props: ArticleAdminListenAudioCo
         articleRevisionId={articleRevisionId}
         disabled={fieldDisabled}
         toolbarBusy={toolbarBusy}
-        urlInputReadOnly
         resourceType={MediaResourceType.AUDIO}
         variant="original"
         hintText={t('article.ui.listenAudioFieldHint')}

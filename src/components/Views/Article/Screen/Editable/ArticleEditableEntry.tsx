@@ -3,7 +3,7 @@
 import type { Editor } from '@tiptap/core'
 import { AxiosError } from 'axios'
 import debounce from 'lodash/debounce'
-import { ActivityIcon, BotIcon, EyeIcon, FileTextIcon, InfoIcon, LockIcon, SearchIcon, SendIcon } from 'lucide-react'
+import { ActivityIcon, BotIcon, EyeIcon, FileTextIcon, InfoIcon, Languages, LockIcon, SearchIcon, SendIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
@@ -18,6 +18,7 @@ import { SpinnerScreen } from '~/components/Loaders'
 import { AlertBlock, Button, Typography } from '~/components/ui'
 import { routes } from '~/constants'
 import type { TFunction } from '~/lib/i18n'
+import { normalizeBcp47ArticleLocale } from '~/lib/seo/articleLanguage'
 import { useT } from '~/providers'
 import { useNotify } from '~/providers/notify'
 import {
@@ -29,6 +30,7 @@ import {
   useUpdateArticleMutation,
   useUpdateArticleRevisionMutation,
 } from '~/query/article'
+import { ARTICLE_TRANSLATION_SIBLINGS_QUERY_KEY } from '~/query/article/query/useArticleTranslationSiblingsQuery'
 import { cn } from '~/utils/cn'
 import { jsonStringifySafety } from '~/utils/jsonSafe'
 import { Logger } from '~/utils/logger'
@@ -38,9 +40,11 @@ import { ArticleAdminListenAudioControls } from './ArticleAdminListenAudioContro
 import { ArticleAiChatModal, isLlmUiEnabled } from './ArticleAiChatModal'
 import { ArticleEditableContent, type ArticleEditableContentHandle } from './ArticleEditableContent'
 import { ArticleEditablePreview, type ArticleEditablePreviewHandle, SaveForm } from './ArticleEditablePreview'
-import { ArticleEditablePublish } from './ArticleEditablePublish'
+import { ArticleEditablePublication } from './ArticleEditablePublication'
 import { ArticleEditableSeo, type ArticleEditableSeoHandle, ArticleEditableSeoSavePayload } from './ArticleEditableSeo'
+import { ArticleEditableTranslations } from './ArticleEditableTranslations'
 import { ArticleEditorLlmUsageChip } from './ArticleEditorLlmUsageChip'
+import { getNextArticleEditorTabValue } from './articleEditorTabOrder'
 
 const getSteps = (props: {
   article?: ArticleModel | null
@@ -51,10 +55,7 @@ const getSteps = (props: {
   onUpdateContent?: (editor: Editor) => void
   isContentEnabled?: boolean
   isSeoEnabled?: boolean
-  isPublishEnabled?: boolean
-  publishLabel?: string
   isDisabledEditing?: boolean
-  onPublish?: () => void
   t: TFunction
 }): Tab[] => [
   {
@@ -88,6 +89,13 @@ const getSteps = (props: {
     ),
   },
   {
+    label: props.t('article.ui.translations.tab'),
+    icon: <Languages className="size-4 shrink-0" />,
+    value: 'translations',
+    isEnabled: props.isSeoEnabled,
+    children: null,
+  },
+  {
     label: props.t('common.preview'),
     icon: <EyeIcon />,
     value: 'preview',
@@ -95,12 +103,11 @@ const getSteps = (props: {
     isEnabled: props.isSeoEnabled,
   },
   {
-    label: props.publishLabel ?? props.t('common.publish'),
+    label: props.t('article.ui.publication.tab'),
     icon: <SendIcon />,
-    value: 'publish',
-    onClick: props.onPublish,
-    isEnabled: props.isPublishEnabled,
-    children: <ArticleEditablePublish btnLabel={props.publishLabel} article={props.article} articleRevision={props.articleRevision} onSave={props.onPublish} />,
+    value: 'publication',
+    isEnabled: props.isSeoEnabled,
+    children: null,
   },
 ]
 
@@ -120,6 +127,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
   const seoEditorRef = useRef<ArticleEditableSeoHandle>(null)
   const previewEditorRef = useRef<ArticleEditablePreviewHandle>(null)
   const contentEditorRef = useRef<ArticleEditableContentHandle>(null)
+  const stepsRef = useRef<Tab[]>([])
   const router = useRouter()
   const { notify } = useNotify()
   const queryClient = useQueryClient()
@@ -305,53 +313,100 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
 
   const handleSaveSeo = useCallback(
     async (payload: ArticleEditableSeoSavePayload) => {
-      try {
-        if (isDisabledEditing) {
-          notify(t('article.ui.youAreNotAllowedToEditThisArticle'), 'destructive')
+      if (isDisabledEditing) {
+        notify(t('article.ui.youAreNotAllowedToEditThisArticle'), 'destructive')
+        throw new Error('article_editing_disabled')
+      }
 
-          return
+      if (!activeRevisionId) {
+        notify(t('errors.unknown'), 'destructive')
+        throw new Error('article_no_active_revision')
+      }
+
+      try {
+        notify(t('article.ui.updatingArticleRevisionSeo'), 'info')
+
+        const currentMetadata = (articleRevision?.metadata as ArticleRevisionMetadata | undefined) ?? {}
+        const mergedMetadata: ArticleRevisionMetadata = {
+          ...currentMetadata,
+          ...payload.metadata,
+          seo: {
+            ...(currentMetadata.seo ?? {}),
+            ...(payload.metadata.seo ?? {}),
+          },
+          media: {
+            ...(currentMetadata.media ?? {}),
+            ...(payload.metadata.media ?? {}),
+          },
         }
 
-        if (activeRevisionId) {
-          notify(t('article.ui.updatingArticleRevisionSeo'), 'info')
+        await updateArticleRevisionMutation.mutateAsync({
+          id: activeRevisionId,
+          metadata: mergedMetadata,
+        })
 
-          const currentMetadata = (articleRevision?.metadata as ArticleRevisionMetadata | undefined) ?? {}
-          const mergedMetadata: ArticleRevisionMetadata = {
-            ...currentMetadata,
-            ...payload.metadata,
-            seo: {
-              ...(currentMetadata.seo ?? {}),
-              ...(payload.metadata.seo ?? {}),
-            },
-            media: {
-              ...(currentMetadata.media ?? {}),
-              ...(payload.metadata.media ?? {}),
-            },
+        notify(t('article.ui.articleRevisionSeoUpdated'), 'success')
+
+        queryClient.invalidateQueries([articleRevisionKey])
+
+        const mergedSeo = mergedMetadata.seo ?? {}
+        const langRaw = mergedSeo.language
+        const nextLocale =
+          normalizeBcp47ArticleLocale(langRaw != null ? String(langRaw) : undefined) ??
+          (typeof langRaw === 'string' && langRaw.trim() ? langRaw.trim().toLowerCase() : null)
+
+        if (articleId && article) {
+          const prevLocale = article.locale?.trim().toLowerCase() ?? null
+          const normalizedNext = nextLocale?.trim().toLowerCase() ?? null
+
+          if (prevLocale !== normalizedNext) {
+            await updateArticleMutation.mutateAsync({
+              id: articleId,
+              locale: normalizedNext,
+            })
+            queryClient.invalidateQueries([articleKey])
+            void queryClient.invalidateQueries([ARTICLE_TRANSLATION_SIBLINGS_QUERY_KEY, articleId].join('-'))
           }
-
-          await updateArticleRevisionMutation.mutateAsync({
-            id: activeRevisionId,
-            metadata: mergedMetadata,
-          })
-
-          notify(t('article.ui.articleRevisionSeoUpdated'), 'success')
-
-          queryClient.invalidateQueries([articleRevisionKey])
         }
       } catch (error) {
         logger.error(error)
 
         if (error instanceof AxiosError) {
           notify(error.response?.data?.message ?? t('errors.unknown'), 'destructive')
-
-          return
+        } else {
+          notify(t('errors.unknown'), 'destructive')
         }
 
-        notify(t('errors.unknown'), 'destructive')
+        throw error
       }
     },
-    [activeRevisionId, articleRevision, updateArticleRevisionMutation, notify, queryClient, articleRevisionKey, isDisabledEditing, t],
+    [
+      activeRevisionId,
+      article,
+      articleId,
+      articleKey,
+      articleRevision,
+      isDisabledEditing,
+      notify,
+      queryClient,
+      articleRevisionKey,
+      t,
+      updateArticleMutation,
+      updateArticleRevisionMutation,
+    ],
   )
+
+  const handleAfterSeoSaveNavigate = useCallback((target: 'translations' | 'publication') => {
+    setActiveTab(target)
+  }, [])
+
+  const handleContentNext = useCallback(() => {
+    const next = getNextArticleEditorTabValue('content', stepsRef.current)
+
+    if (next) {
+      setActiveTab(next)
+    }
+  }, [])
 
   const handleUpdateContent = useCallback(
     async (editor: Editor) => {
@@ -419,43 +474,6 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
     window.open(`${routes.articlePreview.path?.replace(':slug', article?.slug ?? '')}?revisionId=${activeRevisionId}`, '_blank')
   }, [article, activeRevisionId])
 
-  const handlePublish = useCallback(async () => {
-    try {
-      const isRepublishing = article?.revisionId !== articleRevision?.id
-
-      if (isDisabledEditing && !isRepublishing) {
-        notify(t('article.ui.youAreNotAllowedToEditThisArticle'), 'destructive')
-
-        return
-      }
-
-      if (!articleId || !activeRevisionId || !article || !articleRevision) {
-        return
-      }
-
-      notify(t('article.ui.publishingArticle'), 'info')
-
-      await updateArticleMutation.mutateAsync({
-        id: articleId,
-        revisionId: activeRevisionId,
-        status: ArticleStatus.PUBLISHED,
-        version: (article.version ?? 0) + 1,
-      })
-
-      await updateArticleRevisionMutation.mutateAsync({
-        id: activeRevisionId,
-        status: ArticleRevisionStatus.CONFIRMED,
-        publishedAt: time().toISOString(),
-      })
-
-      notify(t('article.ui.articlePublished'), 'success')
-
-      window.location.reload()
-    } catch (error) {
-      logger.error(error)
-    }
-  }, [isDisabledEditing, article, articleId, activeRevisionId, articleRevision, updateArticleMutation, updateArticleRevisionMutation, notify, t])
-
   const steps = useMemo(() => {
     const rawSteps = getSteps({
       t,
@@ -467,11 +485,6 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
       onPreview: handlePreview,
       isContentEnabled: !!article,
       isSeoEnabled: !!article,
-      isPublishEnabled:
-        articleRevision?.status === ArticleRevisionStatus.DRAFT ||
-        (articleRevision?.status === ArticleRevisionStatus.CONFIRMED && article?.revisionId !== articleRevision?.id),
-      publishLabel: articleRevision?.status === ArticleRevisionStatus.DRAFT ? t('common.publish') : t('common.republish'),
-      onPublish: handlePublish,
       isDisabledEditing,
     })
 
@@ -496,8 +509,39 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
         return {
           ...step,
           children: (
-            <ArticleEditableSeo ref={seoEditorRef} isDisabled={isDisabledEditing} articleRevision={articleRevision} article={article} onSave={handleSaveSeo} />
+            <ArticleEditableSeo
+              ref={seoEditorRef}
+              isDisabled={isDisabledEditing}
+              articleRevision={articleRevision}
+              article={article}
+              onSave={handleSaveSeo}
+              onAfterSeoSaveNavigate={handleAfterSeoSaveNavigate}
+            />
           ),
+        }
+      }
+
+      if (step.value === 'translations') {
+        return {
+          ...step,
+          children:
+            articleId && article ? <ArticleEditableTranslations articleId={articleId} article={article} sourceRevisionId={activeRevisionId ?? null} /> : null,
+        }
+      }
+
+      if (step.value === 'publication') {
+        return {
+          ...step,
+          children:
+            articleId && article ? (
+              <ArticleEditablePublication
+                articleId={articleId}
+                article={article}
+                articleRevision={articleRevision}
+                activeRevisionId={activeRevisionId ?? null}
+                isDisabledEditing={isDisabledEditing}
+              />
+            ) : null,
         }
       }
 
@@ -505,7 +549,13 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
         return {
           ...step,
           children: (
-            <ArticleEditableContent ref={contentEditorRef} isDisabled={isDisabledEditing} articleRevision={articleRevision} onUpdate={debouncedUpdateContent} />
+            <ArticleEditableContent
+              ref={contentEditorRef}
+              isDisabled={isDisabledEditing}
+              articleRevision={articleRevision}
+              onUpdate={debouncedUpdateContent}
+              onNext={handleContentNext}
+            />
           ),
         }
       }
@@ -514,7 +564,11 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
     })
 
     const filteredSteps = stepsWithAiRefs.filter((step) => {
-      if (articleId && step.value === 'seo' && (!article || !articleRevision)) {
+      if (articleId && (step.value === 'seo' || step.value === 'translations') && (!article || !articleRevision)) {
+        return false
+      }
+
+      if (articleId && step.value === 'publication' && !article) {
         return false
       }
 
@@ -525,16 +579,22 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
   }, [
     t,
     isDisabledEditing,
+    activeRevisionId,
     articleId,
     article,
     articleRevision,
-    handlePublish,
     handlePreview,
     handleSavePreview,
     handleSaveSeo,
+    handleAfterSeoSaveNavigate,
+    handleContentNext,
     debouncedUpdateContent,
     noopContentEditorUpdate,
   ])
+
+  useLayoutEffect(() => {
+    stepsRef.current = steps
+  }, [steps])
 
   const finalActiveTab = useMemo(() => {
     const isTabValid = steps.some((step) => step.value === activeTab)

@@ -69,6 +69,17 @@
 
 /* Basic editor styles */
 .tiptap {
+  /* Line breaks inside one `<p>`; `HardBreak` (Shift+Enter) still emits `<br>` in the doc. */
+  p {
+    margin: 0;
+    white-space: pre-line;
+  }
+
+  /* No `<br>` can sit between two block `<p>` nodes; adjacent non-empty paragraphs only. */
+  p + p {
+    margin-top: 0.75em;
+  }
+
   :first-child {
     margin-top: 0;
   }

@@ -190,6 +190,12 @@ export type NotifySearchEnginesOptions = {
  * — IndexNow: Bing, Yandex, ChatGPT — fast indexing of any URL.
  * — Google: only if GOOGLE_INDEXING_* is set and content is suitable (JobPosting/BroadcastEvent).
  *
+ * **Production only:** when `isProd` is false, this function no-ops (local/stage won’t call IndexNow).
+ * For manual pings in dev, use `POST /api/v1/seo/indexnow`, which calls `pingIndexNow` directly and still requires `INDEXNOW_API_KEY`.
+ *
+ * **Unpublish / 404:** IndexNow has no separate “URL deleted” payload. Including the former public URL means
+ * “please re-crawl”; the crawler then sees 404/noindex and updates the index. That is expected, not a mistake.
+ *
  * @example
  * In the publication handler:
  * ```ts
@@ -208,7 +214,7 @@ export const notifySearchEngines = async (urls: string[], options: NotifySearchE
   const logger = new Logger(['notifySearchEngines', '[lib/seo/indexing.ts]'])
 
   if (!isProd) {
-    logger.warn('[seo] Skipping search engine notification in non-production environment', {
+    logger.warn('[seo] Skipping search engine notification in non-production environment (use POST /api/v1/seo/indexnow to test IndexNow)', {
       urls,
       options,
     })

@@ -1,10 +1,12 @@
 'use client'
 
-import { Lock, Mail, UserRoundPlusIcon } from 'lucide-react'
+import { Eye, EyeOff, Lock, Mail, UserRoundPlusIcon } from 'lucide-react'
 import * as React from 'react'
 import { useState } from 'react'
 
+import { InputField } from '~/components/Fields'
 import { Button } from '~/components/ui'
+import { useSwitch } from '~/hooks/useSwitch'
 import { useT } from '~/providers'
 
 type Props = {
@@ -15,6 +17,7 @@ type Props = {
 
 const SignUpBlock = (props: Props) => {
   const t = useT()
+  const [isPasswordVisible, { toggle: togglePasswordVisibility }] = useSwitch(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -57,28 +60,45 @@ const SignUpBlock = (props: Props) => {
         </p>
         <div className="w-full flex flex-col gap-3 mb-2">
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-              <Mail className="w-4 h-4" />
-            </span>
-            <input
+            <InputField
               placeholder={t('auth.ui.email')}
               type="email"
+              name="email"
               value={email}
               disabled={props.isLoading}
-              className="w-full pl-10 pr-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-gray-50 text-black text-sm"
+              additionalLeftComponent={
+                <span className="ml-3 text-gray-400">
+                  <Mail className="w-4 h-4" />
+                </span>
+              }
+              classNames={{
+                input:
+                  'w-full pl-10 pr-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-gray-50 text-black text-sm',
+              }}
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-              <Lock className="w-4 h-4" />
-            </span>
-            <input
+            <InputField
               placeholder={t('auth.ui.password')}
-              type="password"
+              type={isPasswordVisible ? 'text' : 'password'}
+              name="password"
               value={password}
+              additionalLeftComponent={
+                <span className="ml-3 text-gray-400">
+                  <Lock className="w-4 h-4" />
+                </span>
+              }
+              additionalRightComponent={
+                <Button type="button" size="input-icon" variant="ghost" className="text-gray-400 mr-3 cursor-pointer" onClick={togglePasswordVisibility}>
+                  {isPasswordVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </Button>
+              }
               disabled={props.isLoading}
-              className="w-full pl-10 pr-10 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-gray-50 text-black text-sm"
+              classNames={{
+                input:
+                  'w-full pl-10 pr-10 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-gray-50 text-black text-sm',
+              }}
               onChange={(e) => setPassword(e.target.value)}
             />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer text-xs select-none"></span>

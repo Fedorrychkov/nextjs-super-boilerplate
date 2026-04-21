@@ -3,7 +3,7 @@ import { BruteForceError } from '@lib/error/custom-errors'
 
 import { Logger } from '~/utils/logger'
 
-const LOGIN_MAX_ATTEMPTS = 3
+const LOGIN_MAX_ATTEMPTS = 5
 const LOGIN_WINDOW_SECONDS = 15 * 60
 
 const REGISTER_MAX_ATTEMPTS = 5
