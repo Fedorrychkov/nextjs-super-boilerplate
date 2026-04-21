@@ -10,8 +10,8 @@ import { DefaultCheckbox, DefaultFieldContainer, DefaultMultiselectField, Defaul
 import { Button, Option, Typography } from '~/components/ui'
 import { routes } from '~/constants'
 import { handleRegister } from '~/hooks/useRegister'
-import { getSupportedLocales } from '~/lib/i18n'
 import { validateCanonicalUrlForStorage } from '~/lib/seo/articleCanonical'
+import { normalizeBcp47ArticleLocale } from '~/lib/seo/articleLanguage'
 import { useT } from '~/providers'
 
 type SeoForm = {
@@ -26,7 +26,8 @@ type SeoForm = {
   noindex: boolean
   nofollow: boolean
   keywords: string
-  language: Option[]
+  /** BCP-47 content / hreflang language (synced to `Article.locale` on save from parent). */
+  contentLanguage: string
 }
 
 const twitterCardOptions: Option[] = [
@@ -54,6 +55,8 @@ const readSeoFromRevision = (revision: ArticleRevisionModel | null | undefined):
   return { ...emptySeo(), ...raw?.seo }
 }
 
+const COMMON_CONTENT_LANGUAGE_TAGS = ['ar', 'de', 'en', 'en-GB', 'es', 'fr', 'it', 'ja', 'ko', 'pl', 'pt', 'pt-BR', 'ru', 'tr', 'uk', 'zh-Hans', 'zh-Hant']
+
 const toFormValues = (seo: ArticleRevisionSeoMetadata, article?: ArticleModel | null): SeoForm => ({
   metaTitle: seo.metaTitle ?? '',
   metaDescription: seo.metaDescription ?? '',
@@ -68,7 +71,15 @@ const toFormValues = (seo: ArticleRevisionSeoMetadata, article?: ArticleModel | 
   noindex: article?.visibility ? [ArticleVisibility.PRIVATE, ArticleVisibility.LINK_ONLY].includes(article.visibility) : Boolean(seo.noindex),
   nofollow: seo.nofollow ?? false,
   keywords: seo.keywords ?? '',
-  language: seo.language ? [{ value: seo.language, label: seo.language.toUpperCase() }] : [],
+  contentLanguage: (() => {
+    const fromSeo = seo.language?.trim()
+
+    if (fromSeo) {
+      return fromSeo
+    }
+
+    return article?.locale?.trim() ?? ''
+  })(),
 })
 
 const formToSeoPayload = (data: SeoForm): ArticleRevisionSeoMetadata => ({
@@ -83,7 +94,7 @@ const formToSeoPayload = (data: SeoForm): ArticleRevisionSeoMetadata => ({
   noindex: data.noindex,
   nofollow: data.nofollow,
   keywords: data.keywords.trim() || null,
-  language: data.language?.[0]?.value?.trim() || null,
+  language: normalizeBcp47ArticleLocale(data.contentLanguage) ?? (data.contentLanguage.trim() ? data.contentLanguage.trim().toLowerCase() : null),
 })
 
 export type ArticleEditableSeoHandle = {
@@ -105,23 +116,17 @@ type Props = {
   article?: ArticleModel | null
   isLoading?: boolean
   isDisabled?: boolean
-  onSave?: (payload: ArticleEditableSeoSavePayload) => void
+  onSave?: (payload: ArticleEditableSeoSavePayload) => void | Promise<void>
+  /** Called only after a successful `onSave` when the user chose “save and go to …”. */
+  onAfterSeoSaveNavigate?: (target: 'translations' | 'publication') => void
 }
 
 export const ArticleEditableSeo = forwardRef<ArticleEditableSeoHandle, Props>(function ArticleEditableSeo(props, ref) {
-  const { articleRevision, isLoading, onSave, article, isDisabled } = props
+  const { articleRevision, isLoading, onSave, onAfterSeoSaveNavigate, article, isDisabled } = props
   const t = useT()
   const formRef = useRef<HTMLFormElement>(null)
 
   const defaultValues = useMemo(() => toFormValues(readSeoFromRevision(articleRevision), article), [articleRevision, article])
-  const languageOptions = useMemo<Option[]>(
-    () =>
-      getSupportedLocales().map((locale) => ({
-        value: locale,
-        label: locale.toUpperCase(),
-      })),
-    [],
-  )
 
   const form = useForm<SeoForm>({
     defaultValues,
@@ -131,6 +136,60 @@ export const ArticleEditableSeo = forwardRef<ArticleEditableSeoHandle, Props>(fu
   const { register, formState, handleSubmit: onSubmit } = form
   const { setValue, watch } = form
   const { errors } = formState
+
+  const canonicalUrl = useMemo(() => {
+    const site = process.env.NEXT_PUBLIC_SITE_URL ?? ''
+    const slug = article?.slug
+
+    if (!site || !slug) {
+      return ''
+    }
+
+    return `${site.replace(/\/+$/, '')}${article?.visibility === ArticleVisibility.PUBLIC ? `${routes.articlePublic.path?.replace(':slug', slug ?? '')}` : `${routes.articlePrivate.path?.replace(':slug', slug ?? '')}`}`
+  }, [article])
+
+  const buildSavePayload = useCallback(
+    (data: SeoForm): ArticleEditableSeoSavePayload => ({
+      metadata: {
+        seo: {
+          ...formToSeoPayload(data),
+          canonicalUrl: data.canonicalUrl.trim() || canonicalUrl || null,
+        },
+        media: {
+          seoOgImage: data.ogImageAssetId
+            ? {
+                assetId: data.ogImageAssetId,
+                provider: MediaProvider.UPLOADCARE,
+                resourceType: MediaResourceType.IMAGE,
+                url: data.ogImageUrl.trim() || null,
+              }
+            : null,
+        },
+      },
+    }),
+    [canonicalUrl],
+  )
+
+  const runSave = useCallback(
+    async (data: SeoForm, navigate: 'translations' | 'publication' | null) => {
+      if (!onSave) {
+        return
+      }
+
+      try {
+        const payload = buildSavePayload(data)
+
+        await onSave(payload)
+
+        if (navigate) {
+          onAfterSeoSaveNavigate?.(navigate)
+        }
+      } catch {
+        // Parent shows errors; do not navigate after failed save
+      }
+    },
+    [buildSavePayload, onSave, onAfterSeoSaveNavigate],
+  )
 
   useImperativeHandle(
     ref,
@@ -156,45 +215,12 @@ export const ArticleEditableSeo = forwardRef<ArticleEditableSeoHandle, Props>(fu
           setValue('keywords', partial.keywords ?? '', { shouldDirty: true })
         }
 
-        formRef?.current?.requestSubmit()
+        void onSubmit(async (data) => {
+          await runSave(data, null)
+        })()
       },
     }),
-    [setValue],
-  )
-
-  const canonicalUrl = useMemo(() => {
-    const site = process.env.NEXT_PUBLIC_SITE_URL ?? ''
-    const slug = article?.slug
-
-    if (!site || !slug) {
-      return ''
-    }
-
-    return `${site.replace(/\/+$/, '')}${article?.visibility === ArticleVisibility.PUBLIC ? `${routes.articlePublic.path?.replace(':slug', slug ?? '')}` : `${routes.articlePrivate.path?.replace(':slug', slug ?? '')}`}`
-  }, [article])
-
-  const handleSubmit = useCallback(
-    (data: SeoForm) => {
-      onSave?.({
-        metadata: {
-          seo: {
-            ...formToSeoPayload(data),
-            canonicalUrl: data.canonicalUrl.trim() || canonicalUrl || null,
-          },
-          media: {
-            seoOgImage: data.ogImageAssetId
-              ? {
-                  assetId: data.ogImageAssetId,
-                  provider: MediaProvider.UPLOADCARE,
-                  resourceType: MediaResourceType.IMAGE,
-                  url: data.ogImageUrl.trim() || null,
-                }
-              : null,
-          },
-        },
-      })
-    },
-    [onSave, canonicalUrl],
+    [setValue, onSubmit, runSave],
   )
 
   return (
@@ -204,7 +230,7 @@ export const ArticleEditableSeo = forwardRef<ArticleEditableSeoHandle, Props>(fu
       </Typography>
 
       <FormProvider {...form}>
-        <form onSubmit={onSubmit(handleSubmit)} className="w-full flex flex-col gap-6" ref={formRef}>
+        <form onSubmit={onSubmit(async (data) => runSave(data, null))} className="w-full flex flex-col gap-6" ref={formRef}>
           <section className="flex flex-col gap-4">
             <Typography variant="Body/L/Semibold">{t('article.ui.searchGoogleAndOthers')}</Typography>
 
@@ -269,18 +295,25 @@ export const ArticleEditableSeo = forwardRef<ArticleEditableSeoHandle, Props>(fu
               hintText={t('article.ui.throughACommaForGoogleAlmostDoesNotAffectSometimesOtherSystemsAreUsed')}
             />
 
-            <DefaultMultiselectField
-              options={languageOptions}
+            <DefaultFieldContainer
               {...handleRegister({
-                ...register('language'),
+                ...register('contentLanguage', {
+                  maxLength: { value: 35, message: t('article.errors.contentLanguageTooLong') },
+                }),
                 errors,
               })}
-              updateBySelected
               disabled={isLoading || isDisabled}
               label={t('article.ui.articleLanguageOptional')}
-              name="language"
-              placeholder={t('article.ui.notSelected')}
+              name="contentLanguage"
+              placeholder="ru, de, pt-BR…"
+              list="seo-article-content-language-list"
+              hintText={t('article.ui.contentLanguageSeoHint')}
             />
+            <datalist id="seo-article-content-language-list">
+              {COMMON_CONTENT_LANGUAGE_TAGS.map((tag) => (
+                <option key={tag} value={tag} />
+              ))}
+            </datalist>
             <Typography variant="Body/XS/Regular" className="text-muted-foreground -mt-2">
               {t('article.ui.ifNotSpecifiedTheDefaultSiteLanguageWillBeUsed')}
             </Typography>
@@ -383,9 +416,27 @@ export const ArticleEditableSeo = forwardRef<ArticleEditableSeoHandle, Props>(fu
             />
           </section>
 
-          <div>
+          <div className="flex flex-wrap gap-2">
             <Button type="submit" variant="secondary" size="default" disabled={isLoading || isDisabled}>
               {t('common.save')}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="default"
+              disabled={isLoading || isDisabled}
+              onClick={() => void onSubmit(async (data) => runSave(data, 'translations'))()}
+            >
+              {t('article.ui.seoSaveAndNext')}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="default"
+              disabled={isLoading || isDisabled}
+              onClick={() => void onSubmit(async (data) => runSave(data, 'publication'))()}
+            >
+              {t('article.ui.seoSaveAndPublication')}
             </Button>
           </div>
         </form>

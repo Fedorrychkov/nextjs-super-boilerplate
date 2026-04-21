@@ -3,7 +3,17 @@ import { AxiosInstance } from 'axios'
 
 import { PaginationMeta } from '~/types'
 
-import { ArticleListenAudioGenerateResponse, ArticleModel } from '../model'
+import {
+  ArticleListenAudioGenerateResponse,
+  ArticleModel,
+  ArticleTranslationCreateResponse,
+  ArticleTranslationLinkResponse,
+  ArticleTranslationPublishBatchResponse,
+  ArticleTranslationRestorePublishedBatchResponse,
+  ArticleTranslationSiblingsResponse,
+  ArticleTranslationUnlinkResponse,
+  ArticleTranslationUnpublishBatchResponse,
+} from '../model'
 import { ArticleFilter } from '../types'
 
 export * from './publicArticleList'
@@ -30,6 +40,53 @@ export class ClientArticleApi {
 
   async getArticleBySlug(slug: string): Promise<ArticleModel> {
     const response = await this.client.get(`/api/v1/article/get-by-slug/${slug}`)
+
+    return response.data
+  }
+
+  async getTranslationSiblings(articleId: string): Promise<ArticleTranslationSiblingsResponse> {
+    const response = await this.client.get(`/api/v1/article/translation-siblings/${articleId}`)
+
+    return response.data
+  }
+
+  async translationLink(body: { articleIds: string[]; translationGroupId?: string | null }): Promise<ArticleTranslationLinkResponse> {
+    const response = await this.client.post('/api/v1/article/translation-link', body)
+
+    return response.data
+  }
+
+  async translationUnlink(body: { articleIds: string[] }): Promise<ArticleTranslationUnlinkResponse> {
+    const response = await this.client.post('/api/v1/article/translation-unlink', body)
+
+    return response.data
+  }
+
+  async translationPublishBatch(body: { articleIds: string[] }): Promise<ArticleTranslationPublishBatchResponse> {
+    const response = await this.client.post('/api/v1/article/translation-publish-batch', body)
+
+    return response.data
+  }
+
+  async translationUnpublishBatch(body: { articleIds: string[] }): Promise<ArticleTranslationUnpublishBatchResponse> {
+    const response = await this.client.post('/api/v1/article/translation-unpublish-batch', body)
+
+    return response.data
+  }
+
+  async translationRestorePublishedBatch(body: { articleIds: string[] }): Promise<ArticleTranslationRestorePublishedBatchResponse> {
+    const response = await this.client.post('/api/v1/article/translation-restore-published-batch', body)
+
+    return response.data
+  }
+
+  async translationCreate(body: {
+    sourceArticleId: string
+    locale: string
+    slug?: string | null
+    sourceRevisionId?: string | null
+  }): Promise<ArticleTranslationCreateResponse> {
+    const response = await this.client.post('/api/v1/article/translation-create', body)
 
     return response.data
   }

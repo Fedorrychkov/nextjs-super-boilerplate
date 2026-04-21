@@ -7,14 +7,14 @@ import { AuthSuccessResult } from '@lib/security/auth'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 
-import { ArticleModel, ArticleStatus, ArticleVisibility } from '~/api/article'
+import { ArticleModel, ArticleStatus } from '~/api/article'
 import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
 import { routes } from '~/constants'
 import { publicArticleCacheTag } from '~/lib/cache/publicArticlePageCache'
 import { getServerTFromNextRequest } from '~/lib/i18n/server'
-import { buildDefaultArticleUrl, resolveArticleCanonicalUrl } from '~/lib/seo/articleCanonical'
-import { seoConfig } from '~/lib/seo/config'
+import { resolveIndexingUrlsForArticleTransition } from '~/lib/seo/articleIndexingNotify'
+import { collectSlugsForTranslationGroups } from '~/lib/seo/articleTranslationAlternates'
 import { notifySearchEngines } from '~/lib/seo/indexing'
 import { time } from '~/utils/time'
 
@@ -40,6 +40,10 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
 
     const id = body.id
 
+    const prevRevisionForSeo = article.revisionId ? await ArticleRevision.findById(article.revisionId).select('metadata').lean() : null
+    const prevSeoBlock = prevRevisionForSeo?.metadata as { seo?: ArticleRevisionSeoMetadata | null } | undefined
+    const prevSeo = prevSeoBlock?.seo ?? null
+
     const updatedAt = time().toISOString()
     const isPublishing = body.status === ArticleStatus.PUBLISHED && !article.publishedAt
 
@@ -51,34 +55,47 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
       return NextResponse.json({ message: t('article.errors.notFound') }, { status: 404 })
     }
 
-    const isPublishedPublic = data.status === ArticleStatus.PUBLISHED && data.visibility === ArticleVisibility.PUBLIC
     const currentRevision = data.revisionId ? await ArticleRevision.findById(data.revisionId) : null
     const revisionMetadata = currentRevision?.metadata as { seo?: ArticleRevisionSeoMetadata | null } | undefined
     const seo = revisionMetadata?.seo
-    const shouldIndex = isPublishedPublic && seo?.noindex !== true
-    const canonicalUrl = data.slug
-      ? resolveArticleCanonicalUrl(seoConfig.siteUrl, data.slug, data.visibility ?? ArticleVisibility.PUBLIC, seo?.canonicalUrl)
-      : null
-    const defaultPublicUrl = data.slug ? buildDefaultArticleUrl(seoConfig.siteUrl, data.slug, ArticleVisibility.PUBLIC) : null
 
-    if (shouldIndex && canonicalUrl) {
-      const urlsForIndexing = Array.from(new Set([canonicalUrl, defaultPublicUrl].filter((url): url is string => Boolean(url))))
+    const urlsForIndexing = await resolveIndexingUrlsForArticleTransition({
+      before: {
+        status: article.status,
+        visibility: article.visibility,
+        slug: article.slug,
+        translationGroupId: article.translationGroupId,
+        revisionSeo: prevSeo,
+      },
+      after: {
+        status: data.status,
+        visibility: data.visibility ?? article.visibility,
+        slug: data.slug,
+        translationGroupId: data.translationGroupId,
+        revisionSeo: seo ?? null,
+      },
+    })
 
+    if (urlsForIndexing.length > 0) {
       await notifySearchEngines(urlsForIndexing)
     }
 
-    if (canonicalUrl) {
-      revalidatePath(routes.articlePublic.path.replace(':slug', data.slug ?? ''))
+    const groupIds = new Set<string>()
+
+    if (data.translationGroupId != null && String(data.translationGroupId).trim()) {
+      groupIds.add(String(data.translationGroupId).trim())
     }
 
-    const nextSlug = data.slug ?? undefined
-
-    if (previousSlug) {
-      revalidateTag(publicArticleCacheTag(previousSlug), 'max')
+    if (article.translationGroupId != null && String(article.translationGroupId).trim()) {
+      groupIds.add(String(article.translationGroupId).trim())
     }
 
-    if (nextSlug && nextSlug !== previousSlug) {
-      revalidateTag(publicArticleCacheTag(nextSlug), 'max')
+    const fromGroups = groupIds.size > 0 ? await collectSlugsForTranslationGroups([...groupIds]) : []
+    const slugSet = new Set<string>([...fromGroups, previousSlug, data.slug ?? undefined].filter((s): s is string => Boolean(s)))
+
+    for (const s of slugSet) {
+      revalidateTag(publicArticleCacheTag(s), 'max')
+      revalidatePath(routes.articlePublic.path.replace(':slug', s))
     }
 
     revalidatePath('/sitemap.xml')

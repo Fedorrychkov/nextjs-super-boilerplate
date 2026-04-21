@@ -128,6 +128,20 @@ const ArticleSchema: Schema<IArticle> = new Schema<IArticle>(
       default: 0,
       min: 0,
     },
+    /** UUID linking language versions of the same logical article (optional). */
+    translationGroupId: {
+      type: String,
+      default: null,
+      trim: true,
+      index: true,
+    },
+    /** BCP-47 primary tag (e.g. `ru`, `en`); should align with revision `metadata.seo.language`. */
+    locale: {
+      type: String,
+      default: null,
+      trim: true,
+      lowercase: true,
+    },
     createdAt: {
       type: Date,
       default: () => time().toISOString(),
@@ -143,6 +157,16 @@ const ArticleSchema: Schema<IArticle> = new Schema<IArticle>(
 )
 
 ArticleSchema.index({ slug: 1 }, { unique: true, sparse: true })
+ArticleSchema.index(
+  { translationGroupId: 1, locale: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      translationGroupId: { $type: 'string', $gt: '' },
+      locale: { $type: 'string', $gt: '' },
+    },
+  },
+)
 ;(ArticleSchema.statics as Record<string, unknown>).findListPaginated = async function findListPaginated(
   this: Model<IArticle>,
   filter: ArticleFilter,

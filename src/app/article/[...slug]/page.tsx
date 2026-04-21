@@ -2,19 +2,28 @@ import '../../../components/Blocks/Editor/styles/editor.styles.scss'
 
 import { PageProps } from '@lib/page'
 import type { Metadata } from 'next'
+import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 
 import { ArticleVisibility } from '~/api/article'
 import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { ArticlePublishedDate } from '~/components/Views/Article/Block/server/ArticlePublishedDate'
 import { ArticlePublicListenAudio } from '~/components/Views/Article/Public/ArticlePublicListenAudio'
+import { ArticleTranslationAcceptBanner } from '~/components/Views/Article/Public/ArticleTranslationAcceptBanner'
+import { ArticleTranslationLanguageNav } from '~/components/Views/Article/Public/ArticleTranslationLanguageNav'
 import { ArticleViewTracker } from '~/components/Views/Article/Public/ArticleViewTracker'
 import { FALLBACK_THUMBNAIL_IMAGE } from '~/constants'
 import { getCachedPublicArticlePagePayload } from '~/lib/cache/publicArticlePageCache'
 import { getServerT } from '~/lib/i18n/server'
 import { toAbsoluteSiteUrl } from '~/lib/seo/absoluteUrl'
+import { pickPreferredTranslationFromAcceptLanguage } from '~/lib/seo/acceptLanguageTranslationSuggest'
 import { getAlternateOgLocale, resolveArticleLanguage, toOgLocale } from '~/lib/seo/articleLanguage'
 import { resolvePublicArticlePageMeta } from '~/lib/seo/articleMeta'
+import {
+  loadPublishedIndexableAlternatesLanguagesMap,
+  loadPublishedIndexableTranslationMembers,
+  resolvePublishedArticleHreflangKey,
+} from '~/lib/seo/articleTranslationAlternates'
 import { AUTHOR_GITHUB_URL, AUTHOR_NAME } from '~/lib/seo/config'
 import { getArticleBreadcrumbJsonLd, getArticleJsonLd, JsonLd } from '~/lib/seo/jsonld'
 import { Logger } from '~/utils/logger'
@@ -61,11 +70,14 @@ export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Pr
   const modifiedAt = response.revision.updatedAt ?? response.article.updatedAt
   const ogImage = toAbsoluteSiteUrl(meta.image)
 
+  const translationLanguages = await loadPublishedIndexableAlternatesLanguagesMap(response.article.translationGroupId ?? undefined)
+
   return {
     title: canonicalTitle,
     description: meta.description,
     alternates: {
       canonical: meta.canonical,
+      ...(translationLanguages && Object.keys(translationLanguages).length >= 2 ? { languages: translationLanguages } : {}),
     },
     robots: {
       index: seoData?.noindex !== true,
@@ -130,7 +142,17 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
     seo: seoJson,
   })
 
-  const { t } = await getServerT()
+  const { locale, t } = await getServerT()
+  const hdrs = await headers()
+  const acceptLanguage = hdrs.get('accept-language')
+
+  const translationMembers = await loadPublishedIndexableTranslationMembers(response.article.translationGroupId ?? undefined)
+  const currentHreflangKey = resolvePublishedArticleHreflangKey(response.article.locale, seoJson.language)
+  const bannerTarget =
+    translationMembers.length >= 2 ? pickPreferredTranslationFromAcceptLanguage(translationMembers, slugResolved, currentHreflangKey, acceptLanguage) : null
+  const translationGroupId = response.article.translationGroupId?.trim() ?? ''
+
+  const languageDisplayName = (code: string) => new Intl.DisplayNames([locale], { type: 'language' }).of(code) ?? code.toUpperCase()
 
   const canonicalTitle = pageMeta.title
 
@@ -168,6 +190,26 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
         </a>
       </p>
       <ArticlePublishedDate publishedAt={publishedAt} className="mb-4 text-muted-foreground" />
+      {translationMembers.length >= 2 ? (
+        <ArticleTranslationLanguageNav
+          ariaLabel={t('article.public.translationLanguagesNavAria')}
+          items={translationMembers.map((m) => ({
+            hreflangKey: m.hreflangKey,
+            url: m.canonicalUrl,
+            isCurrent: m.slug === slugResolved,
+          }))}
+        />
+      ) : null}
+      {bannerTarget && translationGroupId ? (
+        <ArticleTranslationAcceptBanner
+          storageKey={`translation-banner-dismissed:${translationGroupId}`}
+          suggestedUrl={bannerTarget.canonicalUrl}
+          leadLabel={t('article.public.translationBannerLead', { language: languageDisplayName(bannerTarget.hreflangKey) })}
+          openButtonLabel={t('article.public.translationOpenIn', { language: languageDisplayName(bannerTarget.hreflangKey) })}
+          laterLabel={t('article.public.translationNotNow')}
+          regionAriaLabel={t('article.public.translationBannerAria')}
+        />
+      ) : null}
       <ArticlePublicListenAudio assetId={response.article.listenAudioAssetId} />
       <div className="max-w-full tiptap readonly" lang={articleLanguage} dangerouslySetInnerHTML={{ __html: bodyHtml }} />
     </>

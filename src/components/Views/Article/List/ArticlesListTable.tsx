@@ -132,6 +132,24 @@ export const ArticleListTable = ({ isLoading, data }: Props) => {
                 </Badge>
               </TableCell>
             )}
+            {columnKeys?.includes('translations') && (
+              <TableCell className="whitespace-nowrap max-w-[140px]">
+                <div className="flex flex-col gap-1 items-start">
+                  <Typography variant="Body/XS/Semibold">{item.locale?.trim() ? item.locale : '—'}</Typography>
+                  {item.translationGroupId ? (
+                    <CustomTooltip content={item.translationGroupId}>
+                      <Typography variant="Body/XS/Regular" className="font-mono truncate max-w-[132px]">
+                        {item.translationGroupId.slice(0, 8)}…
+                      </Typography>
+                    </CustomTooltip>
+                  ) : (
+                    <Typography variant="Body/XS/Regular" className="text-muted-foreground">
+                      —
+                    </Typography>
+                  )}
+                </div>
+              </TableCell>
+            )}
             {columnKeys?.includes('viewCountTotal') && <TableCell className="whitespace-nowrap tabular-nums">{item.viewCountTotal ?? 0}</TableCell>}
             {columnKeys?.includes('time') && (
               <TableCell className="whitespace-nowrap">

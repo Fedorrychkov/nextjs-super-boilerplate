@@ -380,6 +380,7 @@ const UiKitRoot = async () => {
                   <SearchIcon className="w-3 h-3" />
                 </Button>
               }
+              additionalAlignment="right"
               classNames={{ input: 'pr-10' }}
             />
             <InputField

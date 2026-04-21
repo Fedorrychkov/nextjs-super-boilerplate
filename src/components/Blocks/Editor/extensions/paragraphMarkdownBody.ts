@@ -1,4 +1,4 @@
-import { MarkdownToken } from '@tiptap/core'
+import { MarkdownToken, mergeAttributes } from '@tiptap/core'
 import Paragraph from '@tiptap/extension-paragraph'
 
 import { markedInlineTokensForTiptap } from '../markdownInlineRetokenize'
@@ -13,6 +13,21 @@ type MarkedParagraphToken = {
 }
 
 export const ParagraphMarkdownBody = Paragraph.extend({
+  /**
+   * Empty `<p><br></p>` helps readonly HTML height; in a live editable TipTap/PM view the same DOM breaks editing (`contenteditable="false"`).
+   * Only emit the `<br>` when not rendering for an editable editor (static HTML, preview, etc.).
+   */
+  renderHTML({ HTMLAttributes, node }) {
+    const attrs = mergeAttributes(this.options.HTMLAttributes, HTMLAttributes)
+    const isLiveEditable = this.editor?.isEditable === true
+
+    if (node.content.size === 0 && !isLiveEditable) {
+      return ['p', attrs, ['br']]
+    }
+
+    return ['p', attrs, 0]
+  },
+
   parseMarkdown: (token, helpers) => {
     const tokens = token.tokens || []
 

@@ -2,8 +2,34 @@ import { coerceLocale, getDefaultLocale } from '~/lib/i18n'
 
 import { seoConfig } from './config'
 
+/**
+ * Canonical BCP-47 language tag for `Article.locale` and revision `metadata.seo.language`
+ * (any valid tag, not limited to app UI locales). Uses `Intl.getCanonicalLocales`.
+ */
+export const normalizeBcp47ArticleLocale = (input: string | null | undefined): string | null => {
+  const raw = input?.trim()
+
+  if (!raw) {
+    return null
+  }
+
+  const normalized = raw.replace(/_/g, '-')
+
+  try {
+    const [tag] = Intl.getCanonicalLocales(normalized)
+
+    if (!tag || tag.length > 35) {
+      return null
+    }
+
+    return tag.toLowerCase()
+  } catch {
+    return null
+  }
+}
+
 export const normalizeArticleLanguage = (input: string | null | undefined): string | null => {
-  return coerceLocale(input) ?? null
+  return normalizeBcp47ArticleLocale(input) ?? coerceLocale(input) ?? null
 }
 
 export const resolveArticleLanguage = (input: string | null | undefined): string => {

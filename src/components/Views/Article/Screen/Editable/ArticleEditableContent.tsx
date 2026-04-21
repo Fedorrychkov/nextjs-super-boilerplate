@@ -1,13 +1,13 @@
 'use client'
 
 import type { Editor } from '@tiptap/core'
-import { forwardRef, useCallback, useImperativeHandle, useMemo } from 'react'
+import { forwardRef, useCallback, useImperativeHandle, useMemo, useState } from 'react'
 
 import { ArticleRevisionModel } from '~/api/article-revision'
 import { DefaultEditor } from '~/components/Blocks/Editor/DefaultEditor'
 import { useDefaultEditor } from '~/components/Blocks/Editor/hooks/useDefaultEditor'
 import { MarkdownEditor } from '~/components/Blocks/Editor/MarkdownEditor'
-import { AlertBlock, Button, Typography } from '~/components/ui'
+import { AlertBlock, Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Typography } from '~/components/ui'
 import { useT } from '~/providers'
 import { cn } from '~/utils/cn'
 import { jsonParseSafety } from '~/utils/jsonSafe'
@@ -22,13 +22,16 @@ type Props = {
   className?: string
   title?: string | null
   onUpdate?: (editor: Editor) => void
+  /** TipTap mode: advances the parent tab strip (preview tab is skipped in the parent). Markdown mode still uses Save to apply markdown. */
+  onNext?: () => void
   articleRevision?: ArticleRevisionModel | null
   isDisabled?: boolean
 }
 
 export const ArticleEditableContent = forwardRef<ArticleEditableContentHandle, Props>(function ArticleEditableContent(props, ref) {
   const t = useT()
-  const { className = '', title = t('article.ui.contentEditor'), onUpdate, articleRevision, isDisabled } = props
+  const { className = '', title = t('article.ui.contentEditor'), onUpdate, onNext, articleRevision, isDisabled } = props
+  const [exampleConfirmOpen, setExampleConfirmOpen] = useState(false)
 
   const defaultContent = useMemo(() => {
     return articleRevision?.content ? jsonParseSafety<string>(articleRevision.content) : ''
@@ -46,12 +49,31 @@ export const ArticleEditableContent = forwardRef<ArticleEditableContentHandle, P
   const handleSave = useCallback(() => {
     if (mode === 'markdown') {
       handleSetMode('default')()
+
+      return
     }
-  }, [mode, handleSetMode])
+
+    onNext?.()
+  }, [mode, handleSetMode, onNext])
+
+  const applyExample = useCallback(() => {
+    editor?.commands.setContent(DEFAULT_EXAMPLE)
+    setExampleConfirmOpen(false)
+  }, [editor])
 
   const handleSetExample = useCallback(() => {
-    editor?.commands.setContent(DEFAULT_EXAMPLE)
-  }, [editor])
+    if (!editor) {
+      return
+    }
+
+    if (!editor.isEmpty) {
+      setExampleConfirmOpen(true)
+
+      return
+    }
+
+    applyExample()
+  }, [editor, applyExample])
 
   return (
     <div className={cn('flex flex-col gap-4', className)}>
@@ -80,9 +102,26 @@ export const ArticleEditableContent = forwardRef<ArticleEditableContentHandle, P
       {mode === 'markdown' && <MarkdownEditor isDisabled={isDisabled} value={markdownInput} editor={editor} onChange={setMarkdownInput} limit={50_000} />}
       <div>
         <Button variant="secondary" size="default" onClick={handleSave} disabled={isDisabled}>
-          {t('common.save')}
+          {mode === 'markdown' ? t('common.save') : t('common.next')}
         </Button>
       </div>
+
+      <Dialog open={exampleConfirmOpen} onOpenChange={setExampleConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('article.ui.setExampleConfirmTitle')}</DialogTitle>
+            <DialogDescription>{t('article.ui.setExampleConfirmDescription')}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={() => setExampleConfirmOpen(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button type="button" variant="default" onClick={applyExample}>
+              {t('common.confirm')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 })

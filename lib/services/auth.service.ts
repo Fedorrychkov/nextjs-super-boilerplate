@@ -104,8 +104,8 @@ export class AuthService {
     }
   }
 
-  async login(data: LoginEmailDto, options?: { languageCode?: string | null }): Promise<AuthResponse> {
-    const user = await this.validateUserCredentials(data)
+  async login(data: LoginEmailDto, options: { languageCode?: string | null; t: TFunction }): Promise<AuthResponse> {
+    const user = await this.validateUserCredentials(data, options.t)
 
     return this.generateAuthResponse(user, options)
   }
@@ -184,23 +184,23 @@ export class AuthService {
     await RefreshToken.deleteMany({ userId })
   }
 
-  async validateUserCredentials(data: LoginEmailDto): Promise<IUser> {
+  async validateUserCredentials(data: LoginEmailDto, t: TFunction): Promise<IUser> {
     await connectDB()
 
     const user = await User.findOne({ email: data.email.toLowerCase() }).select('+password')
 
     if (!user) {
-      throw new ValidationError('Invalid email or password')
+      throw new ValidationError(t('auth.errors.invalidEmailOrPassword'))
     }
 
     if (user.status !== UserStatus.ACTIVE) {
-      throw new ForbiddenError('User account is blocked')
+      throw new ForbiddenError(t('auth.errors.userAccountIsBlocked'))
     }
 
     const isPasswordValid = await user.comparePassword(data.password)
 
     if (!isPasswordValid) {
-      throw new ValidationError('Invalid email or password')
+      throw new ValidationError(t('auth.errors.invalidEmailOrPassword'))
     }
 
     return user
