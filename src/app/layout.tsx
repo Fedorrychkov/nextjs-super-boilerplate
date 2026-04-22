@@ -6,6 +6,7 @@ import { cookies, headers } from 'next/headers'
 
 import { FALLBACK_THUMBNAIL_IMAGE } from '~/constants'
 import { detectLocaleFromNextCookiesAndHeaders } from '~/lib/i18n/detectLocale'
+import { getLocaleOverrides } from '~/lib/i18n/getLocaleOverrides'
 import { seoConfig } from '~/lib/seo/config'
 import { trackAiReferralFromRequestHeaders } from '~/lib/seo/trackAiReferralInRootLayout'
 import { QueryProvider } from '~/providers'
@@ -83,10 +84,11 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const locale = detectLocaleFromNextCookiesAndHeaders({
+  const locale = await detectLocaleFromNextCookiesAndHeaders({
     cookies: await cookies(),
     headers: await headers(),
   })
+  const localeOverrides = await getLocaleOverrides(locale)
 
   await trackAiReferralFromRequestHeaders()
 
@@ -97,7 +99,7 @@ export default async function RootLayout({
           <AuthProvider>
             <NotifyProvider>
               <CookieConsentProvider>
-                <I18nProvider locale={locale}>
+                <I18nProvider locale={locale} overrides={localeOverrides}>
                   <DeferredClientChrome />
                   {children}
                 </I18nProvider>

@@ -1,4 +1,4 @@
-import { coerceLocale, getDefaultLocale } from '~/lib/i18n'
+import { coerceLocale, getDefaultLocale } from '~/lib/i18n/config'
 
 import { seoConfig } from './config'
 

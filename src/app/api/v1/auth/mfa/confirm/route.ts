@@ -7,7 +7,7 @@ import { AuthSuccessResult } from '@lib/security/auth'
 import { decryptSecret, verifyTotpCode } from '@lib/security/totp'
 import { NextRequest } from 'next/server'
 
-import { getServerTFromNextRequest } from '~/lib/i18n/server'
+import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 
 type ConfirmMfaDto = {
   code: string
@@ -17,7 +17,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) => {
   return apiErrorHandlerContainer(request)(async (res, req) => {
     const body = (await req.json()) as ConfirmMfaDto
 
-    const { t } = getServerTFromNextRequest(request)
+    const { t } = await getServerTFromNextRequestAsync(request)
 
     if (!body.code) {
       throw new ValidationError(t('totp.errors.mfaIsRequired'))

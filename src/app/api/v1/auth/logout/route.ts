@@ -5,11 +5,11 @@ import { authService } from '@lib/services/auth.service'
 import { cookies } from 'next/headers'
 import { NextRequest } from 'next/server'
 
-import { getServerTFromNextRequest } from '~/lib/i18n/server'
+import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 
 const handler = (request: NextRequest) => {
   return apiErrorHandlerContainer(request)(async (res, _req) => {
-    const { t } = getServerTFromNextRequest(request)
+    const { t } = await getServerTFromNextRequestAsync(request)
 
     const cookieStore = await cookies()
     const refreshToken = cookieStore.get('refreshToken')?.value ?? null

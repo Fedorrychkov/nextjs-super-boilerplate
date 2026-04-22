@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { getCachedPublicArticlePagePayload } from '~/lib/cache/publicArticlePageCache'
 import { ARTICLE_MARKDOWN_REWRITE_SLUG_HEADER } from '~/lib/http/articleMarkdownRewrite'
-import { getServerTFromNextRequest } from '~/lib/i18n/server'
+import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 import { buildPublicArticleMarkdownDocument } from '~/lib/seo/buildPublicArticleMarkdownDocument'
 import { buildPublicArticleContentSignalHeader } from '~/lib/seo/contentSignal'
 import { countPublicArticleMarkdownTokens } from '~/lib/seo/countMarkdownTokens'
@@ -13,7 +13,7 @@ import { countPublicArticleMarkdownTokens } from '~/lib/seo/countMarkdownTokens'
  */
 const handler = (request: NextRequest) =>
   apiErrorHandlerContainer(request)(async (_: typeof NextResponse) => {
-    const { t } = getServerTFromNextRequest(request)
+    const { t } = await getServerTFromNextRequestAsync(request)
     const slug = request.headers.get(ARTICLE_MARKDOWN_REWRITE_SLUG_HEADER)?.trim() || request.nextUrl.searchParams.get('slug')?.trim() || ''
 
     if (!slug) {

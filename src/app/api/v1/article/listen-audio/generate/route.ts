@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { UserRole } from '~/api/user'
 import { publicArticleCacheTag } from '~/lib/cache/publicArticlePageCache'
-import { getServerTFromNextRequest } from '~/lib/i18n/server'
+import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 import { Logger } from '~/utils/logger'
 
 const logger = new Logger(['ArticleListenAudioGenerateRoute', '[api/v1/article/listen-audio/generate]'])
@@ -24,7 +24,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     request,
     logger,
   )(async () => {
-    const { t } = getServerTFromNextRequest(request)
+    const { t } = await getServerTFromNextRequestAsync(request)
 
     if (![UserRole.ADMIN, UserRole.EDITOR].includes(authResult.payload.role)) {
       return NextResponse.json({ message: t('errors.insufficientPermissions') }, { status: 403 })

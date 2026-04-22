@@ -2,9 +2,10 @@ import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
 import { type ArticleViewSurface, recordArticleView } from '@lib/services/article-view.service'
 import { NextRequest, NextResponse } from 'next/server'
 
-import { getServerTFromNextRequest } from '~/lib/i18n/server'
+import type { TFunction } from '~/lib/i18n/getT'
+import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 
-function translateRecordViewError(t: ReturnType<typeof getServerTFromNextRequest>['t'], code: string): string {
+function translateRecordViewError(t: TFunction, code: string): string {
   switch (code) {
     case 'slug_required':
       return t('article.views.errors.slug_required')
@@ -48,7 +49,7 @@ function parseBody(body: unknown): { slug: string; surface: ArticleViewSurface; 
 
 const handler = (request: NextRequest) =>
   apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
-    const { t } = getServerTFromNextRequest(request)
+    const { t } = await getServerTFromNextRequestAsync(request)
 
     let json: unknown
 

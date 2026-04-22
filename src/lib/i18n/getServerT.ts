@@ -2,7 +2,8 @@ import { cookies, headers } from 'next/headers'
 import type { NextRequest } from 'next/server'
 
 import { type AppLocale, LOCALE_COOKIE_NAME } from './config'
-import { detectLocaleFromNextCookiesAndHeaders, detectLocaleFromRequest } from './detectLocale'
+import { detectLocaleFromNextCookiesAndHeaders, detectLocaleFromRequest, loadMergedResolvableLocaleCodes } from './detectLocale'
+import { getLocaleOverrides } from './getLocaleOverrides'
 import { getT, type TFunction } from './getT'
 
 /**
@@ -12,22 +13,23 @@ import { getT, type TFunction } from './getT'
  * Safe to call in Server Components, Layouts, and Route Handlers.
  */
 export async function getServerT(): Promise<{ locale: AppLocale; t: TFunction }> {
-  const locale = detectLocaleFromNextCookiesAndHeaders({
+  const locale = await detectLocaleFromNextCookiesAndHeaders({
     cookies: await cookies(),
     headers: await headers(),
   })
+  const overrides = await getLocaleOverrides(locale)
 
-  return { locale, t: getT(locale) }
+  return { locale, t: getT(locale, overrides) }
 }
 
-/**
- * Route-handler convenience helper when you already have `NextRequest`.
- */
-export function getServerTFromNextRequest(req: NextRequest): { locale: AppLocale; t: TFunction } {
+export async function getServerTFromNextRequestAsync(req: NextRequest): Promise<{ locale: AppLocale; t: TFunction }> {
+  const allowed = await loadMergedResolvableLocaleCodes()
   const locale = detectLocaleFromRequest({
     cookieLocale: req.cookies.get(LOCALE_COOKIE_NAME)?.value ?? null,
     acceptLanguage: req.headers.get('accept-language'),
+    allowedLocaleCodes: allowed,
   })
+  const overrides = await getLocaleOverrides(locale)
 
-  return { locale, t: getT(locale) }
+  return { locale, t: getT(locale, overrides) }
 }

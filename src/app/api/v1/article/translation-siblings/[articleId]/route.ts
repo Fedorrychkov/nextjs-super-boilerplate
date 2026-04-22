@@ -6,12 +6,12 @@ import mongoose from 'mongoose'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { UserRole } from '~/api/user'
-import { getServerTFromNextRequest } from '~/lib/i18n/server'
+import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 import { loadArticlesInTranslationGroup } from '~/lib/seo/articleTranslationAlternates'
 
 const handler = (request: NextRequest, authResult: AuthSuccessResult, context?: RouteHandlerContext) =>
   apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
-    const { t } = getServerTFromNextRequest(request)
+    const { t } = await getServerTFromNextRequestAsync(request)
 
     if (![UserRole.ADMIN, UserRole.EDITOR].includes(authResult.payload.role)) {
       return NextResponse.json({ message: t('errors.insufficientPermissions') }, { status: 403 })

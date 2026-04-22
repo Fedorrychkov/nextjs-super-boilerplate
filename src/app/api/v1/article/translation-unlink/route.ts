@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { UserRole } from '~/api/user'
 import { routes } from '~/constants'
 import { publicArticleCacheTag } from '~/lib/cache/publicArticlePageCache'
-import { getServerTFromNextRequest } from '~/lib/i18n/server'
+import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 import { collectPublishedIndexableArticleUrlsForTranslationGroups, collectSlugsForTranslationGroups } from '~/lib/seo/articleTranslationAlternates'
 import { notifySearchEngines } from '~/lib/seo/indexing'
 import { time } from '~/utils/time'
@@ -19,7 +19,7 @@ type Body = { articleIds?: string[] }
 
 const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
   apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
-    const { t } = getServerTFromNextRequest(request)
+    const { t } = await getServerTFromNextRequestAsync(request)
 
     if (![UserRole.ADMIN, UserRole.EDITOR].includes(authResult.payload.role)) {
       return NextResponse.json({ message: t('errors.insufficientPermissions') }, { status: 403 })

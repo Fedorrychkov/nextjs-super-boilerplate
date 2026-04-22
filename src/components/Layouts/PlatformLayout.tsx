@@ -1,6 +1,6 @@
 'use client'
 
-import { ActivityIcon, BarChart3Icon, BotIcon, EyeIcon, HomeIcon, TextQuoteIcon, UserIcon, WrenchIcon } from 'lucide-react'
+import { ActivityIcon, BarChart3Icon, BotIcon, EyeIcon, HomeIcon, LanguagesIcon, TextQuoteIcon, UserIcon, WrenchIcon } from 'lucide-react'
 import { useMemo } from 'react'
 
 import { UserRole } from '~/api/user'
@@ -70,6 +70,11 @@ export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
                   icon: <BarChart3Icon width={16} height={16} />,
                   disabled: authUser?.role !== UserRole.ADMIN,
                   href: routes.llmUsageDashboard.path,
+                },
+                {
+                  label: t(routes.i18nDashboard.tKey),
+                  icon: <LanguagesIcon width={16} height={16} />,
+                  href: routes.i18nDashboard.path,
                 },
                 {
                   label: t(routes.articles.tKey),

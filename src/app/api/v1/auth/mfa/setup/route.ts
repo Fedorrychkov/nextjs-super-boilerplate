@@ -7,11 +7,11 @@ import { AuthSuccessResult } from '@lib/security/auth'
 import { encryptSecret, generateBackupCodes, generateTotpSecret, getOtpauthUrl, hashBackupCodes } from '@lib/security/totp'
 import { NextRequest } from 'next/server'
 
-import { getServerTFromNextRequest } from '~/lib/i18n/server'
+import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 
 const handler = (request: NextRequest, authResult: AuthSuccessResult) => {
   return apiErrorHandlerContainer(request)(async (res) => {
-    const { t } = getServerTFromNextRequest(request)
+    const { t } = await getServerTFromNextRequestAsync(request)
 
     await connectDB()
 

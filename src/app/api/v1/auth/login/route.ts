@@ -10,14 +10,14 @@ import { NextRequest } from 'next/server'
 
 import { LoginEmailDto } from '~/api/auth/types'
 import { getPreferredLanguageCodeFromAcceptLanguage } from '~/lib/i18n/detectLocale'
-import { getServerTFromNextRequest } from '~/lib/i18n/getServerT'
+import { getServerTFromNextRequestAsync } from '~/lib/i18n/getServerT'
 
 const handler = (request: NextRequest) => {
   return apiErrorHandlerContainer(request)(async (res, req) => {
     const body: LoginEmailDto = await req.json()
     const languageCode = getPreferredLanguageCodeFromAcceptLanguage(req.headers.get('accept-language'))
     const ip = getClientKey(req)
-    const { t } = getServerTFromNextRequest(request)
+    const { t } = await getServerTFromNextRequestAsync(request)
 
     await assertLoginNotBlocked(ip, body.email)
 
