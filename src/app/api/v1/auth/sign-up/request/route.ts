@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { RegisterDto } from '~/api/auth/types'
 import { getPreferredLanguageCodeFromAcceptLanguage } from '~/lib/i18n/detectLocale'
-import { getServerTFromNextRequest } from '~/lib/i18n/server'
+import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 
 /** Match stored user emails (lowercase). */
 function normalizeEmail(email: string): string {
@@ -24,7 +24,7 @@ function firstAdminLoginNormalized(): string | null {
 
 const handler = (request: NextRequest) => {
   return apiErrorHandlerContainer(request)(async (res, req) => {
-    const { t } = getServerTFromNextRequest(request)
+    const { t } = await getServerTFromNextRequestAsync(request)
     const body: RegisterDto = await req.json()
     const languageCode = getPreferredLanguageCodeFromAcceptLanguage(req.headers.get('accept-language'))
     const ip = getClientKey(req)

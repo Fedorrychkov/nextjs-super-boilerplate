@@ -10,6 +10,7 @@ import { DefaultCheckbox, DefaultFieldContainer, DefaultMultiselectField, Defaul
 import { Button, Option, Typography } from '~/components/ui'
 import { routes } from '~/constants'
 import { handleRegister } from '~/hooks/useRegister'
+import { COMMON_CONTENT_LANGUAGE_TAGS } from '~/lib/i18n/config'
 import { validateCanonicalUrlForStorage } from '~/lib/seo/articleCanonical'
 import { normalizeBcp47ArticleLocale } from '~/lib/seo/articleLanguage'
 import { useT } from '~/providers'
@@ -54,8 +55,6 @@ const readSeoFromRevision = (revision: ArticleRevisionModel | null | undefined):
 
   return { ...emptySeo(), ...raw?.seo }
 }
-
-const COMMON_CONTENT_LANGUAGE_TAGS = ['ar', 'de', 'en', 'en-GB', 'es', 'fr', 'it', 'ja', 'ko', 'pl', 'pt', 'pt-BR', 'ru', 'tr', 'uk', 'zh-Hans', 'zh-Hant']
 
 const toFormValues = (seo: ArticleRevisionSeoMetadata, article?: ArticleModel | null): SeoForm => ({
   metaTitle: seo.metaTitle ?? '',

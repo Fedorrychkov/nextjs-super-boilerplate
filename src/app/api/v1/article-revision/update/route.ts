@@ -11,7 +11,7 @@ import { ArticleRevisionMetadata, ArticleRevisionModel, ArticleRevisionStatus } 
 import { UserRole } from '~/api/user'
 import { routes } from '~/constants'
 import { publicArticleCacheTag } from '~/lib/cache/publicArticlePageCache'
-import { getServerTFromNextRequest } from '~/lib/i18n/server'
+import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 import { validateCanonicalUrlForStorage } from '~/lib/seo/articleCanonical'
 import { resolveIndexingUrlsForArticleTransition } from '~/lib/seo/articleIndexingNotify'
 import { normalizeArticleLanguage } from '~/lib/seo/articleLanguage'
@@ -21,7 +21,7 @@ import { time } from '~/utils/time'
 
 const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
   apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
-    const { t } = getServerTFromNextRequest(request)
+    const { t } = await getServerTFromNextRequestAsync(request)
 
     if (![UserRole.ADMIN, UserRole.EDITOR].includes(authResult.payload.role)) {
       return NextResponse.json({ message: t('errors.insufficientPermissions') }, { status: 403 })

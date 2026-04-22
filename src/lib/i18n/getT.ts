@@ -37,13 +37,16 @@ export function getMessages(locale: AppLocale): I18nMessages {
 
 export type TFunction = (key: AppMessageKey, vars?: I18nVars) => string
 
-export function getT(locale: AppLocale | null | undefined): TFunction {
+export type I18nOverrideMap = Record<string, string>
+
+export function getT(locale: AppLocale | null | undefined, overrides?: I18nOverrideMap | null): TFunction {
   const effectiveLocale = locale ?? getDefaultLocale()
   const messages = getMessages(effectiveLocale)
   const fallback = en
 
   return (key, vars) => {
-    const v = getByPath(messages, key) ?? getByPath(fallback, key)
+    const override = overrides?.[String(key)]
+    const v = (typeof override === 'string' ? override : null) ?? getByPath(messages, key) ?? getByPath(fallback, key)
 
     if (typeof v !== 'string') return String(key)
 

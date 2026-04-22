@@ -5,11 +5,11 @@ import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
 import { NextRequest } from 'next/server'
 
 import { UserStatus } from '~/api/user'
-import { getServerTFromNextRequest } from '~/lib/i18n/server'
+import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 
 const handler = (request: NextRequest) => {
   return apiErrorHandlerContainer(request)(async (res, req) => {
-    const { t } = getServerTFromNextRequest(request)
+    const { t } = await getServerTFromNextRequestAsync(request)
 
     const body = await req.json().catch(() => ({}))
     const accessToken = (body?.accessToken ?? '') as string

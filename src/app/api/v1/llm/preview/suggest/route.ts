@@ -16,7 +16,7 @@ import { ArticleModel } from '~/api/article'
 import { ArticleRevisionModel } from '~/api/article-revision'
 import { parsePreviewSuggestJson } from '~/api/llm'
 import { UserRole } from '~/api/user'
-import { getServerTFromNextRequest } from '~/lib/i18n/server'
+import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 import { Logger } from '~/utils/logger'
 
 const logger = new Logger(['LlmPreviewSuggestRoute', '[api/v1/llm/preview/suggest]'])
@@ -52,7 +52,7 @@ const handlerPost = (request: NextRequest, authResult: AuthSuccessResult) =>
     request,
     logger,
   )(async () => {
-    const { t } = getServerTFromNextRequest(request)
+    const { t } = await getServerTFromNextRequestAsync(request)
 
     if (![UserRole.ADMIN, UserRole.EDITOR].includes(authResult.payload.role)) {
       return NextResponse.json({ message: t('errors.insufficientPermissions') }, { status: 403 })

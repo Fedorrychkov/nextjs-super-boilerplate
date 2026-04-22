@@ -2,7 +2,7 @@ import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { getCachedPublicArticlePagePayload } from '~/lib/cache/publicArticlePageCache'
-import { getServerTFromNextRequest } from '~/lib/i18n/server'
+import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 import { buildPublicArticleContentSignalHeader } from '~/lib/seo/contentSignal'
 
 /**
@@ -11,7 +11,7 @@ import { buildPublicArticleContentSignalHeader } from '~/lib/seo/contentSignal'
  */
 const handler = (request: NextRequest) =>
   apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
-    const { t } = getServerTFromNextRequest(request)
+    const { t } = await getServerTFromNextRequestAsync(request)
     const slug = request.nextUrl.searchParams.get('slug')?.trim() ?? ''
 
     if (!slug) {

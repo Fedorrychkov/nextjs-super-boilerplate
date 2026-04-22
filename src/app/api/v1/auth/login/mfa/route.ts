@@ -10,7 +10,7 @@ import { authService } from '@lib/services/auth.service'
 import { NextRequest } from 'next/server'
 
 import { getPreferredLanguageCodeFromAcceptLanguage } from '~/lib/i18n/detectLocale'
-import { getServerTFromNextRequest } from '~/lib/i18n/server'
+import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 
 type MfaLoginDto = {
   challengeId: string
@@ -22,7 +22,7 @@ const handler = (request: NextRequest) => {
     const body = (await req.json()) as MfaLoginDto
     const languageCode = getPreferredLanguageCodeFromAcceptLanguage(req.headers.get('accept-language'))
 
-    const { t } = getServerTFromNextRequest(request)
+    const { t } = await getServerTFromNextRequestAsync(request)
 
     if (!body.challengeId || !body.code) {
       throw new ValidationError(t('totp.errors.challengeIdAndCodeAreRequired'))

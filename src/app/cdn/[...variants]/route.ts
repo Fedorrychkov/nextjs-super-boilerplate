@@ -4,7 +4,7 @@ import { buildUploadcareCdnUrl } from '@lib/services/cdn-uploadcare.service'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { MediaResourceType } from '~/api/media'
-import { getServerTFromNextRequest } from '~/lib/i18n/server'
+import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 
 const variantToOps: Record<string, string> = {
   original: '',
@@ -21,7 +21,7 @@ const variantToOps: Record<string, string> = {
 }
 
 export const GET = async (request: NextRequest, context: { params: Promise<{ variants: string[] }> }) => {
-  const { t } = getServerTFromNextRequest(request)
+  const { t } = await getServerTFromNextRequestAsync(request)
   const { variants } = await context.params
 
   const [assetId, variant] = variants || []

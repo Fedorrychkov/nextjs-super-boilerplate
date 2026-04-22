@@ -65,6 +65,12 @@ export const routes = {
     tKey: 'navigation.llmUsageDashboard' as const,
     needAuth: true,
   },
+  i18nDashboard: {
+    path: '/admin/i18n',
+    name: 'I18n',
+    tKey: 'navigation.i18nDashboard' as const,
+    needAuth: true,
+  },
   articles: {
     path: '/admin/articles',
     name: 'Articles',

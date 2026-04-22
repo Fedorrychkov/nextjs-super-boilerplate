@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { JwtPayload } from '~/api/auth/model'
 import { UserRole } from '~/api/user'
-import { getServerTFromNextRequest } from '~/lib/i18n/server'
+import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 
 export interface AuthRequest extends NextRequest {
   user?: JwtPayload
@@ -30,7 +30,7 @@ export type AuthResult = AuthSuccessResult | AuthFailureResult
  * Returns payload on success or error response on failure
  */
 export async function authMiddleware(request: NextRequest): Promise<AuthResult> {
-  const { t } = getServerTFromNextRequest(request)
+  const { t } = await getServerTFromNextRequestAsync(request)
   // Get token from cookies or Authorization header
   const accessToken = request.cookies.get('accessToken')?.value || request.headers.get('Authorization')?.replace('Bearer ', '')
 
@@ -78,7 +78,7 @@ export async function authMiddleware(request: NextRequest): Promise<AuthResult> 
  */
 export function roleMiddleware(allowedRoles: UserRole[]) {
   return async (request: NextRequest): Promise<AuthResult> => {
-    const { t } = getServerTFromNextRequest(request)
+    const { t } = await getServerTFromNextRequestAsync(request)
     const authResult = await authMiddleware(request)
 
     if (!authResult.success) {

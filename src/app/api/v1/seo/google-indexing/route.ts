@@ -1,11 +1,11 @@
 import type { NextRequest } from 'next/server'
 
-import { getServerTFromNextRequest } from '~/lib/i18n/server'
+import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 import { notifyGoogleIndexing } from '~/lib/seo/indexing'
 import { jsonStringifySafety } from '~/utils/jsonSafe'
 
 export const POST = async (request: NextRequest) => {
-  const { t } = getServerTFromNextRequest(request)
+  const { t } = await getServerTFromNextRequestAsync(request)
   const { urls } = (await request.json()) as { urls?: string[] }
 
   if (!urls || !Array.isArray(urls) || urls.length === 0) {

@@ -3,12 +3,12 @@ import { AuthSuccessResult } from '@lib/security/auth'
 import { webPushService } from '@lib/services/web-push.service'
 import { NextRequest } from 'next/server'
 
-import { getServerTFromNextRequest } from '~/lib/i18n/server'
+import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 import { AnyString } from '~/types'
 
 const handler = (request: NextRequest, authResult: AuthSuccessResult) => {
   return apiErrorHandlerContainer(request)(async (res, req) => {
-    const { t } = getServerTFromNextRequest(request)
+    const { t } = await getServerTFromNextRequestAsync(request)
     const user = authResult.payload
 
     const body: { type: 'test' | AnyString } = await req.json()

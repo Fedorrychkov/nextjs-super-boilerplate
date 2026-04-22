@@ -6,14 +6,14 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { ArticleRevisionMetadata, ArticleRevisionModel } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
-import { getServerTFromNextRequest } from '~/lib/i18n/server'
+import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 import { validateCanonicalUrlForStorage } from '~/lib/seo/articleCanonical'
 import { normalizeArticleLanguage } from '~/lib/seo/articleLanguage'
 import { seoConfig } from '~/lib/seo/config'
 
 const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
   apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
-    const { t } = getServerTFromNextRequest(request)
+    const { t } = await getServerTFromNextRequestAsync(request)
 
     if (![UserRole.ADMIN, UserRole.EDITOR].includes(authResult.payload.role)) {
       return NextResponse.json({ message: t('errors.insufficientPermissions') }, { status: 403 })

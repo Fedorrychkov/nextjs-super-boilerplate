@@ -7,12 +7,12 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { RUM_METRIC_NAMES } from '~/api/rum/model'
 import type { RumIngestBody } from '~/api/rum/types'
-import { getServerTFromNextRequest } from '~/lib/i18n/server'
+import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 
 const isValidMetricName = (n: unknown): n is RumIngestBody['name'] => typeof n === 'string' && (RUM_METRIC_NAMES as readonly string[]).includes(n)
 
 const handler = async (request: NextRequest, _context: RouteHandlerContext) => {
-  const { t } = getServerTFromNextRequest(request)
+  const { t } = await getServerTFromNextRequestAsync(request)
 
   if (!RUM_CONFIG.enabled) {
     return new NextResponse(null, { status: 204 })

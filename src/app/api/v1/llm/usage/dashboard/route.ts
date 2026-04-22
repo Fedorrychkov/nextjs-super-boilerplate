@@ -5,13 +5,13 @@ import { buildLlmUsageDashboard } from '@lib/services/llm/llm-usage-dashboard.se
 import { NextRequest, NextResponse } from 'next/server'
 
 import { UserRole } from '~/api/user'
-import { getServerTFromNextRequest } from '~/lib/i18n/server'
+import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 
 const MAX_DAYS = 90
 
 const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
   apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
-    const { t } = getServerTFromNextRequest(request)
+    const { t } = await getServerTFromNextRequestAsync(request)
 
     if (authResult.payload.role !== UserRole.ADMIN) {
       return NextResponse.json({ message: t('errors.insufficientPermissions') }, { status: 403 })

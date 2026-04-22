@@ -16,7 +16,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ArticleModel } from '~/api/article'
 import { ArticleRevisionModel } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
-import { getServerTFromNextRequest } from '~/lib/i18n/server'
+import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 import { Logger } from '~/utils/logger'
 import { time } from '~/utils/time'
 
@@ -91,7 +91,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     request,
     logger,
   )(async () => {
-    const { t } = getServerTFromNextRequest(request)
+    const { t } = await getServerTFromNextRequestAsync(request)
 
     if (![UserRole.ADMIN, UserRole.EDITOR].includes(authResult.payload.role)) {
       return NextResponse.json({ message: t('errors.insufficientPermissions') }, { status: 403 })

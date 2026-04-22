@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server'
 
-import { getServerTFromNextRequest } from '~/lib/i18n/server'
+import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 import { notifySearchEngines } from '~/lib/seo/indexing'
 import { jsonStringifySafety } from '~/utils/jsonSafe'
 
@@ -10,7 +10,7 @@ import { jsonStringifySafety } from '~/utils/jsonSafe'
  * Call from backend when publishing/updating articles (or from your own API publishing).
  */
 export const POST = async (request: NextRequest) => {
-  const { t } = getServerTFromNextRequest(request)
+  const { t } = await getServerTFromNextRequestAsync(request)
 
   const body = (await request.json()) as {
     urls?: string[]

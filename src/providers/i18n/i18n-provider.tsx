@@ -7,8 +7,8 @@ import { getT } from '~/lib/i18n/getT'
 
 import { I18nContext } from './i18n-context'
 
-export function I18nProvider({ locale, children }: { locale: AppLocale; children: ReactNode }) {
-  const t = useMemo(() => getT(locale), [locale])
+export function I18nProvider({ locale, children, overrides }: { locale: AppLocale; children: ReactNode; overrides?: Record<string, string> }) {
+  const t = useMemo(() => getT(locale, overrides), [locale, overrides])
   const value = useMemo(() => ({ locale, t }), [locale, t])
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
