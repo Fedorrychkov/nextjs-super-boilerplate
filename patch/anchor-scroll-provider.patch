@@ -1,0 +1,155 @@
+diff --git a/src/app/layout.tsx b/src/app/layout.tsx
+index 19fb767..846aecd 100644
+--- a/src/app/layout.tsx
++++ b/src/app/layout.tsx
+@@ -10,6 +10,7 @@ import { getLocaleOverrides } from '~/lib/i18n/getLocaleOverrides'
+ import { seoConfig } from '~/lib/seo/config'
+ import { trackAiReferralFromRequestHeaders } from '~/lib/seo/trackAiReferralInRootLayout'
+ import { QueryProvider } from '~/providers'
++import { AnchorScrollProvider } from '~/providers/anchor-scroll'
+ import { AuthProvider } from '~/providers/auth'
+ import { CookieConsentProvider } from '~/providers/cookie-consent'
+ import { DeferredClientChrome } from '~/providers/DeferredClientChrome'
+@@ -100,8 +101,10 @@ export default async function RootLayout({
+             <NotifyProvider>
+               <CookieConsentProvider>
+                 <I18nProvider locale={locale} overrides={localeOverrides}>
+-                  <DeferredClientChrome />
+-                  {children}
++                  <AnchorScrollProvider>
++                    <DeferredClientChrome />
++                    {children}
++                  </AnchorScrollProvider>
+                 </I18nProvider>
+               </CookieConsentProvider>
+             </NotifyProvider>
+diff --git a/src/providers/anchor-scroll/AnchorScrollProvider.tsx b/src/providers/anchor-scroll/AnchorScrollProvider.tsx
+new file mode 100644
+index 0000000..e80ba3a
+--- /dev/null
++++ b/src/providers/anchor-scroll/AnchorScrollProvider.tsx
+@@ -0,0 +1,84 @@
++'use client'
++
++import { useCallback, useEffect, useMemo } from 'react'
++
++import { AnchorScrollContext } from './context'
++
++const HEADER_OFFSET_PX = 72
++
++const getAnchorId = (hashOrId: string) => hashOrId.replace(/^#/, '').trim()
++
++const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
++
++export const AnchorScrollProvider = ({ children }: { children: React.ReactNode }) => {
++  const scrollToAnchor = useCallback((hashOrId: string) => {
++    const anchorId = getAnchorId(hashOrId)
++
++    if (!anchorId) return
++
++    const target = document.getElementById(anchorId)
++
++    if (!target) return
++
++    const targetTop = window.scrollY + target.getBoundingClientRect().top - HEADER_OFFSET_PX
++    window.scrollTo({
++      top: Math.max(0, targetTop),
++      behavior: prefersReducedMotion() ? 'auto' : 'smooth',
++    })
++  }, [])
++
++  useEffect(() => {
++    const onDocumentClick = (event: MouseEvent) => {
++      const target = event.target
++
++      if (!(target instanceof Element)) return
++
++      const anchor = target.closest('a[href]')
++
++      if (!(anchor instanceof HTMLAnchorElement)) return
++
++      const href = anchor.getAttribute('href')
++
++      if (!href) return
++
++      const isHashOnly = href.startsWith('#')
++      const samePathWithHash = href.startsWith(`${window.location.pathname}#`)
++
++      if (!isHashOnly && !samePathWithHash) return
++
++      const hash = isHashOnly ? href : href.slice(window.location.pathname.length)
++      const anchorId = getAnchorId(hash)
++
++      if (!anchorId) return
++
++      if (!document.getElementById(anchorId)) return
++
++      event.preventDefault()
++      scrollToAnchor(anchorId)
++      window.history.pushState(null, '', `#${anchorId}`)
++    }
++
++    document.addEventListener('click', onDocumentClick)
++
++    return () => document.removeEventListener('click', onDocumentClick)
++  }, [scrollToAnchor])
++
++  useEffect(() => {
++    if (!window.location.hash) return
++
++    const timeoutId = window.setTimeout(() => {
++      scrollToAnchor(window.location.hash)
++    }, 0)
++
++    return () => window.clearTimeout(timeoutId)
++  }, [scrollToAnchor])
++
++  const value = useMemo(
++    () => ({
++      scrollToAnchor,
++    }),
++    [scrollToAnchor],
++  )
++
++  return <AnchorScrollContext.Provider value={value}>{children}</AnchorScrollContext.Provider>
++}
+diff --git a/src/providers/anchor-scroll/context.ts b/src/providers/anchor-scroll/context.ts
+new file mode 100644
+index 0000000..2e394ea
+--- /dev/null
++++ b/src/providers/anchor-scroll/context.ts
+@@ -0,0 +1,7 @@
++import { createContext } from 'react'
++
++type AnchorScrollContextValue = {
++  scrollToAnchor: (hashOrId: string) => void
++}
++
++export const AnchorScrollContext = createContext<AnchorScrollContextValue | null>(null)
+diff --git a/src/providers/anchor-scroll/index.ts b/src/providers/anchor-scroll/index.ts
+new file mode 100644
+index 0000000..1f1edea
+--- /dev/null
++++ b/src/providers/anchor-scroll/index.ts
+@@ -0,0 +1,2 @@
++export * from './AnchorScrollProvider'
++export * from './useAnchorScroll'
+diff --git a/src/providers/anchor-scroll/useAnchorScroll.tsx b/src/providers/anchor-scroll/useAnchorScroll.tsx
+new file mode 100644
+index 0000000..71c685b
+--- /dev/null
++++ b/src/providers/anchor-scroll/useAnchorScroll.tsx
+@@ -0,0 +1,13 @@
++'use client'
++
++import { useContext } from 'react'
++
++import { AnchorScrollContext } from './context'
++
++export const useAnchorScroll = () => {
++  const ctx = useContext(AnchorScrollContext)
++
++  if (!ctx) throw new Error('useAnchorScroll must be used within AnchorScrollProvider')
++
++  return ctx
++}

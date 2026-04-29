@@ -10,6 +10,7 @@ import { getLocaleOverrides } from '~/lib/i18n/getLocaleOverrides'
 import { seoConfig } from '~/lib/seo/config'
 import { trackAiReferralFromRequestHeaders } from '~/lib/seo/trackAiReferralInRootLayout'
 import { QueryProvider } from '~/providers'
+import { AnchorScrollProvider } from '~/providers/anchor-scroll'
 import { AuthProvider } from '~/providers/auth'
 import { CookieConsentProvider } from '~/providers/cookie-consent'
 import { DeferredClientChrome } from '~/providers/DeferredClientChrome'
@@ -100,8 +101,10 @@ export default async function RootLayout({
             <NotifyProvider>
               <CookieConsentProvider>
                 <I18nProvider locale={locale} overrides={localeOverrides}>
-                  <DeferredClientChrome />
-                  {children}
+                  <AnchorScrollProvider>
+                    <DeferredClientChrome />
+                    {children}
+                  </AnchorScrollProvider>
                 </I18nProvider>
               </CookieConsentProvider>
             </NotifyProvider>
