@@ -1,0 +1,105 @@
+diff --git a/lib/server-action/server-auth.ts b/lib/server-action/server-auth.ts
+index 6e408f2..f881b07 100644
+--- a/lib/server-action/server-auth.ts
++++ b/lib/server-action/server-auth.ts
+@@ -3,12 +3,12 @@ import { AxiosError } from 'axios'
+ import { headers } from 'next/headers'
+ 
+ import { ClientAuthApi } from '~/api/auth'
+-import { UserModel } from '~/api/user'
++import { AuthUserSnapshot } from '~/api/user'
+ import { Logger } from '~/utils/logger'
+ 
+ const logger = new Logger(['getServerProfile', '[lib/server-auth.ts]'])
+ 
+-export async function getServerProfile(): Promise<Pick<UserModel, 'id' | 'email' | 'role' | 'status'> | null> {
++export async function getServerProfile(): Promise<AuthUserSnapshot | null> {
+   try {
+     const headersStore = await headers()
+     const host = headersStore.get('host') || ''
+diff --git a/src/api/auth/model.ts b/src/api/auth/model.ts
+index fe7c061..8e3616a 100644
+--- a/src/api/auth/model.ts
++++ b/src/api/auth/model.ts
+@@ -1,4 +1,4 @@
+-import { UserModel, UserRole, UserStatus } from '../user'
++import type { AuthUserSnapshot, UserRole, UserStatus } from '../user'
+ 
+ export type JwtPayload = {
+   sub: string
+@@ -13,5 +13,5 @@ export type AuthResponse = {
+   refreshToken: string
+   expiresIn: number
+   refreshExpiresIn: number
+-  user: Pick<UserModel, 'id' | 'email' | 'role' | 'status'>
++  user: AuthUserSnapshot
+ }
+diff --git a/src/components/Views/User/Modal/RegisterByAdminUserDialog.tsx b/src/components/Views/User/Modal/RegisterByAdminUserDialog.tsx
+index 562b494..3195a5f 100644
+--- a/src/components/Views/User/Modal/RegisterByAdminUserDialog.tsx
++++ b/src/components/Views/User/Modal/RegisterByAdminUserDialog.tsx
+@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
+ import { FormProvider, useForm } from 'react-hook-form'
+ 
+ import { RegisterByAdminDto } from '~/api/auth/types'
+-import { UserModel, UserRole } from '~/api/user'
++import { AuthUserSnapshot, UserModel, UserRole } from '~/api/user'
+ import { DefaultFieldContainer, DefaultMultiselectField, InputWithPassword } from '~/components/Fields'
+ import { Option, Typography } from '~/components/ui'
+ import { Button } from '~/components/ui/button'
+@@ -18,7 +18,7 @@ type Props = {
+   isOpen?: boolean
+   isLoading?: boolean
+   toggle?: () => void
+-  onSubmit?: (dto: RegisterByAdminDto) => Promise<{ user: Pick<UserModel, 'id' | 'email' | 'role' | 'status'> | undefined } | undefined>
++  onSubmit?: (dto: RegisterByAdminDto) => Promise<{ user: AuthUserSnapshot | undefined } | undefined>
+ }
+ 
+ const roles: Option[] = [
+@@ -37,7 +37,7 @@ const roles: Option[] = [
+ ]
+ 
+ export const RegisterByAdminUserDialog = (props: Props) => {
+-  const [data, setData] = useState<{ user: (Pick<UserModel, 'id' | 'email' | 'role' | 'status'> & { password: string }) | undefined } | undefined>(undefined)
++  const [data, setData] = useState<{ user: (AuthUserSnapshot & { password: string }) | undefined } | undefined>(undefined)
+ 
+   const t = useT()
+   const { children, isOpen, toggle, onSubmit: defaultOnSubmit, isLoading } = props
+diff --git a/src/providers/auth/types.ts b/src/providers/auth/types.ts
+index 810a1d2..ec1fca4 100644
+--- a/src/providers/auth/types.ts
++++ b/src/providers/auth/types.ts
+@@ -1,13 +1,13 @@
+ import { QueryObserverResult } from 'react-query'
+ 
+-import { UserModel, UserRole } from '~/api/user'
++import type { AuthUserSnapshot, UserRole } from '~/api/user'
+ 
+ export type AuthContextType = {
+-  authUser: Pick<UserModel, 'id' | 'email' | 'role' | 'status'> | null
++  authUser: AuthUserSnapshot | null
+   isLoading: boolean
+   isFetched: boolean
+   isAdmin: boolean
+   isClient: boolean
+   role: UserRole | null | undefined
+-  refetch?: () => Promise<QueryObserverResult<Pick<UserModel, 'id' | 'email' | 'role' | 'status'>, unknown>>
++  refetch?: () => Promise<QueryObserverResult<AuthUserSnapshot, unknown>>
+ }
+diff --git a/src/query/auth/query/useProfileQuery.ts b/src/query/auth/query/useProfileQuery.ts
+index 3540d06..044b0d6 100644
+--- a/src/query/auth/query/useProfileQuery.ts
++++ b/src/query/auth/query/useProfileQuery.ts
+@@ -1,10 +1,10 @@
+ import { ClientAuthApi } from '~/api/auth'
+-import type { UserModel } from '~/api/user'
++import type { AuthUserSnapshot } from '~/api/user'
+ import { useQueryBuilder } from '~/hooks/useQueryBuilder'
+ 
+ export const PROFILE_QUERY_KEY = 'profile'
+ 
+-export const fetchProfile = async (): Promise<Pick<UserModel, 'id' | 'email' | 'role' | 'status'>> => {
++export const fetchProfile = async (): Promise<AuthUserSnapshot> => {
+   const api = new ClientAuthApi()
+ 
+   return api.profile()

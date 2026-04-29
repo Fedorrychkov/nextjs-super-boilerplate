@@ -1,4 +1,4 @@
-import { UserModel, UserRole, UserStatus } from '../user'
+import type { AuthUserSnapshot, UserRole, UserStatus } from '../user'
 
 export type JwtPayload = {
   sub: string
@@ -13,5 +13,5 @@ export type AuthResponse = {
   refreshToken: string
   expiresIn: number
   refreshExpiresIn: number
-  user: Pick<UserModel, 'id' | 'email' | 'role' | 'status'>
+  user: AuthUserSnapshot
 }
