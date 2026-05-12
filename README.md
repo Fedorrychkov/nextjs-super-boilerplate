@@ -168,7 +168,7 @@ Deploy runs via GitHub Actions on push to the configured branch (`develop` → s
 | `deploy_mode` | `default` = build on server; `registry` = build in CI, image from GHCR. |
 | `node_version` | Node version in CI (e.g. `24`). Must match [.docker/Dockerfile](.docker/Dockerfile). |
 | `registry_subname` | GHCR image name fragment (e.g. `web` → `ghcr.io/owner/web:sha`). |
-| `notigy_enabled` | Telegram notifications (start/success/failure). |
+| `notify_enabled` | Telegram notifications (start/success/failure). |
 | `tag` | Tag for Telegram messages. |
 | `redis_enabled` | Start Redis container. |
 | `metrics_enabled` | Start metrics stack (Prometheus, Grafana, Loki, etc.). |

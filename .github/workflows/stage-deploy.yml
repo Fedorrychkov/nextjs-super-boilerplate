@@ -54,7 +54,7 @@ jobs:
 #       deploy_mode: 'registry'
 #       node_version: 24
 #       registry_subname: 'registry.example'
-#       notigy_enabled: true
+#       notify_enabled: true
 #       tag: 'tag.example'
 #       redis_enabled: true
 #       metrics_enabled: false

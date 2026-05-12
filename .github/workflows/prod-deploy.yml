@@ -27,7 +27,7 @@ jobs:
       deploy_mode: 'registry'
       node_version: 24
       registry_subname: 'nextjs-super-boilerplate'
-      notigy_enabled: true
+      notify_enabled: true
       tag: 'nextjs-super-boilerplate'
       redis_enabled: true
       metrics_enabled: true
