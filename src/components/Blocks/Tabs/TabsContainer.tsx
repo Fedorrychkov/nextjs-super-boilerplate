@@ -88,8 +88,8 @@ export const TabsContainer = (props: Props) => {
               <Typography
                 variant="Body/S/Regular"
                 className={cn('whitespace-nowrap text-nowrap text-neutral', {
-                  'text-neutral': finalActiveTab === tab.value,
-                  'text-neutral-1000': finalActiveTab !== tab.value,
+                  'text-foreground': finalActiveTab === tab.value,
+                  'text-muted-foreground': finalActiveTab !== tab.value,
                 })}
               >
                 {tab.label}

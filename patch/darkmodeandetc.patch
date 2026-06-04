@@ -1,0 +1,1450 @@
+diff --git a/.env.example b/.env.example
+index ad08484..7c5a686 100644
+--- a/.env.example
++++ b/.env.example
+@@ -1,6 +1,10 @@
+ APP_ENV=development
+ NEXT_PUBLIC_APP_ENV=development
+ 
++# Theme: SSR fallback when OS preference is unknown (cookie `system` or absent). Values: dark | light. Default: dark.
++DEFAULT_THEME_MODE=dark
++NEXT_PUBLIC_DEFAULT_THEME_MODE=dark
++
+ # Site URL
+ NEXT_PUBLIC_SITE_URL=http://localhost:3000
+ 
+@@ -33,7 +37,7 @@ RATE_LIMIT_POINTS=100
+ REDIS_URL=redis://localhost:6380
+ 
+ # https://vapidkeys.com/
+-VAPID_SUBJECT="mailto: <your-email@example.com>"
++VAPID_SUBJECT="mailto:your-email@example.com"
+ NEXT_PUBLIC_VAPID_PUBLIC_KEY=
+ VAPID_PRIVATE_KEY=
+ 
+diff --git a/config/env.ts b/config/env.ts
+index 44215da..4febab8 100644
+--- a/config/env.ts
++++ b/config/env.ts
+@@ -60,6 +60,9 @@ const {
+   TRADINGVIEW_API_BASE_URL = process.env.TRADINGVIEW_API_BASE_URL || '',
+   TRADINGVIEW_API_KEY = process.env.TRADINGVIEW_API_KEY || '',
+   CRYPTO_DEFAULT_CACHE_TTL_SEC = Number(process.env.CRYPTO_DEFAULT_CACHE_TTL_SEC || 300),
++  /** SSR fallback when OS theme is unknown (`system` or no cookie). Default: `dark`. */
++  DEFAULT_THEME_MODE = process.env.DEFAULT_THEME_MODE || 'dark',
++  NEXT_PUBLIC_DEFAULT_THEME_MODE = process.env.NEXT_PUBLIC_DEFAULT_THEME_MODE || process.env.DEFAULT_THEME_MODE || 'dark',
+ } = process.env
+ 
+ const isDevelop = [APP_ENV, NEXT_PUBLIC_APP_ENV].includes('development')
+@@ -141,6 +144,11 @@ const EMAIL_CONFIG = {
+   templateVerifyEmailRu: EMAIL_TEMPLATE_VERIFY_EMAIL_RU,
+ }
+ 
++const THEME_CONFIG = {
++  defaultMode: DEFAULT_THEME_MODE,
++  publicDefaultMode: NEXT_PUBLIC_DEFAULT_THEME_MODE,
++}
++
+ const CRYPTO_CONFIG = {
+   coingeckoApiKey: COINGECKO_API_KEY,
+   coinmarketcapApiKey: CMC_API_KEY,
+@@ -178,4 +186,5 @@ export {
+   REDIS_URL,
+   REGISTRATION_CONFIG,
+   RUM_CONFIG,
++  THEME_CONFIG,
+ }
+diff --git a/src/app/429-too-many-requests/page.tsx b/src/app/429-too-many-requests/page.tsx
+index 0ae86eb..c5658de 100644
+--- a/src/app/429-too-many-requests/page.tsx
++++ b/src/app/429-too-many-requests/page.tsx
+@@ -1,16 +1,17 @@
+ import { Typography } from '~/components/ui/Typography/Typography'
+ import { getServerT } from '~/lib/i18n/getServerT'
++import { ThemeShell } from '~/providers/theme'
+ 
+ export default async function TooManyRequests() {
+   const { t } = await getServerT()
+ 
+   return (
+-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black flex-col gap-4">
++    <ThemeShell className="flex min-h-screen flex-col items-center justify-center gap-4 font-sans">
+       <Typography variant="Body/L/Regular">{t('tooManyRequests.title')}</Typography>
+       <Typography variant="Body/M/Regular">{t('tooManyRequests.pleaseTryAgainLater')}</Typography>
+       <Typography variant="Body/M/Semibold" asTag="a" href="/">
+         {t('common.goToHome')}
+       </Typography>
+-    </div>
++    </ThemeShell>
+   )
+ }
+diff --git a/src/app/globals.css b/src/app/globals.css
+index 4aa20aa..ed0bc73 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -94,6 +94,20 @@
+   }
+ }
+ 
++@keyframes saveSetupPulse {
++  0%,
++  100% {
++    transform: scale(1);
++  }
++  50% {
++    transform: scale(1.04);
++  }
++}
++
++.animate-save-setup-pulse {
++  animation: saveSetupPulse 2.2s ease-in-out infinite;
++}
++
+ @keyframes accordion-down {
+   from {
+     height: 0;
+@@ -120,6 +134,14 @@
+ @custom-variant dark (&:is(.dark *));
+ 
+ @layer base {
++  html {
++    color-scheme: light;
++  }
++
++  html.dark {
++    color-scheme: dark;
++  }
++
+   /*
+    * Defaults for Telegram variables — always "defined", DevTools won't show "not defined".
+    * In Mini App WebView the client overrides these with its own values.
+@@ -354,8 +376,9 @@
+   --card-foreground: oklch(0.145 0 0);
+   --popover: oklch(1 0 0);
+   --popover-foreground: oklch(0.145 0 0);
+-  --primary: oklch(0.205 0 0);
+-  --primary-foreground: oklch(0.985 0 0);
++  /* Brand purple replaces generic black primary */
++  --primary: oklch(0.548 0.243 264.376);
++  --primary-foreground: oklch(1 0 0);
+   --secondary: oklch(0.97 0 0);
+   --secondary-foreground: oklch(0.205 0 0);
+   --muted: oklch(0.97 0 0);
+@@ -364,8 +387,8 @@
+   --accent-foreground: oklch(0.205 0 0);
+   --destructive: oklch(0.577 0.245 27.325);
+   --border: oklch(0.922 0 0);
+-  --input: oklch(0.922 0 0);
+-  --ring: oklch(0.708 0 0);
++  --input: oklch(0.992 0 0);
++  --ring: oklch(0.548 0.243 264.376);
+   --chart-1: oklch(0.646 0.222 41.116);
+   --chart-2: oklch(0.6 0.118 184.704);
+   --chart-3: oklch(0.398 0.07 227.392);
+@@ -373,12 +396,12 @@
+   --chart-5: oklch(0.769 0.188 70.08);
+   --sidebar: oklch(0.985 0 0);
+   --sidebar-foreground: oklch(0.145 0 0);
+-  --sidebar-primary: oklch(0.205 0 0);
+-  --sidebar-primary-foreground: oklch(0.985 0 0);
++  --sidebar-primary: oklch(0.548 0.243 264.376);
++  --sidebar-primary-foreground: oklch(1 0 0);
+   --sidebar-accent: oklch(0.97 0 0);
+   --sidebar-accent-foreground: oklch(0.205 0 0);
+   --sidebar-border: oklch(0.922 0 0);
+-  --sidebar-ring: oklch(0.708 0 0);
++  --sidebar-ring: oklch(0.548 0.243 264.376);
+   --background: oklch(1 0 0);
+   --foreground: oklch(0.145 0 0);
+ 
+@@ -386,6 +409,21 @@
+   --accents-2: #eaeaea;
+   --destructive-foreground: oklch(1 0 0);
+ 
++  /* ── Success (used by badge "success" variant) ───── */
++  --success: oklch(0.696 0.17 162.48);
++  --success-foreground: oklch(1 0 0);
++
++  /* ── Brand alias (useful for explicit brand references) */
++  --brand: #6c63ff;
++  --brand-foreground: #ffffff;
++
++  /* ── Semantic status colors ──────────────────────── */
++  --status-up: #10b981;
++  --status-up-subtle: rgba(16, 185, 129, 0.12);
++  --status-slow: #f59e0b;
++  --status-slow-subtle: rgba(245, 158, 11, 0.12);
++  --status-down: #f43f5e;
++  --status-down-subtle: rgba(244, 63, 94, 0.12);
+ 
+   --color-transparent: transparent;
+   --color-primary-600: #602A00;
+@@ -492,40 +530,63 @@ body {
+   }
+ 
+   --color-destructive-foreground: var(--destructive-foreground);
++
++  /* ── Success (badge success variant needs this) ──────── */
++  --color-success: var(--success);
++  --color-success-foreground: var(--success-foreground);
++
++  /* ── Brand alias ────────────────────────────────────── */
++  --color-brand: var(--brand);
++  --color-brand-foreground: var(--brand-foreground);
++
++  /* ── Semantic status (bg-status-up, text-status-slow…) */
++  --color-status-up: var(--status-up);
++  --color-status-up-subtle: var(--status-up-subtle);
++  --color-status-slow: var(--status-slow);
++  --color-status-slow-subtle: var(--status-slow-subtle);
++  --color-status-down: var(--status-down);
++  --color-status-down-subtle: var(--status-down-subtle);
+ }
+ 
+ .dark {
+-  --background: oklch(0.145 0 0);
++  /* ── Backgrounds: deep dark with a faint purple tint ── */
++  --background: oklch(0.088 0.004 264);
+   --foreground: oklch(0.985 0 0);
+-  --card: oklch(0.205 0 0);
++  --card: oklch(0.13 0.005 264);
+   --card-foreground: oklch(0.985 0 0);
+-  --popover: oklch(0.205 0 0);
++  --popover: oklch(0.13 0.005 264);
+   --popover-foreground: oklch(0.985 0 0);
+-  --primary: oklch(0.922 0 0);
+-  --primary-foreground: oklch(0.205 0 0);
+-  --secondary: oklch(0.269 0 0);
++  /* ── Brand purple stays consistent in dark mode ─────── */
++  --primary: oklch(0.567 0.243 264.376);
++  --primary-foreground: oklch(1 0 0);
++  --secondary: oklch(0.3 0.006 264);
+   --secondary-foreground: oklch(0.985 0 0);
+-  --muted: oklch(0.269 0 0);
+-  --muted-foreground: oklch(0.708 0 0);
+-  --accent: oklch(0.269 0 0);
++  --muted: oklch(0.19 0.006 264);
++  --muted-foreground: oklch(0.65 0 0);
++  --accent: oklch(0.19 0.006 264);
+   --accent-foreground: oklch(0.985 0 0);
+   --destructive: oklch(0.704 0.191 22.216);
+-  --border: oklch(1 0 0 / 10%);
+-  --input: oklch(1 0 0 / 15%);
+-  --ring: oklch(0.556 0 0);
+-  --chart-1: oklch(0.488 0.243 264.376);
++  --border: oklch(1 0 0 / 14%);
++  --input: oklch(1 0 0 / 22%);
++  --ring: oklch(0.567 0.243 264.376);
++  /* ── Chart colors: brand + semantic status ─────────── */
++  --chart-1: oklch(0.567 0.243 264.376);
+   --chart-2: oklch(0.696 0.17 162.48);
+   --chart-3: oklch(0.769 0.188 70.08);
+   --chart-4: oklch(0.627 0.265 303.9);
+   --chart-5: oklch(0.645 0.246 16.439);
+-  --sidebar: oklch(0.205 0 0);
++  /* ── Sidebar: deepest background, brand accent ──────── */
++  --sidebar: oklch(0.1 0.006 264);
+   --sidebar-foreground: oklch(0.985 0 0);
+-  --sidebar-primary: oklch(0.488 0.243 264.376);
+-  --sidebar-primary-foreground: oklch(0.985 0 0);
+-  --sidebar-accent: oklch(0.269 0 0);
++  --sidebar-primary: oklch(0.567 0.243 264.376);
++  --sidebar-primary-foreground: oklch(1 0 0);
++  --sidebar-accent: oklch(0.16 0.006 264);
+   --sidebar-accent-foreground: oklch(0.985 0 0);
+-  --sidebar-border: oklch(1 0 0 / 10%);
+-  --sidebar-ring: oklch(0.556 0 0);
++  --sidebar-border: oklch(1 0 0 / 8%);
++  --sidebar-ring: oklch(0.567 0.243 264.376);
++  /* ── Success ─────────────────────────────────────────── */
++  --success: oklch(0.696 0.17 162.48);
++  --success-foreground: oklch(1 0 0);
+ }
+ 
+ @layer base {
+diff --git a/src/app/layout.tsx b/src/app/layout.tsx
+index 292f974..a9555c1 100644
+--- a/src/app/layout.tsx
++++ b/src/app/layout.tsx
+@@ -9,6 +9,7 @@ import { detectLocaleFromNextCookiesAndHeaders } from '~/lib/i18n/detectLocale'
+ import { getLocaleOverrides } from '~/lib/i18n/getLocaleOverrides'
+ import { seoConfig } from '~/lib/seo/config'
+ import { trackAiReferralFromRequestHeaders } from '~/lib/seo/trackAiReferralInRootLayout'
++import { resolveServerTheme } from '~/lib/theme/resolveServerTheme'
+ import { QueryProvider } from '~/providers'
+ import { AnchorScrollProvider } from '~/providers/anchor-scroll'
+ import { AuthProvider } from '~/providers/auth'
+@@ -16,6 +17,7 @@ import { CookieConsentProvider } from '~/providers/cookie-consent'
+ import { DeferredClientChrome } from '~/providers/DeferredClientChrome'
+ import { I18nProvider } from '~/providers/i18n'
+ import { NotifyProvider } from '~/providers/notify'
++import { ThemeProvider, ThemeScript } from '~/providers/theme'
+ 
+ const geistSans = Geist({
+   variable: '--font-geist-sans',
+@@ -90,23 +92,32 @@ export default async function RootLayout({
+     headers: await headers(),
+   })
+   const localeOverrides = await getLocaleOverrides(locale)
++  const theme = await resolveServerTheme({
++    cookies: await cookies(),
++    headers: await headers(),
++  })
+ 
+   await trackAiReferralFromRequestHeaders()
+ 
+   return (
+-    <html lang={locale}>
+-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
++    <html lang={locale} className={theme.resolved === 'dark' ? 'dark' : undefined} suppressHydrationWarning>
++      <head>
++        <ThemeScript />
++      </head>
++      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}>
+         <QueryProvider>
+           <AuthProvider>
+             <NotifyProvider>
+-              <CookieConsentProvider>
+-                <I18nProvider locale={locale} overrides={localeOverrides}>
+-                  <AnchorScrollProvider>
+-                    <DeferredClientChrome />
+-                    {children}
+-                  </AnchorScrollProvider>
+-                </I18nProvider>
+-              </CookieConsentProvider>
++              <ThemeProvider initialPreference={theme.preference} initialResolved={theme.resolved}>
++                <CookieConsentProvider>
++                  <I18nProvider locale={locale} overrides={localeOverrides}>
++                    <AnchorScrollProvider>
++                      <DeferredClientChrome />
++                      {children}
++                    </AnchorScrollProvider>
++                  </I18nProvider>
++                </CookieConsentProvider>
++              </ThemeProvider>
+             </NotifyProvider>
+           </AuthProvider>
+         </QueryProvider>
+diff --git a/src/app/not-found.tsx b/src/app/not-found.tsx
+index aa0ae17..8e74ea0 100644
+--- a/src/app/not-found.tsx
++++ b/src/app/not-found.tsx
+@@ -1,15 +1,16 @@
+ import { Typography } from '~/components/ui'
+ import { getServerT } from '~/lib/i18n/server'
++import { ThemeShell } from '~/providers/theme'
+ 
+ export default async function NotFound() {
+   const { t } = await getServerT()
+ 
+   return (
+-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black flex-col gap-4">
++    <ThemeShell className="flex min-h-screen flex-col items-center justify-center gap-4 font-sans">
+       <Typography variant="Body/L/Regular">{t('notFound.title')}</Typography>
+       <Typography variant="Body/M/Semibold" asTag="a" href="/">
+         {t('common.goToHome')}
+       </Typography>
+-    </div>
++    </ThemeShell>
+   )
+ }
+diff --git a/src/app/page.tsx b/src/app/page.tsx
+index d0b7e79..f99864a 100644
+--- a/src/app/page.tsx
++++ b/src/app/page.tsx
+@@ -60,7 +60,7 @@ export default async function Home() {
+       <JsonLd data={organizationJsonLd} />
+       <JsonLd data={webSiteJsonLd} />
+       <JsonLd data={faqJsonLd} />
+-      <MainLayout className="bg-white text-slate-900">
++      <MainLayout className="bg-background text-foreground">
+         <Hero />
+         <MetricsPreview />
+         <Features />
+diff --git a/src/app/profile/page.tsx b/src/app/profile/page.tsx
+index e52b55c..b845d42 100644
+--- a/src/app/profile/page.tsx
++++ b/src/app/profile/page.tsx
+@@ -1,6 +1,7 @@
+ import { defaultGuard, PageProps } from '@lib/page'
+ import { getServerProfile } from '@lib/server-action/server-auth'
+ 
++import { ThemeModeSelect } from '~/components/theme/ThemeModeSelect'
+ import { Typography } from '~/components/ui'
+ import { NotificationBlock } from '~/components/Views/Notification'
+ import { ProfileMfaBlock } from '~/components/Views/Profile/ProfileMfaBlock'
+@@ -37,6 +38,10 @@ const ProfileRoot = async (props: PageProps) => {
+         </div>
+       </div>
+ 
++      <div className="flex flex-col rounded-lg border bg-card p-4">
++        <ThemeModeSelect />
++      </div>
++
+       <NotificationBlock />
+ 
+       <ProfileMfaBlock />
+diff --git a/src/components/Blocks/RenderContainer.tsx b/src/components/Blocks/RenderContainer.tsx
+index 8441109..b83127c 100644
+--- a/src/components/Blocks/RenderContainer.tsx
++++ b/src/components/Blocks/RenderContainer.tsx
+@@ -43,7 +43,7 @@ export const PrettyContainer = ({
+ 
+       {content && (
+         <CopyContainer
+-          buttonClassName="absolute top-[2px] right-[2px] bg-white w-[28px] h-[28px] p-1 flex items-center justify-center rounded-lg"
++          buttonClassName="absolute top-[2px] right-[2px] bg-white hover:bg-white/90 w-[28px] h-[28px] p-1 flex items-center justify-center rounded-lg text-[#464455]"
+           className="relative [&>[data-copy-control='1']]:hidden [&>[data-break-word-control='1']]:hidden [&:hover>[data-copy-control='1']]:flex [&:hover>[data-break-word-control='1']]:flex"
+           content={content}
+           successNotifyText={successNotifyText}
+diff --git a/src/components/Blocks/Tabs/TabsContainer.tsx b/src/components/Blocks/Tabs/TabsContainer.tsx
+index 4ad5693..b543303 100644
+--- a/src/components/Blocks/Tabs/TabsContainer.tsx
++++ b/src/components/Blocks/Tabs/TabsContainer.tsx
+@@ -88,8 +88,8 @@ export const TabsContainer = (props: Props) => {
+               <Typography
+                 variant="Body/S/Regular"
+                 className={cn('whitespace-nowrap text-nowrap text-neutral', {
+-                  'text-neutral': finalActiveTab === tab.value,
+-                  'text-neutral-1000': finalActiveTab !== tab.value,
++                  'text-foreground': finalActiveTab === tab.value,
++                  'text-muted-foreground': finalActiveTab !== tab.value,
+                 })}
+               >
+                 {tab.label}
+diff --git a/src/components/Containers/StickyContainer.tsx b/src/components/Containers/StickyContainer.tsx
+index 22dbf0e..bb302d4 100644
+--- a/src/components/Containers/StickyContainer.tsx
++++ b/src/components/Containers/StickyContainer.tsx
+@@ -22,7 +22,8 @@ export const StickyContainer = forwardRef<HTMLDivElement, Props>(({ isEnabled =
+     <div
+       ref={ref}
+       className={cn(
+-        'bg-white z-10 after:content-[""] after:absolute after:z-1 after:right-0 after:left-0 after:w-full after:h-[20px] after:[background:linear-gradient(0deg,rgba(255,255,255,0.00)_0%,#FFF_100%)]',
++        'bg-background z-10 after:content-[""] after:absolute after:z-1 after:right-0 after:left-0 after:w-full after:h-[20px]',
++        'after:[background:linear-gradient(0deg,rgba(255,255,255,0.00)_0%,#FFF_100%)] dark:after:[background:linear-gradient(0deg,rgba(0,0,0,0.00)_0%,#000_100%)]',
+         {
+           'after:bottom-0 after:translate-y-full': direction === 'bottom',
+           'after:top-0 after:-translate-y-full after:rotate-180': direction === 'top',
+diff --git a/src/components/Fields/Input/InputField.tsx b/src/components/Fields/Input/InputField.tsx
+index 4c47999..d15abd3 100644
+--- a/src/components/Fields/Input/InputField.tsx
++++ b/src/components/Fields/Input/InputField.tsx
+@@ -4,7 +4,7 @@ import { Input } from '~/components/ui/fields/input'
+ import { Label } from '~/components/ui/fields/label'
+ import { cn } from '~/utils/cn'
+ 
+-export type InputFieldProps = {
++export type InputFieldProps = React.ComponentProps<'input'> & {
+   name: string
+   placeholder?: string
+   hintText?: string | React.ReactNode
+diff --git a/src/components/Layouts/MainLayout.tsx b/src/components/Layouts/MainLayout.tsx
+index 99a89ea..c24e4ec 100644
+--- a/src/components/Layouts/MainLayout.tsx
++++ b/src/components/Layouts/MainLayout.tsx
+@@ -1,3 +1,4 @@
++import { ThemeShell } from '~/providers/theme'
+ import { cn } from '~/utils/cn'
+ 
+ import { Header } from '../Navigation/Header'
+@@ -12,10 +13,10 @@ export const MainLayout = async (props: Props) => {
+   const { children, className } = props
+ 
+   return (
+-    <div className={cn('w-full h-full flex justify-between flex-col flex-1 min-h-screen', className)}>
++    <ThemeShell className={cn('flex min-h-screen flex-1 flex-col justify-between', className)}>
+       {/* TODO: need to use Header server component! */}
+       <Header />
+-      <div className="w-full flex flex-col font-sans flex-1">{children}</div>
+-    </div>
++      <div className="flex w-full flex-1 flex-col font-sans">{children}</div>
++    </ThemeShell>
+   )
+ }
+diff --git a/src/components/Layouts/PlatformLayout.tsx b/src/components/Layouts/PlatformLayout.tsx
+index a2a5ccc..122a636 100644
+--- a/src/components/Layouts/PlatformLayout.tsx
++++ b/src/components/Layouts/PlatformLayout.tsx
+@@ -7,6 +7,7 @@ import { UserRole } from '~/api/user'
+ import { Sidebar } from '~/components/ui/sidebar'
+ import { routes } from '~/constants'
+ import { useAuth, useT } from '~/providers'
++import { ThemeShell } from '~/providers/theme'
+ 
+ export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
+   const t = useT()
+@@ -94,5 +95,9 @@ export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
+     [authUser?.role, t],
+   )
+ 
+-  return <Sidebar navigation={isLoading || !isFetched ? [] : navigation}>{children}</Sidebar>
++  return (
++    <ThemeShell className="flex min-h-full flex-1 flex-col">
++      <Sidebar navigation={isLoading || !isFetched ? [] : navigation}>{children}</Sidebar>
++    </ThemeShell>
++  )
+ }
+diff --git a/src/components/Layouts/PreviewUniversalLayout.tsx b/src/components/Layouts/PreviewUniversalLayout.tsx
+index d1b9e5e..506f657 100644
+--- a/src/components/Layouts/PreviewUniversalLayout.tsx
++++ b/src/components/Layouts/PreviewUniversalLayout.tsx
+@@ -2,6 +2,7 @@ import { BookIcon, HomeIcon } from 'lucide-react'
+ 
+ import { routes } from '~/constants'
+ import { getServerT } from '~/lib/i18n/getServerT'
++import { ThemeShell } from '~/providers/theme'
+ import { cn } from '~/utils/cn'
+ 
+ import { HeaderNavigation } from '../Navigation'
+@@ -33,23 +34,18 @@ export const PreviewUniversalLayout = async (props: Props) => {
+   const { children, content, className, isNavEnabled = false } = props
+ 
+   return (
+-    <div
+-      className={cn(
+-        'w-full h-full flex justify-center flex-col flex-1 gap-6 [& img]:max-w-full [& img]:max-h-full relative dark:bg-black bg-zinc-50',
+-        className,
+-      )}
+-    >
++    <ThemeShell className={cn('relative flex flex-1 flex-col justify-center gap-6 [&_img]:max-h-full [&_img]:max-w-full', className)}>
+       {isNavEnabled && (
+-        <div className="max-w-3xl w-full m-auto top-0 left-0 right-0 z-10 bg-white dark:bg-black rounded-md">
++        <div className="z-10 m-auto w-full max-w-3xl rounded-md bg-card top-0 left-0 right-0">
+           <HeaderNavigation nav={nav?.map((item) => ({ ...item, title: t(item.titleKey) })) || []} className="border-0 m-0 py-4 px-2" />
+         </div>
+       )}
+-      <div className="flex flex-col min-h-screen items-center justify-center font-sans">
+-        <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between bg-white md:px-16 px-4 py-10 dark:bg-black sm:items-start rounded-md gap-4">
++      <div className="flex min-h-screen flex-col items-center justify-center font-sans">
++        <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between gap-4 rounded-md bg-card px-4 py-10 sm:items-start md:px-16">
+           {children}
+         </main>
+         {content}
+       </div>
+-    </div>
++    </ThemeShell>
+   )
+ }
+diff --git a/src/components/Layouts/SimpleLayout.tsx b/src/components/Layouts/SimpleLayout.tsx
+index 8207d76..794900e 100644
+--- a/src/components/Layouts/SimpleLayout.tsx
++++ b/src/components/Layouts/SimpleLayout.tsx
+@@ -1,3 +1,5 @@
++import { ThemeShell } from '~/providers/theme'
++
+ export const SimpleLayout = ({ children }: { children: React.ReactNode }) => {
+-  return <div className="w-full h-full flex-1 flex flex-col">{children}</div>
++  return <ThemeShell className="flex flex-1 flex-col">{children}</ThemeShell>
+ }
+diff --git a/src/components/Navigation/BottomNavigation.tsx b/src/components/Navigation/BottomNavigation.tsx
+index 90234e1..d327f68 100644
+--- a/src/components/Navigation/BottomNavigation.tsx
++++ b/src/components/Navigation/BottomNavigation.tsx
+@@ -32,7 +32,7 @@ export const BottomNavigation = (props: Props) => {
+ 
+   return (
+     <nav className={cn('fixed bottom-0 left-0 right-0 px-4 py-1 flex justify-center items-center pb-safe', props?.className)}>
+-      <ul className="flex justify-between gap-2 bg-white rounded-lg shadow-md shadow-black/30">
++      <ul className="flex justify-between gap-2 bg-background rounded-lg shadow-md shadow-foreground/30">
+         {props?.nav?.map((item) => (
+           <li key={[item.url, item.title].join('-')}>
+             <Link
+diff --git a/src/components/Views/Auth/Blocks/MfaCodeBlock.tsx b/src/components/Views/Auth/Blocks/MfaCodeBlock.tsx
+index 30f893a..2633f01 100644
+--- a/src/components/Views/Auth/Blocks/MfaCodeBlock.tsx
++++ b/src/components/Views/Auth/Blocks/MfaCodeBlock.tsx
+@@ -3,7 +3,8 @@
+ import { KeyRound } from 'lucide-react'
+ import * as React from 'react'
+ 
+-import { Button } from '~/components/ui'
++import { InputField } from '~/components/Fields'
++import { Button, Typography } from '~/components/ui'
+ import { useT } from '~/providers'
+ 
+ type Props = {
+@@ -31,37 +32,49 @@ const MfaCodeBlock = (props: Props) => {
+   }
+ 
+   return (
+-    <div className="min-h-screen w-full flex items-center justify-center bg-white rounded-xl z-1">
++    <div className="min-h-screen w-full flex items-center justify-center bg-white dark:bg-transparent rounded-xl z-1">
+       <form
+         onSubmit={handleSubmit}
+-        className="w-full max-w-sm bg-gradient-to-b from-sky-50/50 to-white rounded-3xl shadow-xl shadow-opacity-10 p-8 flex flex-col items-center border border-blue-100 text-black"
++        className="w-full max-w-sm bg-gradient-to-b from-sky-50/50 to-background dark:from-sky-900/50 rounded-3xl shadow-xl shadow-opacity-10 dark:shadow-sky-900/50 p-8 flex flex-col items-center border border-blue-100 dark:border-background text-foreground"
+       >
+-        <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-white mb-6 shadow-lg shadow-opacity-5">
+-          <KeyRound className="w-7 h-7 text-black" />
++        <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-background mb-6 shadow-lg shadow-opacity-5">
++          <KeyRound className="w-7 h-7 text-foreground" />
+         </div>
+-        <h2 className="text-2xl font-semibold mb-2 text-center">{t('auth.ui.twoFactorAuthentication')}</h2>
+-        <p className="text-gray-500 text-sm mb-6 text-center">{t('auth.ui.enterCodeFromAppOrBackupCodeDescription')}</p>
++        <Typography variant="Body/L/Semibold" asTag="h2" className="mb-2 text-center">
++          {t('auth.ui.twoFactorAuthentication')}
++        </Typography>
++        <Typography variant="Body/M/Regular" asTag="p" className="mb-6 text-center text-muted-foreground">
++          {t('auth.ui.enterCodeFromAppOrBackupCodeDescription')}
++        </Typography>
+         <div className="w-full flex flex-col gap-3 mb-4">
+-          <input
++          <InputField
++            placeholder={t('auth.ui.email')}
+             type="text"
++            name="code"
+             inputMode="numeric"
+             autoComplete="one-time-code"
+-            placeholder={t('auth.ui.enterCodeFromAppOrBackupCodePlaceholder')}
+             value={code}
+-            onChange={(e) => setCode(e.target.value)}
+             disabled={props.isLoading}
+-            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-gray-50 text-black text-center text-lg tracking-widest font-mono"
++            classNames={{
++              input: 'w-full pl-10 pr-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm',
++            }}
++            additionalLeftComponent={
++              <span className="ml-3 text-gray-400">
++                <KeyRound className="w-4 h-4" />
++              </span>
++            }
++            error={error}
++            onChange={(e) => setCode(e.target.value)}
+           />
+-          {error && <p className="text-sm text-red-500 text-left">{error}</p>}
+         </div>
+         <button
+           type="submit"
+           disabled={props.isLoading}
+-          className="w-full bg-gradient-to-b from-gray-700 to-gray-900 text-white font-medium py-2 rounded-xl shadow hover:brightness-105 cursor-pointer transition mb-4 mt-2"
++          className="w-full bg-gradient-to-b from-gray-700 to-gray-900 text-white dark:from-gray-700 dark:to-gray-900 dark:text-foreground dark:hover:text-foreground font-medium py-2 rounded-xl shadow hover:brightness-105 cursor-pointer transition mb-4 mt-2"
+         >
+           {props.isLoading ? t('auth.ui.checking') : t('auth.ui.continue')}
+         </button>
+-        <Button type="button" variant="link" onClick={props.onBack}>
++        <Button type="button" variant="ghost" className="w-full" onClick={props.onBack}>
+           {t('auth.ui.backToSignIn')}
+         </Button>
+       </form>
+diff --git a/src/components/Views/Auth/Blocks/SignInBlock.tsx b/src/components/Views/Auth/Blocks/SignInBlock.tsx
+index 1d51cd9..71ece65 100644
+--- a/src/components/Views/Auth/Blocks/SignInBlock.tsx
++++ b/src/components/Views/Auth/Blocks/SignInBlock.tsx
+@@ -5,7 +5,7 @@ import * as React from 'react'
+ import { useState } from 'react'
+ 
+ import { InputField } from '~/components/Fields'
+-import { Button } from '~/components/ui'
++import { Button, Typography } from '~/components/ui'
+ import { useSwitch } from '~/hooks/useSwitch'
+ import { useT } from '~/providers'
+ 
+@@ -46,16 +46,20 @@ const SignInBlock = (props: Props) => {
+   }
+ 
+   return (
+-    <div className="min-h-screen w-full flex items-center justify-center bg-white rounded-xl z-1">
++    <div className="min-h-screen w-full flex items-center justify-center bg-white dark:bg-transparent rounded-xl z-1">
+       <form
+         onSubmit={handleSignIn}
+-        className="w-full max-w-sm bg-gradient-to-b from-sky-50/50 to-white  rounded-3xl shadow-xl shadow-opacity-10 p-8 flex flex-col items-center border border-blue-100 text-black"
++        className="w-full max-w-sm bg-gradient-to-b from-sky-50/50 to-background dark:from-sky-900/50 rounded-3xl shadow-xl shadow-opacity-10 dark:shadow-sky-900/50 p-8 flex flex-col items-center border border-blue-100 dark:border-background text-foreground"
+       >
+-        <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-white mb-6 shadow-lg shadow-opacity-5">
+-          <LogIn className="w-7 h-7 text-black" />
++        <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-background mb-6 shadow-lg shadow-opacity-5">
++          <LogIn className="w-7 h-7 text-foreground" />
+         </div>
+-        <h2 className="text-2xl font-semibold mb-2 text-center">{t('auth.ui.signInWithEmail')}</h2>
+-        <p className="text-gray-500 text-sm mb-6 text-center">{t('auth.ui.signInToContinueWorking')}</p>
++        <Typography variant="Body/L/Semibold" asTag="h2" className="mb-2 text-center">
++          {t('auth.ui.signInWithEmail')}
++        </Typography>
++        <Typography variant="Body/M/Regular" asTag="p" className="text-sm mb-6 text-center text-muted-foreground">
++          {t('auth.ui.signInToContinueWorking')}
++        </Typography>
+         <div className="w-full flex flex-col gap-3 mb-2">
+           <div className="relative">
+             <InputField
+@@ -70,8 +74,7 @@ const SignInBlock = (props: Props) => {
+                 </span>
+               }
+               classNames={{
+-                input:
+-                  'w-full pl-10 pr-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-gray-50 text-black text-sm',
++                input: 'w-full pl-10 pr-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm',
+               }}
+               onChange={(e) => setEmail(e.target.value)}
+             />
+@@ -94,8 +97,7 @@ const SignInBlock = (props: Props) => {
+               }
+               disabled={props.isLoading}
+               classNames={{
+-                input:
+-                  'w-full pl-10 pr-10 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-gray-50 text-black text-sm',
++                input: 'w-full pl-10 pr-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm',
+               }}
+               onChange={(e) => setPassword(e.target.value)}
+             />
+@@ -106,11 +108,11 @@ const SignInBlock = (props: Props) => {
+         <button
+           type="submit"
+           disabled={props.isLoading}
+-          className="w-full bg-gradient-to-b from-gray-700 to-gray-900 text-white font-medium py-2 rounded-xl shadow hover:brightness-105 cursor-pointer transition mb-4 mt-2"
++          className="w-full bg-gradient-to-b from-gray-700 to-gray-900 text-white dark:from-gray-700 dark:to-gray-900 dark:text-foreground dark:hover:text-foreground font-medium py-2 rounded-xl shadow hover:brightness-105 cursor-pointer transition mb-4 mt-2"
+         >
+           {t('auth.ui.signIn')}
+         </button>
+-        <Button variant="link" onClick={props.onChange}>
++        <Button variant="ghost" className="w-full" onClick={props.onChange}>
+           {t('auth.ui.signUp')}
+         </Button>
+       </form>
+diff --git a/src/components/Views/Auth/Blocks/SignUpBlock.tsx b/src/components/Views/Auth/Blocks/SignUpBlock.tsx
+index 04681fd..f91176d 100644
+--- a/src/components/Views/Auth/Blocks/SignUpBlock.tsx
++++ b/src/components/Views/Auth/Blocks/SignUpBlock.tsx
+@@ -5,7 +5,7 @@ import * as React from 'react'
+ import { useState } from 'react'
+ 
+ import { InputField } from '~/components/Fields'
+-import { Button } from '~/components/ui'
++import { Button, Typography } from '~/components/ui'
+ import { useSwitch } from '~/hooks/useSwitch'
+ import { useT } from '~/providers'
+ 
+@@ -46,18 +46,20 @@ const SignUpBlock = (props: Props) => {
+   }
+ 
+   return (
+-    <div className="min-h-screen w-full flex items-center justify-center bg-white rounded-xl z-1">
++    <div className="min-h-screen w-full flex items-center justify-center bg-white dark:bg-transparent rounded-xl z-1">
+       <form
+         onSubmit={handle}
+-        className="w-full max-w-sm bg-gradient-to-b from-sky-50/50 to-white  rounded-3xl shadow-xl shadow-opacity-10 p-8 flex flex-col items-center border border-blue-100 text-black"
++        className="w-full max-w-sm bg-gradient-to-b from-sky-50/50 to-background dark:from-sky-900/50 rounded-3xl shadow-xl shadow-opacity-10 dark:shadow-sky-900/50 p-8 flex flex-col items-center border border-blue-100 dark:border-background text-foreground"
+       >
+-        <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-white mb-6 shadow-lg shadow-opacity-5">
+-          <UserRoundPlusIcon className="w-7 h-7 text-black" />
++        <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-background mb-6 shadow-lg shadow-opacity-5">
++          <UserRoundPlusIcon className="w-7 h-7 text-foreground" />
+         </div>
+-        <h2 className="text-2xl font-semibold mb-2 text-center">{t('auth.ui.createAccountToContinue')}</h2>
+-        <p className="text-gray-500 text-sm mb-6 text-center">
++        <Typography variant="Body/L/Semibold" asTag="h2" className="mb-2 text-center">
++          {t('auth.ui.createAccountToContinue')}
++        </Typography>
++        <Typography variant="Body/M/Regular" asTag="p" className="text-sm mb-6 text-center text-muted-foreground">
+           {t('auth.ui.pleaseEnterYourEmailAndPasswordToCreateAnAccountYouWillBeAbleToSignInUsingTheseCredentialsInTheFuture')}
+-        </p>
++        </Typography>
+         <div className="w-full flex flex-col gap-3 mb-2">
+           <div className="relative">
+             <InputField
+@@ -72,8 +74,7 @@ const SignUpBlock = (props: Props) => {
+                 </span>
+               }
+               classNames={{
+-                input:
+-                  'w-full pl-10 pr-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-gray-50 text-black text-sm',
++                input: 'w-full pl-10 pr-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm',
+               }}
+               onChange={(e) => setEmail(e.target.value)}
+             />
+@@ -96,8 +97,7 @@ const SignUpBlock = (props: Props) => {
+               }
+               disabled={props.isLoading}
+               classNames={{
+-                input:
+-                  'w-full pl-10 pr-10 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-gray-50 text-black text-sm',
++                input: 'w-full pl-10 pr-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm',
+               }}
+               onChange={(e) => setPassword(e.target.value)}
+             />
+@@ -109,11 +109,11 @@ const SignUpBlock = (props: Props) => {
+         <button
+           type="submit"
+           disabled={props.isLoading}
+-          className="w-full bg-gradient-to-b from-gray-700 to-gray-900 text-white font-medium py-2 rounded-xl shadow hover:brightness-105 cursor-pointer transition mb-4 mt-2"
++          className="w-full bg-gradient-to-b from-gray-700 to-gray-900 text-white dark:from-gray-700 dark:to-gray-900 dark:text-foreground dark:hover:text-foreground font-medium py-2 rounded-xl shadow hover:brightness-105 cursor-pointer transition mb-4 mt-2"
+         >
+           {t('auth.ui.createAccount')}
+         </button>
+-        <Button variant="link" onClick={props.onChange}>
++        <Button variant="ghost" className="w-full" onClick={props.onChange}>
+           {t('auth.ui.signIn')}
+         </Button>
+       </form>
+diff --git a/src/components/Views/Auth/Blocks/SignUpVerifyBlock.tsx b/src/components/Views/Auth/Blocks/SignUpVerifyBlock.tsx
+index 308b7a3..424fb7d 100644
+--- a/src/components/Views/Auth/Blocks/SignUpVerifyBlock.tsx
++++ b/src/components/Views/Auth/Blocks/SignUpVerifyBlock.tsx
+@@ -1,9 +1,10 @@
+ 'use client'
+ 
+-import { Mail } from 'lucide-react'
++import { KeyRound, Mail } from 'lucide-react'
+ import * as React from 'react'
+ 
+-import { Button } from '~/components/ui'
++import { InputField } from '~/components/Fields'
++import { Button, Typography } from '~/components/ui'
+ import { useT } from '~/providers'
+ 
+ type Props = {
+@@ -32,38 +33,49 @@ const SignUpVerifyBlock = (props: Props) => {
+   }
+ 
+   return (
+-    <div className="min-h-screen w-full flex items-center justify-center bg-white rounded-xl z-1">
++    <div className="min-h-screen w-full flex items-center justify-center bg-white dark:bg-transparent rounded-xl z-1">
+       <form
+         onSubmit={handleSubmit}
+-        className="w-full max-w-sm bg-gradient-to-b from-sky-50/50 to-white rounded-3xl shadow-xl shadow-opacity-10 p-8 flex flex-col items-center border border-blue-100 text-black"
++        className="w-full max-w-sm bg-gradient-to-b from-sky-50/50 to-background dark:from-sky-900/50 rounded-3xl shadow-xl shadow-opacity-10 dark:shadow-sky-900/50 p-8 flex flex-col items-center border border-blue-100 dark:border-background text-foreground"
+       >
+-        <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-white mb-6 shadow-lg shadow-opacity-5">
+-          <Mail className="w-7 h-7 text-black" />
++        <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-background mb-6 shadow-lg shadow-opacity-5">
++          <Mail className="w-7 h-7 text-foreground" />
+         </div>
+-        <h2 className="text-2xl font-semibold mb-2 text-center">{t('auth.ui.signUpVerifyTitle')}</h2>
+-        <p className="text-gray-500 text-sm mb-6 text-center">{t('auth.ui.signUpVerifyDescription', { email: props.email })}</p>
++        <Typography variant="Body/L/Semibold" asTag="h2" className="mb-2 text-center">
++          {t('auth.ui.signUpVerifyTitle')}
++        </Typography>
++        <Typography variant="Body/M/Regular" asTag="p" className="mb-6 text-center text-muted-foreground">
++          {t('auth.ui.signUpVerifyDescription', { email: props.email })}
++        </Typography>
+         <div className="w-full flex flex-col gap-3 mb-4">
+-          <input
++          <InputField
++            placeholder={t('auth.ui.signUpVerifyPlaceholder')}
+             type="text"
++            name="code"
++            additionalLeftComponent={
++              <span className="ml-3 text-gray-400">
++                <KeyRound className="w-4 h-4" />
++              </span>
++            }
+             inputMode="numeric"
+             autoComplete="one-time-code"
+-            maxLength={6}
+-            placeholder={t('auth.ui.signUpVerifyPlaceholder')}
+             value={code}
+-            onChange={(e) => setCode(e.target.value)}
+             disabled={props.isLoading}
+-            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-gray-50 text-black text-center text-lg tracking-widest font-mono"
++            classNames={{
++              input: 'w-full pl-10 pr-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm',
++            }}
++            error={error}
++            onChange={(e) => setCode(e.target.value)}
+           />
+-          {error && <p className="text-sm text-red-500 text-left">{error}</p>}
+         </div>
+         <button
+           type="submit"
+           disabled={props.isLoading}
+-          className="w-full bg-gradient-to-b from-gray-700 to-gray-900 text-white font-medium py-2 rounded-xl shadow hover:brightness-105 cursor-pointer transition mb-4 mt-2"
++          className="w-full bg-gradient-to-b from-gray-700 to-gray-900 text-white dark:from-gray-700 dark:to-gray-900 dark:text-foreground dark:hover:text-foreground font-medium py-2 rounded-xl shadow hover:brightness-105 cursor-pointer transition mb-4 mt-2"
+         >
+           {props.isLoading ? t('auth.ui.checking') : t('auth.ui.continue')}
+         </button>
+-        <Button type="button" variant="link" onClick={props.onBack}>
++        <Button type="button" variant="ghost" className="w-full" onClick={props.onBack}>
+           {t('auth.ui.signUpVerifyBack')}
+         </Button>
+       </form>
+diff --git a/src/components/theme/ThemeModeSelect.tsx b/src/components/theme/ThemeModeSelect.tsx
+new file mode 100644
+index 0000000..0f810ca
+--- /dev/null
++++ b/src/components/theme/ThemeModeSelect.tsx
+@@ -0,0 +1,53 @@
++'use client'
++
++import { MonitorIcon, MoonIcon, SunIcon } from 'lucide-react'
++
++import { Typography } from '~/components/ui'
++import type { ThemePreference } from '~/lib/theme/config'
++import { useT } from '~/providers'
++import { useTheme } from '~/providers/theme'
++import { cn } from '~/utils/cn'
++
++const OPTIONS: Array<{ value: ThemePreference; icon: typeof SunIcon; labelKey: 'theme.modeLight' | 'theme.modeDark' | 'theme.modeSystem' }> = [
++  { value: 'light', icon: SunIcon, labelKey: 'theme.modeLight' },
++  { value: 'dark', icon: MoonIcon, labelKey: 'theme.modeDark' },
++  { value: 'system', icon: MonitorIcon, labelKey: 'theme.modeSystem' },
++]
++
++type Props = {
++  className?: string
++}
++
++export function ThemeModeSelect({ className }: Props) {
++  const t = useT()
++  const { preference, setPreference, hydrated } = useTheme()
++
++  return (
++    <div className={cn('flex flex-col gap-2', className)}>
++      <Typography variant="Body/S/Semibold">{t('theme.appearanceHeading')}</Typography>
++      <Typography variant="Body/XS/Regular" className="text-muted-foreground">
++        {t('theme.appearanceHint')}
++      </Typography>
++      <div className="flex flex-wrap gap-2" role="group" aria-label={t('theme.appearanceHeading')}>
++        {OPTIONS.map(({ value, icon: Icon, labelKey }) => {
++          const isActive = hydrated && preference === value
++
++          return (
++            <button
++              key={value}
++              type="button"
++              onClick={() => setPreference(value)}
++              className={cn(
++                'inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-[13px] font-medium transition-colors',
++                isActive ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-foreground hover:bg-muted',
++              )}
++            >
++              <Icon className="h-4 w-4" aria-hidden />
++              {t(labelKey)}
++            </button>
++          )
++        })}
++      </div>
++    </div>
++  )
++}
+diff --git a/src/components/ui/Typography/Typography.tsx b/src/components/ui/Typography/Typography.tsx
+index a997ac8..aba0e60 100644
+--- a/src/components/ui/Typography/Typography.tsx
++++ b/src/components/ui/Typography/Typography.tsx
+@@ -58,7 +58,7 @@ export const Typography: FC<Props> = ({ children, className, variant, asTag = 'p
+         variantClasses[variant ?? 'Body/M/Regular'],
+         {
+           'text-secondary-600': asTag === 'a',
+-          'text-slate-800 dark:text-slate-100': asTag !== 'a',
++          'text-foreground': asTag !== 'a',
+         },
+         className,
+       )}
+diff --git a/src/components/ui/input.tsx b/src/components/ui/input.tsx
+index a137576..620bbbd 100644
+--- a/src/components/ui/input.tsx
++++ b/src/components/ui/input.tsx
+@@ -83,7 +83,7 @@ export const Input = ({
+ 
+   return (
+     <div className="flex flex-col gap-2" onClick={() => _ref.current?.focus()}>
+-      {label && <div className="capitalize text-[13px] text-gray-900">{label}</div>}
++      {label && <div className="capitalize text-[13px] text-muted-foreground">{label}</div>}
+       <div
+         className={clsx(
+           'flex items-center duration-150 font-sans',
+@@ -108,7 +108,7 @@ export const Input = ({
+         )}
+         <input
+           className={clsx(
+-            'w-full inline-flex appearance-none placeholder:text-gray-900 placeholder:opacity-70 outline-none',
++            'w-full inline-flex appearance-none placeholder:text-muted-foreground/60 placeholder:opacity-70 outline-none',
+             size === 'xSmall' || size === 'mediumSmall' ? 'px-2' : 'px-3',
+             disabled ? 'cursor-not-allowed bg-gray-100 text-gray-700' : 'bg-background-100 text-geist-foreground',
+             className,
+diff --git a/src/components/ui/sidebar.tsx b/src/components/ui/sidebar.tsx
+index 78df530..ac35cc3 100644
+--- a/src/components/ui/sidebar.tsx
++++ b/src/components/ui/sidebar.tsx
+@@ -23,7 +23,7 @@ const AnimatedMenuToggle = ({ toggle, isOpen }: { toggle: () => void; isOpen: bo
+         initial="closed"
+         animate={isOpen ? 'open' : 'closed'}
+         transition={{ duration: 0.3 }}
+-        className="text-black"
++        className="text-foreground"
+       >
+         <motion.path
+           fill="transparent"
+@@ -66,7 +66,7 @@ const CollapsibleSection = ({ title, children, defaultOpen }: { title: string; c
+ 
+   return (
+     <>
+-      <button className="w-full flex items-center justify-between py-2 px-4 rounded-xl hover:bg-gray-100" onClick={() => setOpen(!open)}>
++      <button className="w-full flex items-center justify-between py-2 px-4 rounded-xl hover:bg-muted" onClick={() => setOpen(!open)}>
+         <span className="font-semibold text-md text-left">{title}</span>
+         {open ? <XIcon /> : <MenuIcon />}
+       </button>
+@@ -109,8 +109,11 @@ const Footer = () => {
+   }
+ 
+   return (
+-    <div className="p-4 border-t border-gray-200">
+-      <button onClick={handleLogout} className="w-full cursor-pointer font-medium text-sm p-2 text-center bg-blue-100 rounded-xl hover:bg-blue-200">
++    <div className="p-4 border-t border-border">
++      <button
++        onClick={handleLogout}
++        className="w-full cursor-pointer font-medium text-sm p-2 text-center bg-blue-100 dark:bg-blue-900 rounded-xl hover:bg-blue-200 dark:hover:bg-blue-800"
++      >
+         {t('common.signOut')}
+       </button>
+     </div>
+@@ -123,9 +126,9 @@ const ProfileSection = () => {
+   const { authUser, isLoading, isFetched } = useAuth()
+ 
+   return (
+-    <div className="p-4 border-b border-gray-200">
++    <div className="p-4 border-b border-border">
+       <div className="flex items-center space-x-3 cursor-pointer" onClick={() => router.push(routes.profile.path)}>
+-        <div className="w-12 min-w-12 h-12 min-h-12 bg-gray-200 rounded-full flex items-center justify-center">
++        <div className="w-12 min-w-12 h-12 min-h-12 dark:bg-muted-foreground bg-slate-100 rounded-full flex items-center justify-center">
+           <User className="h-6 w-6 min-w-6 min-h-6" />
+         </div>
+         <div className="w-full overflow-hidden">
+@@ -201,9 +204,12 @@ const NavigationSection = ({ navigation, toggle }: { navigation: NavigationSecti
+                               <Link
+                                 onClick={toggle}
+                                 href={item.href || ''}
+-                                className={cn('w-full font-medium text-sm flex flex-start items-center gap-2 text-left p-2 rounded-xl hover:bg-gray-100', {
+-                                  'bg-gray-100': matchesPathname(item.href || '', pathname),
+-                                })}
++                                className={cn(
++                                  'w-full text-muted-foreground font-medium text-sm flex flex-start items-center gap-2 text-left p-2 rounded-xl hover:bg-muted',
++                                  {
++                                    'bg-muted text-foreground': matchesPathname(item.href || '', pathname),
++                                  },
++                                )}
+                               >
+                                 {item.icon}
+                                 {item.label}
+@@ -212,7 +218,7 @@ const NavigationSection = ({ navigation, toggle }: { navigation: NavigationSecti
+                           ))}
+                       </ul>
+                     ) : (
+-                      <p className="text-sm text-gray-500">{nav.content}</p>
++                      <p className="text-sm text-muted-foreground">{nav.content}</p>
+                     )}
+                   </CollapsibleSection>
+                 </li>
+@@ -228,9 +234,12 @@ const NavigationSection = ({ navigation, toggle }: { navigation: NavigationSecti
+                       <Link
+                         onClick={toggle}
+                         href={item.href || ''}
+-                        className={cn('w-full font-medium text-sm flex flex-start items-center gap-2 text-left p-2 rounded-xl hover:bg-gray-100', {
+-                          'bg-gray-100': matchesPathname(item.href || '', pathname),
+-                        })}
++                        className={cn(
++                          'w-full text-muted-foreground font-medium text-sm flex flex-start items-center gap-2 text-left p-2 rounded-xl hover:bg-muted',
++                          {
++                            'bg-muted text-foreground': matchesPathname(item.href || '', pathname),
++                          },
++                        )}
+                       >
+                         {item.icon}
+                         {item.label}
+@@ -271,7 +280,7 @@ const Sidebar = ({ children, navigation }: SidebarProps) => {
+             exit="hidden"
+             variants={mobileSidebarVariants}
+             transition={{ duration: 0.3 }}
+-            className="md:hidden max-w-[100vw] fixed inset-0 z-50 bg-white text-black"
++            className="md:hidden max-w-[100vw] fixed inset-0 z-50 bg-background text-foreground"
+           >
+             <div className="flex flex-col h-full">
+               {/* Profile Section */}
+@@ -286,7 +295,7 @@ const Sidebar = ({ children, navigation }: SidebarProps) => {
+       </AnimatePresence>
+ 
+       {/* Desktop Sidebar */}
+-      <aside className="hidden md:flex flex-col fixed top-0 left-0 h-full bg-white text-black shadow max-w-[200px] w-full">
++      <aside className="hidden md:flex flex-col fixed top-0 left-0 h-full bg-background text-foreground shadow dark:shadow-foreground/30 max-w-[200px] w-full">
+         {/* Profile Section */}
+         <ProfileSection />
+         {/* Navigation Section */}
+@@ -298,7 +307,7 @@ const Sidebar = ({ children, navigation }: SidebarProps) => {
+       {/* Main Content Area */}
+       <div className="flex-1 ml-0 md:ml-[200px] transition-all overflow-hidden duration-300 flex-col flex">
+         {/* Top bar for mobile toggle */}
+-        <div className="p-4 bg-gray-100 border-b border-gray-200 md:hidden flex justify-end items-center">
++        <div className="p-4 bg-background border-b border-border md:hidden flex justify-end items-center">
+           <AnimatedMenuToggle toggle={toggleSidebar} isOpen={isOpen} />
+         </div>
+         <div className="md:p-6 p-2 flex-1 flex flex-col max-w-[100vw]">{children}</div>
+diff --git a/src/lib/i18n/messages/en.ts b/src/lib/i18n/messages/en.ts
+index 21707cf..9dd37e2 100644
+--- a/src/lib/i18n/messages/en.ts
++++ b/src/lib/i18n/messages/en.ts
+@@ -468,6 +468,13 @@ export const en = {
+       notFound: 'Profile not found',
+     },
+   },
++  theme: {
++    appearanceHeading: 'Appearance',
++    appearanceHint: 'Choose light, dark, or match your system settings. Your choice is saved in a cookie.',
++    modeLight: 'Light',
++    modeDark: 'Dark',
++    modeSystem: 'System',
++  },
+   notFound: {
+     title: '404 - Page Not Found',
+   },
+diff --git a/src/lib/i18n/messages/ru.ts b/src/lib/i18n/messages/ru.ts
+index 07adf4d..691c151 100644
+--- a/src/lib/i18n/messages/ru.ts
++++ b/src/lib/i18n/messages/ru.ts
+@@ -468,6 +468,13 @@ export const ru = {
+       notFound: 'Профиль не найден',
+     },
+   },
++  theme: {
++    appearanceHeading: 'Оформление',
++    appearanceHint: 'Светлая, тёмная тема или как в системе. Выбор сохраняется в cookie.',
++    modeLight: 'Светлая',
++    modeDark: 'Тёмная',
++    modeSystem: 'Системная',
++  },
+   notFound: {
+     title: '404 - Страница не найдена',
+   },
+diff --git a/src/lib/theme/config.ts b/src/lib/theme/config.ts
+new file mode 100644
+index 0000000..ee5d85f
+--- /dev/null
++++ b/src/lib/theme/config.ts
+@@ -0,0 +1,54 @@
++export const THEME_COOKIE_NAME = 'sb_theme_mode'
++
++/** User preference stored in cookie. */
++export type ThemePreference = 'light' | 'dark' | 'system'
++
++/** Resolved palette applied to `<html class="dark">`. */
++export type ResolvedTheme = 'light' | 'dark'
++
++const THEME_PREFERENCES: ThemePreference[] = ['light', 'dark', 'system']
++
++export const parseThemePreference = (raw: string | null | undefined): ThemePreference | null => {
++  if (!raw) return null
++
++  const value = raw.trim().toLowerCase()
++
++  if (THEME_PREFERENCES.includes(value as ThemePreference)) {
++    return value as ThemePreference
++  }
++
++  return null
++}
++
++/** Env default when OS preference is unknown on the server (`DEFAULT_THEME_MODE`, fallback `dark`). */
++export const getEnvDefaultResolvedTheme = (): ResolvedTheme => {
++  const raw = (process.env.DEFAULT_THEME_MODE ?? process.env.NEXT_PUBLIC_DEFAULT_THEME_MODE ?? 'dark').trim().toLowerCase()
++
++  return raw === 'light' ? 'light' : 'dark'
++}
++
++export const getClientEnvDefaultResolvedTheme = (): ResolvedTheme => {
++  const raw = (process.env.NEXT_PUBLIC_DEFAULT_THEME_MODE ?? 'dark').trim().toLowerCase()
++
++  return raw === 'light' ? 'light' : 'dark'
++}
++
++export const resolveThemeFromPreference = (
++  preference: ThemePreference | null,
++  systemHint: ResolvedTheme | null,
++): { preference: ThemePreference; resolved: ResolvedTheme } => {
++  const effectivePreference: ThemePreference = preference ?? 'system'
++
++  if (effectivePreference === 'light') {
++    return { preference: effectivePreference, resolved: 'light' }
++  }
++
++  if (effectivePreference === 'dark') {
++    return { preference: effectivePreference, resolved: 'dark' }
++  }
++
++  return {
++    preference: 'system',
++    resolved: systemHint ?? getEnvDefaultResolvedTheme(),
++  }
++}
+diff --git a/src/lib/theme/index.ts b/src/lib/theme/index.ts
+new file mode 100644
+index 0000000..30f1887
+--- /dev/null
++++ b/src/lib/theme/index.ts
+@@ -0,0 +1,3 @@
++export * from './config'
++export * from './resolveServerTheme'
++export * from './theme-cookie'
+diff --git a/src/lib/theme/resolveServerTheme.ts b/src/lib/theme/resolveServerTheme.ts
+new file mode 100644
+index 0000000..caf6703
+--- /dev/null
++++ b/src/lib/theme/resolveServerTheme.ts
+@@ -0,0 +1,50 @@
++import type { IncomingHttpHeaders } from 'node:http'
++
++import type { ReadonlyHeaders } from 'next/dist/server/web/spec-extension/adapters/headers'
++import type { ReadonlyRequestCookies } from 'next/dist/server/web/spec-extension/adapters/request-cookies'
++
++import { getEnvDefaultResolvedTheme, type ResolvedTheme, resolveThemeFromPreference, type ThemePreference } from './config'
++import { parseThemeCookieValue, THEME_COOKIE_NAME } from './theme-cookie'
++
++export type ServerThemeState = {
++  preference: ThemePreference
++  resolved: ResolvedTheme
++}
++
++const readSystemHintFromHeaders = (headers: ReadonlyHeaders | IncomingHttpHeaders): ResolvedTheme | null => {
++  const getHeader = (name: string): string | null => {
++    if ('get' in headers && typeof headers.get === 'function') {
++      return headers.get(name)
++    }
++
++    const record = headers as IncomingHttpHeaders
++    const value = record[name] ?? record[name.toLowerCase()]
++
++    return Array.isArray(value) ? (value[0] ?? null) : (value ?? null)
++  }
++
++  const secCh = getHeader('sec-ch-prefers-color-scheme')?.trim().toLowerCase()
++
++  if (secCh === 'dark' || secCh === 'light') {
++    return secCh
++  }
++
++  const accept = getHeader('accept')?.toLowerCase() ?? ''
++
++  if (accept.includes('prefers-color-scheme: dark')) {
++    return 'dark'
++  }
++
++  if (accept.includes('prefers-color-scheme: light')) {
++    return 'light'
++  }
++
++  return null
++}
++
++export async function resolveServerTheme(input: { cookies: ReadonlyRequestCookies; headers: ReadonlyHeaders }): Promise<ServerThemeState> {
++  const stored = parseThemeCookieValue(input.cookies.get(THEME_COOKIE_NAME)?.value)
++  const systemHint = readSystemHintFromHeaders(input.headers)
++
++  return resolveThemeFromPreference(stored, systemHint ?? getEnvDefaultResolvedTheme())
++}
+diff --git a/src/lib/theme/theme-cookie.ts b/src/lib/theme/theme-cookie.ts
+new file mode 100644
+index 0000000..78f1107
+--- /dev/null
++++ b/src/lib/theme/theme-cookie.ts
+@@ -0,0 +1,29 @@
++import { parseThemePreference, THEME_COOKIE_NAME, type ThemePreference } from './config'
++
++export { THEME_COOKIE_NAME }
++
++export function readThemePreferenceCookie(): ThemePreference | null {
++  if (typeof document === 'undefined') {
++    return null
++  }
++
++  const match = document.cookie.match(new RegExp(`(?:^|; )${THEME_COOKIE_NAME}=([^;]*)`))
++  const raw = match?.[1] ? decodeURIComponent(match[1]) : null
++
++  return parseThemePreference(raw)
++}
++
++export function writeThemePreferenceCookie(value: ThemePreference): void {
++  if (typeof document === 'undefined') {
++    return
++  }
++
++  const maxAgeSec = 365 * 24 * 60 * 60
++  const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : ''
++
++  document.cookie = `${THEME_COOKIE_NAME}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAgeSec}; SameSite=Lax${secure}`
++}
++
++export function parseThemeCookieValue(raw: string | undefined): ThemePreference | null {
++  return parseThemePreference(raw ?? null)
++}
+diff --git a/src/providers/theme/ThemeProvider.tsx b/src/providers/theme/ThemeProvider.tsx
+new file mode 100644
+index 0000000..941973a
+--- /dev/null
++++ b/src/providers/theme/ThemeProvider.tsx
+@@ -0,0 +1,100 @@
++'use client'
++
++import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
++
++import { type ResolvedTheme, resolveThemeFromPreference, type ThemePreference } from '~/lib/theme/config'
++import { readThemePreferenceCookie, writeThemePreferenceCookie } from '~/lib/theme/theme-cookie'
++
++import { ThemeContext, type ThemeContextValue } from './useTheme'
++
++const applyResolvedToDocument = (resolved: ResolvedTheme) => {
++  const root = document.documentElement
++
++  if (resolved === 'dark') {
++    root.classList.add('dark')
++  } else {
++    root.classList.remove('dark')
++  }
++}
++
++const readSystemResolved = (): ResolvedTheme => (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
++
++type Props = {
++  children: ReactNode
++  initialPreference: ThemePreference
++  initialResolved: ResolvedTheme
++}
++
++export function ThemeProvider({ children, initialPreference, initialResolved }: Props) {
++  const [preference, setPreferenceState] = useState<ThemePreference>(initialPreference)
++  const [resolved, setResolved] = useState<ResolvedTheme>(initialResolved)
++  const [hydrated, setHydrated] = useState(false)
++
++  const syncFromPreference = useCallback((nextPreference: ThemePreference, persist: boolean) => {
++    const systemHint = nextPreference === 'system' ? readSystemResolved() : null
++    const next = resolveThemeFromPreference(nextPreference, systemHint)
++
++    setPreferenceState(next.preference)
++    setResolved(next.resolved)
++    applyResolvedToDocument(next.resolved)
++
++    if (persist) {
++      writeThemePreferenceCookie(next.preference)
++    }
++  }, [])
++
++  useEffect(() => {
++    const stored = readThemePreferenceCookie()
++
++    if (stored) {
++      queueMicrotask(() => {
++        syncFromPreference(stored, false)
++      })
++    } else {
++      queueMicrotask(() => {
++        syncFromPreference('system', false)
++      })
++    }
++
++    queueMicrotask(() => {
++      setHydrated(true)
++    })
++  }, [syncFromPreference])
++
++  useEffect(() => {
++    if (preference !== 'system') {
++      return
++    }
++
++    const media = window.matchMedia('(prefers-color-scheme: dark)')
++
++    const onChange = () => {
++      const next = resolveThemeFromPreference('system', readSystemResolved())
++      setResolved(next.resolved)
++      applyResolvedToDocument(next.resolved)
++    }
++
++    media.addEventListener('change', onChange)
++
++    return () => media.removeEventListener('change', onChange)
++  }, [preference])
++
++  const setPreference = useCallback(
++    (next: ThemePreference) => {
++      syncFromPreference(next, true)
++    },
++    [syncFromPreference],
++  )
++
++  const value = useMemo<ThemeContextValue>(
++    () => ({
++      preference,
++      resolved,
++      hydrated,
++      setPreference,
++    }),
++    [hydrated, preference, resolved, setPreference],
++  )
++
++  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
++}
+diff --git a/src/providers/theme/ThemeScript.tsx b/src/providers/theme/ThemeScript.tsx
+new file mode 100644
+index 0000000..578302f
+--- /dev/null
++++ b/src/providers/theme/ThemeScript.tsx
+@@ -0,0 +1,14 @@
++import { getClientEnvDefaultResolvedTheme, THEME_COOKIE_NAME } from '~/lib/theme/config'
++
++/**
++ * Runs before paint to align `<html class="dark">` with cookie + `prefers-color-scheme`.
++ * Reduces flash when server guess differs from the client (e.g. `system` preference).
++ */
++export function ThemeScript() {
++  const envDefault = getClientEnvDefaultResolvedTheme()
++
++  // eslint-disable-next-line max-len
++  const script = `(function(){try{var k='${THEME_COOKIE_NAME}';var m=document.cookie.match(new RegExp('(?:^|; )'+k+'=([^;]*)'));var p=m?decodeURIComponent(m[1]):'';var d='${envDefault}';var r=d;if(p==='light'||p==='dark'){r=p;}else if(p==='system'||!p){r=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}var el=document.documentElement;if(r==='dark'){el.classList.add('dark');}else{el.classList.remove('dark');}}catch(e){}})();`
++
++  return <script dangerouslySetInnerHTML={{ __html: script }} />
++}
+diff --git a/src/providers/theme/ThemeShell.tsx b/src/providers/theme/ThemeShell.tsx
+new file mode 100644
+index 0000000..aab6a7a
+--- /dev/null
++++ b/src/providers/theme/ThemeShell.tsx
+@@ -0,0 +1,13 @@
++import { cn } from '~/utils/cn'
++
++type Props = {
++  children: React.ReactNode
++  className?: string
++}
++
++/**
++ * Page shell: semantic background/foreground from CSS variables (`globals.css` + `.dark` on `<html>`).
++ */
++export function ThemeShell({ children, className }: Props) {
++  return <div className={cn('min-h-full w-full bg-background text-foreground', className)}>{children}</div>
++}
+diff --git a/src/providers/theme/index.ts b/src/providers/theme/index.ts
+new file mode 100644
+index 0000000..f99bf0f
+--- /dev/null
++++ b/src/providers/theme/index.ts
+@@ -0,0 +1,4 @@
++export * from './ThemeProvider'
++export * from './ThemeScript'
++export * from './ThemeShell'
++export * from './useTheme'
+diff --git a/src/providers/theme/useTheme.ts b/src/providers/theme/useTheme.ts
+new file mode 100644
+index 0000000..7a2fd8b
+--- /dev/null
++++ b/src/providers/theme/useTheme.ts
+@@ -0,0 +1,24 @@
++'use client'
++
++import { createContext, useContext } from 'react'
++
++import type { ResolvedTheme, ThemePreference } from '~/lib/theme/config'
++
++export type ThemeContextValue = {
++  preference: ThemePreference
++  resolved: ResolvedTheme
++  hydrated: boolean
++  setPreference: (preference: ThemePreference) => void
++}
++
++export const ThemeContext = createContext<ThemeContextValue | null>(null)
++
++export function useTheme(): ThemeContextValue {
++  const ctx = useContext(ThemeContext)
++
++  if (!ctx) {
++    throw new Error('useTheme must be used within ThemeProvider')
++  }
++
++  return ctx
++}

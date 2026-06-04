@@ -203,6 +203,13 @@ export const ru = {
       notFound: 'Профиль не найден',
     },
   },
+  theme: {
+    appearanceHeading: 'Оформление',
+    appearanceHint: 'Светлая, тёмная тема или как в системе. Выбор сохраняется в cookie.',
+    modeLight: 'Светлая',
+    modeDark: 'Тёмная',
+    modeSystem: 'Системная',
+  },
   notFound: {
     title: '404 - Страница не найдена',
   },

@@ -1,6 +1,7 @@
 import { defaultGuard, PageProps } from '@lib/page'
 import { getServerProfile } from '@lib/server-action/server-auth'
 
+import { ThemeModeSelect } from '~/components/theme/ThemeModeSelect'
 import { Typography } from '~/components/ui'
 import { NotificationBlock } from '~/components/Views/Notification'
 import { ProfileMfaBlock } from '~/components/Views/Profile/ProfileMfaBlock'
@@ -35,6 +36,10 @@ const ProfileRoot = async (props: PageProps) => {
           <Typography variant="Body/S/Semibold">{t('user.fields.status')}</Typography>
           <Typography variant="Body/XS/Regular">{t(`user.statuses.${profile.status}`)}</Typography>
         </div>
+      </div>
+
+      <div className="flex flex-col rounded-lg border bg-card p-4">
+        <ThemeModeSelect />
       </div>
 
       <NotificationBlock />
