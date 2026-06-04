@@ -671,8 +671,8 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
                   <Typography
                     variant="Body/S/Regular"
                     className={cn('whitespace-nowrap text-nowrap', {
-                      'text-neutral-1000': item.id !== activeRevisionId,
-                      'text-neutral': item.id === activeRevisionId,
+                      'text-muted-foreground': item.id !== activeRevisionId,
+                      'text-primary-foreground': item.id === activeRevisionId,
                     })}
                   >
                     {item.publishedAt ? time(item.publishedAt).format('DD.MM.YYYY HH:mm') : time(item.createdAt).format('DD.MM.YYYY HH:mm')}
@@ -713,7 +713,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
                 type: 'info',
                 message: (
                   <div className="flex flex-col gap-2 items-start">
-                    <Typography variant="Body/S/Regular" className="text-neutral-1000">
+                    <Typography variant="Body/S/Regular" className="text-muted-foreground">
                       {t('article.ui.youAreNotAllowedToEditTheLastPublishedArticlePleaseStartTheNewVersion')}
                     </Typography>
                     {!isHasDraftRevision ? (
@@ -721,7 +721,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
                         {t('article.ui.startNewVersion')}
                       </Button>
                     ) : null}
-                    <Typography variant="Body/S/Regular" className="text-neutral-1000">
+                    <Typography variant="Body/S/Regular" className="text-muted-foreground">
                       {t('article.ui.orRepublishEarlyVersion')}
                     </Typography>
                   </div>

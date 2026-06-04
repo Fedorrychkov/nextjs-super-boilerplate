@@ -91,7 +91,7 @@ export const Input = ({
             ? 'shadow-error-input hover:shadow-error-input-hover'
             : 'border border-gray-alpha-400 hover:border-gray-alpha-500 focus-within:border-transparent focus-within:shadow-focus-input',
           sizes[size],
-          disabled ? 'cursor-not-allowed bg-gray-100' : 'bg-background-100',
+          disabled ? 'cursor-not-allowed bg-muted' : 'bg-background-100',
           wrapperClassName,
         )}
       >
@@ -110,7 +110,7 @@ export const Input = ({
           className={clsx(
             'w-full inline-flex appearance-none placeholder:text-muted-foreground/60 placeholder:opacity-70 outline-none',
             size === 'xSmall' || size === 'mediumSmall' ? 'px-2' : 'px-3',
-            disabled ? 'cursor-not-allowed bg-gray-100 text-gray-700' : 'bg-background-100 text-geist-foreground',
+            disabled ? 'cursor-not-allowed bg-muted text-muted-foreground' : 'bg-background-100 text-geist-foreground',
             className,
           )}
           id={id}

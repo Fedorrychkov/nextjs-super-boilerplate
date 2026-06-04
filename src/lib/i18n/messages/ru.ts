@@ -424,6 +424,16 @@ export const ru = {
     },
   },
   article: {
+    common: {
+      showing: 'Показано {count} из {total}',
+      sortBy: 'Сортировка по',
+      order: 'Порядок',
+      newestFirst: 'Новые первыми',
+      oldestFirst: 'Старые первыми',
+      publishedAt: 'Дата публикации',
+      createdAt: 'Дата создания',
+      updatedAt: 'Дата обновления',
+    },
     fields: {
       id: 'ID',
       slug: 'Путь (URL)',

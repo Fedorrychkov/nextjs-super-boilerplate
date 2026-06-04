@@ -426,6 +426,16 @@ export const en = {
     },
   },
   article: {
+    common: {
+      showing: 'Showing {count} of {total}',
+      sortBy: 'Sort by',
+      order: 'Order',
+      newestFirst: 'Newest first',
+      oldestFirst: 'Oldest first',
+      publishedAt: 'Published date',
+      createdAt: 'Created date',
+      updatedAt: 'Updated date',
+    },
     fields: {
       id: 'ID',
       slug: 'Slug',

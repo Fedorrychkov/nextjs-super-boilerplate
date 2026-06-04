@@ -38,7 +38,7 @@ export function ThemeModeSelect({ className }: Props) {
               type="button"
               onClick={() => setPreference(value)}
               className={cn(
-                'inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-[13px] font-medium transition-colors',
+                'inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-[13px] font-medium transition-colors',
                 isActive ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-foreground hover:bg-muted',
               )}
             >
