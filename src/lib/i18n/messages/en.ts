@@ -204,6 +204,13 @@ export const en = {
       notFound: 'Profile not found',
     },
   },
+  theme: {
+    appearanceHeading: 'Appearance',
+    appearanceHint: 'Choose light, dark, or match your system settings. Your choice is saved in a cookie.',
+    modeLight: 'Light',
+    modeDark: 'Dark',
+    modeSystem: 'System',
+  },
   notFound: {
     title: '404 - Page Not Found',
   },
@@ -419,6 +426,16 @@ export const en = {
     },
   },
   article: {
+    common: {
+      showing: 'Showing {count} of {total}',
+      sortBy: 'Sort by',
+      order: 'Order',
+      newestFirst: 'Newest first',
+      oldestFirst: 'Oldest first',
+      publishedAt: 'Published date',
+      createdAt: 'Created date',
+      updatedAt: 'Updated date',
+    },
     fields: {
       id: 'ID',
       slug: 'Slug',

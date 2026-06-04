@@ -23,7 +23,7 @@ export const ArticleItemComponent = async (props: Props) => {
   const { article, publishComponent, t } = props
 
   return (
-    <article key={article.id} aria-label={article.title ?? 'Article'} className="flex flex-col gap-4 bg-white p-4 rounded-md shadow-md">
+    <article key={article.id} aria-label={article.title ?? 'Article'} className="flex flex-col gap-4 bg-muted p-4 rounded-md shadow-md">
       {article.thumbnailUrl ? (
         <ImageLoader
           src={article.thumbnailUrl}

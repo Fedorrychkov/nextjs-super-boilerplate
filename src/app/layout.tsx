@@ -9,6 +9,7 @@ import { detectLocaleFromNextCookiesAndHeaders } from '~/lib/i18n/detectLocale'
 import { getLocaleOverrides } from '~/lib/i18n/getLocaleOverrides'
 import { seoConfig } from '~/lib/seo/config'
 import { trackAiReferralFromRequestHeaders } from '~/lib/seo/trackAiReferralInRootLayout'
+import { resolveServerTheme } from '~/lib/theme/resolveServerTheme'
 import { QueryProvider } from '~/providers'
 import { AnchorScrollProvider } from '~/providers/anchor-scroll'
 import { AuthProvider } from '~/providers/auth'
@@ -16,6 +17,7 @@ import { CookieConsentProvider } from '~/providers/cookie-consent'
 import { DeferredClientChrome } from '~/providers/DeferredClientChrome'
 import { I18nProvider } from '~/providers/i18n'
 import { NotifyProvider } from '~/providers/notify'
+import { ThemeProvider, ThemeScript } from '~/providers/theme'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -90,23 +92,32 @@ export default async function RootLayout({
     headers: await headers(),
   })
   const localeOverrides = await getLocaleOverrides(locale)
+  const theme = await resolveServerTheme({
+    cookies: await cookies(),
+    headers: await headers(),
+  })
 
   await trackAiReferralFromRequestHeaders()
 
   return (
-    <html lang={locale}>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+    <html lang={locale} className={theme.resolved === 'dark' ? 'dark' : undefined} suppressHydrationWarning>
+      <head>
+        <ThemeScript />
+      </head>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}>
         <QueryProvider>
           <AuthProvider>
             <NotifyProvider>
-              <CookieConsentProvider>
-                <I18nProvider locale={locale} overrides={localeOverrides}>
-                  <AnchorScrollProvider>
-                    <DeferredClientChrome />
-                    {children}
-                  </AnchorScrollProvider>
-                </I18nProvider>
-              </CookieConsentProvider>
+              <ThemeProvider initialPreference={theme.preference} initialResolved={theme.resolved}>
+                <CookieConsentProvider>
+                  <I18nProvider locale={locale} overrides={localeOverrides}>
+                    <AnchorScrollProvider>
+                      <DeferredClientChrome />
+                      {children}
+                    </AnchorScrollProvider>
+                  </I18nProvider>
+                </CookieConsentProvider>
+              </ThemeProvider>
             </NotifyProvider>
           </AuthProvider>
         </QueryProvider>

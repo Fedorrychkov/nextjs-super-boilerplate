@@ -53,6 +53,10 @@ const {
   EMAIL_TEMPLATE_VERIFY_EMAIL_RU = process.env.EMAIL_TEMPLATE_VERIFY_EMAIL_RU,
   EMAIL_REPLY_TO = process.env.EMAIL_REPLY_TO || '',
   REGISTRATION_MODE = process.env.REGISTRATION_MODE || '',
+
+  /** SSR fallback when OS theme is unknown (`system` or no cookie). Default: `dark`. */
+  DEFAULT_THEME_MODE = process.env.DEFAULT_THEME_MODE || 'dark',
+  NEXT_PUBLIC_DEFAULT_THEME_MODE = process.env.NEXT_PUBLIC_DEFAULT_THEME_MODE || process.env.DEFAULT_THEME_MODE || 'dark',
 } = process.env
 
 const isDevelop = [APP_ENV, NEXT_PUBLIC_APP_ENV].includes('development')
@@ -134,6 +138,11 @@ const EMAIL_CONFIG = {
   templateVerifyEmailRu: EMAIL_TEMPLATE_VERIFY_EMAIL_RU,
 }
 
+const THEME_CONFIG = {
+  defaultMode: DEFAULT_THEME_MODE,
+  publicDefaultMode: NEXT_PUBLIC_DEFAULT_THEME_MODE,
+}
+
 export {
   APP_ENV,
   APP_INTERNAL_ORIGIN,
@@ -160,4 +169,5 @@ export {
   REDIS_URL,
   REGISTRATION_CONFIG,
   RUM_CONFIG,
+  THEME_CONFIG,
 }

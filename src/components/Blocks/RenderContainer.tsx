@@ -43,7 +43,7 @@ export const PrettyContainer = ({
 
       {content && (
         <CopyContainer
-          buttonClassName="absolute top-[2px] right-[2px] bg-white w-[28px] h-[28px] p-1 flex items-center justify-center rounded-lg"
+          buttonClassName="absolute top-[2px] right-[2px] bg-white hover:bg-white/90 w-[28px] h-[28px] p-1 flex items-center justify-center rounded-lg text-[#464455]"
           className="relative [&>[data-copy-control='1']]:hidden [&>[data-break-word-control='1']]:hidden [&:hover>[data-copy-control='1']]:flex [&:hover>[data-break-word-control='1']]:flex"
           content={content}
           successNotifyText={successNotifyText}

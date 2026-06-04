@@ -203,6 +203,13 @@ export const ru = {
       notFound: 'Профиль не найден',
     },
   },
+  theme: {
+    appearanceHeading: 'Оформление',
+    appearanceHint: 'Светлая, тёмная тема или как в системе. Выбор сохраняется в cookie.',
+    modeLight: 'Светлая',
+    modeDark: 'Тёмная',
+    modeSystem: 'Системная',
+  },
   notFound: {
     title: '404 - Страница не найдена',
   },
@@ -417,6 +424,16 @@ export const ru = {
     },
   },
   article: {
+    common: {
+      showing: 'Показано {count} из {total}',
+      sortBy: 'Сортировка по',
+      order: 'Порядок',
+      newestFirst: 'Новые первыми',
+      oldestFirst: 'Старые первыми',
+      publishedAt: 'Дата публикации',
+      createdAt: 'Дата создания',
+      updatedAt: 'Дата обновления',
+    },
     fields: {
       id: 'ID',
       slug: 'Путь (URL)',

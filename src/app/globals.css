@@ -94,6 +94,20 @@
   }
 }
 
+@keyframes saveSetupPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+.animate-save-setup-pulse {
+  animation: saveSetupPulse 2.2s ease-in-out infinite;
+}
+
 @keyframes accordion-down {
   from {
     height: 0;
@@ -120,6 +134,14 @@
 @custom-variant dark (&:is(.dark *));
 
 @layer base {
+  html {
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
   /*
    * Defaults for Telegram variables — always "defined", DevTools won't show "not defined".
    * In Mini App WebView the client overrides these with its own values.
@@ -354,8 +376,9 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
+  /* Brand purple replaces generic black primary */
+  --primary: oklch(0.548 0.243 264.376);
+  --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
@@ -364,8 +387,8 @@
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --input: oklch(0.992 0 0);
+  --ring: oklch(0.548 0.243 264.376);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -373,12 +396,12 @@
   --chart-5: oklch(0.769 0.188 70.08);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.548 0.243 264.376);
+  --sidebar-primary-foreground: oklch(1 0 0);
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-ring: oklch(0.548 0.243 264.376);
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
 
@@ -386,6 +409,21 @@
   --accents-2: #eaeaea;
   --destructive-foreground: oklch(1 0 0);
 
+  /* ── Success (used by badge "success" variant) ───── */
+  --success: oklch(0.696 0.17 162.48);
+  --success-foreground: oklch(1 0 0);
+
+  /* ── Brand alias (useful for explicit brand references) */
+  --brand: #6c63ff;
+  --brand-foreground: #ffffff;
+
+  /* ── Semantic status colors ──────────────────────── */
+  --status-up: #10b981;
+  --status-up-subtle: rgba(16, 185, 129, 0.12);
+  --status-slow: #f59e0b;
+  --status-slow-subtle: rgba(245, 158, 11, 0.12);
+  --status-down: #f43f5e;
+  --status-down-subtle: rgba(244, 63, 94, 0.12);
 
   --color-transparent: transparent;
   --color-primary-600: #602A00;
@@ -492,40 +530,63 @@ body {
   }
 
   --color-destructive-foreground: var(--destructive-foreground);
+
+  /* ── Success (badge success variant needs this) ──────── */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+
+  /* ── Brand alias ────────────────────────────────────── */
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+
+  /* ── Semantic status (bg-status-up, text-status-slow…) */
+  --color-status-up: var(--status-up);
+  --color-status-up-subtle: var(--status-up-subtle);
+  --color-status-slow: var(--status-slow);
+  --color-status-slow-subtle: var(--status-slow-subtle);
+  --color-status-down: var(--status-down);
+  --color-status-down-subtle: var(--status-down-subtle);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
+  /* ── Backgrounds: deep dark with a faint purple tint ── */
+  --background: oklch(0.088 0.004 264);
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
+  --card: oklch(0.13 0.005 264);
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
+  --popover: oklch(0.13 0.005 264);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
+  /* ── Brand purple stays consistent in dark mode ─────── */
+  --primary: oklch(0.567 0.243 264.376);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.3 0.006 264);
   --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
+  --muted: oklch(0.19 0.006 264);
+  --muted-foreground: oklch(0.65 0 0);
+  --accent: oklch(0.19 0.006 264);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
+  --border: oklch(1 0 0 / 14%);
+  --input: oklch(1 0 0 / 22%);
+  --ring: oklch(0.567 0.243 264.376);
+  /* ── Chart colors: brand + semantic status ─────────── */
+  --chart-1: oklch(0.567 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
+  /* ── Sidebar: deepest background, brand accent ──────── */
+  --sidebar: oklch(0.1 0.006 264);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-primary: oklch(0.567 0.243 264.376);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.16 0.006 264);
   --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.567 0.243 264.376);
+  /* ── Success ─────────────────────────────────────────── */
+  --success: oklch(0.696 0.17 162.48);
+  --success-foreground: oklch(1 0 0);
 }
 
 @layer base {

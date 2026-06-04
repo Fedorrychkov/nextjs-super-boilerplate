@@ -58,7 +58,7 @@ export const Typography: FC<Props> = ({ children, className, variant, asTag = 'p
         variantClasses[variant ?? 'Body/M/Regular'],
         {
           'text-secondary-600': asTag === 'a',
-          'text-slate-800 dark:text-slate-100': asTag !== 'a',
+          'text-foreground': asTag !== 'a',
         },
         className,
       )}

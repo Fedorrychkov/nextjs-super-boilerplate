@@ -7,6 +7,7 @@ import { UserRole } from '~/api/user'
 import { Sidebar } from '~/components/ui/sidebar'
 import { routes } from '~/constants'
 import { useAuth, useT } from '~/providers'
+import { ThemeShell } from '~/providers/theme'
 
 export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
   const t = useT()
@@ -89,5 +90,9 @@ export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
     [authUser?.role, t],
   )
 
-  return <Sidebar navigation={isLoading || !isFetched ? [] : navigation}>{children}</Sidebar>
+  return (
+    <ThemeShell className="flex min-h-full flex-1 flex-col">
+      <Sidebar navigation={isLoading || !isFetched ? [] : navigation}>{children}</Sidebar>
+    </ThemeShell>
+  )
 }

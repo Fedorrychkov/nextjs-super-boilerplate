@@ -13,6 +13,7 @@ import { Button } from '~/components/ui/button'
 import { Select } from '~/components/ui/select-1'
 import { Typography } from '~/components/ui/Typography/Typography'
 import { ArticleItemClient } from '~/components/Views/Article/Block/client/ArticleItemClient'
+import type { TFunction } from '~/lib/i18n'
 import { useT } from '~/providers'
 import type { PaginationMeta } from '~/types'
 
@@ -23,15 +24,15 @@ type Props = {
   children: ReactNode
 }
 
-const SORT_BY_OPTIONS = [
-  { value: SortBy.publishedAt, label: 'Published date' },
-  { value: SortBy.createdAt, label: 'Created date' },
-  { value: SortBy.updatedAt, label: 'Updated date' },
+const getSortByOptions = (t: TFunction) => [
+  { value: SortBy.publishedAt, label: t('article.common.publishedAt') },
+  { value: SortBy.createdAt, label: t('article.common.createdAt') },
+  { value: SortBy.updatedAt, label: t('article.common.updatedAt') },
 ]
 
-const SORT_ORDER_OPTIONS = [
-  { value: SortOrder.desc, label: 'Newest first' },
-  { value: SortOrder.asc, label: 'Oldest first' },
+const getSortOrderOptions = (t: TFunction) => [
+  { value: SortOrder.desc, label: t('article.common.newestFirst') },
+  { value: SortOrder.asc, label: t('article.common.oldestFirst') },
 ]
 
 export function ArticlesPublicFeed({ initial, listQuery, children }: Props) {
@@ -107,16 +108,16 @@ export function ArticlesPublicFeed({ initial, listQuery, children }: Props) {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Select
             size="small"
-            label="Sort by"
+            label={t('article.common.sortBy')}
             value={sortBy}
-            options={SORT_BY_OPTIONS}
+            options={getSortByOptions(t)}
             onChange={(e) => applyFiltersToUrl({ sortBy: e.target.value as SortBy, sortOrder })}
           />
           <Select
             size="small"
-            label="Order"
+            label={t('article.common.order')}
             value={sortOrder}
-            options={SORT_ORDER_OPTIONS}
+            options={getSortOrderOptions(t)}
             onChange={(e) => applyFiltersToUrl({ sortBy, sortOrder: e.target.value as SortOrder })}
           />
         </div>
@@ -124,7 +125,7 @@ export function ArticlesPublicFeed({ initial, listQuery, children }: Props) {
 
       <div className="flex flex-col gap-3 text-sm text-muted-foreground">
         <span>
-          Showing {shownCount} of {totalCount}
+          {t('article.common.showing', { count: shownCount, total: totalCount })}
           {currentQs ? (
             <>
               {' '}

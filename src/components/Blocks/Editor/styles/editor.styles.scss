@@ -297,7 +297,8 @@
     }
 
     th {
-      background-color: var(--color-neutral-100);
+      background-color: var(--muted);
+      // background-color: var(--color-neutral-100);
       font-weight: bold;
       text-align: left;
     }
@@ -422,6 +423,7 @@
       width: 100%;
       max-width: 100%;
       height: auto;
+      border-radius: 0.5rem;
     }
   }
 

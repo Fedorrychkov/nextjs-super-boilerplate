@@ -60,7 +60,7 @@ export const FilterContainer = <T,>(props: FilterContainerProps<T>, ref: React.F
     }
 
   return (
-    <div ref={ref} className={cn('flex flex-col rounded-md gap-4 bg-slate-100 p-2', className, isFilterOpen ? 'flex' : 'hidden')}>
+    <div ref={ref} className={cn('flex flex-col rounded-md gap-4 bg-muted p-2', className, isFilterOpen ? 'flex' : 'hidden')}>
       <Typography variant="Body/M/Semibold">{t('common.filters')}</Typography>
       <div className="flex flex-col gap-2">
         <Typography variant="Body/S/Regular">{t('common.byDate')}</Typography>
