@@ -1,6 +1,6 @@
 'use client'
 
-import { ActivityIcon, BarChart3Icon, BotIcon, EyeIcon, HomeIcon, LanguagesIcon, TextQuoteIcon, UserIcon, WrenchIcon } from 'lucide-react'
+import { ActivityIcon, BarChart3Icon, BellIcon, BotIcon, EyeIcon, HomeIcon, LanguagesIcon, TextQuoteIcon, UserIcon, WrenchIcon } from 'lucide-react'
 import { useMemo } from 'react'
 
 import { UserRole } from '~/api/user'
@@ -35,6 +35,11 @@ export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
             label: t(routes.profile.tKey),
             icon: <UserIcon width={16} height={16} />,
             href: routes.profile.path,
+          },
+          {
+            label: t(routes.notifications.tKey),
+            icon: <BellIcon width={16} height={16} />,
+            href: routes.notifications.path,
           },
         ],
       },
@@ -81,6 +86,12 @@ export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
                   label: t(routes.articles.tKey),
                   icon: <TextQuoteIcon width={16} height={16} />,
                   href: routes.articles.path,
+                },
+                {
+                  label: t(routes.adminNotifications.tKey),
+                  icon: <BellIcon width={16} height={16} />,
+                  disabled: authUser?.role !== UserRole.ADMIN,
+                  href: routes.adminNotifications.path,
                 },
               ],
             },

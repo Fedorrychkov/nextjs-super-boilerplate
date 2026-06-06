@@ -25,6 +25,11 @@ const connectSrcDomains = [
   'https://mc.yandex.com',
   'https://www.google-analytics.com',
   'https://analytics.google.com',
+  'https://www.googletagmanager.com',
+  'https://*.google-analytics.com',
+  'https://*.analytics.google.com',
+  'https://*.yclients.com',
+  'wss://*.yclients.com',
 ]
 
 // Add env domains to the list
@@ -50,6 +55,18 @@ const securityHeaders = [
       'form-action \'self\'',
       'upgrade-insecure-requests',
     ].join('; '),
+  },
+  ...(process.env.NODE_ENV === 'production'
+    ? [
+        {
+          key: 'Strict-Transport-Security',
+          value: 'max-age=31536000; includeSubDomains; preload',
+        },
+      ]
+    : []),
+  {
+    key: 'X-Frame-Options',
+    value: 'SAMEORIGIN',
   },
   {
     key: 'X-Content-Type-Options',
@@ -92,7 +109,6 @@ const nextConfig = {
     ]
   },
   experimental: {
-    /** Tree-shake barrel-heavy packages (smaller client chunks). */
     optimizePackageImports: [
       'framer-motion',
       'cmdk',
@@ -102,6 +118,8 @@ const nextConfig = {
       '@radix-ui/react-tooltip',
       '@radix-ui/react-checkbox',
       '@radix-ui/react-slot',
+      'dayjs',
+      'lodash',
     ],
     /** Inlines critical CSS + defers the rest (`preload: 'media'`). Next still `require('critters')`; we install Beasties under that name (`npm:beasties`). */
     optimizeCss: true,
@@ -111,6 +129,9 @@ const nextConfig = {
     proxyClientMaxBodySize: '200mb',
   },
   images: {
+    formats: ['image/avif', 'image/webp'],
+    deviceSizes: [360, 414, 640, 768, 1024, 1280],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256],
     remotePatterns: [
       /**
        * This is a saas for images, enable it if you use it

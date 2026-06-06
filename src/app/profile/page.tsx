@@ -5,6 +5,7 @@ import { ThemeModeSelect } from '~/components/theme/ThemeModeSelect'
 import { Typography } from '~/components/ui'
 import { NotificationBlock } from '~/components/Views/Notification'
 import { ProfileMfaBlock } from '~/components/Views/Profile/ProfileMfaBlock'
+import { UserPushSubscriptionsSelfPanel } from '~/components/Views/User/Blocks/UserPushSubscriptionsSelfPanel'
 import { getServerT } from '~/lib/i18n/server'
 
 const ProfileRoot = async (props: PageProps) => {
@@ -43,6 +44,8 @@ const ProfileRoot = async (props: PageProps) => {
       </div>
 
       <NotificationBlock />
+
+      <UserPushSubscriptionsSelfPanel />
 
       <ProfileMfaBlock />
     </div>

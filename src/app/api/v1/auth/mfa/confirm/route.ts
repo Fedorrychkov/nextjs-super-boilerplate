@@ -5,6 +5,7 @@ import { ValidationError } from '@lib/error/custom-errors'
 import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
 import { decryptSecret, verifyTotpCode } from '@lib/security/totp'
+import { notifyMfaEnabled } from '@lib/services/security-notification.service'
 import { NextRequest } from 'next/server'
 
 import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
@@ -47,6 +48,11 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) => {
 
     settings.mfaEnabled = true
     await settings.save()
+
+    void notifyMfaEnabled({
+      recipientUserId: user._id.toString(),
+      t,
+    })
 
     return res.json(
       {

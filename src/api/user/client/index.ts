@@ -4,7 +4,7 @@ import { AxiosInstance } from 'axios'
 import { PaginationMeta } from '~/types'
 
 import { AuthUserSnapshot, UserModel } from '../model'
-import { UpdateUserDto, UserFilter, UserMfaStatusDto, UserPushStatusDto } from '../types'
+import { PushSubscriptionsListResponse, UpdateUserDto, UserFilter, UserMfaStatusDto, UserPushStatusDto } from '../types'
 
 export class ClientUserApi {
   private readonly client: AxiosInstance
@@ -50,5 +50,15 @@ export class ClientUserApi {
     const response = await this.client.get(`/api/v1/user/status/mfa/${id}`)
 
     return response.data
+  }
+
+  async getUserPushSubscriptions(userId: string): Promise<PushSubscriptionsListResponse> {
+    const response = await this.client.get(`/api/v1/user/push-subscriptions/${userId}`)
+
+    return response.data
+  }
+
+  async deleteUserPushSubscription(userId: string, endpoint: string): Promise<void> {
+    await this.client.delete(`/api/v1/user/push-subscriptions/${userId}`, { data: { endpoint } })
   }
 }

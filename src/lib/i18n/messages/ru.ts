@@ -89,6 +89,7 @@ export const ru = {
     users: 'Пользователи',
     uiKit: 'UI Kit',
     profile: 'Профиль',
+    notifications: 'Уведомления',
     login: 'Вход',
     logout: 'Выход',
     refresh: 'Обновить',
@@ -98,6 +99,7 @@ export const ru = {
     llmUsageDashboard: 'Использование LLM',
     i18nDashboard: 'Переводы',
     articles: 'Статьи',
+    adminNotifications: 'Уведомления',
     articlesCreate: 'Создать статью',
     articlePublic: 'Публичная статья',
     articlesPublic: 'Публичные статьи',
@@ -216,6 +218,88 @@ export const ru = {
   tooManyRequests: {
     title: '429 - Слишком много запросов',
     pleaseTryAgainLater: 'Попробуйте позже.',
+  },
+  platformNotifications: {
+    title: 'Уведомления',
+    adminTitle: 'Все уведомления',
+    empty: 'Уведомлений пока нет',
+    typeLabel: 'Тип',
+    sourceLabel: 'Источник',
+    openTarget: 'Открыть',
+    raw: 'RAW',
+    rawHide: 'Скрыть RAW',
+    deliveryStatus: {
+      pending: 'В очереди',
+      delivered: 'Доставлено',
+      failed: 'Ошибка',
+      skipped_no_subscription: 'Нет push-подписки',
+      skipped: 'Пропущено',
+      record_only: 'Только запись',
+    },
+    channel: {
+      web_push: 'Web push',
+      email: 'Email',
+    },
+    type: {
+      system: 'Системное',
+      test: 'Тест',
+      article_published: 'Статья опубликована',
+      article_updated: 'Статья обновлена',
+      user_message: 'Сообщение пользователю',
+      mfa_enabled: 'MFA включена',
+      mfa_disabled: 'MFA отключена',
+      new_login: 'Новый вход',
+    },
+    source: {
+      manual_test: 'Ручной тест',
+      webhook: 'Webhook',
+      system: 'Система',
+      manual: 'Вручную',
+      article_publish: 'Публикация статьи',
+      article_update: 'Обновление статьи',
+      mfa_enable: 'Включение MFA',
+      mfa_disable: 'Отключение MFA',
+      auth_login: 'Вход в аккаунт',
+    },
+    filters: {
+      deliveryStatus: 'Статус доставки',
+      type: 'Тип',
+      recipientUserId: 'ID получателя',
+      recipientUserIdPlaceholder: 'MongoDB ObjectId',
+    },
+    errors: {
+      titleRequired: 'Заголовок уведомления обязателен',
+      invalidUrlPath: 'Некорректный путь ссылки уведомления',
+      invalidRecipientUserId: 'Некорректный id получателя',
+      emailNotConfigured: 'Email-канал не настроен',
+      emailSendFailed: 'Не удалось отправить email-уведомление',
+    },
+    triggers: {
+      articlePublished: {
+        title: 'Статья опубликована',
+        body: 'Статья «{title}» опубликована',
+        fallbackTitle: 'Статья без названия',
+      },
+      articleUpdated: {
+        title: 'Статья обновлена',
+        body: 'Статья «{title}» была обновлена',
+      },
+      mfaEnabled: {
+        title: 'Двухфакторная аутентификация включена',
+        body: 'На вашем аккаунте включена двухфакторная аутентификация.',
+      },
+      mfaDisabled: {
+        title: 'Двухфакторная аутентификация отключена',
+        body: 'На вашем аккаунте отключена двухфакторная аутентификация.',
+      },
+      newLogin: {
+        title: 'Новый вход в аккаунт',
+        body: 'Вход с IP {ip}. Устройство: {userAgent}.{backup}',
+        unknownIp: 'неизвестный IP',
+        unknownDevice: 'неизвестное устройство',
+        usedBackupCode: ' Использован резервный код.',
+      },
+    },
   },
   notification: {
     ui: {
@@ -337,6 +421,12 @@ export const ru = {
       invalidEmailOrPassword: 'Неверный email или пароль',
       userAccountIsBlocked: 'Аккаунт пользователя заблокирован',
     },
+    email: {
+      signUp: {
+        subject: 'Код регистрации',
+        text: 'Код подтверждения: {code}\n\nОн действителен 30 минут. Если вы не запрашивали регистрацию, проигнорируйте это письмо.',
+      },
+    },
   },
   totp: {
     errors: {
@@ -357,6 +447,34 @@ export const ru = {
       baseTitle: 'Основная информация',
       tabs: {
         base: 'Основная',
+        pushSubscriptions: 'Push-подписки',
+        notifications: 'Уведомления',
+      },
+      pushSubscriptions: {
+        title: 'Push-подписки',
+        empty: 'Нет push-подписок',
+        delete: 'Удалить',
+        deleteConfirm: 'Удалить эту push-подписку у пользователя?',
+        deleted: 'Подписка удалена',
+        deleteFailed: 'Не удалось удалить подписку',
+        providers: {
+          apple: 'Apple Push',
+          fcm: 'FCM',
+          mozilla: 'Mozilla',
+          unknown: 'Неизвестно',
+        },
+      },
+      notifications: {
+        title: 'Уведомления пользователя',
+      },
+    },
+    profile: {
+      pushSubscriptions: {
+        title: 'Активные подписки на уведомления',
+        currentDevice: 'Текущее устройство',
+        otherDevices: 'Другие подписки',
+        revokeDevice: 'Отписаться на этом устройстве',
+        revokeDeviceConfirm: 'Отписаться от push-уведомлений на этом устройстве?',
       },
     },
     roles: {
@@ -891,6 +1009,7 @@ export const ru = {
     errors: {
       invalidSubscription: 'Некорректная подписка',
       invalidParams: 'Некорректные параметры',
+      subscriptionNotFound: 'Подписка не найдена',
     },
   },
   rum: {
