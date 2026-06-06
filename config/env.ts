@@ -44,7 +44,7 @@ const {
   /** HMAC pepper for sign-up email codes (fallback: JWT_SECRET). */
   REGISTRATION_CODE_PEPPER = process.env.REGISTRATION_CODE_PEPPER || '',
   /** `console` — log only; `elastic` — Elastic Email API (templates + body). */
-  EMAIL_SEND_MODE = process.env.EMAIL_SEND_MODE || 'console',
+  EMAIL_SEND_MODE = process.env.EMAIL_SEND_MODE || 'empty',
   EMAIL_API_KEY = process.env.EMAIL_API_KEY || '',
   /** Sender for Elastic (must match a verified domain), e.g. `Noreply <noreply@yourdomain.com>`. */
   EMAIL_FROM = process.env.EMAIL_FROM || 'Noreply <noreply@localhost>',
@@ -57,6 +57,23 @@ const {
   /** SSR fallback when OS theme is unknown (`system` or no cookie). Default: `dark`. */
   DEFAULT_THEME_MODE = process.env.DEFAULT_THEME_MODE || 'dark',
   NEXT_PUBLIC_DEFAULT_THEME_MODE = process.env.NEXT_PUBLIC_DEFAULT_THEME_MODE || process.env.DEFAULT_THEME_MODE || 'dark',
+
+  /**
+   * Platform notifications (1/true/on = enabled; 0/false/off = disabled)
+   * Channels: `all`, or comma-separated `web_push`, `email`
+   * NOTIFY_ARTICLE_ENABLED=1
+   * NOTIFY_ARTICLE_CHANNELS=all
+   * NOTIFY_MFA_ENABLED=1
+   * NOTIFY_MFA_CHANNELS=all
+   * NOTIFY_LOGIN_ENABLED=1
+   * NOTIFY_LOGIN_CHANNELS=email
+   */
+  NOTIFY_ARTICLE_ENABLED = process.env.NOTIFY_ARTICLE_ENABLED || '0',
+  NOTIFY_ARTICLE_CHANNELS = process.env.NOTIFY_ARTICLE_CHANNELS || 'all',
+  NOTIFY_MFA_ENABLED = process.env.NOTIFY_MFA_ENABLED || '0',
+  NOTIFY_MFA_CHANNELS = process.env.NOTIFY_MFA_CHANNELS || 'all',
+  NOTIFY_LOGIN_ENABLED = process.env.NOTIFY_LOGIN_ENABLED || '0',
+  NOTIFY_LOGIN_CHANNELS = process.env.NOTIFY_LOGIN_CHANNELS || 'email',
 } = process.env
 
 const isDevelop = [APP_ENV, NEXT_PUBLIC_APP_ENV].includes('development')
@@ -138,6 +155,15 @@ const EMAIL_CONFIG = {
   templateVerifyEmailRu: EMAIL_TEMPLATE_VERIFY_EMAIL_RU,
 }
 
+const NOTIFICATION_CONFIG = {
+  articleEnabled: NOTIFY_ARTICLE_ENABLED,
+  articleChannels: NOTIFY_ARTICLE_CHANNELS,
+  mfaEnabled: NOTIFY_MFA_ENABLED,
+  mfaChannels: NOTIFY_MFA_CHANNELS,
+  loginEnabled: NOTIFY_LOGIN_ENABLED,
+  loginChannels: NOTIFY_LOGIN_CHANNELS,
+}
+
 const THEME_CONFIG = {
   defaultMode: DEFAULT_THEME_MODE,
   publicDefaultMode: NEXT_PUBLIC_DEFAULT_THEME_MODE,
@@ -163,6 +189,7 @@ export {
   MONGODB_CONFIG,
   NEXT_PUBLIC_ORGANIZATION_SAME_AS,
   NEXT_PUBLIC_SITE_URL,
+  NOTIFICATION_CONFIG,
   PROXY_ACCESSES,
   PUSH_CONFIG,
   RATE_LIMIT_CONFIG,

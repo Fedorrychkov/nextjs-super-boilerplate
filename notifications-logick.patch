@@ -1,0 +1,3694 @@
+diff --git a/.env.example b/.env.example
+index 085545f..1d9f9b7 100644
+--- a/.env.example
++++ b/.env.example
+@@ -109,3 +109,12 @@ EMAIL_REPLY_TO=
+ # Elastic template names for sign-up (merge field `code`); EN default, RU for ru / ru-RU locale
+ EMAIL_TEMPLATE_VERIFY_EMAIL_EN="EN: Verify Email"
+ EMAIL_TEMPLATE_VERIFY_EMAIL_RU="RU: Verify Email"
++
++# Platform notifications (1/true/on = enabled; 0/false/off = disabled)
++# Channels: `all`, or comma-separated `web_push`, `email`
++NOTIFY_ARTICLE_ENABLED=1
++NOTIFY_ARTICLE_CHANNELS=all
++NOTIFY_MFA_ENABLED=1
++NOTIFY_MFA_CHANNELS=all
++NOTIFY_LOGIN_ENABLED=1
++NOTIFY_LOGIN_CHANNELS=email
+diff --git a/config/env.ts b/config/env.ts
+index ee35185..b1363b9 100644
+--- a/config/env.ts
++++ b/config/env.ts
+@@ -44,7 +44,7 @@ const {
+   /** HMAC pepper for sign-up email codes (fallback: JWT_SECRET). */
+   REGISTRATION_CODE_PEPPER = process.env.REGISTRATION_CODE_PEPPER || '',
+   /** `console` — log only; `elastic` — Elastic Email API (templates + body). */
+-  EMAIL_SEND_MODE = process.env.EMAIL_SEND_MODE || 'console',
++  EMAIL_SEND_MODE = process.env.EMAIL_SEND_MODE || 'empty',
+   EMAIL_API_KEY = process.env.EMAIL_API_KEY || '',
+   /** Sender for Elastic (must match a verified domain), e.g. `Noreply <noreply@yourdomain.com>`. */
+   EMAIL_FROM = process.env.EMAIL_FROM || 'Noreply <noreply@localhost>',
+@@ -56,7 +56,24 @@ const {
+ 
+   /** SSR fallback when OS theme is unknown (`system` or no cookie). Default: `dark`. */
+   DEFAULT_THEME_MODE = process.env.DEFAULT_THEME_MODE || 'dark',
++
++  /**
++   * Platform notifications (1/true/on = enabled; 0/false/off = disabled)
++   * Channels: `all`, or comma-separated `web_push`, `email`
++   * NOTIFY_ARTICLE_ENABLED=1
++   * NOTIFY_ARTICLE_CHANNELS=all
++   * NOTIFY_MFA_ENABLED=1
++   * NOTIFY_MFA_CHANNELS=all
++   * NOTIFY_LOGIN_ENABLED=1
++   * NOTIFY_LOGIN_CHANNELS=email
++   */
+   NEXT_PUBLIC_DEFAULT_THEME_MODE = process.env.NEXT_PUBLIC_DEFAULT_THEME_MODE || process.env.DEFAULT_THEME_MODE || 'dark',
++  NOTIFY_ARTICLE_ENABLED = process.env.NOTIFY_ARTICLE_ENABLED || '0',
++  NOTIFY_ARTICLE_CHANNELS = process.env.NOTIFY_ARTICLE_CHANNELS || 'all',
++  NOTIFY_MFA_ENABLED = process.env.NOTIFY_MFA_ENABLED || '0',
++  NOTIFY_MFA_CHANNELS = process.env.NOTIFY_MFA_CHANNELS || 'all',
++  NOTIFY_LOGIN_ENABLED = process.env.NOTIFY_LOGIN_ENABLED || '0',
++  NOTIFY_LOGIN_CHANNELS = process.env.NOTIFY_LOGIN_CHANNELS || 'email',
+ } = process.env
+ 
+ const isDevelop = [APP_ENV, NEXT_PUBLIC_APP_ENV].includes('development')
+@@ -138,6 +155,15 @@ const EMAIL_CONFIG = {
+   templateVerifyEmailRu: EMAIL_TEMPLATE_VERIFY_EMAIL_RU,
+ }
+ 
++const NOTIFICATION_CONFIG = {
++  articleEnabled: NOTIFY_ARTICLE_ENABLED,
++  articleChannels: NOTIFY_ARTICLE_CHANNELS,
++  mfaEnabled: NOTIFY_MFA_ENABLED,
++  mfaChannels: NOTIFY_MFA_CHANNELS,
++  loginEnabled: NOTIFY_LOGIN_ENABLED,
++  loginChannels: NOTIFY_LOGIN_CHANNELS,
++}
++
+ const THEME_CONFIG = {
+   defaultMode: DEFAULT_THEME_MODE,
+   publicDefaultMode: NEXT_PUBLIC_DEFAULT_THEME_MODE,
+@@ -163,6 +189,7 @@ export {
+   MONGODB_CONFIG,
+   NEXT_PUBLIC_ORGANIZATION_SAME_AS,
+   NEXT_PUBLIC_SITE_URL,
++  NOTIFICATION_CONFIG,
+   PROXY_ACCESSES,
+   PUSH_CONFIG,
+   RATE_LIMIT_CONFIG,
+diff --git a/config/notification-events.ts b/config/notification-events.ts
+new file mode 100644
+index 0000000..0fc063b
+--- /dev/null
++++ b/config/notification-events.ts
+@@ -0,0 +1,104 @@
++import { NotificationChannel } from '~/api/notification'
++
++import { EMAIL_CONFIG, NOTIFICATION_CONFIG } from './env'
++
++export type NotificationEventId = 'article' | 'mfa' | 'login'
++
++export type NotificationEventConfig = {
++  enabled: boolean
++  channels: NotificationChannel[]
++}
++
++/** Mirrors `isTransactionalEmailEnabled` without importing email service (avoids env/logger cycle). */
++function isNotificationEmailAvailable(): boolean {
++  if (EMAIL_CONFIG.sendMode === 'elastic') {
++    return Boolean(EMAIL_CONFIG.emailApiKey.trim())
++  }
++
++  return EMAIL_CONFIG.sendMode !== 'console'
++}
++
++function parseBoolFlag(value: string | undefined, defaultValue: boolean): boolean {
++  if (value == null || value.trim() === '') {
++    return defaultValue
++  }
++
++  const normalized = value.trim().toLowerCase()
++
++  if (normalized === '0' || normalized === 'false' || normalized === 'no' || normalized === 'off') {
++    return false
++  }
++
++  return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on'
++}
++
++function filterAvailableChannels(channels: NotificationChannel[]): NotificationChannel[] {
++  return channels.filter((channel) => {
++    if (channel === NotificationChannel.EMAIL) {
++      return isNotificationEmailAvailable()
++    }
++
++    return true
++  })
++}
++
++function parseChannelsCsv(value: string | undefined, fallback: NotificationChannel[]): NotificationChannel[] {
++  if (!value?.trim()) {
++    return filterAvailableChannels(fallback)
++  }
++
++  const tokens = value
++    .split(',')
++    .map((part) => part.trim().toLowerCase())
++    .filter(Boolean)
++
++  if (tokens.includes('all')) {
++    return filterAvailableChannels([NotificationChannel.WEB_PUSH, NotificationChannel.EMAIL])
++  }
++
++  const mapped = new Set<NotificationChannel>()
++
++  for (const token of tokens) {
++    if (token === 'web_push' || token === 'webpush' || token === 'push') {
++      mapped.add(NotificationChannel.WEB_PUSH)
++    } else if (token === 'email' || token === 'mail') {
++      mapped.add(NotificationChannel.EMAIL)
++    }
++  }
++
++  if (mapped.size === 0) {
++    return filterAvailableChannels(fallback)
++  }
++
++  return filterAvailableChannels([...mapped])
++}
++
++const NOTIFICATION_EVENTS_CONFIG: Record<NotificationEventId, NotificationEventConfig> = {
++  article: {
++    enabled: parseBoolFlag(NOTIFICATION_CONFIG.articleEnabled, true),
++    channels: parseChannelsCsv(NOTIFICATION_CONFIG.articleChannels, [NotificationChannel.WEB_PUSH, NotificationChannel.EMAIL]),
++  },
++  mfa: {
++    enabled: parseBoolFlag(NOTIFICATION_CONFIG.mfaEnabled, true),
++    channels: parseChannelsCsv(NOTIFICATION_CONFIG.mfaChannels, [NotificationChannel.EMAIL, NotificationChannel.WEB_PUSH]),
++  },
++  login: {
++    enabled: parseBoolFlag(NOTIFICATION_CONFIG.loginEnabled, true),
++    channels: parseChannelsCsv(NOTIFICATION_CONFIG.loginChannels, [NotificationChannel.EMAIL]),
++  },
++}
++
++export function getNotificationEventConfig(eventId: NotificationEventId): NotificationEventConfig {
++  return NOTIFICATION_EVENTS_CONFIG[eventId]
++}
++
++/** Returns channels when event is enabled; otherwise `null` (skip notification). */
++export function resolveNotificationChannelsForEvent(eventId: NotificationEventId): NotificationChannel[] | null {
++  const config = getNotificationEventConfig(eventId)
++
++  if (!config.enabled || config.channels.length === 0) {
++    return null
++  }
++
++  return config.channels
++}
+diff --git a/lib/db/models/PlatformNotification.ts b/lib/db/models/PlatformNotification.ts
+new file mode 100644
+index 0000000..358116e
+--- /dev/null
++++ b/lib/db/models/PlatformNotification.ts
+@@ -0,0 +1,158 @@
++import mongoose, { type Document, type HydratedDocument, type Model, type QueryFilter, Schema } from 'mongoose'
++
++import { NotificationChannel, type NotificationChannelDeliveryModel, NotificationDeliveryStatus, type PlatformNotificationModel } from '~/api/notification'
++import type { PlatformNotificationFilter } from '~/api/notification/types'
++import type { PaginationMeta } from '~/types/pagination'
++import { time } from '~/utils/time'
++
++import { applyCreatedAtRange } from '../utils/applyCreatedAtRange'
++import { buildPaginationMeta, clampLimit } from '../utils/buildPaginationMeta'
++
++const ChannelDeliverySchema = new Schema<NotificationChannelDeliveryModel>(
++  {
++    channel: {
++      type: String,
++      enum: Object.values(NotificationChannel),
++      required: true,
++    },
++    status: {
++      type: String,
++      enum: Object.values(NotificationDeliveryStatus),
++      required: true,
++    },
++    attempted: {
++      type: Boolean,
++      required: true,
++      default: false,
++    },
++    deliveredCount: {
++      type: Number,
++      default: null,
++    },
++    error: {
++      type: String,
++      default: null,
++      maxlength: 500,
++    },
++  },
++  { _id: false },
++)
++
++export interface IPlatformNotification extends Document, Omit<PlatformNotificationModel, 'id' | 'recipientUserId'> {
++  recipientUserId: mongoose.Types.ObjectId | null
++}
++
++export interface IPlatformNotificationModel extends Model<IPlatformNotification> {
++  findListPaginated(filter: PlatformNotificationFilter): Promise<PaginationMeta<HydratedDocument<IPlatformNotification>>>
++}
++
++function applyNotificationFilterFields(q: QueryFilter<IPlatformNotification>, filter: PlatformNotificationFilter) {
++  if (filter.recipientUserId != null && String(filter.recipientUserId).trim()) {
++    if (mongoose.Types.ObjectId.isValid(String(filter.recipientUserId))) {
++      q.recipientUserId = new mongoose.Types.ObjectId(String(filter.recipientUserId))
++    }
++  }
++
++  if (filter.deliveryStatus != null && String(filter.deliveryStatus).trim()) {
++    q.deliveryStatus = String(filter.deliveryStatus).trim()
++  }
++
++  if (filter.type != null && String(filter.type).trim()) {
++    q.type = String(filter.type).trim()
++  }
++}
++
++const PlatformNotificationSchema: Schema<IPlatformNotification> = new Schema<IPlatformNotification>(
++  {
++    _id: {
++      type: Schema.Types.ObjectId,
++      default: () => new mongoose.Types.ObjectId(),
++    },
++    recipientUserId: {
++      type: Schema.Types.ObjectId,
++      default: null,
++      index: true,
++    },
++    type: {
++      type: String,
++      required: true,
++      index: true,
++      trim: true,
++    },
++    title: {
++      type: String,
++      required: true,
++      trim: true,
++    },
++    body: {
++      type: String,
++      required: true,
++      trim: true,
++    },
++    urlPath: {
++      type: String,
++      required: true,
++      trim: true,
++    },
++    source: {
++      type: String,
++      default: null,
++      trim: true,
++    },
++    channelsRequested: {
++      type: [String],
++      enum: Object.values(NotificationChannel),
++      default: [],
++    },
++    channelDeliveries: {
++      type: [ChannelDeliverySchema],
++      default: [],
++    },
++    deliveryStatus: {
++      type: String,
++      enum: Object.values(NotificationDeliveryStatus),
++      required: true,
++      default: NotificationDeliveryStatus.PENDING,
++      index: true,
++    },
++    createdAt: {
++      type: String,
++      default: () => time().toISOString(),
++      index: true,
++    },
++  },
++  {
++    timestamps: false,
++  },
++)
++
++PlatformNotificationSchema.index({ recipientUserId: 1, createdAt: -1 })
++;(PlatformNotificationSchema.statics as Record<string, unknown>).findListPaginated = async function findListPaginated(
++  this: Model<IPlatformNotification>,
++  filter: PlatformNotificationFilter,
++): Promise<PaginationMeta<HydratedDocument<IPlatformNotification>>> {
++  const { limit: limitRaw, offset: offsetRaw, startOfDateIso, endOfDateIso, ...rest } = filter
++
++  const limit = clampLimit(typeof limitRaw === 'number' ? limitRaw : Number(limitRaw))
++  const offset = typeof offsetRaw === 'number' ? Math.max(0, Math.floor(offsetRaw)) : Math.max(0, Number(offsetRaw) || 0)
++
++  const base: QueryFilter<IPlatformNotification> = {}
++  applyNotificationFilterFields(base, rest)
++  applyCreatedAtRange<IPlatformNotification>(base, startOfDateIso, endOfDateIso)
++
++  const count = await this.countDocuments(base)
++  const list = await this.find(base).sort({ createdAt: -1, _id: -1 }).skip(offset).limit(limit).exec()
++
++  return buildPaginationMeta({
++    list,
++    count,
++    limit: typeof limitRaw === 'number' ? limitRaw : Number(limitRaw),
++    offset: typeof offsetRaw === 'number' ? offsetRaw : Number(offsetRaw),
++  })
++}
++
++const PlatformNotification: IPlatformNotificationModel =
++  (mongoose.models.PlatformNotification as IPlatformNotificationModel) ||
++  mongoose.model<IPlatformNotification, IPlatformNotificationModel>('PlatformNotification', PlatformNotificationSchema)
++
++export default PlatformNotification
+diff --git a/lib/services/article-notification.service.ts b/lib/services/article-notification.service.ts
+new file mode 100644
+index 0000000..f561ee3
+--- /dev/null
++++ b/lib/services/article-notification.service.ts
+@@ -0,0 +1,50 @@
++import { deliverEventNotification } from '@lib/services/notification-events.service'
++
++import { PlatformNotificationType } from '~/api/notification'
++import type { TFunction } from '~/lib/i18n'
++
++function resolveArticleAdminUrlPath(articleId: string): string {
++  return `/admin/articles/${articleId}`
++}
++
++export async function notifyArticlePublished(params: { recipientUserId: string; articleId: string; articleTitle: string; t: TFunction }): Promise<void> {
++  await deliverEventNotification({
++    eventId: 'article',
++    recipientUserId: params.recipientUserId,
++    type: PlatformNotificationType.ARTICLE_PUBLISHED,
++    title: params.t('platformNotifications.triggers.articlePublished.title'),
++    body: params.t('platformNotifications.triggers.articlePublished.body', { title: params.articleTitle }),
++    urlPath: resolveArticleAdminUrlPath(params.articleId),
++    source: 'article_publish',
++    t: params.t,
++  })
++}
++
++export async function notifyArticleUpdated(params: { recipientUserId: string; articleId: string; articleTitle: string; t: TFunction }): Promise<void> {
++  await deliverEventNotification({
++    eventId: 'article',
++    recipientUserId: params.recipientUserId,
++    type: PlatformNotificationType.ARTICLE_UPDATED,
++    title: params.t('platformNotifications.triggers.articleUpdated.title'),
++    body: params.t('platformNotifications.triggers.articleUpdated.body', { title: params.articleTitle }),
++    urlPath: resolveArticleAdminUrlPath(params.articleId),
++    source: 'article_update',
++    t: params.t,
++  })
++}
++
++export async function notifyArticlePublishedFromRevision(params: {
++  recipientUserId: string
++  articleId: string
++  revisionTitle?: string | null
++  t: TFunction
++}): Promise<void> {
++  const articleTitle = params.revisionTitle?.trim() || params.t('platformNotifications.triggers.articlePublished.fallbackTitle')
++
++  await notifyArticlePublished({
++    recipientUserId: params.recipientUserId,
++    articleId: params.articleId,
++    articleTitle,
++    t: params.t,
++  })
++}
+diff --git a/lib/services/email/email.service.ts b/lib/services/email/email.service.ts
+index a90e46d..1a6052c 100644
+--- a/lib/services/email/email.service.ts
++++ b/lib/services/email/email.service.ts
+@@ -8,6 +8,26 @@ import { ElasticEmailProvider } from './providers/elastic-email.provider'
+ 
+ const logger = new Logger(['EmailService', '[lib/services/email/email.service.ts]'])
+ 
++export type NotificationEmailPayload = {
++  to: string
++  subject: string
++  text: string
++  html?: string
++}
++
++export type NotificationEmailResult = { sent: true } | { sent: false; skipped: true; reason: string } | { sent: false; skipped: false; error: string }
++
++/** Outbound mail is configured (Elastic API). Console-only mode does not count for notification delivery. */
++export function isTransactionalEmailEnabled(): boolean {
++  const { sendMode, emailApiKey } = EMAIL_CONFIG
++
++  if (sendMode === 'elastic') {
++    return Boolean(emailApiKey?.trim())
++  }
++
++  return sendMode !== 'console'
++}
++
+ /**
+  * Facade for transactional mail. Inject a real provider (Nodemailer, Resend, …) later.
+  * `EMAIL_SEND_MODE=console` keeps registration working without SMTP.
+@@ -24,35 +44,65 @@ class EmailService {
+   }
+ 
+   /** Sends via configured provider; on failure throws (caller maps to user-facing support error). */
+-  async sendTransactional(message: TransactionalEmailMessage): Promise<void> {
++  async sendTransactional(message: TransactionalEmailMessage): Promise<NotificationEmailResult> {
+     const mode = EMAIL_CONFIG.sendMode
+ 
+     if (mode === 'console') {
+       await new ConsoleEmailProvider().send(message)
+ 
+-      return
++      return { sent: false, skipped: true, reason: 'email_send_console' }
+     }
+ 
+     if (mode === 'elastic') {
+       try {
+         await new ElasticEmailProvider().send(message)
++
++        return { sent: true }
+       } catch (error) {
+         logger.error('Elastic Email failed', { error: (error as Error)?.message, to: message.to })
+ 
+         throw error
+       }
+-
+-      return
+     }
+ 
+     try {
+       await this.provider.send(message)
++
++      if (this.provider instanceof ConsoleEmailProvider) {
++        return { sent: false, skipped: true, reason: 'email_send_console' }
++      }
++
++      return { sent: true }
+     } catch (error) {
+       logger.error('Email provider failed', { error: (error as Error)?.message, to: message.to })
+ 
+       throw error
+     }
+   }
++
++  /** Notification channel: skips silently when mail is not configured. */
++  async sendNotificationEmail(payload: NotificationEmailPayload): Promise<NotificationEmailResult> {
++    if (!isTransactionalEmailEnabled()) {
++      return { sent: false, skipped: true, reason: 'email_not_configured' }
++    }
++
++    try {
++      const result = await this.sendTransactional({
++        to: payload.to,
++        subject: payload.subject,
++        text: payload.text,
++        html: payload.html,
++      })
++
++      return result
++    } catch (error) {
++      const message = (error as Error)?.message ?? 'email_send_failed'
++
++      logger.error('Notification email failed', { error: message, to: payload.to })
++
++      return { sent: false, skipped: false, error: message.slice(0, 500) }
++    }
++  }
+ }
+ 
+ export const emailService = new EmailService()
+diff --git a/lib/services/notification-events.service.ts b/lib/services/notification-events.service.ts
+new file mode 100644
+index 0000000..7def9c3
+--- /dev/null
++++ b/lib/services/notification-events.service.ts
+@@ -0,0 +1,50 @@
++import { type NotificationEventId, resolveNotificationChannelsForEvent } from '@config/notification-events'
++import { platformNotificationService } from '@lib/services/platform-notification.service'
++
++import { type NotificationChannel, PlatformNotificationType } from '~/api/notification'
++import type { TFunction } from '~/lib/i18n'
++import { Logger } from '~/utils/logger'
++
++const logger = new Logger(['NotificationEventsService', '[lib/services/notification-events.service.ts]'])
++
++type DeliverEventNotificationParams = {
++  eventId: NotificationEventId
++  recipientUserId: string
++  type: PlatformNotificationType | string
++  title: string
++  body: string
++  urlPath: string
++  source: string
++  channels?: NotificationChannel[]
++  t: TFunction
++}
++
++export async function deliverEventNotification(params: DeliverEventNotificationParams): Promise<void> {
++  const channels = params.channels ?? resolveNotificationChannelsForEvent(params.eventId)
++
++  if (!channels?.length) {
++    return
++  }
++
++  try {
++    await platformNotificationService.createAndDeliver(
++      {
++        recipientUserId: params.recipientUserId,
++        type: params.type,
++        title: params.title,
++        body: params.body,
++        urlPath: params.urlPath,
++        source: params.source,
++        channels,
++      },
++      params.t,
++    )
++  } catch (error) {
++    logger.error('Failed to deliver event notification', {
++      error,
++      eventId: params.eventId,
++      recipientUserId: params.recipientUserId,
++      type: params.type,
++    })
++  }
++}
+diff --git a/lib/services/platform-notification.service.ts b/lib/services/platform-notification.service.ts
+new file mode 100644
+index 0000000..66c8cd6
+--- /dev/null
++++ b/lib/services/platform-notification.service.ts
+@@ -0,0 +1,278 @@
++import connectDB from '@lib/db/client'
++import PlatformNotification from '@lib/db/models/PlatformNotification'
++import User from '@lib/db/models/User'
++import { ValidationError } from '@lib/error/custom-errors'
++import { buildAbsoluteNotificationUrl, normalizeNotificationUrlPath } from '@lib/utils/notification-url'
++import mongoose from 'mongoose'
++
++import { NotificationChannel, type NotificationChannelDeliveryModel, NotificationDeliveryStatus, type PlatformNotificationModel } from '~/api/notification'
++import type { CreatePlatformNotificationDto, PlatformNotificationFilter } from '~/api/notification/types'
++import type { TFunction } from '~/lib/i18n'
++import type { PaginationMeta } from '~/types/pagination'
++import { time } from '~/utils/time'
++
++import { emailService } from './email/email.service'
++import { summarizeWebPushErrors, webPushService } from './web-push.service'
++
++function docToModel(doc: {
++  _id: { toString(): string }
++  recipientUserId?: { toString(): string } | null
++  type: string
++  title: string
++  body: string
++  urlPath: string
++  source?: string | null
++  channelsRequested?: NotificationChannel[]
++  channelDeliveries?: NotificationChannelDeliveryModel[]
++  deliveryStatus: NotificationDeliveryStatus
++  createdAt?: string | null
++}): PlatformNotificationModel {
++  return {
++    id: doc._id.toString(),
++    recipientUserId: doc.recipientUserId?.toString() ?? null,
++    type: doc.type,
++    title: doc.title,
++    body: doc.body,
++    urlPath: doc.urlPath,
++    source: doc.source ?? null,
++    channelsRequested: [...(doc.channelsRequested ?? [])],
++    channelDeliveries: [...(doc.channelDeliveries ?? [])],
++    deliveryStatus: doc.deliveryStatus,
++    createdAt: doc.createdAt ?? null,
++  }
++}
++
++function computeAggregateDeliveryStatus(recipientUserId: string | null, deliveries: NotificationChannelDeliveryModel[]): NotificationDeliveryStatus {
++  if (!recipientUserId) {
++    return NotificationDeliveryStatus.RECORD_ONLY
++  }
++
++  const attempted = deliveries.filter((d) => d.attempted)
++
++  if (attempted.length === 0) {
++    return NotificationDeliveryStatus.DELIVERED
++  }
++
++  if (attempted.some((d) => d.status === NotificationDeliveryStatus.DELIVERED)) {
++    return NotificationDeliveryStatus.DELIVERED
++  }
++
++  if (attempted.every((d) => d.status === NotificationDeliveryStatus.SKIPPED_NO_TARGET)) {
++    return NotificationDeliveryStatus.SKIPPED_NO_TARGET
++  }
++
++  if (attempted.every((d) => d.status === NotificationDeliveryStatus.SKIPPED || d.status === NotificationDeliveryStatus.SKIPPED_NO_TARGET)) {
++    return NotificationDeliveryStatus.SKIPPED
++  }
++
++  return NotificationDeliveryStatus.FAILED
++}
++
++function resolveChannels(params: CreatePlatformNotificationDto): NotificationChannel[] {
++  if (params.channels?.length) {
++    return [...new Set(params.channels)]
++  }
++
++  if (params.recipientUserId) {
++    return [NotificationChannel.WEB_PUSH]
++  }
++
++  return []
++}
++
++async function deliverWebPush(
++  recipientUserId: string,
++  payload: {
++    type: string
++    title: string
++    body: string
++    urlPath: string
++    notificationId: string
++  },
++  t: TFunction,
++): Promise<NotificationChannelDeliveryModel> {
++  const pushResult = await webPushService.sendToUser(recipientUserId, {
++    type: payload.type,
++    title: payload.title,
++    body: payload.body,
++    url: buildAbsoluteNotificationUrl(payload.urlPath, t),
++    tag: `${payload.type}:${payload.notificationId}`,
++    dedupId: payload.notificationId,
++    ts: Date.now(),
++  })
++
++  if (!pushResult.hadSubscriptions) {
++    return {
++      channel: NotificationChannel.WEB_PUSH,
++      status: NotificationDeliveryStatus.SKIPPED_NO_TARGET,
++      attempted: false,
++      deliveredCount: 0,
++      error: null,
++    }
++  }
++
++  if (pushResult.deliveredCount > 0) {
++    return {
++      channel: NotificationChannel.WEB_PUSH,
++      status: NotificationDeliveryStatus.DELIVERED,
++      attempted: true,
++      deliveredCount: pushResult.deliveredCount,
++      error: null,
++    }
++  }
++
++  return {
++    channel: NotificationChannel.WEB_PUSH,
++    status: NotificationDeliveryStatus.FAILED,
++    attempted: true,
++    deliveredCount: 0,
++    error: summarizeWebPushErrors(pushResult.errors),
++  }
++}
++
++async function deliverEmail(
++  params: {
++    recipientUserId: string
++    title: string
++    body: string
++    urlPath: string
++  },
++  t: TFunction,
++): Promise<NotificationChannelDeliveryModel> {
++  const user = await User.findById(params.recipientUserId).select('email').lean()
++
++  if (!user?.email?.trim()) {
++    return {
++      channel: NotificationChannel.EMAIL,
++      status: NotificationDeliveryStatus.SKIPPED_NO_TARGET,
++      attempted: false,
++      deliveredCount: 0,
++      error: null,
++    }
++  }
++
++  const absoluteUrl = buildAbsoluteNotificationUrl(params.urlPath, t)
++  const result = await emailService.sendNotificationEmail({
++    to: user.email.trim(),
++    subject: params.title,
++    text: `${params.body}\n\n${absoluteUrl}`,
++    html: `<p>${escapeHtml(params.body)}</p><p><a href="${escapeHtml(absoluteUrl)}">${escapeHtml(absoluteUrl)}</a></p>`,
++  })
++
++  if (result.sent) {
++    return {
++      channel: NotificationChannel.EMAIL,
++      status: NotificationDeliveryStatus.DELIVERED,
++      attempted: true,
++      deliveredCount: 1,
++      error: null,
++    }
++  }
++
++  if ('skipped' in result && result.skipped) {
++    return {
++      channel: NotificationChannel.EMAIL,
++      status: NotificationDeliveryStatus.SKIPPED,
++      attempted: false,
++      deliveredCount: 0,
++      error: t('platformNotifications.errors.emailNotConfigured'),
++    }
++  }
++
++  return {
++    channel: NotificationChannel.EMAIL,
++    status: NotificationDeliveryStatus.FAILED,
++    attempted: true,
++    deliveredCount: 0,
++    error: t('platformNotifications.errors.emailSendFailed'),
++  }
++}
++
++function escapeHtml(value: string): string {
++  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
++}
++
++export class PlatformNotificationService {
++  async createAndDeliver(params: CreatePlatformNotificationDto, t: TFunction): Promise<PlatformNotificationModel> {
++    await connectDB()
++
++    const urlPath = normalizeNotificationUrlPath(params.urlPath, t)
++    const recipientUserId = params.recipientUserId?.trim() || null
++    const channelsRequested = resolveChannels(params)
++
++    if (!params.title?.trim()) {
++      throw new ValidationError(t('platformNotifications.errors.titleRequired'))
++    }
++
++    if (recipientUserId && !mongoose.Types.ObjectId.isValid(recipientUserId)) {
++      throw new ValidationError(t('platformNotifications.errors.invalidRecipientUserId'))
++    }
++
++    const created = await PlatformNotification.create({
++      recipientUserId: recipientUserId ? new mongoose.Types.ObjectId(recipientUserId) : null,
++      type: String(params.type ?? '').trim(),
++      title: params.title.trim(),
++      body: params.body?.trim() || params.title.trim(),
++      urlPath,
++      source: params.source?.trim() || null,
++      channelsRequested,
++      channelDeliveries: [],
++      deliveryStatus: NotificationDeliveryStatus.PENDING,
++      createdAt: time().toISOString(),
++    })
++
++    const notificationId = created._id.toString()
++    const channelDeliveries: NotificationChannelDeliveryModel[] = []
++
++    if (recipientUserId) {
++      for (const channel of channelsRequested) {
++        if (channel === NotificationChannel.WEB_PUSH) {
++          channelDeliveries.push(
++            await deliverWebPush(
++              recipientUserId,
++              {
++                type: created.type,
++                title: created.title,
++                body: created.body,
++                urlPath: created.urlPath,
++                notificationId,
++              },
++              t,
++            ),
++          )
++        } else if (channel === NotificationChannel.EMAIL) {
++          channelDeliveries.push(
++            await deliverEmail(
++              {
++                recipientUserId,
++                title: created.title,
++                body: created.body,
++                urlPath: created.urlPath,
++              },
++              t,
++            ),
++          )
++        }
++      }
++    }
++
++    created.channelDeliveries = channelDeliveries
++    created.deliveryStatus = computeAggregateDeliveryStatus(recipientUserId, channelDeliveries)
++    await created.save()
++
++    return docToModel(created)
++  }
++
++  async listPaginated(filter: PlatformNotificationFilter): Promise<PaginationMeta<PlatformNotificationModel>> {
++    await connectDB()
++
++    const data = await PlatformNotification.findListPaginated(filter)
++
++    return {
++      ...data,
++      list: data.list.map((doc) => docToModel(doc)),
++    }
++  }
++}
++
++export const platformNotificationService = new PlatformNotificationService()
+diff --git a/lib/services/push-subscription.service.ts b/lib/services/push-subscription.service.ts
+index bc2bc7d..2b3b447 100644
+--- a/lib/services/push-subscription.service.ts
++++ b/lib/services/push-subscription.service.ts
+@@ -1,5 +1,6 @@
+ import connectDB from '@lib/db/client'
+ import PushSubscription, { IPushSubscription } from '@lib/db/models/PushSubscription'
++import mongoose from 'mongoose'
+ 
+ export type PushSubscribeDto = {
+   endpoint: string
+@@ -41,6 +42,26 @@ export class PushSubscriptionService {
+ 
+     await PushSubscription.deleteOne({ userId, endpoint }).exec()
+   }
++
++  async checkSubscriptionById(userId: string, subscriptionId: string): Promise<IPushSubscription | null> {
++    if (!mongoose.isValidObjectId(subscriptionId)) {
++      return null
++    }
++
++    await connectDB()
++
++    return PushSubscription.findOne({ userId, _id: subscriptionId }).exec()
++  }
++
++  async unsubscribeById(userId: string, subscriptionId: string): Promise<void> {
++    if (!mongoose.isValidObjectId(subscriptionId)) {
++      return
++    }
++
++    await connectDB()
++
++    await PushSubscription.deleteOne({ userId, _id: subscriptionId }).exec()
++  }
+   async list(filter: { userId?: string; endpoint?: string }): Promise<IPushSubscription[]> {
+     await connectDB()
+ 
+diff --git a/lib/services/registration/sign-up-verification.service.ts b/lib/services/registration/sign-up-verification.service.ts
+index d62eb50..dec6c94 100644
+--- a/lib/services/registration/sign-up-verification.service.ts
++++ b/lib/services/registration/sign-up-verification.service.ts
+@@ -7,7 +7,7 @@ import type { TFunction } from '~/lib/i18n'
+ import { time } from '~/utils/time'
+ 
+ import { emailService } from '../email/email.service'
+-import { isRussianEmailLocale, resolveVerifyEmailTemplateName } from '../email/email-locale'
++import { resolveVerifyEmailTemplateName } from '../email/email-locale'
+ import {
+   PENDING_SIGNUP_TTL_SEC,
+   REDIS_PREFIX,
+@@ -129,11 +129,8 @@ export async function requestSignupCode(params: { email: string; password: strin
+   await cacheClient.incr(sendCountKey(email), SEND_WINDOW_SEC)
+   await cacheClient.del(verifyFailKey(email))
+ 
+-  const ru = isRussianEmailLocale(params.locale)
+-  const subject = ru ? 'Код регистрации' : 'Your registration code'
+-  const text = ru
+-    ? `Код подтверждения: ${code}\n\nОн действителен 30 минут. Если вы не запрашивали регистрацию, проигнорируйте это письмо.`
+-    : `Your verification code is: ${code}\n\nIt expires in 30 minutes. If you did not request this, ignore this email.`
++  const subject = t('auth.messages.signUpCodeSent')
++  const text = t('auth.email.signUp.text', { code })
+ 
+   try {
+     await emailService.sendTransactional({
+diff --git a/lib/services/security-notification.service.ts b/lib/services/security-notification.service.ts
+new file mode 100644
+index 0000000..750b674
+--- /dev/null
++++ b/lib/services/security-notification.service.ts
+@@ -0,0 +1,54 @@
++import { deliverEventNotification } from '@lib/services/notification-events.service'
++
++import { PlatformNotificationType } from '~/api/notification'
++import type { TFunction } from '~/lib/i18n'
++
++import type { RequestClientMeta } from '../utils/request-client-meta'
++
++const PROFILE_URL_PATH = '/profile'
++
++export async function notifyMfaEnabled(params: { recipientUserId: string; t: TFunction }): Promise<void> {
++  await deliverEventNotification({
++    eventId: 'mfa',
++    recipientUserId: params.recipientUserId,
++    type: PlatformNotificationType.MFA_ENABLED,
++    title: params.t('platformNotifications.triggers.mfaEnabled.title'),
++    body: params.t('platformNotifications.triggers.mfaEnabled.body'),
++    urlPath: PROFILE_URL_PATH,
++    source: 'mfa_enable',
++    t: params.t,
++  })
++}
++
++export async function notifyMfaDisabled(params: { recipientUserId: string; t: TFunction }): Promise<void> {
++  await deliverEventNotification({
++    eventId: 'mfa',
++    recipientUserId: params.recipientUserId,
++    type: PlatformNotificationType.MFA_DISABLED,
++    title: params.t('platformNotifications.triggers.mfaDisabled.title'),
++    body: params.t('platformNotifications.triggers.mfaDisabled.body'),
++    urlPath: PROFILE_URL_PATH,
++    source: 'mfa_disable',
++    t: params.t,
++  })
++}
++
++export async function notifyNewLogin(params: { recipientUserId: string; t: TFunction; client: RequestClientMeta; usedMfaBackupCode?: boolean }): Promise<void> {
++  const ip = params.client.ip ?? params.t('platformNotifications.triggers.newLogin.unknownIp')
++  const userAgent = params.client.userAgent ?? params.t('platformNotifications.triggers.newLogin.unknownDevice')
++
++  await deliverEventNotification({
++    eventId: 'login',
++    recipientUserId: params.recipientUserId,
++    type: PlatformNotificationType.NEW_LOGIN,
++    title: params.t('platformNotifications.triggers.newLogin.title'),
++    body: params.t('platformNotifications.triggers.newLogin.body', {
++      ip,
++      userAgent,
++      backup: params.usedMfaBackupCode ? params.t('platformNotifications.triggers.newLogin.usedBackupCode') : '',
++    }),
++    urlPath: PROFILE_URL_PATH,
++    source: 'auth_login',
++    t: params.t,
++  })
++}
+diff --git a/lib/services/web-push.service.ts b/lib/services/web-push.service.ts
+index df5f8bc..e772283 100644
+--- a/lib/services/web-push.service.ts
++++ b/lib/services/web-push.service.ts
+@@ -1,4 +1,4 @@
+-import { PUSH_CONFIG } from '@config/env'
++import { NEXT_PUBLIC_SITE_URL, PUSH_CONFIG } from '@config/env'
+ import * as webpush from 'web-push'
+ 
+ import { AnyString } from '~/types'
+@@ -19,6 +19,80 @@ type WebPushPayload = {
+   ts?: number
+ }
+ 
++export type WebPushDeliveryError = {
++  endpoint: string
++  provider: 'apple' | 'fcm' | 'mozilla' | 'other'
++  statusCode?: number
++  message: string
++  removed: boolean
++}
++
++export type WebPushSendResult = {
++  hadSubscriptions: boolean
++  deliveredCount: number
++  failedCount: number
++  errors: WebPushDeliveryError[]
++}
++
++const DEAD_SUBSCRIPTION_STATUS_CODES = new Set([400, 401, 403, 404, 410, 413])
++
++const DEFAULT_PUSH_ICON_PATH = '/images/favicon.svg'
++
++function buildPushIconUrl(icon?: string): string {
++  if (icon?.startsWith('http')) {
++    return icon
++  }
++
++  const base = NEXT_PUBLIC_SITE_URL.replace(/\/$/, '')
++  const path = icon?.startsWith('/') ? icon : DEFAULT_PUSH_ICON_PATH
++
++  return `${base}${path}`
++}
++
++function normalizePushPayload(payload: WebPushPayload): WebPushPayload {
++  const body = payload.body?.trim() || payload.title?.trim() || 'Notification'
++
++  return {
++    ...payload,
++    title: payload.title?.trim() || 'Notification',
++    body,
++    icon: buildPushIconUrl(payload.icon),
++  }
++}
++
++export function detectPushProvider(endpoint: string): WebPushDeliveryError['provider'] {
++  if (endpoint.includes('web.push.apple.com')) {
++    return 'apple'
++  }
++
++  if (endpoint.includes('fcm.googleapis.com') || endpoint.includes('googleapis.com/gcm')) {
++    return 'fcm'
++  }
++
++  if (endpoint.includes('mozilla.com')) {
++    return 'mozilla'
++  }
++
++  return 'other'
++}
++
++function formatPushError(err: unknown): { statusCode?: number; message: string } {
++  if (err && typeof err === 'object') {
++    const record = err as { statusCode?: number; message?: string; body?: string }
++
++    const statusCode = typeof record.statusCode === 'number' ? record.statusCode : undefined
++    const message = [record.message, record.body].filter(Boolean).join(' — ') || 'unknown'
++
++    return { statusCode, message }
++  }
++
++  if (err instanceof Error) {
++    return { message: err.message }
++  }
++
++  return { message: String(err) }
++}
++
+ export class WebPushService {
+   private readonly logger = new Logger(['WebPushService', '[lib/services/web-push.service.ts]'])
+ 
+@@ -34,40 +108,89 @@ export class WebPushService {
+     }
+   }
+ 
+-  async sendToUser(userId: string, payload: WebPushPayload) {
++  async sendToUser(userId: string, payload: WebPushPayload): Promise<WebPushSendResult> {
+     const subscriptions = await pushSubscriptionService.list({ userId })
+ 
+-    if (!subscriptions?.length) return { ok: false, count: 0 }
++    if (!subscriptions?.length) {
++      return { hadSubscriptions: false, deliveredCount: 0, failedCount: 0, errors: [] }
++    }
++
++    const payloadJson = jsonStringifySafety(normalizePushPayload(payload))
++    const errors: WebPushDeliveryError[] = []
+ 
+     const results = await Promise.all(
+       subscriptions.map(async (s) => {
++        const provider = detectPushProvider(s.endpoint)
+         const sub: webpush.PushSubscription = {
+           endpoint: s.endpoint,
+           keys: { p256dh: s.p256dh, auth: s.auth },
+         }
+ 
+         try {
+-          await webpush.sendNotification(sub, jsonStringifySafety(payload))
+-
+-          return { ok: true }
+-        } catch (err: any) {
+-          const statusCode = err?.statusCode
+-
+-          if (statusCode === 404 || statusCode === 410) {
+-            this.logger.warn(`Removing dead subscription for user ${userId}`)
++          await webpush.sendNotification(sub, payloadJson, {
++            TTL: 60 * 60 * 24,
++            urgency: 'high',
++          })
++
++          return { ok: true as const }
++        } catch (err: unknown) {
++          const { statusCode, message } = formatPushError(err)
++          let removed = false
++
++          if (statusCode != null && DEAD_SUBSCRIPTION_STATUS_CODES.has(statusCode)) {
++            this.logger.warn(`Removing dead push subscription for user ${userId}`, {
++              provider,
++              statusCode,
++              endpoint: s.endpoint.slice(0, 80),
++            })
+             await pushSubscriptionService.unsubscribe(userId, s.endpoint)
+-
+-            return { ok: false, removed: true }
++            removed = true
++          } else {
++            this.logger.error('WebPush error', {
++              provider,
++              statusCode,
++              message,
++              endpoint: s.endpoint.slice(0, 80),
++            })
+           }
+-          this.logger.error('WebPush error', err)
+ 
+-          return { ok: false }
++          errors.push({
++            endpoint: s.endpoint,
++            provider,
++            statusCode,
++            message,
++            removed,
++          })
++
++          return { ok: false as const }
+         }
+       }),
+     )
+ 
+-    return results.filter((r) => r.ok).length
++    const deliveredCount = results.filter((r) => r.ok).length
++
++    return {
++      hadSubscriptions: true,
++      deliveredCount,
++      failedCount: results.length - deliveredCount,
++      errors,
++    }
+   }
+ }
+ 
+ export const webPushService = new WebPushService()
++
++export function summarizeWebPushErrors(errors: WebPushDeliveryError[]): string {
++  if (errors.length === 0) {
++    return 'web_push_delivery_failed'
++  }
++
++  return errors
++    .map((e) => {
++      const code = e.statusCode != null ? String(e.statusCode) : 'err'
++
++      return `${e.provider}:${code}${e.removed ? ':removed' : ''}`
++    })
++    .join(';')
++    .slice(0, 500)
++}
+diff --git a/lib/utils/notification-url.ts b/lib/utils/notification-url.ts
+new file mode 100644
+index 0000000..1ee40aa
+--- /dev/null
++++ b/lib/utils/notification-url.ts
+@@ -0,0 +1,24 @@
++import { NEXT_PUBLIC_SITE_URL } from '@config/env'
++import { ValidationError } from '@lib/error/custom-errors'
++
++import type { TFunction } from '~/lib/i18n'
++
++export function normalizeNotificationUrlPath(urlPath: string, t: TFunction): string {
++  const trimmed = String(urlPath ?? '').trim()
++
++  if (!trimmed.startsWith('/') || trimmed.startsWith('//')) {
++    throw new ValidationError(t('platformNotifications.errors.invalidUrlPath'))
++  }
++
++  if (/^\/javascript:/i.test(trimmed)) {
++    throw new ValidationError(t('platformNotifications.errors.invalidUrlPath'))
++  }
++
++  return trimmed
++}
++
++export function buildAbsoluteNotificationUrl(urlPath: string, t: TFunction): string {
++  const base = NEXT_PUBLIC_SITE_URL.replace(/\/$/, '')
++
++  return `${base}${normalizeNotificationUrlPath(urlPath, t)}`
++}
+diff --git a/lib/utils/push-provider.ts b/lib/utils/push-provider.ts
+new file mode 100644
+index 0000000..4f355d0
+--- /dev/null
++++ b/lib/utils/push-provider.ts
+@@ -0,0 +1,64 @@
++export type PushProvider = 'apple' | 'fcm' | 'mozilla' | 'unknown'
++
++export function detectPushProvider(endpoint: string): PushProvider {
++  try {
++    const host = new URL(endpoint).host.toLowerCase()
++
++    if (host.includes('apple')) {
++      return 'apple'
++    }
++
++    if (host.includes('google') || host.includes('fcm')) {
++      return 'fcm'
++    }
++
++    if (host.includes('mozilla')) {
++      return 'mozilla'
++    }
++  } catch {
++    // invalid URL
++  }
++
++  return 'unknown'
++}
++
++type PushSubscriptionDoc = {
++  _id: { toString(): string }
++  userId: string
++  endpoint: string
++  userAgent?: string | null
++  createdAt?: Date | string | null
++  updatedAt?: Date | string | null
++}
++
++const toIso = (value?: Date | string | null) => {
++  if (!value) {
++    return null
++  }
++
++  return value instanceof Date ? value.toISOString() : String(value)
++}
++
++/** Full payload for admin tooling only. */
++export function mapPushSubscriptionDoc(doc: PushSubscriptionDoc) {
++  return {
++    id: doc._id.toString(),
++    userId: doc.userId,
++    endpoint: doc.endpoint,
++    userAgent: doc.userAgent ?? null,
++    provider: detectPushProvider(doc.endpoint),
++    createdAt: toIso(doc.createdAt),
++    updatedAt: toIso(doc.updatedAt),
++  }
++}
++
++/** Safe payload for the authenticated user — no endpoint, user-agent, or user id. */
++export function mapPushSubscriptionDocPublic(doc: PushSubscriptionDoc, currentEndpoint?: string | null) {
++  return {
++    id: doc._id.toString(),
++    provider: detectPushProvider(doc.endpoint),
++    createdAt: toIso(doc.createdAt),
++    updatedAt: toIso(doc.updatedAt),
++    isCurrent: Boolean(currentEndpoint && doc.endpoint === currentEndpoint),
++  }
++}
+diff --git a/lib/utils/request-client-meta.ts b/lib/utils/request-client-meta.ts
+new file mode 100644
+index 0000000..232d710
+--- /dev/null
++++ b/lib/utils/request-client-meta.ts
+@@ -0,0 +1,26 @@
++import { getClientKey } from '@lib/security/rate-limit'
++import type { NextRequest } from 'next/server'
++
++export type RequestClientMeta = {
++  ip: string | null
++  userAgent: string | null
++}
++
++function firstForwardedIp(value: string | null): string | null {
++  if (!value?.trim()) {
++    return null
++  }
++
++  const first = value.split(',')[0]?.trim()
++
++  return first || null
++}
++
++export function getRequestClientMeta(request: NextRequest): RequestClientMeta {
++  const ip =
++    getClientKey(request) ?? firstForwardedIp(request.headers.get('x-forwarded-for')) ?? firstForwardedIp(request.headers.get('cf-connecting-ip')) ?? null
++
++  const userAgent = request.headers.get('user-agent')?.trim() || null
++
++  return { ip, userAgent }
++}
+diff --git a/next.config.ts b/next.config.ts
+index 64ddf9c..f972a53 100644
+--- a/next.config.ts
++++ b/next.config.ts
+@@ -25,6 +25,11 @@ const connectSrcDomains = [
+   'https://mc.yandex.com',
+   'https://www.google-analytics.com',
+   'https://analytics.google.com',
++  'https://www.googletagmanager.com',
++  'https://*.google-analytics.com',
++  'https://*.analytics.google.com',
++  'https://*.yclients.com',
++  'wss://*.yclients.com',
+ ]
+ 
+ // Add env domains to the list
+@@ -51,6 +56,18 @@ const securityHeaders = [
+       'upgrade-insecure-requests',
+     ].join('; '),
+   },
++  ...(process.env.NODE_ENV === 'production'
++    ? [
++        {
++          key: 'Strict-Transport-Security',
++          value: 'max-age=31536000; includeSubDomains; preload',
++        },
++      ]
++    : []),
++  {
++    key: 'X-Frame-Options',
++    value: 'SAMEORIGIN',
++  },
+   {
+     key: 'X-Content-Type-Options',
+     value: 'nosniff',
+@@ -92,7 +109,6 @@ const nextConfig = {
+     ]
+   },
+   experimental: {
+-    /** Tree-shake barrel-heavy packages (smaller client chunks). */
+     optimizePackageImports: [
+       'framer-motion',
+       'cmdk',
+@@ -102,6 +118,8 @@ const nextConfig = {
+       '@radix-ui/react-tooltip',
+       '@radix-ui/react-checkbox',
+       '@radix-ui/react-slot',
++      'dayjs',
++      'lodash',
+     ],
+     /** Inlines critical CSS + defers the rest (`preload: 'media'`). Next still `require('critters')`; we install Beasties under that name (`npm:beasties`). */
+     optimizeCss: true,
+@@ -111,6 +129,9 @@ const nextConfig = {
+     proxyClientMaxBodySize: '200mb',
+   },
+   images: {
++    formats: ['image/avif', 'image/webp'],
++    deviceSizes: [360, 414, 640, 768, 1024, 1280],
++    imageSizes: [16, 32, 48, 64, 96, 128, 256],
+     remotePatterns: [
+       /**
+        * This is a saas for images, enable it if you use it
+diff --git a/public/sw.js b/public/sw.js
+index 4b00556..71385cf 100644
+--- a/public/sw.js
++++ b/public/sw.js
+@@ -1,11 +1,28 @@
+ // Lightweight Service Worker for Web Push notifications + basic offline support
+ 
+ // Bump suffix when changing caching rules so activate() drops old buckets (avoids stale/error payloads).
+-const STATIC_CACHE = 'static-v2'
+-const HTML_CACHE = 'html-v2'
+-const API_PUBLIC_CACHE = 'api-public-v2'
++const STATIC_CACHE = 'static-v3'
++const HTML_CACHE = 'html-v3'
++const API_PUBLIC_CACHE = 'api-public-v3'
++/** 192px — iOS часто не показывает баннер с мелкой иконкой 48px */
+ const APP_ICON = '/images/favicon.svg'
+ 
++function resolveNotificationAsset(pathOrUrl) {
++	if (!pathOrUrl) {
++		return new URL(APP_ICON, self.location.origin).href
++	}
++
++	if (typeof pathOrUrl === 'string' && pathOrUrl.startsWith('http')) {
++		return pathOrUrl
++	}
++
++	return new URL(pathOrUrl, self.location.origin).href
++}
++
++function isIOS() {
++	return /iPad|iPhone|iPod/.test(self.navigator.userAgent || '')
++}
++
+ // Shell-pages, for precache (can be expanded to your project)
+ const PRECACHE_URLS = ['/', APP_ICON, '/images/site.webmanifest']
+ 
+@@ -14,8 +31,13 @@ self.addEventListener('push', (event) => {
+ 
+ 	try {
+ 		payload = event.data ? event.data.json() : null
+-    } catch {
+-		payload = null
++	} catch {
++		try {
++			const text = event.data?.text?.() || ''
++			payload = text ? { title: 'Notification', body: text, url: '/' } : null
++		} catch {
++			payload = null
++		}
+ 	}
+ 
+ 	if (!payload) {
+@@ -23,69 +45,86 @@ self.addEventListener('push', (event) => {
+ 	}
+ 
+ 	const title = payload.title || 'Notification'
+-	
+-	// Create a unique tag for accumulating notifications
++	const body = (payload.body && String(payload.body).trim()) || title
++
+ 	const uniqueTag = payload.tag ? `${payload.tag}:${Date.now()}` : `notification:${Date.now()}`
+-	
++
++	const data = {
++		url: payload.url || '/',
++		dedupId: payload.dedupId,
++		ts: payload.ts || Date.now(),
++	}
++
+ 	const options = {
+-		body: payload.body,
+-		icon: payload.icon || APP_ICON,
+-		badge: payload.badge || APP_ICON,
+-		tag: uniqueTag, //  Unique tag for each notification
+-		data: {
+-			url: payload.url || '/',
+-			dedupId: payload.dedupId,
+-			ts: payload.ts || Date.now(),
+-		},
+-		renotify: true, // Enable repeated notifications
+-		// Sound options for system notifications
+-		silent: false, // Enable sound
+-		requireInteraction: false, // Require interaction
+-		vibrate: [200, 100, 200], // More noticeable vibration
+-		timestamp: payload.ts || Date.now(),
+-		// Additional options for sound
+-		actions: [], // Empty array of actions
++		body,
++		icon: resolveNotificationAsset(payload.icon),
++		tag: uniqueTag,
++		data,
++		silent: false,
+ 	}
+-	
++
++	// badge — в основном Android; на iOS иногда ломает showNotification
++	if (!isIOS()) {
++		options.badge = resolveNotificationAsset(payload.badge)
++	}
++
++	const notifyClients = () =>
++		self.clients
++			.matchAll({ type: 'window', includeUncontrolled: true })
++			.then((clients) => {
++				clients.forEach((client) => {
++					client.postMessage({
++						type: 'NOTIFICATION_RECEIVED',
++						payload,
++						timestamp: Date.now(),
++					})
++				})
++			})
++			.catch((e) => console.error('[SW] Failed to notify clients:', e))
++
++	const show = () =>
++		self.registration
++			.showNotification(title, options)
++			.catch((error) => {
++				console.warn('[SW] showNotification failed, retry minimal options:', error)
++
++				return self.registration.showNotification(title, { body, data })
++			})
++
++	// iOS отзывает подписку, если push пришёл, а уведомление не показали
+ 	event.waitUntil(
+-		self.registration.showNotification(title, options)
++		show()
+ 			.then(() => {
+ 				console.info('[SW] Notification shown successfully')
+-				
+-				// Notify all open tabs about the new notification for sound playback
+-				self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+-					.then(clients => {
+-						clients.forEach(client => {
+-							client.postMessage({
+-								type: 'NOTIFICATION_RECEIVED',
+-								payload: payload,
+-								timestamp: Date.now()
+-							})
+-						})
+-					})
+-					.catch(e => console.error('[SW] Failed to notify clients:', e))
++				return notifyClients()
+ 			})
+ 			.catch((error) => {
+ 				console.error('[SW] Failed to show notification:', error)
+-			})
++			}),
+ 	)
+ })
+ 
+ self.addEventListener('notificationclick', (event) => {
+ 	event.notification.close()
+-	const url = event.notification?.data?.url || '/'
++	const rawUrl = event.notification?.data?.url || '/'
++	const targetUrl = rawUrl.startsWith('http') ? rawUrl : new URL(rawUrl, self.location.origin).href
++
++	let targetPathname = rawUrl
++	try {
++		targetPathname = new URL(targetUrl).pathname
++	} catch {}
+ 
+ 	event.waitUntil(
+ 		clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+ 			for (const client of clientList) {
+ 				try {
+ 					const clientUrl = new URL(client.url)
+-					if (clientUrl.pathname === url || clientUrl.href === url) {
++					if (clientUrl.pathname === targetPathname || clientUrl.href === targetUrl) {
+ 						return client.focus()
+ 					}
+ 				} catch {}
+ 			}
+-			return clients.openWindow(url)
++			return clients.openWindow(targetUrl)
+ 		})
+ 	)
+ })
+diff --git a/src/api/notification/client/index.ts b/src/api/notification/client/index.ts
+new file mode 100644
+index 0000000..57a1185
+--- /dev/null
++++ b/src/api/notification/client/index.ts
+@@ -0,0 +1,34 @@
++import { Request } from '@lib/request'
++import type { AxiosInstance } from 'axios'
++
++import type { PlatformNotificationFilter, PlatformNotificationListResponse } from '../types'
++
++export class ClientNotificationApi {
++  private readonly client: AxiosInstance
++
++  constructor() {
++    this.client = new Request().apiClient
++  }
++
++  async listMine(params?: Partial<PlatformNotificationFilter>): Promise<PlatformNotificationListResponse> {
++    const response = await this.client.get('/api/v1/notification/list', { params: sanitizeNotificationParams(params) })
++
++    return response.data
++  }
++
++  async listAdmin(params?: Partial<PlatformNotificationFilter>): Promise<PlatformNotificationListResponse> {
++    const response = await this.client.get('/api/v1/notification/admin/list', { params: sanitizeNotificationParams(params) })
++
++    return response.data
++  }
++}
++
++function sanitizeNotificationParams(params?: Partial<PlatformNotificationFilter>): Record<string, string | number | undefined> {
++  if (!params) {
++    return {}
++  }
++
++  const entries = Object.entries(params).filter(([, value]) => value != null && value !== '')
++
++  return Object.fromEntries(entries.map(([key, value]) => [key, typeof value === 'number' ? value : String(value)]))
++}
+diff --git a/src/api/notification/index.ts b/src/api/notification/index.ts
+new file mode 100644
+index 0000000..5f9a4dd
+--- /dev/null
++++ b/src/api/notification/index.ts
+@@ -0,0 +1,3 @@
++export * from './client'
++export * from './model'
++export * from './types'
+diff --git a/src/api/notification/model.ts b/src/api/notification/model.ts
+new file mode 100644
+index 0000000..607b075
+--- /dev/null
++++ b/src/api/notification/model.ts
+@@ -0,0 +1,51 @@
++/** Каналы доставки (расширяемый список). */
++export enum NotificationChannel {
++  WEB_PUSH = 'web_push',
++  EMAIL = 'email',
++}
++
++/** Агрегированный и per-channel статус (совместим с courier-web). */
++export enum NotificationDeliveryStatus {
++  PENDING = 'pending',
++  DELIVERED = 'delivered',
++  FAILED = 'failed',
++  SKIPPED_NO_TARGET = 'skipped_no_subscription',
++  SKIPPED = 'skipped',
++  RECORD_ONLY = 'record_only',
++}
++
++export enum PlatformNotificationType {
++  SYSTEM = 'system',
++  TEST = 'test',
++  ARTICLE_PUBLISHED = 'article_published',
++  ARTICLE_UPDATED = 'article_updated',
++  USER_MESSAGE = 'user_message',
++  MFA_ENABLED = 'mfa_enabled',
++  MFA_DISABLED = 'mfa_disabled',
++  NEW_LOGIN = 'new_login',
++}
++
++export type NotificationChannelDeliveryModel = {
++  channel: NotificationChannel
++  status: NotificationDeliveryStatus
++  attempted: boolean
++  deliveredCount?: number | null
++  error?: string | null
++}
++
++export type PlatformNotificationModel = {
++  id: string
++  recipientUserId: string | null
++  type: string
++  title: string
++  body: string
++  urlPath: string
++  source: string | null
++  /** Какие каналы запрашивали при создании (web push, email, …). */
++  channelsRequested: NotificationChannel[]
++  /** Результат по каждому каналу. */
++  channelDeliveries: NotificationChannelDeliveryModel[]
++  /** Сводный статус для списков и фильтров. */
++  deliveryStatus: NotificationDeliveryStatus
++  createdAt?: string | null
++}
+diff --git a/src/api/notification/types.ts b/src/api/notification/types.ts
+new file mode 100644
+index 0000000..f081f91
+--- /dev/null
++++ b/src/api/notification/types.ts
+@@ -0,0 +1,28 @@
++import type { NotificationChannel, PlatformNotificationModel } from './model'
++
++export type PlatformNotificationFilter = {
++  recipientUserId?: string | null
++  deliveryStatus?: string | null
++  type?: string | null
++  startOfDateIso?: string | null
++  endOfDateIso?: string | null
++  limit?: number | string | null
++  offset?: number | string | null
++}
++
++export type PlatformNotificationListResponse = {
++  list: PlatformNotificationModel[]
++  count: number
++  currentPage: number
++  pages: number
++}
++
++export type CreatePlatformNotificationDto = {
++  recipientUserId: string | null
++  type: string
++  title: string
++  body: string
++  urlPath: string
++  source?: string | null
++  channels?: NotificationChannel[]
++}
+diff --git a/src/api/subscription/client/index.ts b/src/api/subscription/client/index.ts
+index f5330c6..52fd668 100644
+--- a/src/api/subscription/client/index.ts
++++ b/src/api/subscription/client/index.ts
+@@ -1,6 +1,7 @@
+ import { Request } from '@lib/request'
+ import { AxiosInstance } from 'axios'
+ 
++import { PushSubscriptionPublicItemModel } from '~/api/user'
+ import { AnyString } from '~/types'
+ 
+ /**
+@@ -30,4 +31,15 @@ export class ClientSubscriptionApi {
+   async test(dto: { type: 'test' | AnyString }): Promise<{ ok: boolean }> {
+     return this.client.post('/api/v1/push/send', dto)
+   }
++
++  async listSubscriptions(currentEndpoint?: string | null): Promise<{ list: PushSubscriptionPublicItemModel[] }> {
++    const headers = currentEndpoint ? { 'X-Push-Subscription-Endpoint': currentEndpoint } : undefined
++    const response = await this.client.get('/api/v1/push/subscriptions', { headers })
++
++    return response.data
++  }
++
++  async deleteSubscription(dto: { id: string }): Promise<void> {
++    await this.client.delete('/api/v1/push/subscriptions', { data: dto })
++  }
+ }
+diff --git a/src/api/user/client/index.ts b/src/api/user/client/index.ts
+index ca8dfa8..7e7bb2c 100644
+--- a/src/api/user/client/index.ts
++++ b/src/api/user/client/index.ts
+@@ -4,7 +4,7 @@ import { AxiosInstance } from 'axios'
+ import { PaginationMeta } from '~/types'
+ 
+ import { AuthUserSnapshot, UserModel } from '../model'
+-import { UpdateUserDto, UserFilter, UserMfaStatusDto, UserPushStatusDto } from '../types'
++import { PushSubscriptionsListResponse, UpdateUserDto, UserFilter, UserMfaStatusDto, UserPushStatusDto } from '../types'
+ 
+ export class ClientUserApi {
+   private readonly client: AxiosInstance
+@@ -51,4 +51,14 @@ export class ClientUserApi {
+ 
+     return response.data
+   }
++
++  async getUserPushSubscriptions(userId: string): Promise<PushSubscriptionsListResponse> {
++    const response = await this.client.get(`/api/v1/user/push-subscriptions/${userId}`)
++
++    return response.data
++  }
++
++  async deleteUserPushSubscription(userId: string, endpoint: string): Promise<void> {
++    await this.client.delete(`/api/v1/user/push-subscriptions/${userId}`, { data: { endpoint } })
++  }
+ }
+diff --git a/src/api/user/types.ts b/src/api/user/types.ts
+index b118d26..a1f73a8 100644
+--- a/src/api/user/types.ts
++++ b/src/api/user/types.ts
+@@ -25,6 +25,36 @@ export type UserPushStatusDto = {
+   hasPushSubscription: boolean
+ }
+ 
++export type PushSubscriptionProvider = 'apple' | 'fcm' | 'mozilla' | 'unknown'
++
++/** User-facing list item — no endpoint or browser metadata. */
++export type PushSubscriptionPublicItemModel = {
++  id: string
++  provider: PushSubscriptionProvider
++  createdAt: string | null
++  updatedAt: string | null
++  isCurrent: boolean
++}
++
++/** Admin list item — includes endpoint and user-agent for support. */
++export type PushSubscriptionItemModel = {
++  id: string
++  userId: string
++  endpoint: string
++  userAgent: string | null
++  provider: PushSubscriptionProvider
++  createdAt: string | null
++  updatedAt: string | null
++}
++
++export type PushSubscriptionsListResponse = {
++  list: PushSubscriptionItemModel[]
++}
++
++export type PushSubscriptionsPublicListResponse = {
++  list: PushSubscriptionPublicItemModel[]
++}
++
+ export type UserMfaStatusDto = {
+   mfaEnabled: boolean
+ }
+diff --git a/src/app/admin/notifications/page.tsx b/src/app/admin/notifications/page.tsx
+new file mode 100644
+index 0000000..2cf2f3d
+--- /dev/null
++++ b/src/app/admin/notifications/page.tsx
+@@ -0,0 +1,22 @@
++import { defaultGuard, PageProps } from '@lib/page'
++
++import { UserRole } from '~/api/user'
++import { NotificationsListScreen } from '~/components/Views/Notification/Screen/NotificationsListScreen'
++
++const AdminNotificationsPage = async (props: PageProps) => {
++  await defaultGuard({
++    ...props,
++    segments: ['admin', 'notifications'],
++    fallbackNavigatePath: '/',
++    roles: [UserRole.ADMIN],
++    fallbackRolesNavigatePath: { [UserRole.USER]: '/', [UserRole.EDITOR]: '/' },
++  })
++
++  return (
++    <div className="w-full h-full flex justify-center flex-col flex-1 gap-6">
++      <NotificationsListScreen mode="admin" titleKey="platformNotifications.adminTitle" />
++    </div>
++  )
++}
++
++export default AdminNotificationsPage
+diff --git a/src/app/api/v1/article/translation-publish-batch/route.ts b/src/app/api/v1/article/translation-publish-batch/route.ts
+index ebd6571..2c1d367 100644
+--- a/src/app/api/v1/article/translation-publish-batch/route.ts
++++ b/src/app/api/v1/article/translation-publish-batch/route.ts
+@@ -4,6 +4,7 @@ import ArticleRevision from '@lib/db/models/ArticleRevision'
+ import { articleDocumentToApiJson } from '@lib/db/utils/articleApiJson'
+ import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
+ import { AuthSuccessResult } from '@lib/security/auth'
++import { notifyArticlePublishedFromRevision } from '@lib/services/article-notification.service'
+ import mongoose from 'mongoose'
+ import { revalidatePath, revalidateTag } from 'next/cache'
+ import { NextRequest, NextResponse } from 'next/server'
+@@ -88,6 +89,13 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
+       )
+ 
+       published.push(id)
++
++      await notifyArticlePublishedFromRevision({
++        recipientUserId: authResult.payload.sub,
++        articleId: id,
++        revisionTitle: rev.title,
++        t,
++      })
+     }
+ 
+     const groupIds = new Set<string>()
+diff --git a/src/app/api/v1/article/translation-restore-published-batch/route.ts b/src/app/api/v1/article/translation-restore-published-batch/route.ts
+index 7f4dcb3..e800e1e 100644
+--- a/src/app/api/v1/article/translation-restore-published-batch/route.ts
++++ b/src/app/api/v1/article/translation-restore-published-batch/route.ts
+@@ -4,6 +4,7 @@ import ArticleRevision from '@lib/db/models/ArticleRevision'
+ import { articleDocumentToApiJson } from '@lib/db/utils/articleApiJson'
+ import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
+ import { AuthSuccessResult } from '@lib/security/auth'
++import { notifyArticlePublishedFromRevision } from '@lib/services/article-notification.service'
+ import mongoose from 'mongoose'
+ import { revalidatePath, revalidateTag } from 'next/cache'
+ import { NextRequest, NextResponse } from 'next/server'
+@@ -74,6 +75,13 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
+       )
+ 
+       restored.push(id)
++
++      await notifyArticlePublishedFromRevision({
++        recipientUserId: authResult.payload.sub,
++        articleId: id,
++        revisionTitle: rev.title,
++        t,
++      })
+     }
+ 
+     const groupIds = new Set<string>()
+diff --git a/src/app/api/v1/article/update/route.ts b/src/app/api/v1/article/update/route.ts
+index 7e8312a..aae4d38 100644
+--- a/src/app/api/v1/article/update/route.ts
++++ b/src/app/api/v1/article/update/route.ts
+@@ -4,6 +4,7 @@ import ArticleRevision from '@lib/db/models/ArticleRevision'
+ import { articleDocumentToApiJson } from '@lib/db/utils/articleApiJson'
+ import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
+ import { AuthSuccessResult } from '@lib/security/auth'
++import { notifyArticlePublishedFromRevision, notifyArticleUpdated } from '@lib/services/article-notification.service'
+ import { revalidatePath, revalidateTag } from 'next/cache'
+ import { NextRequest, NextResponse } from 'next/server'
+ 
+@@ -46,6 +47,10 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
+ 
+     const updatedAt = time().toISOString()
+     const isPublishing = body.status === ArticleStatus.PUBLISHED && !article.publishedAt
++    const revisionChanged = body.revisionId != null && String(body.revisionId) !== String(article.revisionId ?? '')
++    const slugChanged = body.slug != null && String(body.slug) !== String(article.slug ?? '')
++    const isPublishedUpdate =
++      article.status === ArticleStatus.PUBLISHED && body.status !== ArticleStatus.UNPUBLISHED && !isPublishing && (revisionChanged || slugChanged)
+ 
+     await article.updateOne({ ...body, _id: id, updatedAt, publishedAt: isPublishing ? updatedAt : article.publishedAt })
+ 
+@@ -101,6 +106,24 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
+     revalidatePath('/sitemap.xml')
+     revalidatePath('/rss.xml')
+ 
++    const revisionTitle = currentRevision?.title ?? null
++
++    if (isPublishing) {
++      await notifyArticlePublishedFromRevision({
++        recipientUserId: authResult.payload.sub,
++        articleId: id,
++        revisionTitle,
++        t,
++      })
++    } else if (isPublishedUpdate && data.status === ArticleStatus.PUBLISHED) {
++      await notifyArticleUpdated({
++        recipientUserId: authResult.payload.sub,
++        articleId: id,
++        articleTitle: revisionTitle?.trim() || data.slug || id,
++        t,
++      })
++    }
++
+     return response.json(articleDocumentToApiJson(data))
+   })
+ 
+diff --git a/src/app/api/v1/auth/login/mfa/route.ts b/src/app/api/v1/auth/login/mfa/route.ts
+index c10d753..b70aaf2 100644
+--- a/src/app/api/v1/auth/login/mfa/route.ts
++++ b/src/app/api/v1/auth/login/mfa/route.ts
+@@ -7,6 +7,8 @@ import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
+ import { consumeLoginChallenge } from '@lib/security/login-challenge'
+ import { consumeBackupCode, decryptSecret, verifyTotpCode } from '@lib/security/totp'
+ import { authService } from '@lib/services/auth.service'
++import { notifyNewLogin } from '@lib/services/security-notification.service'
++import { getRequestClientMeta } from '@lib/utils/request-client-meta'
+ import { NextRequest } from 'next/server'
+ 
+ import { getPreferredLanguageCodeFromAcceptLanguage } from '~/lib/i18n/detectLocale'
+@@ -81,6 +83,13 @@ const handler = (request: NextRequest) => {
+ 
+     setAuthCookies(response, authResponse.accessToken, authResponse.refreshToken, authResponse.expiresIn)
+ 
++    void notifyNewLogin({
++      recipientUserId: user._id.toString(),
++      t,
++      client: getRequestClientMeta(req),
++      usedMfaBackupCode: backupUsed,
++    })
++
+     return response
+   })
+ }
+diff --git a/src/app/api/v1/auth/login/route.ts b/src/app/api/v1/auth/login/route.ts
+index 69f6754..ab9dcd9 100644
+--- a/src/app/api/v1/auth/login/route.ts
++++ b/src/app/api/v1/auth/login/route.ts
+@@ -6,6 +6,8 @@ import { assertLoginNotBlocked, recordLoginFailure } from '@lib/security/brutefo
+ import { createLoginChallenge } from '@lib/security/login-challenge'
+ import { getClientKey } from '@lib/security/rate-limit'
+ import { authService } from '@lib/services/auth.service'
++import { notifyNewLogin } from '@lib/services/security-notification.service'
++import { getRequestClientMeta } from '@lib/utils/request-client-meta'
+ import { NextRequest } from 'next/server'
+ 
+ import { LoginEmailDto } from '~/api/auth/types'
+@@ -40,6 +42,12 @@ const handler = (request: NextRequest) => {
+ 
+         setAuthCookies(response, authResponse.accessToken, authResponse.refreshToken, authResponse.expiresIn)
+ 
++        void notifyNewLogin({
++          recipientUserId: user._id.toString(),
++          t,
++          client: getRequestClientMeta(req),
++        })
++
+         return response
+       }
+ 
+diff --git a/src/app/api/v1/auth/mfa/confirm/route.ts b/src/app/api/v1/auth/mfa/confirm/route.ts
+index 377a142..2d89d59 100644
+--- a/src/app/api/v1/auth/mfa/confirm/route.ts
++++ b/src/app/api/v1/auth/mfa/confirm/route.ts
+@@ -5,6 +5,7 @@ import { ValidationError } from '@lib/error/custom-errors'
+ import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
+ import { AuthSuccessResult } from '@lib/security/auth'
+ import { decryptSecret, verifyTotpCode } from '@lib/security/totp'
++import { notifyMfaEnabled } from '@lib/services/security-notification.service'
+ import { NextRequest } from 'next/server'
+ 
+ import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
+@@ -48,6 +49,11 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) => {
+     settings.mfaEnabled = true
+     await settings.save()
+ 
++    void notifyMfaEnabled({
++      recipientUserId: user._id.toString(),
++      t,
++    })
++
+     return res.json(
+       {
+         success: true,
+diff --git a/src/app/api/v1/auth/mfa/disable/route.ts b/src/app/api/v1/auth/mfa/disable/route.ts
+index fc09b34..6bd7097 100644
+--- a/src/app/api/v1/auth/mfa/disable/route.ts
++++ b/src/app/api/v1/auth/mfa/disable/route.ts
+@@ -5,6 +5,7 @@ import { ValidationError } from '@lib/error/custom-errors'
+ import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
+ import { AuthSuccessResult } from '@lib/security/auth'
+ import { decryptSecret, verifyTotpCode } from '@lib/security/totp'
++import { notifyMfaDisabled } from '@lib/services/security-notification.service'
+ import { NextRequest } from 'next/server'
+ 
+ import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
+@@ -59,6 +60,11 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) => {
+     settings.mfaBackupCodes = []
+     await settings.save()
+ 
++    void notifyMfaDisabled({
++      recipientUserId: user._id.toString(),
++      t,
++    })
++
+     return res.json(
+       {
+         success: true,
+diff --git a/src/app/api/v1/notification/admin/list/route.ts b/src/app/api/v1/notification/admin/list/route.ts
+new file mode 100644
+index 0000000..cd63212
+--- /dev/null
++++ b/src/app/api/v1/notification/admin/list/route.ts
+@@ -0,0 +1,27 @@
++import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
++import { AuthSuccessResult } from '@lib/security/auth'
++import { platformNotificationService } from '@lib/services/platform-notification.service'
++import { NextRequest, NextResponse } from 'next/server'
++
++import type { PlatformNotificationFilter } from '~/api/notification'
++import { UserRole } from '~/api/user'
++import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
++
++const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
++  apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
++    const { t } = await getServerTFromNextRequestAsync(request)
++
++    if (![UserRole.ADMIN].includes(authResult.payload.role)) {
++      return NextResponse.json({ message: t('errors.insufficientPermissions') }, { status: 403 })
++    }
++
++    const filter: PlatformNotificationFilter = {
++      ...Object.fromEntries(request.nextUrl.searchParams.entries()),
++    }
++
++    const data = await platformNotificationService.listPaginated(filter)
++
++    return response.json(data)
++  })
++
++export const GET = withGlobalRateLimit(withAuthMiddleware(handler))
+diff --git a/src/app/api/v1/notification/list/route.ts b/src/app/api/v1/notification/list/route.ts
+new file mode 100644
+index 0000000..afc2918
+--- /dev/null
++++ b/src/app/api/v1/notification/list/route.ts
+@@ -0,0 +1,29 @@
++import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
++import { AuthSuccessResult } from '@lib/security/auth'
++import { platformNotificationService } from '@lib/services/platform-notification.service'
++import { NextRequest, NextResponse } from 'next/server'
++
++import type { PlatformNotificationFilter } from '~/api/notification'
++import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
++
++const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
++  apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
++    const { t } = await getServerTFromNextRequestAsync(request)
++    const userId = authResult.payload.sub
++
++    if (!userId) {
++      return NextResponse.json({ message: t('errors.authenticationRequired') }, { status: 401 })
++    }
++
++    const params = Object.fromEntries(request.nextUrl.searchParams.entries())
++    const filter: PlatformNotificationFilter = {
++      ...params,
++      recipientUserId: userId,
++    }
++
++    const data = await platformNotificationService.listPaginated(filter)
++
++    return response.json(data)
++  })
++
++export const GET = withGlobalRateLimit(withAuthMiddleware(handler))
+diff --git a/src/app/api/v1/push/send/route.ts b/src/app/api/v1/push/send/route.ts
+index dd03f9e..e0224b3 100644
+--- a/src/app/api/v1/push/send/route.ts
++++ b/src/app/api/v1/push/send/route.ts
+@@ -1,8 +1,9 @@
+ import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
+ import { AuthSuccessResult } from '@lib/security/auth'
+-import { webPushService } from '@lib/services/web-push.service'
++import { platformNotificationService } from '@lib/services/platform-notification.service'
+ import { NextRequest } from 'next/server'
+ 
++import { PlatformNotificationType } from '~/api/notification'
+ import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
+ import { AnyString } from '~/types'
+ 
+@@ -12,18 +13,21 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) => {
+     const user = authResult.payload
+ 
+     const body: { type: 'test' | AnyString } = await req.json()
++    const pushType = body.type ?? PlatformNotificationType.TEST
+ 
+-    const result = await webPushService.sendToUser(user.sub, {
+-      type: body.type,
+-      title: t('push.messages.newMessage'),
+-      body: t('push.messages.exampleBody', { type: body.type }),
+-      url: '/ui-kit',
+-      tag: 'ui-kit',
+-      dedupId: 'ui-kit',
+-      ts: Date.now(),
+-    })
++    const notification = await platformNotificationService.createAndDeliver(
++      {
++        recipientUserId: user.sub,
++        type: pushType === 'test' ? PlatformNotificationType.TEST : String(pushType),
++        title: t('push.messages.newMessage'),
++        body: t('push.messages.exampleBody', { type: pushType }),
++        urlPath: '/ui-kit',
++        source: 'manual_test',
++      },
++      t,
++    )
+ 
+-    return res.json({ ok: true, count: result }, { status: 200 })
++    return res.json({ ok: true, notification }, { status: 200 })
+   })
+ }
+ 
+diff --git a/src/app/api/v1/push/subscriptions/route.ts b/src/app/api/v1/push/subscriptions/route.ts
+new file mode 100644
+index 0000000..bfaaa24
+--- /dev/null
++++ b/src/app/api/v1/push/subscriptions/route.ts
+@@ -0,0 +1,47 @@
++import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
++import { AuthSuccessResult } from '@lib/security/auth'
++import { pushSubscriptionService } from '@lib/services/push-subscription.service'
++import { mapPushSubscriptionDocPublic } from '@lib/utils/push-provider'
++import { NextRequest, NextResponse } from 'next/server'
++
++import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
++
++const CURRENT_ENDPOINT_HEADER = 'x-push-subscription-endpoint'
++
++const handlerGet = async (request: NextRequest, authResult: AuthSuccessResult) => {
++  return apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
++    const user = authResult.payload
++    const list = await pushSubscriptionService.list({ userId: user.sub })
++    const currentEndpoint = request.headers.get(CURRENT_ENDPOINT_HEADER)
++
++    return response.json({
++      list: list.map((doc) => mapPushSubscriptionDocPublic(doc, currentEndpoint)),
++    })
++  })
++}
++
++const handlerDelete = async (request: NextRequest, authResult: AuthSuccessResult) => {
++  return apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
++    const { t } = await getServerTFromNextRequestAsync(request)
++    const body = await request.json()
++    const { id } = body || {}
++
++    if (!id || typeof id !== 'string') {
++      return response.json({ ok: false, error: t('push.errors.invalidParams') }, { status: 400 })
++    }
++
++    const user = authResult.payload
++    const existing = await pushSubscriptionService.checkSubscriptionById(user.sub, id)
++
++    if (!existing) {
++      return response.json({ ok: false, error: t('push.errors.subscriptionNotFound') }, { status: 404 })
++    }
++
++    await pushSubscriptionService.unsubscribeById(user.sub, id)
++
++    return response.json({ ok: true })
++  })
++}
++
++export const GET = withGlobalRateLimit(withAuthMiddleware(handlerGet))
++export const DELETE = withGlobalRateLimit(withAuthMiddleware(handlerDelete))
+diff --git a/src/app/api/v1/user/push-subscriptions/[id]/route.ts b/src/app/api/v1/user/push-subscriptions/[id]/route.ts
+new file mode 100644
+index 0000000..41e3c7a
+--- /dev/null
++++ b/src/app/api/v1/user/push-subscriptions/[id]/route.ts
+@@ -0,0 +1,68 @@
++import { apiErrorHandlerContainer, RouteHandlerContext, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
++import { AuthSuccessResult } from '@lib/security/auth'
++import { pushSubscriptionService } from '@lib/services/push-subscription.service'
++import { mapPushSubscriptionDoc } from '@lib/utils/push-provider'
++import { NextRequest, NextResponse } from 'next/server'
++
++import { UserRole } from '~/api/user'
++import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
++
++const handlerGet = (request: NextRequest, authResult: AuthSuccessResult, context?: RouteHandlerContext) =>
++  apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
++    const { t } = await getServerTFromNextRequestAsync(request)
++
++    if (![UserRole.ADMIN].includes(authResult.payload.role)) {
++      return NextResponse.json({ message: t('errors.insufficientPermissions') }, { status: 403 })
++    }
++
++    const paramsData = context ? await context.params : undefined
++    const rawId = paramsData?.id
++    const id = typeof rawId === 'string' ? rawId : Array.isArray(rawId) ? rawId[0] : undefined
++
++    if (!id) {
++      return NextResponse.json({ message: t('user.errors.idRequired') }, { status: 400 })
++    }
++
++    const list = await pushSubscriptionService.list({ userId: id })
++
++    return response.json({
++      list: list.map((doc) => mapPushSubscriptionDoc(doc)),
++    })
++  })
++
++const handlerDelete = (request: NextRequest, authResult: AuthSuccessResult, context?: RouteHandlerContext) =>
++  apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
++    const { t } = await getServerTFromNextRequestAsync(request)
++
++    if (![UserRole.ADMIN].includes(authResult.payload.role)) {
++      return NextResponse.json({ message: t('errors.insufficientPermissions') }, { status: 403 })
++    }
++
++    const paramsData = context ? await context.params : undefined
++    const rawId = paramsData?.id
++    const id = typeof rawId === 'string' ? rawId : Array.isArray(rawId) ? rawId[0] : undefined
++
++    if (!id) {
++      return NextResponse.json({ message: t('user.errors.idRequired') }, { status: 400 })
++    }
++
++    const body = await request.json()
++    const { endpoint } = body || {}
++
++    if (!endpoint) {
++      return response.json({ ok: false, error: t('push.errors.invalidParams') }, { status: 400 })
++    }
++
++    const existing = await pushSubscriptionService.checkSubscription(id, endpoint)
++
++    if (!existing) {
++      return response.json({ ok: false, error: t('push.errors.subscriptionNotFound') }, { status: 404 })
++    }
++
++    await pushSubscriptionService.unsubscribe(id, endpoint)
++
++    return response.json({ ok: true })
++  })
++
++export const GET = withGlobalRateLimit(withAuthMiddleware(handlerGet))
++export const DELETE = withGlobalRateLimit(withAuthMiddleware(handlerDelete))
+diff --git a/src/app/notifications/layout.tsx b/src/app/notifications/layout.tsx
+new file mode 100644
+index 0000000..7fa094f
+--- /dev/null
++++ b/src/app/notifications/layout.tsx
+@@ -0,0 +1,5 @@
++import { PlatformLayout } from '../../components/Layouts'
++
++export default function ProfileLayout({ children }: { children: React.ReactNode }) {
++  return <PlatformLayout>{children}</PlatformLayout>
++}
+diff --git a/src/app/notifications/page.tsx b/src/app/notifications/page.tsx
+new file mode 100644
+index 0000000..419ad07
+--- /dev/null
++++ b/src/app/notifications/page.tsx
+@@ -0,0 +1,15 @@
++import { defaultGuard, PageProps } from '@lib/page'
++
++import { NotificationsListScreen } from '~/components/Views/Notification/Screen/NotificationsListScreen'
++
++const NotificationsPage = async (props: PageProps) => {
++  await defaultGuard({ ...props, segments: ['notifications'], fallbackNavigatePath: '/login' })
++
++  return (
++    <div className="w-full h-full flex justify-center flex-col flex-1 gap-6">
++      <NotificationsListScreen mode="mine" />
++    </div>
++  )
++}
++
++export default NotificationsPage
+diff --git a/src/app/profile/page.tsx b/src/app/profile/page.tsx
+index b845d42..bc4edff 100644
+--- a/src/app/profile/page.tsx
++++ b/src/app/profile/page.tsx
+@@ -5,6 +5,7 @@ import { ThemeModeSelect } from '~/components/theme/ThemeModeSelect'
+ import { Typography } from '~/components/ui'
+ import { NotificationBlock } from '~/components/Views/Notification'
+ import { ProfileMfaBlock } from '~/components/Views/Profile/ProfileMfaBlock'
++import { UserPushSubscriptionsSelfPanel } from '~/components/Views/User/Blocks/UserPushSubscriptionsSelfPanel'
+ import { getServerT } from '~/lib/i18n/server'
+ 
+ const ProfileRoot = async (props: PageProps) => {
+@@ -44,6 +45,8 @@ const ProfileRoot = async (props: PageProps) => {
+ 
+       <NotificationBlock />
+ 
++      <UserPushSubscriptionsSelfPanel />
++
+       <ProfileMfaBlock />
+     </div>
+   )
+diff --git a/src/components/Layouts/PlatformLayout.tsx b/src/components/Layouts/PlatformLayout.tsx
+index 38edbf4..dd2224e 100644
+--- a/src/components/Layouts/PlatformLayout.tsx
++++ b/src/components/Layouts/PlatformLayout.tsx
+@@ -1,6 +1,6 @@
+ 'use client'
+ 
+-import { ActivityIcon, BarChart3Icon, BotIcon, EyeIcon, HomeIcon, LanguagesIcon, TextQuoteIcon, UserIcon, WrenchIcon } from 'lucide-react'
++import { ActivityIcon, BarChart3Icon, BellIcon, BotIcon, EyeIcon, HomeIcon, LanguagesIcon, TextQuoteIcon, UserIcon, WrenchIcon } from 'lucide-react'
+ import { useMemo } from 'react'
+ 
+ import { UserRole } from '~/api/user'
+@@ -36,6 +36,11 @@ export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
+             icon: <UserIcon width={16} height={16} />,
+             href: routes.profile.path,
+           },
++          {
++            label: t(routes.notifications.tKey),
++            icon: <BellIcon width={16} height={16} />,
++            href: routes.notifications.path,
++          },
+         ],
+       },
+       ...(authUser?.role && [UserRole.ADMIN, UserRole.EDITOR].includes(authUser?.role)
+@@ -82,6 +87,12 @@ export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
+                   icon: <TextQuoteIcon width={16} height={16} />,
+                   href: routes.articles.path,
+                 },
++                {
++                  label: t(routes.adminNotifications.tKey),
++                  icon: <BellIcon width={16} height={16} />,
++                  disabled: authUser?.role !== UserRole.ADMIN,
++                  href: routes.adminNotifications.path,
++                },
+               ],
+             },
+           ]
+diff --git a/src/components/Views/Notification/Filters/NotificationsFilter.tsx b/src/components/Views/Notification/Filters/NotificationsFilter.tsx
+new file mode 100644
+index 0000000..3fe30d3
+--- /dev/null
++++ b/src/components/Views/Notification/Filters/NotificationsFilter.tsx
+@@ -0,0 +1,6 @@
++import { forwardRef } from 'react'
++
++import { FilterContainer, type FilterContainerProps } from '~/components/Filters/FilterContainer'
++import type { FilterOption } from '~/types'
++
++export const NotificationsFilter = forwardRef<HTMLDivElement, FilterContainerProps<Record<string, FilterOption>>>(FilterContainer)
+diff --git a/src/components/Views/Notification/Filters/defaultNotificationsFilter.ts b/src/components/Views/Notification/Filters/defaultNotificationsFilter.ts
+new file mode 100644
+index 0000000..dc8d02b
+--- /dev/null
++++ b/src/components/Views/Notification/Filters/defaultNotificationsFilter.ts
+@@ -0,0 +1,28 @@
++import { NotificationDeliveryStatus, PlatformNotificationType } from '~/api/notification'
++import type { FilterOption } from '~/types'
++
++export type DefaultNotificationsFiltersKeys = 'deliveryStatus' | 'type'
++
++export const DefaultNotificationsFilters: Record<DefaultNotificationsFiltersKeys, FilterOption> = {
++  deliveryStatus: {
++    value: null,
++    options: Object.values(NotificationDeliveryStatus).map((status) => ({
++      value: status,
++      label: status,
++      labelLocalizationKey: `platformNotifications.deliveryStatus.${status}`,
++    })),
++  },
++  type: {
++    value: null,
++    options: Object.values(PlatformNotificationType).map((type) => ({
++      value: type,
++      label: type,
++      labelLocalizationKey: `platformNotifications.type.${type}`,
++    })),
++  },
++}
++
++export const NOTIFICATIONS_PARAM_NAMES = {
++  deliveryStatus: 'platformNotifications.filters.deliveryStatus',
++  type: 'platformNotifications.filters.type',
++} as const
+diff --git a/src/components/Views/Notification/List/NotificationListItem.tsx b/src/components/Views/Notification/List/NotificationListItem.tsx
+new file mode 100644
+index 0000000..00de46d
+--- /dev/null
++++ b/src/components/Views/Notification/List/NotificationListItem.tsx
+@@ -0,0 +1,105 @@
++'use client'
++
++import Link from 'next/link'
++import { useMemo, useState } from 'react'
++
++import { NotificationDeliveryStatus, type PlatformNotificationModel } from '~/api/notification'
++import { Badge, Button, Typography } from '~/components/ui'
++import { routes } from '~/constants'
++import type { AppMessageKey } from '~/lib/i18n'
++import { useAuth, useT } from '~/providers'
++import { time } from '~/utils/time'
++
++type Props = {
++  item: PlatformNotificationModel
++  showAdminExtras?: boolean
++}
++
++function deliveryStatusVariant(status: NotificationDeliveryStatus): 'success' | 'destructive' | 'secondary' | 'outline' {
++  if (status === NotificationDeliveryStatus.DELIVERED) {
++    return 'success'
++  }
++
++  if (status === NotificationDeliveryStatus.FAILED) {
++    return 'destructive'
++  }
++
++  return 'secondary'
++}
++
++export const NotificationListItem = ({ item, showAdminExtras = false }: Props) => {
++  const t = useT()
++  const { isAdmin } = useAuth()
++  const [showRaw, setShowRaw] = useState(false)
++
++  const typeLabel = useMemo(() => {
++    const key = `platformNotifications.type.${item.type}` as AppMessageKey
++
++    return t(key) === key ? item.type : t(key)
++  }, [item.type, t])
++
++  const sourceLabel = useMemo(() => {
++    if (!item.source) {
++      return null
++    }
++
++    const key = `platformNotifications.source.${item.source}` as AppMessageKey
++
++    return t(key) === key ? item.source : t(key)
++  }, [item.source, t])
++
++  return (
++    <div className="rounded-xl border bg-card p-4 flex flex-col gap-3">
++      <div className="flex flex-wrap items-start justify-between gap-2">
++        <div className="flex flex-col gap-1 min-w-0 flex-1">
++          <Typography variant="Body/M/Semibold">{item.title}</Typography>
++          <Typography variant="Body/S/Regular" className="text-muted-foreground">
++            {item.body}
++          </Typography>
++        </div>
++        <Badge variant={deliveryStatusVariant(item.deliveryStatus)}>{t(`platformNotifications.deliveryStatus.${item.deliveryStatus}` as AppMessageKey)}</Badge>
++      </div>
++
++      <div className="flex flex-wrap gap-2 text-muted-foreground">
++        <Typography variant="Body/XS/Regular">
++          {t('platformNotifications.typeLabel')}: {typeLabel}
++        </Typography>
++        {sourceLabel && (
++          <Typography variant="Body/XS/Regular">
++            {t('platformNotifications.sourceLabel')}: {sourceLabel}
++          </Typography>
++        )}
++        <Typography variant="Body/XS/Regular">{item.createdAt ? time(item.createdAt).format('DD/MM/YYYY HH:mm') : '-'}</Typography>
++      </div>
++
++      {item.channelDeliveries.length > 0 && (
++        <div className="flex flex-wrap gap-2">
++          {item.channelDeliveries.map((delivery) => (
++            <Badge key={delivery.channel} variant="outline">
++              {t(`platformNotifications.channel.${delivery.channel}` as AppMessageKey)}:{' '}
++              {t(`platformNotifications.deliveryStatus.${delivery.status}` as AppMessageKey)}
++            </Badge>
++          ))}
++        </div>
++      )}
++
++      <div className="flex flex-wrap gap-2">
++        <Button variant="outline" size="sm-md" asChild>
++          <Link href={item.urlPath}>{t('platformNotifications.openTarget')}</Link>
++        </Button>
++        {isAdmin && item.recipientUserId && (
++          <Button variant="outline" size="sm-md" asChild>
++            <Link href={`${routes.users.path}/${item.recipientUserId}`}>{t('user.adminProfile.title')}</Link>
++          </Button>
++        )}
++        {showAdminExtras && (
++          <Button variant="ghost" size="sm-md" onClick={() => setShowRaw((prev) => !prev)}>
++            {showRaw ? t('platformNotifications.rawHide') : t('platformNotifications.raw')}
++          </Button>
++        )}
++      </div>
++
++      {showRaw && <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs">{JSON.stringify(item, null, 2)}</pre>}
++    </div>
++  )
++}
+diff --git a/src/components/Views/Notification/Screen/NotificationsListScreen.tsx b/src/components/Views/Notification/Screen/NotificationsListScreen.tsx
+new file mode 100644
+index 0000000..e73c42c
+--- /dev/null
++++ b/src/components/Views/Notification/Screen/NotificationsListScreen.tsx
+@@ -0,0 +1,168 @@
++'use client'
++
++import { FilterIcon, XIcon } from 'lucide-react'
++import { lazy, Suspense, useRef, useState } from 'react'
++
++import { TitleWithBadge } from '~/components/Blocks/TitleWithBadge'
++import { CustomTooltip } from '~/components/Blocks/Tooltip'
++import { StickyContainer } from '~/components/Containers'
++import { useDefaultFilters } from '~/components/Filters/useDefaultFilters'
++import { PaginationSkeleton } from '~/components/List'
++import { usePagination } from '~/components/List/usePagination'
++import { Badge, Button, Input, Typography } from '~/components/ui'
++import { useStickyContainer } from '~/hooks/useStickyContainer'
++import type { AppMessageKey } from '~/lib/i18n'
++import { useT } from '~/providers'
++import { useNotificationsListQuery } from '~/query/notification'
++
++import { DefaultNotificationsFilters, NOTIFICATIONS_PARAM_NAMES } from '../Filters/defaultNotificationsFilter'
++import { NotificationsFilter } from '../Filters/NotificationsFilter'
++import { NotificationListItem } from '../List/NotificationListItem'
++
++const PaginationLazy = lazy(() => import('~/components/List').then((mod) => ({ default: mod.Pagination })))
++
++type Props = {
++  mode: 'mine' | 'admin'
++  forcedRecipientUserId?: string
++  titleKey?: 'platformNotifications.title' | 'platformNotifications.adminTitle'
++}
++
++export const NotificationsListScreen = ({ mode, forcedRecipientUserId, titleKey = 'platformNotifications.title' }: Props) => {
++  const t = useT()
++  const headerRef = useRef<HTMLDivElement>(null)
++  const containerRef = useRef<HTMLDivElement>(null)
++  const paginationRef = useRef<HTMLDivElement>(null)
++  const filtersRef = useRef<HTMLDivElement>(null)
++  const [recipientUserId, setRecipientUserId] = useState('')
++
++  useStickyContainer({ isEnabled: true, elementRef: headerRef, rootRef: containerRef })
++  useStickyContainer({ isEnabled: true, elementRef: paginationRef, rootRef: containerRef, direction: 'bottom' })
++
++  const {
++    isFilterOpen,
++    toggleFilter,
++    handleClearFilters,
++    filters,
++    debouncedFilters,
++    setFilters,
++    handleChangePeriod,
++    period,
++    isPeriodEnabled,
++    settledFiltersCount,
++  } = useDefaultFilters<Record<string, unknown>>({
++    ref: filtersRef,
++    defaultFilterValues: { deliveryStatus: null, type: null },
++    filterValues: DefaultNotificationsFilters,
++  })
++
++  const { page, setPage, offset } = usePagination({ limit: 25 })
++
++  const effectiveRecipientUserId = forcedRecipientUserId || recipientUserId.trim() || undefined
++
++  const { data, isLoading } = useNotificationsListQuery(
++    mode,
++    {
++      limit: 25,
++      offset,
++      startOfDateIso: period?.fromDate,
++      endOfDateIso: period?.toDate,
++      ...debouncedFilters,
++      ...(effectiveRecipientUserId ? { recipientUserId: effectiveRecipientUserId } : {}),
++    },
++    isPeriodEnabled,
++  )
++
++  const filterCount = settledFiltersCount + (recipientUserId.trim() ? 1 : 0)
++
++  return (
++    <div className="flex flex-col gap-4" ref={containerRef}>
++      {!forcedRecipientUserId && (
++        <StickyContainer ref={headerRef} className="flex flex-row gap-4 items-center justify-between md:px-8 md:py-4 py-2 px-1">
++          <TitleWithBadge title={t(titleKey)} badgeContent={<Typography variant="Body/XS/Regular">{data?.count ?? 0}</Typography>} />
++          <div className="flex flex-row gap-2">
++            <CustomTooltip content={<Typography variant="Body/XS/Regular">{isFilterOpen ? t('common.hideFilters') : t('common.showFilters')}</Typography>}>
++              <Button variant={isFilterOpen ? 'default' : 'outline'} size="sm-md" className="flex items-center gap-2" onClick={toggleFilter}>
++                <div className="relative">
++                  <FilterIcon className="md:w-4 md:h-4 w-2 h-2" />
++                  <Badge variant="default" className="absolute -top-4 -right-4">
++                    {filterCount}
++                  </Badge>
++                </div>
++              </Button>
++            </CustomTooltip>
++            <CustomTooltip content={<Typography variant="Body/XS/Regular">{t('common.clearFilters')}</Typography>}>
++              {filterCount > 0 && (
++                <Button
++                  variant="outline"
++                  size="sm-md"
++                  className="flex items-center gap-2"
++                  onClick={() => {
++                    handleClearFilters()
++                    setRecipientUserId('')
++                  }}
++                >
++                  <XIcon className="md:w-4 md:h-4 w-2 h-2" />
++                </Button>
++              )}
++            </CustomTooltip>
++          </div>
++        </StickyContainer>
++      )}
++
++      {!forcedRecipientUserId && (
++        <>
++          <NotificationsFilter
++            ref={filtersRef}
++            isFilterOpen={isFilterOpen}
++            isLoading={isLoading}
++            filters={filters}
++            defaultFilterValues={DefaultNotificationsFilters}
++            paramNames={NOTIFICATIONS_PARAM_NAMES}
++            setFilters={setFilters}
++            t={t}
++            handleChangePeriod={handleChangePeriod}
++          />
++          {mode === 'admin' && isFilterOpen && (
++            <div className="flex flex-col rounded-md gap-2 bg-muted p-2">
++              <Typography variant="Body/S/Regular">{t('platformNotifications.filters.recipientUserId' as AppMessageKey)}</Typography>
++              <Input
++                type="text"
++                value={recipientUserId}
++                onChange={(e) => setRecipientUserId(e.target.value)}
++                placeholder={t('platformNotifications.filters.recipientUserIdPlaceholder' as AppMessageKey)}
++              />
++            </div>
++          )}
++        </>
++      )}
++
++      {isLoading ? (
++        <div className="flex flex-col gap-3">
++          {Array.from({ length: 3 }).map((_, index) => (
++            <div key={index} className="h-28 rounded-xl border bg-muted animate-pulse" />
++          ))}
++        </div>
++      ) : data?.list?.length ? (
++        <div className="flex flex-col gap-3">
++          {data.list.map((item) => (
++            <NotificationListItem key={item.id} item={item} showAdminExtras={mode === 'admin'} />
++          ))}
++        </div>
++      ) : (
++        <div className="rounded-xl border bg-card p-8 text-center">
++          <Typography variant="Body/M/Regular">{t('platformNotifications.empty')}</Typography>
++        </div>
++      )}
++
++      {isLoading ? (
++        <PaginationSkeleton />
++      ) : (
++        <Suspense fallback={<PaginationSkeleton />}>
++          <StickyContainer direction="top" ref={paginationRef} className="flex flex-row gap-4 items-center justify-between md:px-8 md:py-4 py-2 px-1">
++            <PaginationLazy currentPage={page} pages={data?.pages ?? 0} onChange={setPage} />
++          </StickyContainer>
++        </Suspense>
++      )}
++    </div>
++  )
++}
+diff --git a/src/components/Views/Notification/index.ts b/src/components/Views/Notification/index.ts
+index 32070fc..342345e 100644
+--- a/src/components/Views/Notification/index.ts
++++ b/src/components/Views/Notification/index.ts
+@@ -1 +1,3 @@
+ export * from './Blocks/NotificationBlock'
++export * from './List/NotificationListItem'
++export * from './Screen/NotificationsListScreen'
+diff --git a/src/components/Views/User/Blocks/UserNotificationsPanel.tsx b/src/components/Views/User/Blocks/UserNotificationsPanel.tsx
+new file mode 100644
+index 0000000..1e056fe
+--- /dev/null
++++ b/src/components/Views/User/Blocks/UserNotificationsPanel.tsx
+@@ -0,0 +1,11 @@
++'use client'
++
++import { NotificationsListScreen } from '~/components/Views/Notification/Screen/NotificationsListScreen'
++
++type Props = {
++  userId: string
++}
++
++export const UserNotificationsPanel = ({ userId }: Props) => {
++  return <NotificationsListScreen mode="admin" forcedRecipientUserId={userId} titleKey="platformNotifications.adminTitle" />
++}
+diff --git a/src/components/Views/User/Blocks/UserPushSubscriptionsPanel.tsx b/src/components/Views/User/Blocks/UserPushSubscriptionsPanel.tsx
+new file mode 100644
+index 0000000..81e31f4
+--- /dev/null
++++ b/src/components/Views/User/Blocks/UserPushSubscriptionsPanel.tsx
+@@ -0,0 +1,52 @@
++'use client'
++
++import { useState } from 'react'
++
++import { Typography } from '~/components/ui'
++import { useT } from '~/providers'
++import { useNotify } from '~/providers/notify'
++import { useDeleteUserPushSubscriptionMutation } from '~/query/user/mutation'
++import { useUserPushSubscriptionsQuery } from '~/query/user/query'
++
++import { UserPushSubscriptionsTable } from '../List/UserPushSubscriptionsTable'
++import { isAdminPushSubscriptionItem, type PushSubscriptionTableItem } from '../types'
++
++type Props = {
++  userId: string
++}
++
++export const UserPushSubscriptionsPanel = ({ userId }: Props) => {
++  const t = useT()
++  const { notify } = useNotify()
++  const [deletingId, setDeletingId] = useState<string | null>(null)
++  const { data, isLoading, refetch } = useUserPushSubscriptionsQuery(userId, Boolean(userId))
++  const { deleteUserPushSubscriptionMutation } = useDeleteUserPushSubscriptionMutation()
++
++  const handleDelete = async (item: PushSubscriptionTableItem) => {
++    if (!isAdminPushSubscriptionItem(item)) {
++      return
++    }
++
++    if (!window.confirm(t('user.adminProfile.pushSubscriptions.deleteConfirm'))) {
++      return
++    }
++
++    try {
++      setDeletingId(item.id)
++      await deleteUserPushSubscriptionMutation.mutateAsync({ userId, endpoint: item.endpoint })
++      await refetch()
++      notify(t('user.adminProfile.pushSubscriptions.deleted'), 'success')
++    } catch {
++      notify(t('user.adminProfile.pushSubscriptions.deleteFailed'), 'destructive')
++    } finally {
++      setDeletingId(null)
++    }
++  }
++
++  return (
++    <div className="flex flex-col gap-4">
++      <Typography variant="Body/S/Semibold">{t('user.adminProfile.pushSubscriptions.title')}</Typography>
++      <UserPushSubscriptionsTable items={data?.list} isLoading={isLoading} onDelete={handleDelete} deletingId={deletingId} showSensitiveDetails />
++    </div>
++  )
++}
+diff --git a/src/components/Views/User/Blocks/UserPushSubscriptionsSelfPanel.tsx b/src/components/Views/User/Blocks/UserPushSubscriptionsSelfPanel.tsx
+new file mode 100644
+index 0000000..da0f4df
+--- /dev/null
++++ b/src/components/Views/User/Blocks/UserPushSubscriptionsSelfPanel.tsx
+@@ -0,0 +1,59 @@
++'use client'
++
++import { Typography } from '~/components/ui'
++import { useT } from '~/providers'
++import { useNotify } from '~/providers/notify'
++import { usePush } from '~/providers/push'
++import { useDeleteMyPushSubscriptionMutation, useMyPushSubscriptionsQuery } from '~/query/subscription'
++
++import { UserPushSubscriptionsTable } from '../List/UserPushSubscriptionsTable'
++
++export const UserPushSubscriptionsSelfPanel = () => {
++  const t = useT()
++  const { notify } = useNotify()
++  const { currentEndpoint, unsubscribe } = usePush()
++  const { data, isLoading, refetch } = useMyPushSubscriptionsQuery(currentEndpoint)
++  const { deleteMyPushSubscriptionMutation } = useDeleteMyPushSubscriptionMutation()
++
++  const handleDelete = async (item: { id: string }) => {
++    if (!window.confirm(t('user.adminProfile.pushSubscriptions.deleteConfirm'))) {
++      return
++    }
++
++    try {
++      await deleteMyPushSubscriptionMutation.mutateAsync({ id: item.id })
++      await refetch()
++      notify(t('user.adminProfile.pushSubscriptions.deleted'), 'success')
++    } catch {
++      notify(t('user.adminProfile.pushSubscriptions.deleteFailed'), 'destructive')
++    }
++  }
++
++  const handleUnsubscribeCurrent = async () => {
++    if (!window.confirm(t('user.profile.pushSubscriptions.revokeDeviceConfirm'))) {
++      return
++    }
++
++    try {
++      await unsubscribe()
++      await refetch()
++      notify(t('notification.ui.unsubscribe'), 'success')
++    } catch {
++      notify(t('notification.errors.errorSubscribingToNotifications'), 'destructive')
++    }
++  }
++
++  return (
++    <div className="flex flex-col rounded-lg border bg-card p-4 space-y-4">
++      <Typography variant="heading-3">{t('user.profile.pushSubscriptions.title')}</Typography>
++      <UserPushSubscriptionsTable
++        items={data?.list}
++        isLoading={isLoading}
++        onDelete={handleDelete}
++        deletingId={deleteMyPushSubscriptionMutation.isLoading ? deleteMyPushSubscriptionMutation.variables?.id : null}
++        allowCurrentDeviceActions
++        onUnsubscribeCurrent={handleUnsubscribeCurrent}
++      />
++    </div>
++  )
++}
+diff --git a/src/components/Views/User/List/UserPushSubscriptionsTable.tsx b/src/components/Views/User/List/UserPushSubscriptionsTable.tsx
+new file mode 100644
+index 0000000..73b9e3a
+--- /dev/null
++++ b/src/components/Views/User/List/UserPushSubscriptionsTable.tsx
+@@ -0,0 +1,93 @@
++'use client'
++
++import { Trash2Icon } from 'lucide-react'
++
++import { Button, Typography } from '~/components/ui'
++import type { AppMessageKey } from '~/lib/i18n'
++import { useT } from '~/providers'
++import { time } from '~/utils/time'
++
++import { isAdminPushSubscriptionItem, type TableItem } from '../types'
++
++type Props = {
++  items?: TableItem[]
++  currentEndpoint?: string | null
++  isLoading?: boolean
++  onDelete?: (item: TableItem) => void
++  deletingId?: string | null
++  allowCurrentDeviceActions?: boolean
++  onUnsubscribeCurrent?: () => void
++  /** Admin view: show endpoint URL and user-agent */
++  showSensitiveDetails?: boolean
++}
++
++export const UserPushSubscriptionsTable = ({
++  items = [],
++  currentEndpoint,
++  isLoading,
++  onDelete,
++  deletingId,
++  allowCurrentDeviceActions = false,
++  onUnsubscribeCurrent,
++  showSensitiveDetails = false,
++}: Props) => {
++  const t = useT()
++
++  if (isLoading) {
++    return <Typography variant="Body/S/Regular">{t('common.loading')}</Typography>
++  }
++
++  if (!items.length) {
++    return <Typography variant="Body/S/Regular">{t('user.adminProfile.pushSubscriptions.empty')}</Typography>
++  }
++
++  return (
++    <div className="flex flex-col gap-3">
++      {items.map((item) => {
++        const isCurrent = isAdminPushSubscriptionItem(item) ? Boolean(currentEndpoint && item.endpoint === currentEndpoint) : item.isCurrent
++
++        return (
++          <div key={item.id} className="rounded-xl border p-4 flex flex-col gap-2">
++            <div className="flex flex-wrap items-center justify-between gap-2">
++              <Typography variant="Body/S/Semibold">{t(`user.adminProfile.pushSubscriptions.providers.${item.provider}` as AppMessageKey)}</Typography>
++              {isCurrent && (
++                <Typography variant="Body/XS/Semibold" className="text-primary">
++                  {t('user.profile.pushSubscriptions.currentDevice')}
++                </Typography>
++              )}
++            </div>
++            {showSensitiveDetails && isAdminPushSubscriptionItem(item) && (
++              <>
++                <Typography variant="Body/XS/Regular" className="break-all text-muted-foreground">
++                  {item.endpoint}
++                </Typography>
++                {item.userAgent && (
++                  <Typography variant="Body/XS/Regular" className="text-muted-foreground">
++                    {item.userAgent}
++                  </Typography>
++                )}
++              </>
++            )}
++            <Typography variant="Body/XS/Regular" className="text-muted-foreground">
++              {item.createdAt ? time(item.createdAt).format('DD/MM/YYYY HH:mm') : '-'}
++            </Typography>
++            <div className="flex flex-wrap gap-2">
++              {isCurrent && allowCurrentDeviceActions ? (
++                <Button variant="outline" size="sm-md" onClick={onUnsubscribeCurrent}>
++                  {t('user.profile.pushSubscriptions.revokeDevice')}
++                </Button>
++              ) : (
++                onDelete && (
++                  <Button variant="destructive" size="sm-md" disabled={deletingId === item.id} onClick={() => onDelete(item)}>
++                    <Trash2Icon className="h-4 w-4 mr-1" />
++                    {t('user.adminProfile.pushSubscriptions.delete')}
++                  </Button>
++                )
++              )}
++            </div>
++          </div>
++        )
++      })}
++    </div>
++  )
++}
+diff --git a/src/components/Views/User/Screen/UserAdminProfileScreen.tsx b/src/components/Views/User/Screen/UserAdminProfileScreen.tsx
+index 80f14ff..131f7b1 100644
+--- a/src/components/Views/User/Screen/UserAdminProfileScreen.tsx
++++ b/src/components/Views/User/Screen/UserAdminProfileScreen.tsx
+@@ -8,6 +8,9 @@ import { useT } from '~/providers'
+ import { useUserQuery } from '~/query/user/query'
+ import { time } from '~/utils/time'
+ 
++import { UserNotificationsPanel } from '../Blocks/UserNotificationsPanel'
++import { UserPushSubscriptionsPanel } from '../Blocks/UserPushSubscriptionsPanel'
++
+ type Props = {
+   userId: string
+ }
+@@ -37,6 +40,16 @@ export const UserAdminProfileScreen = ({ userId }: Props) => {
+           </div>
+         ),
+       },
++      {
++        value: 'push-subscriptions',
++        label: t('user.adminProfile.tabs.pushSubscriptions'),
++        children: <UserPushSubscriptionsPanel userId={userId} />,
++      },
++      {
++        value: 'notifications',
++        label: t('user.adminProfile.tabs.notifications'),
++        children: <UserNotificationsPanel userId={userId} />,
++      },
+     ],
+     [t, user, userId],
+   )
+diff --git a/src/components/Views/User/types.ts b/src/components/Views/User/types.ts
+new file mode 100644
+index 0000000..3216f91
+--- /dev/null
++++ b/src/components/Views/User/types.ts
+@@ -0,0 +1,9 @@
++import type { PushSubscriptionItemModel, PushSubscriptionPublicItemModel } from '~/api/user'
++
++export type TableItem = PushSubscriptionItemModel | PushSubscriptionPublicItemModel
++
++export type { TableItem as PushSubscriptionTableItem }
++
++export const isAdminPushSubscriptionItem = (item: TableItem): item is PushSubscriptionItemModel => {
++  return 'endpoint' in item
++}
+diff --git a/src/constants/routes.ts b/src/constants/routes.ts
+index 6272c66..e8a1dca 100644
+--- a/src/constants/routes.ts
++++ b/src/constants/routes.ts
+@@ -23,6 +23,18 @@ export const routes = {
+     tKey: 'navigation.profile' as const,
+     needAuth: true,
+   },
++  notifications: {
++    path: '/notifications',
++    name: 'Notifications',
++    tKey: 'navigation.notifications' as const,
++    needAuth: true,
++  },
++  adminNotifications: {
++    path: '/admin/notifications',
++    name: 'Admin Notifications',
++    tKey: 'navigation.adminNotifications' as const,
++    needAuth: true,
++  },
+   login: {
+     path: '/login',
+     name: 'Login',
+diff --git a/src/lib/i18n/messages/en.ts b/src/lib/i18n/messages/en.ts
+index 9136415..86c1ae8 100644
+--- a/src/lib/i18n/messages/en.ts
++++ b/src/lib/i18n/messages/en.ts
+@@ -89,6 +89,7 @@ export const en = {
+     users: 'Users',
+     uiKit: 'UI Kit',
+     profile: 'Profile',
++    notifications: 'Notifications',
+     login: 'Login',
+     logout: 'Logout',
+     refresh: 'Refresh',
+@@ -98,6 +99,7 @@ export const en = {
+     llmUsageDashboard: 'LLM usage',
+     i18nDashboard: 'Translations',
+     articles: 'Articles',
++    adminNotifications: 'Notifications',
+     articlesCreate: 'Create Article',
+     articlePublic: 'Article Public',
+     articlesPublic: 'Articles Public',
+@@ -218,6 +220,88 @@ export const en = {
+     title: '429 - Too Many Requests',
+     pleaseTryAgainLater: 'Please try again later.',
+   },
++  platformNotifications: {
++    title: 'Notifications',
++    adminTitle: 'All notifications',
++    empty: 'No notifications yet',
++    typeLabel: 'Type',
++    sourceLabel: 'Source',
++    openTarget: 'Open',
++    raw: 'RAW',
++    rawHide: 'Hide RAW',
++    deliveryStatus: {
++      pending: 'Pending',
++      delivered: 'Delivered',
++      failed: 'Failed',
++      skipped_no_subscription: 'No push subscription',
++      skipped: 'Skipped',
++      record_only: 'Record only',
++    },
++    channel: {
++      web_push: 'Web push',
++      email: 'Email',
++    },
++    type: {
++      system: 'System',
++      test: 'Test',
++      article_published: 'Article published',
++      article_updated: 'Article updated',
++      user_message: 'User message',
++      mfa_enabled: 'MFA enabled',
++      mfa_disabled: 'MFA disabled',
++      new_login: 'New sign-in',
++    },
++    source: {
++      manual_test: 'Manual test',
++      webhook: 'Webhook',
++      system: 'System',
++      manual: 'Manual',
++      article_publish: 'Article publish',
++      article_update: 'Article update',
++      mfa_enable: 'MFA enable',
++      mfa_disable: 'MFA disable',
++      auth_login: 'Sign-in',
++    },
++    filters: {
++      deliveryStatus: 'Delivery status',
++      type: 'Type',
++      recipientUserId: 'Recipient user ID',
++      recipientUserIdPlaceholder: 'MongoDB ObjectId',
++    },
++    errors: {
++      titleRequired: 'Notification title is required',
++      invalidUrlPath: 'Invalid notification link path',
++      invalidRecipientUserId: 'Invalid recipient user id',
++      emailNotConfigured: 'Email channel is not configured',
++      emailSendFailed: 'Failed to send email notification',
++    },
++    triggers: {
++      articlePublished: {
++        title: 'Article published',
++        body: 'Article "{title}" is now live',
++        fallbackTitle: 'Untitled article',
++      },
++      articleUpdated: {
++        title: 'Article updated',
++        body: 'Article "{title}" was updated',
++      },
++      mfaEnabled: {
++        title: 'Two-factor authentication enabled',
++        body: 'Two-factor authentication was enabled on your account.',
++      },
++      mfaDisabled: {
++        title: 'Two-factor authentication disabled',
++        body: 'Two-factor authentication was disabled on your account.',
++      },
++      newLogin: {
++        title: 'New sign-in to your account',
++        body: 'Sign-in from IP {ip}. Device: {userAgent}.{backup}',
++        unknownIp: 'unknown IP',
++        unknownDevice: 'unknown device',
++        usedBackupCode: ' A backup code was used.',
++      },
++    },
++  },
+   notification: {
+     ui: {
+       unsubscribe: 'Unsubscribe',
+@@ -338,6 +422,12 @@ export const en = {
+       invalidEmailOrPassword: 'Invalid email or password',
+       userAccountIsBlocked: 'User account is blocked',
+     },
++    email: {
++      signUp: {
++        subject: 'Registration code',
++        text: 'Registration code: {code}\n\nIt expires in 30 minutes. If you did not request this, ignore this email.',
++      },
++    },
+   },
+   totp: {
+     errors: {
+@@ -358,6 +448,34 @@ export const en = {
+       baseTitle: 'Main information',
+       tabs: {
+         base: 'Main',
++        pushSubscriptions: 'Push subscriptions',
++        notifications: 'Notifications',
++      },
++      pushSubscriptions: {
++        title: 'Push subscriptions',
++        empty: 'No push subscriptions',
++        delete: 'Remove',
++        deleteConfirm: 'Remove this push subscription from the account?',
++        deleted: 'Subscription removed',
++        deleteFailed: 'Failed to remove subscription',
++        providers: {
++          apple: 'Apple Push',
++          fcm: 'FCM',
++          mozilla: 'Mozilla',
++          unknown: 'Unknown',
++        },
++      },
++      notifications: {
++        title: 'User notifications',
++      },
++    },
++    profile: {
++      pushSubscriptions: {
++        title: 'Active notification subscriptions',
++        currentDevice: 'Current device',
++        otherDevices: 'Other subscriptions',
++        revokeDevice: 'Unsubscribe on this device',
++        revokeDeviceConfirm: 'Unsubscribe push notifications on this device?',
+       },
+     },
+     roles: {
+@@ -895,6 +1013,7 @@ export const en = {
+     errors: {
+       invalidSubscription: 'Invalid subscription',
+       invalidParams: 'Invalid params',
++      subscriptionNotFound: 'Subscription not found',
+     },
+   },
+   rum: {
+diff --git a/src/lib/i18n/messages/ru.ts b/src/lib/i18n/messages/ru.ts
+index 528ef0b..7c11908 100644
+--- a/src/lib/i18n/messages/ru.ts
++++ b/src/lib/i18n/messages/ru.ts
+@@ -89,6 +89,7 @@ export const ru = {
+     users: 'Пользователи',
+     uiKit: 'UI Kit',
+     profile: 'Профиль',
++    notifications: 'Уведомления',
+     login: 'Вход',
+     logout: 'Выход',
+     refresh: 'Обновить',
+@@ -98,6 +99,7 @@ export const ru = {
+     llmUsageDashboard: 'Использование LLM',
+     i18nDashboard: 'Переводы',
+     articles: 'Статьи',
++    adminNotifications: 'Уведомления',
+     articlesCreate: 'Создать статью',
+     articlePublic: 'Публичная статья',
+     articlesPublic: 'Публичные статьи',
+@@ -217,6 +219,88 @@ export const ru = {
+     title: '429 - Слишком много запросов',
+     pleaseTryAgainLater: 'Попробуйте позже.',
+   },
++  platformNotifications: {
++    title: 'Уведомления',
++    adminTitle: 'Все уведомления',
++    empty: 'Уведомлений пока нет',
++    typeLabel: 'Тип',
++    sourceLabel: 'Источник',
++    openTarget: 'Открыть',
++    raw: 'RAW',
++    rawHide: 'Скрыть RAW',
++    deliveryStatus: {
++      pending: 'В очереди',
++      delivered: 'Доставлено',
++      failed: 'Ошибка',
++      skipped_no_subscription: 'Нет push-подписки',
++      skipped: 'Пропущено',
++      record_only: 'Только запись',
++    },
++    channel: {
++      web_push: 'Web push',
++      email: 'Email',
++    },
++    type: {
++      system: 'Системное',
++      test: 'Тест',
++      article_published: 'Статья опубликована',
++      article_updated: 'Статья обновлена',
++      user_message: 'Сообщение пользователю',
++      mfa_enabled: 'MFA включена',
++      mfa_disabled: 'MFA отключена',
++      new_login: 'Новый вход',
++    },
++    source: {
++      manual_test: 'Ручной тест',
++      webhook: 'Webhook',
++      system: 'Система',
++      manual: 'Вручную',
++      article_publish: 'Публикация статьи',
++      article_update: 'Обновление статьи',
++      mfa_enable: 'Включение MFA',
++      mfa_disable: 'Отключение MFA',
++      auth_login: 'Вход в аккаунт',
++    },
++    filters: {
++      deliveryStatus: 'Статус доставки',
++      type: 'Тип',
++      recipientUserId: 'ID получателя',
++      recipientUserIdPlaceholder: 'MongoDB ObjectId',
++    },
++    errors: {
++      titleRequired: 'Заголовок уведомления обязателен',
++      invalidUrlPath: 'Некорректный путь ссылки уведомления',
++      invalidRecipientUserId: 'Некорректный id получателя',
++      emailNotConfigured: 'Email-канал не настроен',
++      emailSendFailed: 'Не удалось отправить email-уведомление',
++    },
++    triggers: {
++      articlePublished: {
++        title: 'Статья опубликована',
++        body: 'Статья «{title}» опубликована',
++        fallbackTitle: 'Статья без названия',
++      },
++      articleUpdated: {
++        title: 'Статья обновлена',
++        body: 'Статья «{title}» была обновлена',
++      },
++      mfaEnabled: {
++        title: 'Двухфакторная аутентификация включена',
++        body: 'На вашем аккаунте включена двухфакторная аутентификация.',
++      },
++      mfaDisabled: {
++        title: 'Двухфакторная аутентификация отключена',
++        body: 'На вашем аккаунте отключена двухфакторная аутентификация.',
++      },
++      newLogin: {
++        title: 'Новый вход в аккаунт',
++        body: 'Вход с IP {ip}. Устройство: {userAgent}.{backup}',
++        unknownIp: 'неизвестный IP',
++        unknownDevice: 'неизвестное устройство',
++        usedBackupCode: ' Использован резервный код.',
++      },
++    },
++  },
+   notification: {
+     ui: {
+       unsubscribe: 'Отписаться',
+@@ -337,6 +421,12 @@ export const ru = {
+       invalidEmailOrPassword: 'Неверный email или пароль',
+       userAccountIsBlocked: 'Аккаунт пользователя заблокирован',
+     },
++    email: {
++      signUp: {
++        subject: 'Код регистрации',
++        text: 'Код подтверждения: {code}\n\nОн действителен 30 минут. Если вы не запрашивали регистрацию, проигнорируйте это письмо.',
++      },
++    },
+   },
+   totp: {
+     errors: {
+@@ -357,6 +447,34 @@ export const ru = {
+       baseTitle: 'Основная информация',
+       tabs: {
+         base: 'Основная',
++        pushSubscriptions: 'Push-подписки',
++        notifications: 'Уведомления',
++      },
++      pushSubscriptions: {
++        title: 'Push-подписки',
++        empty: 'Нет push-подписок',
++        delete: 'Удалить',
++        deleteConfirm: 'Удалить эту push-подписку у пользователя?',
++        deleted: 'Подписка удалена',
++        deleteFailed: 'Не удалось удалить подписку',
++        providers: {
++          apple: 'Apple Push',
++          fcm: 'FCM',
++          mozilla: 'Mozilla',
++          unknown: 'Неизвестно',
++        },
++      },
++      notifications: {
++        title: 'Уведомления пользователя',
++      },
++    },
++    profile: {
++      pushSubscriptions: {
++        title: 'Активные подписки на уведомления',
++        currentDevice: 'Текущее устройство',
++        otherDevices: 'Другие подписки',
++        revokeDevice: 'Отписаться на этом устройстве',
++        revokeDeviceConfirm: 'Отписаться от push-уведомлений на этом устройстве?',
+       },
+     },
+     roles: {
+@@ -891,6 +1009,7 @@ export const ru = {
+     errors: {
+       invalidSubscription: 'Некорректная подписка',
+       invalidParams: 'Некорректные параметры',
++      subscriptionNotFound: 'Подписка не найдена',
+     },
+   },
+   rum: {
+diff --git a/src/providers/DeferredClientChrome.tsx b/src/providers/DeferredClientChrome.tsx
+index 5d1467c..1b8d88c 100644
+--- a/src/providers/DeferredClientChrome.tsx
++++ b/src/providers/DeferredClientChrome.tsx
+@@ -1,14 +1,45 @@
+ 'use client'
+ 
+ import dynamic from 'next/dynamic'
++import type { ComponentType } from 'react'
++
++import { Logger } from '~/utils/logger'
++
++function nullComponent(): null {
++  return null
++}
++
++const logger = new Logger(['DeferredClientChrome', '[src/providers/DeferredClientChrome.tsx]'])
++
++/**
++ * Wraps a deferred chunk load so ad blockers / stale Turbopack hashes never crash the layout.
++ * In production, filters may still block paths like `Rum/WebVitalsReporter` — the app keeps working.
++ */
++function safeDynamicImport<T extends ComponentType>(importFn: () => Promise<{ default: T }>, label: string) {
++  return dynamic(
++    () =>
++      importFn().catch((error) => {
++        if (process.env.NODE_ENV !== 'production') {
++          logger.warn(`[DeferredClientChrome] ${label} failed to load (ad blocker, stale chunk, or offline).`, error)
++        }
++
++        return { default: nullComponent as unknown as T }
++      }),
++    { ssr: false, loading: () => null },
++  )
++}
+ 
+ /** Loads after the main bundle — RUM + `web-vitals` stay out of the critical path. */
+-const WebVitalsReporter = dynamic(() => import('~/providers/Rum/WebVitalsReporter').then((m) => ({ default: m.WebVitalsReporter })), { ssr: false })
++const WebVitalsReporter = safeDynamicImport(
++  () => import('~/providers/Rum/WebVitalsReporter').then((m) => ({ default: m.WebVitalsReporter })),
++  'WebVitalsReporter',
++)
+ 
+ /** Banner is non-blocking for LCP; defer to shorten initial JS parse on public pages. */
+-const CookieConsentBanner = dynamic(() => import('~/providers/cookie-consent/CookieConsentBanner').then((m) => ({ default: m.CookieConsentBanner })), {
+-  ssr: false,
+-})
++const CookieConsentBanner = safeDynamicImport(
++  () => import('~/providers/cookie-consent/CookieConsentBanner').then((m) => ({ default: m.CookieConsentBanner })),
++  'CookieConsentBanner',
++)
+ 
+ export function DeferredClientChrome() {
+   return (
+diff --git a/src/providers/notify/notify-provider.tsx b/src/providers/notify/notify-provider.tsx
+index 12549a5..cb54619 100644
+--- a/src/providers/notify/notify-provider.tsx
++++ b/src/providers/notify/notify-provider.tsx
+@@ -55,7 +55,12 @@ export const NotifyProvider = ({ children }: { children: React.ReactNode }) => {
+         }
+ 
+         if (document.visibilityState === 'visible') {
+-          handleNotify(event.data.payload.body, 'info', { soundEnabled: true })
++          const p = event.data.payload
++          const message = p?.title && p?.body && p.title !== p.body ? `${p.title}: ${p.body}` : p?.body || p?.title || ''
++
++          if (message) {
++            handleNotify(message, 'info', { soundEnabled: true, delay: 8000 })
++          }
+         }
+       }
+     }
+diff --git a/src/providers/push/usePush.ts b/src/providers/push/usePush.ts
+index 63f4ef1..98fbd42 100644
+--- a/src/providers/push/usePush.ts
++++ b/src/providers/push/usePush.ts
+@@ -18,9 +18,33 @@ function urlBase64ToUint8Array(base64String: string) {
+   return outputArray
+ }
+ 
++async function syncSubscriptionWithBackend(subscription: PushSubscription): Promise<boolean> {
++  const api = new ClientSubscriptionApi()
++
++  try {
++    const res = await api.status({ endpoint: subscription.endpoint })
++
++    if (res?.subscribed) {
++      return true
++    }
++  } catch {
++    // continue to resync attempt
++  }
++
++  try {
++    await api.subscribe({ subscription })
++
++    return true
++  } catch {
++    return false
++  }
++}
++
+ export const usePush = (params?: { publicVapidKey?: string; getUserId?: () => string | undefined }) => {
+   const [permission, setPermission] = useState<PushPermission>('unsupported')
+   const [subscribed, setSubscribed] = useState<boolean>(false)
++  const [isReady, setIsReady] = useState<boolean>(false)
++  const [currentEndpoint, setCurrentEndpoint] = useState<string | null>(null)
+   const registrationRef = useRef<ServiceWorkerRegistration | null>(null)
+ 
+   useEffect(() => {
+@@ -28,6 +52,7 @@ export const usePush = (params?: { publicVapidKey?: string; getUserId?: () => st
+ 
+     if (!supported) {
+       setPermission('unsupported')
++      setIsReady(true)
+ 
+       return
+     }
+@@ -35,45 +60,44 @@ export const usePush = (params?: { publicVapidKey?: string; getUserId?: () => st
+     setPermission(Notification.permission)
+   }, [])
+ 
++  const register = useCallback(async () => {
++    if (!('serviceWorker' in navigator)) return null
++    const reg = await navigator.serviceWorker.register('/sw.js')
++    registrationRef.current = reg
++
++    return reg
++  }, [])
++
+   // Synchronize subscription status when mounting
+   useEffect(() => {
+     ;(async () => {
+-      const reg = registrationRef.current || (await register())
++      try {
++        const reg = registrationRef.current || (await register())
+ 
+-      if (!reg) {
+-        setSubscribed(false)
++        if (!reg) {
++          setSubscribed(false)
++          setCurrentEndpoint(null)
+ 
+-        return
+-      }
++          return
++        }
+ 
+-      const existing = await reg.pushManager.getSubscription()
++        const existing = await reg.pushManager.getSubscription()
+ 
+-      if (!existing) {
+-        setSubscribed(false)
++        setCurrentEndpoint(existing?.endpoint ?? null)
+ 
+-        return
+-      }
++        if (!existing) {
++          setSubscribed(false)
+ 
+-      try {
+-        const api = new ClientSubscriptionApi()
+-        const res = await api.status({ endpoint: existing.endpoint })
++          return
++        }
+ 
+-        setSubscribed(!!res?.subscribed)
+-      } catch {
+-        // if the backend is not available - consider it by the local fact
+-        setSubscribed(true)
++        const synced = await syncSubscriptionWithBackend(existing)
++        setSubscribed(synced || true)
++      } finally {
++        setIsReady(true)
+       }
+     })()
+-    // eslint-disable-next-line react-hooks/exhaustive-deps
+-  }, [])
+-
+-  const register = useCallback(async () => {
+-    if (!('serviceWorker' in navigator)) return null
+-    const reg = await navigator.serviceWorker.register('/sw.js')
+-    registrationRef.current = reg
+-
+-    return reg
+-  }, [])
++  }, [register])
+ 
+   const askPermission = useCallback(async () => {
+     if (!('Notification' in window)) return 'unsupported' as PushPermission
+@@ -96,12 +120,13 @@ export const usePush = (params?: { publicVapidKey?: string; getUserId?: () => st
+     const existing = await reg.pushManager.getSubscription()
+ 
+     if (existing) {
++      await syncSubscriptionWithBackend(existing)
+       setSubscribed(true)
++      setCurrentEndpoint(existing.endpoint)
+ 
+       return existing
+     }
+ 
+-    // Public VAPID key is required for Chrome/Firefox
+     const rawPublicKey = params?.publicVapidKey || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+ 
+     if (!rawPublicKey) {
+@@ -116,6 +141,7 @@ export const usePush = (params?: { publicVapidKey?: string; getUserId?: () => st
+     await api.subscribe({ subscription: sub })
+ 
+     setSubscribed(true)
++    setCurrentEndpoint(sub.endpoint)
+ 
+     return sub
+   }, [askPermission, permission, register, params])
+@@ -134,7 +160,8 @@ export const usePush = (params?: { publicVapidKey?: string; getUserId?: () => st
+     await api.unsubscribe({ endpoint })
+ 
+     setSubscribed(false)
++    setCurrentEndpoint(null)
+   }, [register])
+ 
+-  return { permission, subscribed, register, askPermission, subscribe, unsubscribe }
++  return { permission, subscribed, isReady, currentEndpoint, register, askPermission, subscribe, unsubscribe }
+ }
+diff --git a/src/query/notification/index.ts b/src/query/notification/index.ts
+new file mode 100644
+index 0000000..71e5834
+--- /dev/null
++++ b/src/query/notification/index.ts
+@@ -0,0 +1 @@
++export * from './query/useNotificationsListQuery'
+diff --git a/src/query/notification/query/useNotificationsListQuery.ts b/src/query/notification/query/useNotificationsListQuery.ts
+new file mode 100644
+index 0000000..a6ea74a
+--- /dev/null
++++ b/src/query/notification/query/useNotificationsListQuery.ts
+@@ -0,0 +1,25 @@
++import { ClientNotificationApi, PlatformNotificationFilter, PlatformNotificationModel } from '~/api/notification'
++import { useQueryBuilder } from '~/hooks/useQueryBuilder'
++import { PaginationMeta } from '~/types'
++import { jsonStringifySafety } from '~/utils/jsonSafe'
++
++export const NOTIFICATIONS_LIST_QUERY_KEY = 'notifications-list'
++
++export const fetchNotifications =
++  (mode: 'mine' | 'admin', filter: Partial<PlatformNotificationFilter>) => async (): Promise<PaginationMeta<PlatformNotificationModel>> => {
++    const api = new ClientNotificationApi()
++
++    if (mode === 'admin') {
++      return api.listAdmin(filter)
++    }
++
++    return api.listMine(filter)
++  }
++
++export const useNotificationsListQuery = (mode: 'mine' | 'admin', filter: Partial<PlatformNotificationFilter>, enabled = true) => {
++  return useQueryBuilder({
++    key: [NOTIFICATIONS_LIST_QUERY_KEY, mode, jsonStringifySafety(filter)].join('-'),
++    enabled,
++    method: fetchNotifications(mode, filter),
++  })
++}
+diff --git a/src/query/subscription/index.ts b/src/query/subscription/index.ts
+new file mode 100644
+index 0000000..b2bbfd7
+--- /dev/null
++++ b/src/query/subscription/index.ts
+@@ -0,0 +1,2 @@
++export * from './mutation/useDeleteMyPushSubscriptionMutation'
++export * from './query/useMyPushSubscriptionsQuery'
+diff --git a/src/query/subscription/mutation/useDeleteMyPushSubscriptionMutation.ts b/src/query/subscription/mutation/useDeleteMyPushSubscriptionMutation.ts
+new file mode 100644
+index 0000000..ead1c5b
+--- /dev/null
++++ b/src/query/subscription/mutation/useDeleteMyPushSubscriptionMutation.ts
+@@ -0,0 +1,15 @@
++'use client'
++
++import { useMutation } from 'react-query'
++
++import { ClientSubscriptionApi } from '~/api/subscription'
++
++export const useDeleteMyPushSubscriptionMutation = () => {
++  const deleteMyPushSubscriptionMutation = useMutation(async ({ id }: { id: string }) => {
++    const api = new ClientSubscriptionApi()
++
++    await api.deleteSubscription({ id })
++  })
++
++  return { deleteMyPushSubscriptionMutation }
++}
+diff --git a/src/query/subscription/query/useMyPushSubscriptionsQuery.ts b/src/query/subscription/query/useMyPushSubscriptionsQuery.ts
+new file mode 100644
+index 0000000..194fd34
+--- /dev/null
++++ b/src/query/subscription/query/useMyPushSubscriptionsQuery.ts
+@@ -0,0 +1,18 @@
++import { ClientSubscriptionApi } from '~/api/subscription'
++import { useQueryBuilder } from '~/hooks/useQueryBuilder'
++
++export const MY_PUSH_SUBSCRIPTIONS_QUERY_KEY = 'my-push-subscriptions'
++
++export const fetchMyPushSubscriptions = (currentEndpoint?: string | null) => async () => {
++  const api = new ClientSubscriptionApi()
++
++  return api.listSubscriptions(currentEndpoint)
++}
++
++export const useMyPushSubscriptionsQuery = (currentEndpoint?: string | null, enabled = true) => {
++  return useQueryBuilder({
++    key: `${MY_PUSH_SUBSCRIPTIONS_QUERY_KEY}:${currentEndpoint ?? ''}`,
++    enabled,
++    method: fetchMyPushSubscriptions(currentEndpoint),
++  })
++}
+diff --git a/src/query/user/mutation/index.ts b/src/query/user/mutation/index.ts
+index c0b8263..f797e33 100644
+--- a/src/query/user/mutation/index.ts
++++ b/src/query/user/mutation/index.ts
+@@ -1 +1,2 @@
++export * from './useDeleteUserPushSubscriptionMutation'
+ export * from './useUpdateByAdminMutation'
+diff --git a/src/query/user/mutation/useDeleteUserPushSubscriptionMutation.ts b/src/query/user/mutation/useDeleteUserPushSubscriptionMutation.ts
+new file mode 100644
+index 0000000..198ac8c
+--- /dev/null
++++ b/src/query/user/mutation/useDeleteUserPushSubscriptionMutation.ts
+@@ -0,0 +1,15 @@
++'use client'
++
++import { useMutation } from 'react-query'
++
++import { ClientUserApi } from '~/api/user'
++
++export const useDeleteUserPushSubscriptionMutation = () => {
++  const deleteUserPushSubscriptionMutation = useMutation(async ({ userId, endpoint }: { userId: string; endpoint: string }) => {
++    const api = new ClientUserApi()
++
++    await api.deleteUserPushSubscription(userId, endpoint)
++  })
++
++  return { deleteUserPushSubscriptionMutation }
++}
+diff --git a/src/query/user/query/index.ts b/src/query/user/query/index.ts
+index a4e6f0b..fb08fa2 100644
+--- a/src/query/user/query/index.ts
++++ b/src/query/user/query/index.ts
+@@ -2,4 +2,5 @@ export * from './useUserListQuery'
+ export * from './useUserMfaStatusQuery'
+ export * from './useUserProfileQuery'
+ export * from './useUserPushStatusQuery'
++export * from './useUserPushSubscriptionsQuery'
+ export * from './useUserQuery'
+diff --git a/src/query/user/query/useUserPushSubscriptionsQuery.ts b/src/query/user/query/useUserPushSubscriptionsQuery.ts
+new file mode 100644
+index 0000000..ff1105e
+--- /dev/null
++++ b/src/query/user/query/useUserPushSubscriptionsQuery.ts
+@@ -0,0 +1,18 @@
++import { ClientUserApi } from '~/api/user'
++import { useQueryBuilder } from '~/hooks/useQueryBuilder'
++
++export const USER_PUSH_SUBSCRIPTIONS_QUERY_KEY = 'user-push-subscriptions'
++
++export const fetchUserPushSubscriptions = (userId: string) => async () => {
++  const api = new ClientUserApi()
++
++  return api.getUserPushSubscriptions(userId)
++}
++
++export const useUserPushSubscriptionsQuery = (userId: string, enabled = true) => {
++  return useQueryBuilder({
++    key: [USER_PUSH_SUBSCRIPTIONS_QUERY_KEY, userId].join('-'),
++    enabled: enabled && Boolean(userId),
++    method: fetchUserPushSubscriptions(userId),
++  })
++}

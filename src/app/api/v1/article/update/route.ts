@@ -4,6 +4,7 @@ import ArticleRevision from '@lib/db/models/ArticleRevision'
 import { articleDocumentToApiJson } from '@lib/db/utils/articleApiJson'
 import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
+import { notifyArticlePublishedFromRevision, notifyArticleUpdated } from '@lib/services/article-notification.service'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -46,6 +47,10 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
 
     const updatedAt = time().toISOString()
     const isPublishing = body.status === ArticleStatus.PUBLISHED && !article.publishedAt
+    const revisionChanged = body.revisionId != null && String(body.revisionId) !== String(article.revisionId ?? '')
+    const slugChanged = body.slug != null && String(body.slug) !== String(article.slug ?? '')
+    const isPublishedUpdate =
+      article.status === ArticleStatus.PUBLISHED && body.status !== ArticleStatus.UNPUBLISHED && !isPublishing && (revisionChanged || slugChanged)
 
     await article.updateOne({ ...body, _id: id, updatedAt, publishedAt: isPublishing ? updatedAt : article.publishedAt })
 
@@ -100,6 +105,24 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
 
     revalidatePath('/sitemap.xml')
     revalidatePath('/rss.xml')
+
+    const revisionTitle = currentRevision?.title ?? null
+
+    if (isPublishing) {
+      await notifyArticlePublishedFromRevision({
+        recipientUserId: authResult.payload.sub,
+        articleId: id,
+        revisionTitle,
+        t,
+      })
+    } else if (isPublishedUpdate && data.status === ArticleStatus.PUBLISHED) {
+      await notifyArticleUpdated({
+        recipientUserId: authResult.payload.sub,
+        articleId: id,
+        articleTitle: revisionTitle?.trim() || data.slug || id,
+        t,
+      })
+    }
 
     return response.json(articleDocumentToApiJson(data))
   })

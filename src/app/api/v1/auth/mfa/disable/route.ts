@@ -5,6 +5,7 @@ import { ValidationError } from '@lib/error/custom-errors'
 import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
 import { decryptSecret, verifyTotpCode } from '@lib/security/totp'
+import { notifyMfaDisabled } from '@lib/services/security-notification.service'
 import { NextRequest } from 'next/server'
 
 import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
@@ -58,6 +59,11 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) => {
     settings.mfaSecret = null
     settings.mfaBackupCodes = []
     await settings.save()
+
+    void notifyMfaDisabled({
+      recipientUserId: user._id.toString(),
+      t,
+    })
 
     return res.json(
       {

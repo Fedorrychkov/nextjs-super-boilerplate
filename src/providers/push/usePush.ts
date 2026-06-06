@@ -18,9 +18,33 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray
 }
 
+async function syncSubscriptionWithBackend(subscription: PushSubscription): Promise<boolean> {
+  const api = new ClientSubscriptionApi()
+
+  try {
+    const res = await api.status({ endpoint: subscription.endpoint })
+
+    if (res?.subscribed) {
+      return true
+    }
+  } catch {
+    // continue to resync attempt
+  }
+
+  try {
+    await api.subscribe({ subscription })
+
+    return true
+  } catch {
+    return false
+  }
+}
+
 export const usePush = (params?: { publicVapidKey?: string; getUserId?: () => string | undefined }) => {
   const [permission, setPermission] = useState<PushPermission>('unsupported')
   const [subscribed, setSubscribed] = useState<boolean>(false)
+  const [isReady, setIsReady] = useState<boolean>(false)
+  const [currentEndpoint, setCurrentEndpoint] = useState<string | null>(null)
   const registrationRef = useRef<ServiceWorkerRegistration | null>(null)
 
   useEffect(() => {
@@ -28,43 +52,12 @@ export const usePush = (params?: { publicVapidKey?: string; getUserId?: () => st
 
     if (!supported) {
       setPermission('unsupported')
+      setIsReady(true)
 
       return
     }
 
     setPermission(Notification.permission)
-  }, [])
-
-  // Synchronize subscription status when mounting
-  useEffect(() => {
-    ;(async () => {
-      const reg = registrationRef.current || (await register())
-
-      if (!reg) {
-        setSubscribed(false)
-
-        return
-      }
-
-      const existing = await reg.pushManager.getSubscription()
-
-      if (!existing) {
-        setSubscribed(false)
-
-        return
-      }
-
-      try {
-        const api = new ClientSubscriptionApi()
-        const res = await api.status({ endpoint: existing.endpoint })
-
-        setSubscribed(!!res?.subscribed)
-      } catch {
-        // if the backend is not available - consider it by the local fact
-        setSubscribed(true)
-      }
-    })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const register = useCallback(async () => {
@@ -74,6 +67,37 @@ export const usePush = (params?: { publicVapidKey?: string; getUserId?: () => st
 
     return reg
   }, [])
+
+  // Synchronize subscription status when mounting
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const reg = registrationRef.current || (await register())
+
+        if (!reg) {
+          setSubscribed(false)
+          setCurrentEndpoint(null)
+
+          return
+        }
+
+        const existing = await reg.pushManager.getSubscription()
+
+        setCurrentEndpoint(existing?.endpoint ?? null)
+
+        if (!existing) {
+          setSubscribed(false)
+
+          return
+        }
+
+        const synced = await syncSubscriptionWithBackend(existing)
+        setSubscribed(synced || true)
+      } finally {
+        setIsReady(true)
+      }
+    })()
+  }, [register])
 
   const askPermission = useCallback(async () => {
     if (!('Notification' in window)) return 'unsupported' as PushPermission
@@ -96,12 +120,13 @@ export const usePush = (params?: { publicVapidKey?: string; getUserId?: () => st
     const existing = await reg.pushManager.getSubscription()
 
     if (existing) {
+      await syncSubscriptionWithBackend(existing)
       setSubscribed(true)
+      setCurrentEndpoint(existing.endpoint)
 
       return existing
     }
 
-    // Public VAPID key is required for Chrome/Firefox
     const rawPublicKey = params?.publicVapidKey || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
 
     if (!rawPublicKey) {
@@ -116,6 +141,7 @@ export const usePush = (params?: { publicVapidKey?: string; getUserId?: () => st
     await api.subscribe({ subscription: sub })
 
     setSubscribed(true)
+    setCurrentEndpoint(sub.endpoint)
 
     return sub
   }, [askPermission, permission, register, params])
@@ -134,7 +160,8 @@ export const usePush = (params?: { publicVapidKey?: string; getUserId?: () => st
     await api.unsubscribe({ endpoint })
 
     setSubscribed(false)
+    setCurrentEndpoint(null)
   }, [register])
 
-  return { permission, subscribed, register, askPermission, subscribe, unsubscribe }
+  return { permission, subscribed, isReady, currentEndpoint, register, askPermission, subscribe, unsubscribe }
 }

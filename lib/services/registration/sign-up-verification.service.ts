@@ -7,7 +7,7 @@ import type { TFunction } from '~/lib/i18n'
 import { time } from '~/utils/time'
 
 import { emailService } from '../email/email.service'
-import { isRussianEmailLocale, resolveVerifyEmailTemplateName } from '../email/email-locale'
+import { resolveVerifyEmailTemplateName } from '../email/email-locale'
 import {
   PENDING_SIGNUP_TTL_SEC,
   REDIS_PREFIX,
@@ -129,11 +129,8 @@ export async function requestSignupCode(params: { email: string; password: strin
   await cacheClient.incr(sendCountKey(email), SEND_WINDOW_SEC)
   await cacheClient.del(verifyFailKey(email))
 
-  const ru = isRussianEmailLocale(params.locale)
-  const subject = ru ? 'Код регистрации' : 'Your registration code'
-  const text = ru
-    ? `Код подтверждения: ${code}\n\nОн действителен 30 минут. Если вы не запрашивали регистрацию, проигнорируйте это письмо.`
-    : `Your verification code is: ${code}\n\nIt expires in 30 minutes. If you did not request this, ignore this email.`
+  const subject = t('auth.messages.signUpCodeSent')
+  const text = t('auth.email.signUp.text', { code })
 
   try {
     await emailService.sendTransactional({

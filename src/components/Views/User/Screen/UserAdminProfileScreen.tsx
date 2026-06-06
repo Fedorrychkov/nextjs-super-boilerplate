@@ -8,6 +8,9 @@ import { useT } from '~/providers'
 import { useUserQuery } from '~/query/user/query'
 import { time } from '~/utils/time'
 
+import { UserNotificationsPanel } from '../Blocks/UserNotificationsPanel'
+import { UserPushSubscriptionsPanel } from '../Blocks/UserPushSubscriptionsPanel'
+
 type Props = {
   userId: string
 }
@@ -36,6 +39,16 @@ export const UserAdminProfileScreen = ({ userId }: Props) => {
             </Typography>
           </div>
         ),
+      },
+      {
+        value: 'push-subscriptions',
+        label: t('user.adminProfile.tabs.pushSubscriptions'),
+        children: <UserPushSubscriptionsPanel userId={userId} />,
+      },
+      {
+        value: 'notifications',
+        label: t('user.adminProfile.tabs.notifications'),
+        children: <UserNotificationsPanel userId={userId} />,
       },
     ],
     [t, user, userId],

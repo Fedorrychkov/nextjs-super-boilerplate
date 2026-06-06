@@ -1,8 +1,9 @@
 import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
-import { webPushService } from '@lib/services/web-push.service'
+import { platformNotificationService } from '@lib/services/platform-notification.service'
 import { NextRequest } from 'next/server'
 
+import { PlatformNotificationType } from '~/api/notification'
 import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 import { AnyString } from '~/types'
 
@@ -12,18 +13,21 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) => {
     const user = authResult.payload
 
     const body: { type: 'test' | AnyString } = await req.json()
+    const pushType = body.type ?? PlatformNotificationType.TEST
 
-    const result = await webPushService.sendToUser(user.sub, {
-      type: body.type,
-      title: t('push.messages.newMessage'),
-      body: t('push.messages.exampleBody', { type: body.type }),
-      url: '/ui-kit',
-      tag: 'ui-kit',
-      dedupId: 'ui-kit',
-      ts: Date.now(),
-    })
+    const notification = await platformNotificationService.createAndDeliver(
+      {
+        recipientUserId: user.sub,
+        type: pushType === 'test' ? PlatformNotificationType.TEST : String(pushType),
+        title: t('push.messages.newMessage'),
+        body: t('push.messages.exampleBody', { type: pushType }),
+        urlPath: '/ui-kit',
+        source: 'manual_test',
+      },
+      t,
+    )
 
-    return res.json({ ok: true, count: result }, { status: 200 })
+    return res.json({ ok: true, notification }, { status: 200 })
   })
 }
 

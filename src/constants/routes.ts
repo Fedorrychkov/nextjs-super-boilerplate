@@ -23,6 +23,18 @@ export const routes = {
     tKey: 'navigation.profile' as const,
     needAuth: true,
   },
+  notifications: {
+    path: '/notifications',
+    name: 'Notifications',
+    tKey: 'navigation.notifications' as const,
+    needAuth: true,
+  },
+  adminNotifications: {
+    path: '/admin/notifications',
+    name: 'Admin Notifications',
+    tKey: 'navigation.adminNotifications' as const,
+    needAuth: true,
+  },
   login: {
     path: '/login',
     name: 'Login',

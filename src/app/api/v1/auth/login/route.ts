@@ -6,6 +6,8 @@ import { assertLoginNotBlocked, recordLoginFailure } from '@lib/security/brutefo
 import { createLoginChallenge } from '@lib/security/login-challenge'
 import { getClientKey } from '@lib/security/rate-limit'
 import { authService } from '@lib/services/auth.service'
+import { notifyNewLogin } from '@lib/services/security-notification.service'
+import { getRequestClientMeta } from '@lib/utils/request-client-meta'
 import { NextRequest } from 'next/server'
 
 import { LoginEmailDto } from '~/api/auth/types'
@@ -39,6 +41,12 @@ const handler = (request: NextRequest) => {
         )
 
         setAuthCookies(response, authResponse.accessToken, authResponse.refreshToken, authResponse.expiresIn)
+
+        void notifyNewLogin({
+          recipientUserId: user._id.toString(),
+          t,
+          client: getRequestClientMeta(req),
+        })
 
         return response
       }

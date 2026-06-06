@@ -89,6 +89,7 @@ export const en = {
     users: 'Users',
     uiKit: 'UI Kit',
     profile: 'Profile',
+    notifications: 'Notifications',
     login: 'Login',
     logout: 'Logout',
     refresh: 'Refresh',
@@ -98,6 +99,7 @@ export const en = {
     llmUsageDashboard: 'LLM usage',
     i18nDashboard: 'Translations',
     articles: 'Articles',
+    adminNotifications: 'Notifications',
     articlesCreate: 'Create Article',
     articlePublic: 'Article Public',
     articlesPublic: 'Articles Public',
@@ -217,6 +219,88 @@ export const en = {
   tooManyRequests: {
     title: '429 - Too Many Requests',
     pleaseTryAgainLater: 'Please try again later.',
+  },
+  platformNotifications: {
+    title: 'Notifications',
+    adminTitle: 'All notifications',
+    empty: 'No notifications yet',
+    typeLabel: 'Type',
+    sourceLabel: 'Source',
+    openTarget: 'Open',
+    raw: 'RAW',
+    rawHide: 'Hide RAW',
+    deliveryStatus: {
+      pending: 'Pending',
+      delivered: 'Delivered',
+      failed: 'Failed',
+      skipped_no_subscription: 'No push subscription',
+      skipped: 'Skipped',
+      record_only: 'Record only',
+    },
+    channel: {
+      web_push: 'Web push',
+      email: 'Email',
+    },
+    type: {
+      system: 'System',
+      test: 'Test',
+      article_published: 'Article published',
+      article_updated: 'Article updated',
+      user_message: 'User message',
+      mfa_enabled: 'MFA enabled',
+      mfa_disabled: 'MFA disabled',
+      new_login: 'New sign-in',
+    },
+    source: {
+      manual_test: 'Manual test',
+      webhook: 'Webhook',
+      system: 'System',
+      manual: 'Manual',
+      article_publish: 'Article publish',
+      article_update: 'Article update',
+      mfa_enable: 'MFA enable',
+      mfa_disable: 'MFA disable',
+      auth_login: 'Sign-in',
+    },
+    filters: {
+      deliveryStatus: 'Delivery status',
+      type: 'Type',
+      recipientUserId: 'Recipient user ID',
+      recipientUserIdPlaceholder: 'MongoDB ObjectId',
+    },
+    errors: {
+      titleRequired: 'Notification title is required',
+      invalidUrlPath: 'Invalid notification link path',
+      invalidRecipientUserId: 'Invalid recipient user id',
+      emailNotConfigured: 'Email channel is not configured',
+      emailSendFailed: 'Failed to send email notification',
+    },
+    triggers: {
+      articlePublished: {
+        title: 'Article published',
+        body: 'Article "{title}" is now live',
+        fallbackTitle: 'Untitled article',
+      },
+      articleUpdated: {
+        title: 'Article updated',
+        body: 'Article "{title}" was updated',
+      },
+      mfaEnabled: {
+        title: 'Two-factor authentication enabled',
+        body: 'Two-factor authentication was enabled on your account.',
+      },
+      mfaDisabled: {
+        title: 'Two-factor authentication disabled',
+        body: 'Two-factor authentication was disabled on your account.',
+      },
+      newLogin: {
+        title: 'New sign-in to your account',
+        body: 'Sign-in from IP {ip}. Device: {userAgent}.{backup}',
+        unknownIp: 'unknown IP',
+        unknownDevice: 'unknown device',
+        usedBackupCode: ' A backup code was used.',
+      },
+    },
   },
   notification: {
     ui: {
@@ -338,6 +422,12 @@ export const en = {
       invalidEmailOrPassword: 'Invalid email or password',
       userAccountIsBlocked: 'User account is blocked',
     },
+    email: {
+      signUp: {
+        subject: 'Registration code',
+        text: 'Registration code: {code}\n\nIt expires in 30 minutes. If you did not request this, ignore this email.',
+      },
+    },
   },
   totp: {
     errors: {
@@ -358,6 +448,34 @@ export const en = {
       baseTitle: 'Main information',
       tabs: {
         base: 'Main',
+        pushSubscriptions: 'Push subscriptions',
+        notifications: 'Notifications',
+      },
+      pushSubscriptions: {
+        title: 'Push subscriptions',
+        empty: 'No push subscriptions',
+        delete: 'Remove',
+        deleteConfirm: 'Remove this push subscription from the account?',
+        deleted: 'Subscription removed',
+        deleteFailed: 'Failed to remove subscription',
+        providers: {
+          apple: 'Apple Push',
+          fcm: 'FCM',
+          mozilla: 'Mozilla',
+          unknown: 'Unknown',
+        },
+      },
+      notifications: {
+        title: 'User notifications',
+      },
+    },
+    profile: {
+      pushSubscriptions: {
+        title: 'Active notification subscriptions',
+        currentDevice: 'Current device',
+        otherDevices: 'Other subscriptions',
+        revokeDevice: 'Unsubscribe on this device',
+        revokeDeviceConfirm: 'Unsubscribe push notifications on this device?',
       },
     },
     roles: {
@@ -895,6 +1013,7 @@ export const en = {
     errors: {
       invalidSubscription: 'Invalid subscription',
       invalidParams: 'Invalid params',
+      subscriptionNotFound: 'Subscription not found',
     },
   },
   rum: {
