@@ -24,7 +24,7 @@ import {
   loadPublishedIndexableTranslationMembers,
   resolvePublishedArticleHreflangKey,
 } from '~/lib/seo/articleTranslationAlternates'
-import { AUTHOR_GITHUB_URL, AUTHOR_NAME } from '~/lib/seo/config'
+import { seoConfig } from '~/lib/seo/config'
 import { getArticleBreadcrumbJsonLd, getArticleJsonLd, JsonLd } from '~/lib/seo/jsonld'
 import { Logger } from '~/utils/logger'
 
@@ -71,6 +71,7 @@ export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Pr
   const ogImage = toAbsoluteSiteUrl(meta.image)
 
   const translationLanguages = await loadPublishedIndexableAlternatesLanguagesMap(response.article.translationGroupId ?? undefined)
+  const author = seoConfig.author
 
   return {
     title: canonicalTitle,
@@ -97,7 +98,7 @@ export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Pr
       alternateLocale: [getAlternateOgLocale(articleLanguage)],
       publishedTime: publishedAt ?? undefined,
       modifiedTime: modifiedAt ?? undefined,
-      authors: [AUTHOR_GITHUB_URL],
+      ...(author ? { authors: [author.url] } : {}),
     },
     twitter: {
       card: seoData?.twitterCard || 'summary_large_image',
@@ -109,7 +110,7 @@ export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Pr
       'article:language': articleLanguage,
       ...(publishedAt ? { 'article:published_time': publishedAt } : {}),
       ...(modifiedAt ? { 'article:modified_time': modifiedAt } : {}),
-      'article:author': AUTHOR_GITHUB_URL,
+      ...(author ? { 'article:author': author.url } : {}),
     },
   }
 }
@@ -172,8 +173,10 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
   const breadcrumbJsonLd = getArticleBreadcrumbJsonLd({
     articleName: canonicalTitle,
     canonicalUrl: pageMeta.canonical,
-    homeLabel: t('navigation.home'),
-    articlesLabel: t('navigation.articles'),
+    labels: {
+      home: t('navigation.home'),
+      articlesPublic: t('navigation.articlesPublic'),
+    },
   })
 
   const publishedAt = response.revision.publishedAt ?? response.article.publishedAt
@@ -183,12 +186,18 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
       <ArticleViewTracker slug={slugResolved} surface="public" />
       <JsonLd data={breadcrumbJsonLd} />
       <JsonLd data={articleJsonLd} />
-      <p className="mb-2 text-sm text-muted-foreground">
-        <span>{t('article.ui.authorBylinePrefix')}</span>{' '}
-        <a href={AUTHOR_GITHUB_URL} rel="author noopener noreferrer" className="font-medium text-foreground underline underline-offset-2 hover:no-underline">
-          {AUTHOR_NAME}
-        </a>
-      </p>
+      {seoConfig.author ? (
+        <p className="mb-2 text-sm text-muted-foreground">
+          <span>{t('article.ui.authorBylinePrefix')}</span>{' '}
+          <a
+            href={seoConfig.author.url}
+            rel="author noopener noreferrer"
+            className="font-medium text-foreground underline underline-offset-2 hover:no-underline"
+          >
+            {seoConfig.author.name}
+          </a>
+        </p>
+      ) : null}
       <ArticlePublishedDate publishedAt={publishedAt} className="mb-4 text-muted-foreground" />
       {translationMembers.length >= 2 ? (
         <ArticleTranslationLanguageNav

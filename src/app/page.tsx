@@ -10,7 +10,7 @@ import { ArticleItem } from '~/components/Views/Article/Block/server/ArticleItem
 import { FALLBACK_THUMBNAIL_IMAGE } from '~/constants'
 import { getServerT } from '~/lib/i18n/server'
 import { getAlternateOgLocale, toOgLocale } from '~/lib/seo/articleLanguage'
-import { BOILERPLATE_DEMO_URL, BOILERPLATE_GITHUB_REPO_URL, seoConfig } from '~/lib/seo/config'
+import { seoConfig } from '~/lib/seo/config'
 import { getFaqPageJsonLd, getOrganizationJsonLd, getPersonJsonLd, getSoftwareApplicationJsonLd, getWebSiteJsonLd, JsonLd } from '~/lib/seo/jsonld'
 
 const ARTICLE_EN_URL = 'https://github.com/Fedorrychkov/fedorrychkov/blob/main/articles/standalone-nextjs-production-ready-boilerplate/ARTICLE_EN.md'
@@ -57,6 +57,8 @@ export default async function Home() {
   const personJsonLd = getPersonJsonLd()
   const webSiteJsonLd = getWebSiteJsonLd()
   const softwareJsonLd = getSoftwareApplicationJsonLd(t('home.metaDescription'))
+  const githubUrl = seoConfig.links.github
+  const demoUrl = seoConfig.links.demo
   const faqJsonLd = getFaqPageJsonLd([
     { question: t('home.faq1Question'), answer: t('home.faq1Answer') },
     { question: t('home.faq2Question'), answer: t('home.faq2Answer') },
@@ -67,15 +69,15 @@ export default async function Home() {
 
   const articles = await getServerForPublicArticlesPaginated({ limit: 4, offset: 0 })
 
-  const readmeUrl = `${BOILERPLATE_GITHUB_REPO_URL}/blob/main/README.md`
-  const docsTreeUrl = `${BOILERPLATE_GITHUB_REPO_URL}/tree/main/docs`
+  const readmeUrl = githubUrl ? `${githubUrl}/blob/main/README.md` : null
+  const docsTreeUrl = githubUrl ? `${githubUrl}/tree/main/docs` : null
 
   return (
     <>
       <JsonLd data={organizationJsonLd} />
-      <JsonLd data={personJsonLd} />
+      {personJsonLd ? <JsonLd data={personJsonLd} /> : null}
       <JsonLd data={webSiteJsonLd} />
-      <JsonLd data={softwareJsonLd} />
+      {softwareJsonLd ? <JsonLd data={softwareJsonLd} /> : null}
       <JsonLd data={faqJsonLd} />
       <PreviewUniversalLayout
         content={
@@ -107,9 +109,13 @@ export default async function Home() {
           </div>
           <p className="max-w-prose text-lg leading-8 text-zinc-600 dark:text-zinc-400">
             {t('home.lookingForAStartingPointOrMoreInstructionsHeadOverTo')}{' '}
-            <a href={BOILERPLATE_GITHUB_REPO_URL} className="font-medium text-zinc-950 dark:text-zinc-50">
-              {t('home.githubRepository')}
-            </a>{' '}
+            {githubUrl ? (
+              <a href={githubUrl} className="font-medium text-zinc-950 dark:text-zinc-50">
+                {t('home.githubRepository')}
+              </a>
+            ) : (
+              <span className="font-medium text-zinc-950 dark:text-zinc-50">{t('home.githubRepository')}</span>
+            )}{' '}
             {t('home.orThe')}{' '}
             <a href={ARTICLE_EN_URL} className="font-medium text-zinc-950 dark:text-zinc-50">
               {t('home.aboutBoilerplate')}
@@ -163,16 +169,20 @@ export default async function Home() {
             <p className="mt-3 max-w-prose text-base leading-7 text-zinc-600 dark:text-zinc-400">{t('home.sectionLearnBody')}</p>
             <nav>
               <ul className="mt-4 flex flex-col gap-2 text-base font-medium text-blue-600 dark:text-blue-400">
-                <li>
-                  <a href={readmeUrl} className="underline-offset-4 hover:underline" rel="noopener noreferrer">
-                    {t('home.linkReadme')}
-                  </a>
-                </li>
-                <li>
-                  <a href={docsTreeUrl} className="underline-offset-4 hover:underline" rel="noopener noreferrer">
-                    {t('home.linkDocsFolder')}
-                  </a>
-                </li>
+                {readmeUrl ? (
+                  <li>
+                    <a href={readmeUrl} className="underline-offset-4 hover:underline" rel="noopener noreferrer">
+                      {t('home.linkReadme')}
+                    </a>
+                  </li>
+                ) : null}
+                {docsTreeUrl ? (
+                  <li>
+                    <a href={docsTreeUrl} className="underline-offset-4 hover:underline" rel="noopener noreferrer">
+                      {t('home.linkDocsFolder')}
+                    </a>
+                  </li>
+                ) : null}
                 <li>
                   <a href={ARTICLE_EN_URL} className="underline-offset-4 hover:underline" rel="noopener noreferrer">
                     {t('home.linkArticleEn')}
@@ -183,11 +193,13 @@ export default async function Home() {
                     {t('home.linkArticleRu')}
                   </a>
                 </li>
-                <li>
-                  <a href={BOILERPLATE_DEMO_URL} className="underline-offset-4 hover:underline" rel="noopener noreferrer">
-                    {t('home.linkLiveDemo')}
-                  </a>
-                </li>
+                {demoUrl ? (
+                  <li>
+                    <a href={demoUrl} className="underline-offset-4 hover:underline" rel="noopener noreferrer">
+                      {t('home.linkLiveDemo')}
+                    </a>
+                  </li>
+                ) : null}
                 <li>
                   <Link href="/articles" className="underline-offset-4 hover:underline">
                     {t('home.linkArticlesIndex')}

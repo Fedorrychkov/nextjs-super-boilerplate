@@ -1,0 +1,1518 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+new file mode 100644
+index 0000000..578f5cc
+--- /dev/null
++++ b/CHANGELOG.md
+@@ -0,0 +1,32 @@
++# Changelog
++
++## [0.2.0] — 2026-06-06
++
++### Account & security
++
++- Password change (profile) and forgot-password flows with strict/flexible recovery matrix
++- Admin account recovery (MFA reset, set password)
++- Active sessions UI with revoke; access JWT bound to refresh session (`sid`) for immediate invalidation
++- Post-login onboarding modal + profile checklist; versioned dismiss
++- iOS PWA push hint
++- Security audit log and `NOTIFY_PASSWORD_*`
++- Centralized password policy (`config/password-policy.ts`)
++
++### Configuration & DX
++
++- **`config/product.ts`** — single source for product name, author, links, PWA, sitemap extras
++- **Dynamic manifest** — `src/app/manifest.ts` (replaces static `site.webmanifest` in layout)
++- **Route SEO metadata** — `src/constants/routes.ts` drives sitemap and breadcrumbs
++- Optional author in JSON-LD and article pages (`author: null` in product config)
++- **`pnpm doctor`** — env and feature-flag validation
++- Docs: `GETTING_STARTED.md`, `CONFIGURATION.md`, `ENV_REFERENCE.md`
++
++### Docs
++
++- Updated `SECURITY_AND_ACCOUNT_ROADMAP.md` (phases 1–5 implemented)
++
++---
++
++## [0.1.x] — earlier
++
++- Auth, articles CMS, SEO baseline, deploy stack, LLM editor, notifications — see git history and product roadmaps.
+diff --git a/README.md b/README.md
+index e4e64b8..8f1542e 100644
+--- a/README.md
++++ b/README.md
+@@ -10,7 +10,7 @@ Next.js 16 (App Router) app with production deploy (GitHub Actions), optional Do
+ - **Data & ops:** MongoDB; deploy via GitHub Actions (stage/prod) with nginx, optional HTTPS (Let’s Encrypt), Redis, metrics (Prometheus, Grafana, Loki, etc.).
+ - **Product:** Auth + roles, multi-step article editor, preview/publish, public article pages, RSS and sitemap, admin article views; optional OpenAI-backed chat/audit in the editor when `NEXT_PUBLIC_LLM_ENABLED=true` (see [`docs/AI_FEATURES_ROADMAP.md`](./docs/AI_FEATURES_ROADMAP.md)).
+ - **SEO & agents:** Route metadata, JSON-LD, `public/llms.txt`, Markdown negotiation for public articles (`Accept: text/markdown`; see AI roadmap).
+-- **All docs in one place:** **[`docs/README.md`](./docs/README.md)** (roadmaps, FAQ, GEO).
++- **All docs in one place:** **[`docs/README.md`](./docs/README.md)** — v0.2.0 start guide, env reference, roadmaps, FAQ.
+ 
+ ## Scope
+ 
+@@ -43,11 +43,12 @@ Next.js 16 (App Router) app with production deploy (GitHub Actions), optional Do
+ ## Local run
+ 
+ 1. Install dependencies: `pnpm install` (or `npm install` / `yarn`).
+-2. Copy env: `cp .env.example .env.local` and set values (JWT, MongoDB, etc.).
+-3. (Optional) Start local MongoDB: `make up-local` — runs mongo from `docker-compose.dev.yml`. Use `MONGO_HOST=localhost` in `.env.local` when the app runs on the host. Stop: `make down-local`.
+-4. Start dev server: `pnpm run dev:local` (or `npm run dev:local`). App: http://localhost:3000.
++2. Copy env: `cp .env.example .env.local` and set values (JWT, MongoDB, etc.). Run `pnpm doctor` to validate.
++3. Customize product branding in `config/product.ts` (name, author, links) — see [`docs/GETTING_STARTED.md`](./docs/GETTING_STARTED.md).
++4. (Optional) Start local MongoDB: `make up-local` — runs mongo from `docker-compose.dev.yml`. Use `MONGO_HOST=localhost` in `.env.local` when the app runs on the host. Stop: `make down-local`.
++5. Start dev server: `pnpm run dev:local` (or `npm run dev:local`). App: http://localhost:3000.
+ 
+-To use an external MongoDB instead of local, set `MONGO_URI` in `.env.local` and skip step 3.
++To use an external MongoDB instead of local, set `MONGO_URI` in `.env.local` and skip step 4.
+ 
+ ---
+ 
+diff --git a/config/index.ts b/config/index.ts
+new file mode 100644
+index 0000000..c983d39
+--- /dev/null
++++ b/config/index.ts
+@@ -0,0 +1,23 @@
++export {
++  ACCOUNT_CONFIG,
++  APP_ENV,
++  CDN_CONFIG,
++  COMMIT_HASH,
++  EMAIL_CONFIG,
++  FIRST_ADMIN_CONFIG,
++  isDevelop,
++  isProd,
++  isStage,
++  JWT_CONFIG,
++  LLM_CONFIG,
++  MFA_CONFIG,
++  MONGODB_CONFIG,
++  NOTIFICATION_CONFIG,
++  PUSH_CONFIG,
++  RATE_LIMIT_CONFIG,
++  REGISTRATION_CONFIG,
++  RUM_CONFIG,
++  THEME_CONFIG,
++} from './env'
++export type { ProductAuthor, ProductLinks, ProductSitemapExtra } from './product'
++export { PRODUCT_CONFIG } from './product'
+diff --git a/config/product.ts b/config/product.ts
+new file mode 100644
+index 0000000..feb6895
+--- /dev/null
++++ b/config/product.ts
+@@ -0,0 +1,62 @@
++/**
++ * Product identity — single place to customize after forking.
++ * URLs for deployment stay in env (`NEXT_PUBLIC_SITE_URL`); SEO/PWA/schema read from here.
++ *
++ * Set `author: null` and `schema.person: false` for products without a public author persona.
++ * Set `links.github: null` and `schema.softwareApplication: false` when not an open-source boilerplate.
++ */
++
++export type ProductAuthor = {
++  name: string
++  url: string
++}
++
++export type ProductLinks = {
++  github?: string | null
++  demo?: string | null
++}
++
++export type ProductSitemapExtra = {
++  path: string
++  priority: number
++  changeFrequency: 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never'
++}
++
++export const PRODUCT_CONFIG = {
++  name: 'Production Ready Next.js Boilerplate',
++  shortName: 'Next.js Boilerplate',
++  description: 'Production-ready Next.js starter with auth, SEO, RUM and AI referral tracking',
++  defaultTitle: 'Production Ready Next.js Boilerplate',
++
++  /** Public author for articles / Person schema. `null` → Organization-only publisher. */
++  author: {
++    name: 'Fedor Rychkov',
++    url: 'https://github.com/Fedorrychkov',
++  } satisfies ProductAuthor,
++
++  /** Marketing / repo links (homepage, SoftwareApplication schema). */
++  links: {
++    github: 'https://github.com/Fedorrychkov/nextjs-super-boilerplate',
++    demo: 'https://nextjs-super-boilerplate.visn-ai.io',
++  } satisfies ProductLinks,
++
++  /** Which optional JSON-LD blocks to emit on the homepage. */
++  schema: {
++    person: true,
++    softwareApplication: true,
++  },
++
++  pwa: {
++    themeColor: '#0f172a',
++    backgroundColor: '#0f172a',
++    display: 'standalone' as const,
++    orientation: 'portrait' as const,
++    icons: [
++      { src: '/images/web-app-manifest-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
++      { src: '/images/web-app-manifest-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
++    ],
++  },
++
++  /** Static paths not defined in `routes.ts` (feeds, verification-adjacent URLs, etc.). */
++  sitemapExtras: [{ path: '/rss.xml', priority: 0.6, changeFrequency: 'daily' as const }] satisfies ProductSitemapExtra[],
++} as const
+diff --git a/docs/CONFIGURATION.md b/docs/CONFIGURATION.md
+new file mode 100644
+index 0000000..b1649dd
+--- /dev/null
++++ b/docs/CONFIGURATION.md
+@@ -0,0 +1,174 @@
++# Конфигурация функций (v0.2.0)
++
++Все feature flags и секреты — в [`config/env.ts`](../config/env.ts) (блоки `ACCOUNT_CONFIG`, `EMAIL_CONFIG`, `NOTIFICATION_CONFIG`, …).  
++Брендинг и SEO-контент — в [`config/product.ts`](../config/product.ts).
++
++Перед деплоем: `pnpm doctor`.
++
++---
++
++## Auth и JWT
++
++| Переменная | Назначение |
++|------------|------------|
++| `JWT_SECRET` | Подпись access/refresh JWT |
++| `JWT_ACCESS_EXPIRES_IN` | TTL access cookie (сек), по умолчанию 3600 |
++| `JWT_REFRESH_EXPIRES_IN` | TTL refresh / сессии (сек), ~21 день |
++
++Access token привязан к refresh-сессии (`sid` в JWT). Revoke сессии сразу отзывает API-доступ.
++
++**Первый admin:** `FIRST_ADMIN_LOGIN`, `FIRST_ADMIN_PASSWORD` (при старте приложения).
++
++---
++
++## Регистрация
++
++| Переменная | Значения |
++|------------|----------|
++| `REGISTRATION_MODE` | `email` — OTP на почту; пусто — без email-верификации |
++| `REGISTRATION_CODE_PEPPER` | HMAC для кодов (fallback: `JWT_SECRET`) |
++
++Требует рабочий email-канал при `REGISTRATION_MODE=email` (см. Email).
++
++---
++
++## Email
++
++| `EMAIL_SEND_MODE` | Поведение |
++|-------------------|-----------|
++| `console` | Коды в логах сервера (dev) |
++| `elastic` | Elastic Email API |
++| `empty` | Отправка отключена |
++
++| Переменная | Назначение |
++|------------|------------|
++| `EMAIL_API_KEY` | Ключ Elastic (обязателен при `elastic`) |
++| `EMAIL_FROM` | Verified sender |
++| `EMAIL_TEMPLATE_VERIFY_EMAIL_*` | Шаблоны sign-up |
++| `EMAIL_TEMPLATE_PASSWORD_*` | Опционально; пусто → plain text из i18n |
++
++Используется: sign-up OTP, password change/forgot, platform notifications (email channel).
++
++---
++
++## MFA (TOTP)
++
++| Переменная | Назначение |
++|------------|------------|
++| `MFA_ENCRYPTION_KEY` | Шифрование TOTP secret в БД |
++
++Self-service: setup / confirm / disable в профиле. Admin reset: `AUTH_ADMIN_ACCOUNT_RECOVERY_ENABLED=1`.
++
++---
++
++## Пароли и восстановление
++
++| Флаг | Описание |
++|------|----------|
++| `AUTH_PASSWORD_CHANGE_ENABLED` | Блок смены пароля в `/profile` |
++| `AUTH_PASSWORD_FORGOT_ENABLED` | `/forgot-password` |
++| `AUTH_RECOVERY_STRICTNESS` | `strict` — email+MFA если оба есть; `flexible` — один фактор |
++| `AUTH_ADMIN_ACCOUNT_RECOVERY_ENABLED` | Admin: сброс MFA + установка пароля |
++
++Политика новых паролей: [`config/password-policy.ts`](../config/password-policy.ts) (UI + API).
++
++После смены/сброса пароля: `logoutAll()` по умолчанию.
++
++API capabilities: `GET /api/v1/auth/recovery/capabilities`.
++
++---
++
++## Сессии
++
++| Флаг | Описание |
++|------|----------|
++| `AUTH_SESSIONS_ENABLED` | User + admin UI списка сессий |
++
++Одна сессия = один `RefreshToken` с metadata (device, IP, lastSeenAt).  
++Revoke через `/api/v1/auth/sessions`.
++
++---
++
++## Онбординг
++
++| Флаг | Описание |
++|------|----------|
++| `ONBOARDING_ENABLED` | Серверный API |
++| `NEXT_PUBLIC_ONBOARDING_ENABLED` | UI (модалка + карточка) |
++| `ONBOARDING_PUSH_PROMPT_ENABLED` | Шаг push |
++| `ONBOARDING_VERSION` | Bump → показать снова |
++
++Модалка после логина: один раз на устройство (`localStorage`). Карточка в профиле — до явного dismiss.
++
++---
++
++## Push и уведомления
++
++**Web Push (VAPID):**
++
++| Переменная | Назначение |
++|------------|------------|
++| `VAPID_SUBJECT` | mailto: или https URL |
++| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Публичный ключ |
++| `VAPID_PRIVATE_KEY` | Серверный ключ |
++| `NEXT_PUBLIC_PUSH_IOS_PWA_HINT_ENABLED` | Подсказка Add to Home Screen на iOS |
++
++**Platform notifications (`NOTIFY_*`):**
++
++```bash
++NOTIFY_<EVENT>_ENABLED=1|0
++NOTIFY_<EVENT>_CHANNELS=all|web_push|email
++```
++
++События: `ARTICLE`, `MFA`, `LOGIN`, `PASSWORD`.
++
++---
++
++## LLM (редактор статей)
++
++| Флаг / переменная | Описание |
++|-------------------|----------|
++| `NEXT_PUBLIC_LLM_ENABLED` | UI в редакторе |
++| `LLM_API_KEY` | OpenAI (server-only) |
++| `LLM_CHAT_MODELS`, `LLM_IMAGE_MODELS` | Allowlist |
++| `LLM_CHAT_RATE_LIMIT_*` | Rate limit |
++
++---
++
++## SEO и индексация
++
++| Переменная | Назначение |
++|------------|------------|
++| `NEXT_PUBLIC_SITE_URL` | Canonical base |
++| `NEXT_PUBLIC_ORGANIZATION_SAME_AS` | JSON-LD sameAs (comma-separated) |
++| `INDEXNOW_API_KEY` | Ping при публикации |
++| `INDEXNOW_KEY_LOCATION` | URL ключа |
++| `GOOGLE_INDEXING_*` | Опционально (ограниченные типы) |
++
++Маршруты sitemap/breadcrumb: `src/constants/routes.ts` → `seo.*`.
++
++---
++
++## Observability
++
++| Переменная | Назначение |
++|------------|------------|
++| `RUM_ENABLED` / `NEXT_PUBLIC_RUM_*` | Web Vitals ingest |
++| Security audit | `/admin/security-audit` (всегда при наличии admin) |
++
++---
++
++## Тема и i18n
++
++| Переменная | Назначение |
++|------------|------------|
++| `DEFAULT_THEME_MODE` | SSR fallback |
++| `NEXT_PUBLIC_DEFAULT_LOCALE` | `en` / `ru` |
++
++---
++
++## Связанные документы
++
++- [`ENV_REFERENCE.md`](./ENV_REFERENCE.md) — полная таблица переменных
++- [`GETTING_STARTED.md`](./GETTING_STARTED.md) — чеклист форка
++- [`SECURITY_AND_ACCOUNT_ROADMAP.md`](./SECURITY_AND_ACCOUNT_ROADMAP.md) — детали security-фич
+diff --git a/docs/ENV_REFERENCE.md b/docs/ENV_REFERENCE.md
+new file mode 100644
+index 0000000..fec1579
+--- /dev/null
++++ b/docs/ENV_REFERENCE.md
+@@ -0,0 +1,162 @@
++# Справочник переменных окружения
++
++Источник правды: [`.env.example`](../.env.example) и [`config/env.ts`](../config/env.ts).  
++Проверка: `pnpm doctor`.
++
++Легенда: **R** = обязательно в prod, **C** = условно (если фича включена), **O** = опционально.
++
++---
++
++## App & site
++
++| Variable | Default | Notes |
++|----------|---------|-------|
++| `APP_ENV` | development | `development` \| `stage` \| `production` |
++| `NEXT_PUBLIC_APP_ENV` | development | Клиентский env label |
++| `NEXT_PUBLIC_SITE_URL` | http://localhost:3000 | **R** prod — canonical URL |
++| `APP_INTERNAL_ORIGIN` | — | Self-fetch в Docker (см. README) |
++| `COMMIT_HASH` | — | CI inject для RUM/deploy |
++
++## Theme & i18n
++
++| Variable | Default | Notes |
++|----------|---------|-------|
++| `DEFAULT_THEME_MODE` | dark | `dark` \| `light` |
++| `NEXT_PUBLIC_DEFAULT_THEME_MODE` | dark | |
++| `NEXT_PUBLIC_DEFAULT_LOCALE` | en | `en` \| `ru` |
++| `NEXT_PUBLIC_ORGANIZATION_SAME_AS` | — | O — JSON-LD sameAs, comma-separated |
++
++## JWT & auth
++
++| Variable | Default | Notes |
++|----------|---------|-------|
++| `JWT_SECRET` | placeholder | **R** — сменить в prod |
++| `JWT_ACCESS_EXPIRES_IN` | 3600 | Секунды |
++| `JWT_REFRESH_EXPIRES_IN` | 15724800 | ~21 день |
++| `FIRST_ADMIN_LOGIN` | — | O — seed admin |
++| `FIRST_ADMIN_PASSWORD` | — | O |
++
++## MongoDB
++
++| Variable | Default | Notes |
++|----------|---------|-------|
++| `MONGO_URI` | — | **R** или host-поля ниже |
++| `MONGO_HOST` | localhost / mongo | |
++| `MONGO_PORT` | 27017 | |
++| `MONGO_USER` | — | |
++| `MONGO_PASSWORD` | — | |
++| `MONGO_DB` | app | |
++
++## Redis & rate limit
++
++| Variable | Default | Notes |
++|----------|---------|-------|
++| `REDIS_URL` | — | C — rate limit / LLM limit |
++| `RATE_LIMIT_POINTS` | 400 | Запросов в окно |
++
++## MFA
++
++| Variable | Default | Notes |
++|----------|---------|-------|
++| `MFA_ENCRYPTION_KEY` | — | **R** если MFA используется |
++
++## Registration & email
++
++| Variable | Default | Notes |
++|----------|---------|-------|
++| `REGISTRATION_MODE` | — | `email` или пусто |
++| `REGISTRATION_CODE_PEPPER` | JWT_SECRET | |
++| `EMAIL_SEND_MODE` | empty | `console` \| `elastic` \| `empty` |
++| `EMAIL_API_KEY` | — | **C** elastic |
++| `EMAIL_FROM` | — | **C** elastic |
++| `EMAIL_REPLY_TO` | — | O |
++| `EMAIL_TEMPLATE_VERIFY_EMAIL_EN/RU` | — | O |
++| `EMAIL_TEMPLATE_PASSWORD_CHANGE_EN/RU` | — | O — fallback i18n |
++| `EMAIL_TEMPLATE_PASSWORD_FORGOT_EN/RU` | — | O |
++
++## Account security (`ACCOUNT_CONFIG`)
++
++| Variable | Default | Feature |
++|----------|---------|---------|
++| `AUTH_PASSWORD_CHANGE_ENABLED` | 0 | Profile password change |
++| `AUTH_PASSWORD_FORGOT_ENABLED` | 0 | Forgot password flow |
++| `AUTH_RECOVERY_STRICTNESS` | strict | `strict` \| `flexible` |
++| `AUTH_ADMIN_ACCOUNT_RECOVERY_ENABLED` | 0 | Admin MFA/password reset |
++| `AUTH_SESSIONS_ENABLED` | 0 | Sessions UI + API |
++| `ONBOARDING_ENABLED` | 0 | Onboarding API |
++| `ONBOARDING_PUSH_PROMPT_ENABLED` | 0 | Push step |
++| `ONBOARDING_VERSION` | 0 | Bump to re-show |
++| `NEXT_PUBLIC_ONBOARDING_ENABLED` | 0 | Onboarding UI |
++| `NEXT_PUBLIC_ONBOARDING_PUSH_PROMPT_ENABLED` | 0 | |
++| `NEXT_PUBLIC_PUSH_IOS_PWA_HINT_ENABLED` | 0 | iOS PWA hint |
++
++## Push (VAPID)
++
++| Variable | Default | Notes |
++|----------|---------|-------|
++| `VAPID_SUBJECT` | — | C — mailto: or https |
++| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | — | C |
++| `VAPID_PRIVATE_KEY` | — | C |
++
++## Notifications (`NOTIFICATION_CONFIG`)
++
++| Variable | Default | Notes |
++|----------|---------|-------|
++| `NOTIFY_ARTICLE_ENABLED` | 0 | |
++| `NOTIFY_ARTICLE_CHANNELS` | all | `all` \| `web_push` \| `email` |
++| `NOTIFY_MFA_ENABLED` | 0 | |
++| `NOTIFY_MFA_CHANNELS` | all | |
++| `NOTIFY_LOGIN_ENABLED` | 0 | |
++| `NOTIFY_LOGIN_CHANNELS` | email | |
++| `NOTIFY_PASSWORD_ENABLED` | 0 | |
++| `NOTIFY_PASSWORD_CHANNELS` | email | |
++
++## LLM
++
++| Variable | Default | Notes |
++|----------|---------|-------|
++| `LLM_API_KEY` | — | **C** if `NEXT_PUBLIC_LLM_ENABLED=true` |
++| `NEXT_PUBLIC_LLM_ENABLED` | false | |
++| `LLM_CHAT_MODELS` | — | O allowlist |
++| `LLM_IMAGE_MODELS` | — | O |
++| `LLM_CHAT_RATE_LIMIT_POINTS` | 30 | |
++| `LLM_CHAT_RATE_DURATION_SEC` | 60 | |
++| `PROXY_ACCESSES` | — | O OpenAI proxy JSON |
++
++## SEO / indexing
++
++| Variable | Default | Notes |
++|----------|---------|-------|
++| `INDEXNOW_API_KEY` | — | O |
++| `INDEXNOW_KEY_LOCATION` | — | O |
++| `GOOGLE_INDEXING_CLIENT_EMAIL` | — | O |
++| `GOOGLE_INDEXING_PRIVATE_KEY` | — | O |
++
++## RUM
++
++| Variable | Default | Notes |
++|----------|---------|-------|
++| `RUM_ENABLED` | true | Server ingest |
++| `NEXT_PUBLIC_RUM_ENABLED` | false | Client flag |
++| `NEXT_PUBLIC_RUM_SAMPLE_RATE` | 0.2 | |
++| `NEXT_PUBLIC_SKIP_ANALYTICS_CONSENT` | false | Dev only |
++
++## CDN (Uploadcare)
++
++| Variable | Default | Notes |
++|----------|---------|-------|
++| `UPLOADCARE_PUBLIC_KEY` | — | O |
++| `UPLOADCARE_SECRET_KEY` | — | O |
++
++---
++
++## Не в env: `config/product.ts`
++
++| Field | Purpose |
++|-------|---------|
++| `name`, `shortName`, `description` | Metadata, manifest |
++| `author` | JSON-LD / article byline (`null` = hide) |
++| `links.github`, `links.demo` | Homepage, schema |
++| `schema.*` | Toggle Person / SoftwareApplication |
++| `pwa` | Manifest colors & icons |
++| `sitemapExtras` | Extra sitemap URLs |
+diff --git a/docs/GETTING_STARTED.md b/docs/GETTING_STARTED.md
+new file mode 100644
+index 0000000..fe5dca9
+--- /dev/null
++++ b/docs/GETTING_STARTED.md
+@@ -0,0 +1,95 @@
++# Старт проекта (v0.2.0)
++
++Краткий чеклист после форка или первого развёртывания. Инфраструктура (Docker, CI, nginx) — в корневом [`README.md`](../README.md) и [`INFRASTRUCTURE_PLAN_RU.md`](./INFRASTRUCTURE_PLAN_RU.md).
++
++## 1. Первый час
++
++| Шаг | Что сделать |
++|-----|-------------|
++| 1 | `cp .env.example .env.local` — заполнить секреты (см. [`ENV_REFERENCE.md`](./ENV_REFERENCE.md)) |
++| 2 | `pnpm doctor` — проверить согласованность env и флагов |
++| 3 | Отредактировать [`config/product.ts`](../config/product.ts) — название, описание, автор, ссылки, PWA |
++| 4 | Заменить `NEXT_PUBLIC_SITE_URL` на ваш домен |
++| 5 | Поднять Mongo (`make up-local` или `MONGO_URI`) |
++| 6 | `pnpm run dev:local` |
++| 7 | Создать первого admin (`FIRST_ADMIN_*` или вручную в БД) |
++
++## 2. `config/product.ts` — паспорт продукта
++
++Один файл для брендинга (не секреты):
++
++- **name / shortName / description / defaultTitle** — metadata, Open Graph, PWA manifest (`src/app/manifest.ts`)
++- **author** — `null` для SaaS без публичного автора → JSON-LD и byline статей скрываются
++- **links.github / links.demo** — homepage; `null` отключает SoftwareApplication schema
++- **schema.person / schema.softwareApplication** — какие блоки JSON-LD на главной
++- **pwa** — цвета и иконки manifest
++- **sitemapExtras** — статические URL вне `routes.ts` (например `/rss.xml`)
++
++URL сайта **только из env**: `NEXT_PUBLIC_SITE_URL`.
++
++Соцсети организации: `NEXT_PUBLIC_ORGANIZATION_SAME_AS` (через env, не в product.ts).
++
++## 3. Маршруты и SEO
++
++[`src/constants/routes.ts`](../src/constants/routes.ts) — path, auth, **seo**:
++
++```ts
++seo: {
++  sitemap: { priority: 0.9, changeFrequency: 'weekly' },
++  breadcrumb: true,
++  breadcrumbOrder: 2,
++}
++```
++
++Из этого автоматически строятся:
++
++- XML sitemap (`src/lib/seo/sitemap.ts`)
++- breadcrumbs в JSON-LD статей (`src/lib/seo/jsonld.tsx`)
++
++Новая публичная страница → добавьте route с `seo.sitemap` при необходимости.
++
++## 4. Файлы в `public/` (ручная замена)
++
++Не генерируются из конфига — **замените под свой домен**:
++
++| Файл | Назначение |
++|------|------------|
++| `public/BingSiteAuth.xml` | верификация Bing Webmaster |
++| `public/<indexnow-key>.txt` | IndexNow (имя = `INDEXNOW_API_KEY`) |
++| `public/llms.txt` | подсказки для AI-краулеров |
++| `public/images/*` | favicon, OG, PWA icons |
++
++Статический `public/images/site.webmanifest` **устарел** — manifest отдаётся из `src/app/manifest.ts`.
++
++## 5. Включение функций
++
++Подробно: [`CONFIGURATION.md`](./CONFIGURATION.md).
++
++Минимальный prod-набор часто включает:
++
++```bash
++AUTH_PASSWORD_CHANGE_ENABLED=1
++AUTH_PASSWORD_FORGOT_ENABLED=1
++AUTH_SESSIONS_ENABLED=1
++NOTIFY_LOGIN_ENABLED=1
++EMAIL_SEND_MODE=elastic
++EMAIL_API_KEY=...
++```
++
++Онбординг, push, LLM — по необходимости, все за флагами.
++
++## 6. Полезные команды
++
++```bash
++pnpm doctor              # проверка .env.local
++pnpm doctor:prod         # проверка .env.prod
++pnpm run typecheck
++pnpm run test
++```
++
++## 7. Дальше
++
++- [`CONFIGURATION.md`](./CONFIGURATION.md) — auth, email, MFA, sessions, onboarding
++- [`ENV_REFERENCE.md`](./ENV_REFERENCE.md) — все переменные окружения
++- [`SECURITY_AND_ACCOUNT_ROADMAP.md`](./SECURITY_AND_ACCOUNT_ROADMAP.md) — что реализовано в security-блоке
++- [`CHANGELOG.md`](../CHANGELOG.md) — v0.2.0
+diff --git a/docs/README.md b/docs/README.md
+index fcdde7e..7627996 100644
+--- a/docs/README.md
++++ b/docs/README.md
+@@ -1,17 +1,42 @@
+ # Documentation index
+ 
+-Planning, operations, and FAQ live in this folder. The root **[`README.md`](../README.md)** covers local run, deploy, and troubleshooting.
++Planning, configuration, and FAQ. Root **[`README.md`](../README.md)** — local run, deploy, troubleshooting.
++
++## Start here (v0.2.0)
++
++| File | Language | Purpose |
++|------|----------|---------|
++| [`GETTING_STARTED.md`](./GETTING_STARTED.md) | RU | Fork checklist: product.ts, env, public verification files |
++| [`CONFIGURATION.md`](./CONFIGURATION.md) | RU | Feature flags: auth, email, MFA, sessions, onboarding, push, LLM |
++| [`ENV_REFERENCE.md`](./ENV_REFERENCE.md) | EN/RU table | All environment variables |
++| [`../CHANGELOG.md`](../CHANGELOG.md) | EN | Release notes |
++
++## Roadmaps & plans
+ 
+ | File | Language | Purpose |
+ |------|----------|---------|
+-| [`PRODUCT_ROADMAP.md`](./PRODUCT_ROADMAP.md) | EN | Article platform: editor, publishing, SEO, security phases, analytics, views, Markdown for agents. |
+-| [`AI_FEATURES_ROADMAP.md`](./AI_FEATURES_ROADMAP.md) | EN | LLM chat, structured SEO/content, image/TTS, rate limits, public `Accept: text/markdown` delivery. |
+-| [`IMPROVEMENTS_ROADMAP.md`](./IMPROVEMENTS_ROADMAP.md) | EN | GEO / discoverability: homepage, `llms.txt`, structured data, performance notes (complements product roadmap). |
+-| [`SECURITY_AND_ACCOUNT_ROADMAP.md`](./SECURITY_AND_ACCOUNT_ROADMAP.md) | RU | Account security (password reset/change, sessions), onboarding, iOS PWA push hints — **plan only**. |
+-| [`INFRASTRUCTURE_PLAN.md`](./INFRASTRUCTURE_PLAN.md) | EN | Deploy today vs Plan A (hardened VPS) vs Plan B (Kubernetes). |
+-| [`INFRASTRUCTURE_PLAN_RU.md`](./INFRASTRUCTURE_PLAN_RU.md) | RU | Same as above (Russian). |
+-| [`INFRASTRUCTURE_TODO_RU.md`](./INFRASTRUCTURE_TODO_RU.md) | RU | VPS / CI / Docker backlog and checklist. |
+-| [`FAQ_EN.md`](./FAQ_EN.md) | EN | Certbot, Mongo, nginx, disk space, Docker Hub, GHCR cleanup. |
+-| [`FAQ_RU.md`](./FAQ_RU.md) | RU | Same FAQ (Russian). |
+-
+-The root [`README.md`](../README.md) **Roadmaps** section links to the main roadmaps; use this table when you need the full set or FAQ by language.
++| [`PRODUCT_ROADMAP.md`](./PRODUCT_ROADMAP.md) | EN | Article platform, editor, SEO, analytics |
++| [`SECURITY_AND_ACCOUNT_ROADMAP.md`](./SECURITY_AND_ACCOUNT_ROADMAP.md) | RU | Account security — **implemented** (phases 1–5) |
++| [`AI_FEATURES_ROADMAP.md`](./AI_FEATURES_ROADMAP.md) | EN | LLM, markdown for agents |
++| [`IMPROVEMENTS_ROADMAP.md`](./IMPROVEMENTS_ROADMAP.md) | EN | GEO / discoverability |
++| [`INFRASTRUCTURE_PLAN.md`](./INFRASTRUCTURE_PLAN.md) | EN | Deploy vs Plan A/B |
++| [`INFRASTRUCTURE_PLAN_RU.md`](./INFRASTRUCTURE_PLAN_RU.md) | RU | Same (Russian) |
++| [`INFRASTRUCTURE_TODO_RU.md`](./INFRASTRUCTURE_TODO_RU.md) | RU | VPS / CI backlog |
++
++## FAQ
++
++| File | Language |
++|------|----------|
++| [`FAQ_EN.md`](./FAQ_EN.md) | EN |
++| [`FAQ_RU.md`](./FAQ_RU.md) | RU |
++
++## Configuration map
++
++```
++config/product.ts     → branding, author, PWA, sitemap extras
++config/env.ts         → secrets & feature flags (ACCOUNT_CONFIG, …)
++config/password-policy.ts
++src/constants/routes.ts → paths + seo.sitemap / seo.breadcrumb
++```
++
++Run `pnpm doctor` after editing `.env.local`.
+diff --git a/package.json b/package.json
+index 11f57bb..28ea026 100644
+--- a/package.json
++++ b/package.json
+@@ -20,6 +20,8 @@
+     "lint-staged": "lint-staged --allow-empty",
+     "typecheck": "tsc --noEmit",
+     "test": "node --import tsx --test *.test.ts src/**/*.test.ts",
++    "doctor": "env-cmd -f .env.local tsx scripts/doctor.ts -- .env.local",
++    "doctor:prod": "env-cmd -f .env.prod tsx scripts/doctor.ts -- .env.prod",
+     "prepare": "husky"
+   },
+   "engines": {
+diff --git a/scripts/doctor.ts b/scripts/doctor.ts
+new file mode 100644
+index 0000000..cb79d62
+--- /dev/null
++++ b/scripts/doctor.ts
+@@ -0,0 +1,177 @@
++/**
++ * Validates environment + feature-flag consistency.
++ * Usage: pnpm doctor [-- env-file]
++ * Default env file: .env.local
++ */
++import { existsSync, readFileSync } from 'node:fs'
++import { resolve } from 'node:path'
++
++type Level = 'error' | 'warn' | 'info'
++
++type Finding = { level: Level; code: string; message: string }
++
++const DEFAULT_JWT_SECRET = 'your-secret-key-change'
++
++function loadEnvFile(filePath: string): void {
++  if (!existsSync(filePath)) {
++    return
++  }
++
++  const raw = readFileSync(filePath, 'utf8')
++
++  for (const line of raw.split('\n')) {
++    const trimmed = line.trim()
++
++    if (!trimmed || trimmed.startsWith('#')) {
++      continue
++    }
++
++    const eq = trimmed.indexOf('=')
++
++    if (eq <= 0) {
++      continue
++    }
++
++    const key = trimmed.slice(0, eq).trim()
++    let value = trimmed.slice(eq + 1).trim()
++
++    // eslint-disable-next-line prettier/prettier
++    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith('\'') && value.endsWith('\''))) {
++      value = value.slice(1, -1)
++    }
++
++    if (process.env[key] === undefined) {
++      process.env[key] = value
++    }
++  }
++}
++
++function parseBool(value: string | undefined): boolean {
++  if (!value?.trim()) {
++    return false
++  }
++
++  const normalized = value.trim().toLowerCase()
++
++  return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on'
++}
++
++function push(findings: Finding[], level: Level, code: string, message: string) {
++  findings.push({ level, code, message })
++}
++
++async function main() {
++  const envArg = process.argv.find((arg) => arg.endsWith('.env') || arg.endsWith('.env.local') || arg.endsWith('.env.prod') || arg.endsWith('.env.stage'))
++  const envFile = resolve(process.cwd(), envArg ?? '.env.local')
++
++  if (!existsSync(envFile)) {
++    console.error(`[doctor] Env file not found: ${envFile}`)
++    console.error('Usage: pnpm doctor [path/to/.env.local]')
++    process.exit(1)
++  }
++
++  loadEnvFile(envFile)
++
++  const { ACCOUNT_CONFIG, EMAIL_CONFIG, JWT_CONFIG, LLM_CONFIG, MFA_CONFIG, MONGODB_CONFIG, NOTIFICATION_CONFIG, PUSH_CONFIG, REGISTRATION_CONFIG, isProd } =
++    await import('../config/env')
++
++  const findings: Finding[] = []
++
++  push(findings, 'info', 'env_file', `Loaded ${envFile}`)
++  push(findings, 'info', 'app_env', `APP_ENV=${process.env.APP_ENV ?? 'development'}`)
++
++  if (!JWT_CONFIG.secret || JWT_CONFIG.secret === DEFAULT_JWT_SECRET) {
++    push(findings, isProd ? 'error' : 'warn', 'jwt_secret', 'JWT_SECRET is empty or still the default placeholder — set a strong random value.')
++  }
++
++  if (!MONGODB_CONFIG.uri && !MONGODB_CONFIG.host) {
++    push(findings, 'error', 'mongo', 'Set MONGO_URI or MONGO_HOST (+ MONGO_DB) for MongoDB.')
++  }
++
++  if (!MFA_CONFIG.encryptionKey?.trim()) {
++    push(findings, isProd ? 'error' : 'warn', 'mfa_key', 'MFA_ENCRYPTION_KEY is empty — TOTP will not work securely.')
++  } else if (MFA_CONFIG.encryptionKey.length < 16) {
++    push(findings, 'warn', 'mfa_key_short', 'MFA_ENCRYPTION_KEY looks short; use a long random string.')
++  }
++
++  const registrationEmail = REGISTRATION_CONFIG.mode === 'email'
++
++  if (registrationEmail && EMAIL_CONFIG.sendMode === 'empty') {
++    push(findings, isProd ? 'error' : 'warn', 'email_signup', 'REGISTRATION_MODE=email but EMAIL_SEND_MODE=empty — sign-up codes will not be delivered.')
++  }
++
++  if (EMAIL_CONFIG.sendMode === 'elastic' && !EMAIL_CONFIG.emailApiKey?.trim()) {
++    push(findings, 'error', 'email_elastic', 'EMAIL_SEND_MODE=elastic requires EMAIL_API_KEY.')
++  }
++
++  if (ACCOUNT_CONFIG.passwordChangeEnabled || ACCOUNT_CONFIG.passwordForgotEnabled) {
++    if (EMAIL_CONFIG.sendMode === 'empty' && isProd) {
++      push(findings, 'warn', 'password_email', 'Password change/forgot enabled but EMAIL_SEND_MODE=empty — recovery may be MFA-only or support-only.')
++    }
++  }
++
++  if (ACCOUNT_CONFIG.sessionsEnabled) {
++    push(findings, 'info', 'sessions', 'AUTH_SESSIONS_ENABLED=1 — access tokens are bound to refresh sessions (sid).')
++  }
++
++  if (LLM_CONFIG.enabled && !LLM_CONFIG.apiKey?.trim()) {
++    push(findings, 'error', 'llm_key', 'NEXT_PUBLIC_LLM_ENABLED=true but LLM_API_KEY is empty.')
++  }
++
++  const notifyPush =
++    parseBool(NOTIFICATION_CONFIG.articleEnabled) ||
++    parseBool(NOTIFICATION_CONFIG.mfaEnabled) ||
++    parseBool(NOTIFICATION_CONFIG.loginEnabled) ||
++    parseBool(NOTIFICATION_CONFIG.passwordEnabled)
++
++  if (notifyPush) {
++    const channels = [
++      NOTIFICATION_CONFIG.articleChannels,
++      NOTIFICATION_CONFIG.mfaChannels,
++      NOTIFICATION_CONFIG.loginChannels,
++      NOTIFICATION_CONFIG.passwordChannels,
++    ].join(',')
++
++    if (channels.includes('web_push') || channels.includes('all')) {
++      if (!PUSH_CONFIG.publicKey?.trim() || !PUSH_CONFIG.privateKey?.trim()) {
++        push(findings, 'warn', 'vapid', 'Notifications may use web_push but VAPID keys are missing.')
++      }
++
++      if (!PUSH_CONFIG.subject?.trim()) {
++        push(findings, 'warn', 'vapid_subject', 'VAPID_SUBJECT is empty (e.g. mailto:you@domain.com).')
++      }
++    }
++  }
++
++  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? ''
++
++  if (isProd && siteUrl.startsWith('http://')) {
++    push(findings, 'warn', 'site_url_http', 'NEXT_PUBLIC_SITE_URL uses http in production — prefer https for SEO and cookies.')
++  }
++
++  if (!process.env.FIRST_ADMIN_LOGIN?.trim() && !process.env.FIRST_ADMIN_PASSWORD?.trim()) {
++    push(findings, 'info', 'first_admin', 'FIRST_ADMIN_LOGIN/PASSWORD unset — create an admin via seed or DB manually.')
++  }
++
++  push(findings, 'info', 'product_config', 'Customize branding in config/product.ts (name, author, PWA, sitemap extras).')
++
++  const errors = findings.filter((f) => f.level === 'error')
++  const warnings = findings.filter((f) => f.level === 'warn')
++
++  for (const f of findings) {
++    const prefix = f.level === 'error' ? '✖' : f.level === 'warn' ? '⚠' : 'ℹ'
++    console.log(`${prefix} [${f.code}] ${f.message}`)
++  }
++
++  console.log('')
++  console.log(`Summary: ${errors.length} error(s), ${warnings.length} warning(s), ${findings.length - errors.length - warnings.length} info`)
++
++  if (errors.length > 0) {
++    process.exit(1)
++  }
++}
++
++main().catch((error: unknown) => {
++  console.error('[doctor] Failed:', error)
++  process.exit(1)
++})
+diff --git a/src/app/article/[...slug]/page.tsx b/src/app/article/[...slug]/page.tsx
+index b76dbd5..1325380 100644
+--- a/src/app/article/[...slug]/page.tsx
++++ b/src/app/article/[...slug]/page.tsx
+@@ -24,7 +24,7 @@ import {
+   loadPublishedIndexableTranslationMembers,
+   resolvePublishedArticleHreflangKey,
+ } from '~/lib/seo/articleTranslationAlternates'
+-import { AUTHOR_GITHUB_URL, AUTHOR_NAME } from '~/lib/seo/config'
++import { seoConfig } from '~/lib/seo/config'
+ import { getArticleBreadcrumbJsonLd, getArticleJsonLd, JsonLd } from '~/lib/seo/jsonld'
+ import { Logger } from '~/utils/logger'
+ 
+@@ -71,6 +71,7 @@ export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Pr
+   const ogImage = toAbsoluteSiteUrl(meta.image)
+ 
+   const translationLanguages = await loadPublishedIndexableAlternatesLanguagesMap(response.article.translationGroupId ?? undefined)
++  const author = seoConfig.author
+ 
+   return {
+     title: canonicalTitle,
+@@ -97,7 +98,7 @@ export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Pr
+       alternateLocale: [getAlternateOgLocale(articleLanguage)],
+       publishedTime: publishedAt ?? undefined,
+       modifiedTime: modifiedAt ?? undefined,
+-      authors: [AUTHOR_GITHUB_URL],
++      ...(author ? { authors: [author.url] } : {}),
+     },
+     twitter: {
+       card: seoData?.twitterCard || 'summary_large_image',
+@@ -109,7 +110,7 @@ export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Pr
+       'article:language': articleLanguage,
+       ...(publishedAt ? { 'article:published_time': publishedAt } : {}),
+       ...(modifiedAt ? { 'article:modified_time': modifiedAt } : {}),
+-      'article:author': AUTHOR_GITHUB_URL,
++      ...(author ? { 'article:author': author.url } : {}),
+     },
+   }
+ }
+@@ -172,8 +173,10 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
+   const breadcrumbJsonLd = getArticleBreadcrumbJsonLd({
+     articleName: canonicalTitle,
+     canonicalUrl: pageMeta.canonical,
+-    homeLabel: t('navigation.home'),
+-    articlesLabel: t('navigation.articles'),
++    labels: {
++      home: t('navigation.home'),
++      articlesPublic: t('navigation.articlesPublic'),
++    },
+   })
+ 
+   const publishedAt = response.revision.publishedAt ?? response.article.publishedAt
+@@ -183,12 +186,18 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
+       <ArticleViewTracker slug={slugResolved} surface="public" />
+       <JsonLd data={breadcrumbJsonLd} />
+       <JsonLd data={articleJsonLd} />
+-      <p className="mb-2 text-sm text-muted-foreground">
+-        <span>{t('article.ui.authorBylinePrefix')}</span>{' '}
+-        <a href={AUTHOR_GITHUB_URL} rel="author noopener noreferrer" className="font-medium text-foreground underline underline-offset-2 hover:no-underline">
+-          {AUTHOR_NAME}
+-        </a>
+-      </p>
++      {seoConfig.author ? (
++        <p className="mb-2 text-sm text-muted-foreground">
++          <span>{t('article.ui.authorBylinePrefix')}</span>{' '}
++          <a
++            href={seoConfig.author.url}
++            rel="author noopener noreferrer"
++            className="font-medium text-foreground underline underline-offset-2 hover:no-underline"
++          >
++            {seoConfig.author.name}
++          </a>
++        </p>
++      ) : null}
+       <ArticlePublishedDate publishedAt={publishedAt} className="mb-4 text-muted-foreground" />
+       {translationMembers.length >= 2 ? (
+         <ArticleTranslationLanguageNav
+diff --git a/src/app/layout.tsx b/src/app/layout.tsx
+index 7c5ca7f..0dc28e7 100644
+--- a/src/app/layout.tsx
++++ b/src/app/layout.tsx
+@@ -36,7 +36,7 @@ const geistMono = Geist_Mono({
+ 
+ export const metadata: Metadata = {
+   metadataBase: new URL(seoConfig.siteUrl),
+-  manifest: '/images/site.webmanifest',
++  manifest: '/manifest.webmanifest',
+   title: {
+     default: seoConfig.defaultTitle,
+     template: `%s | ${seoConfig.siteName}`,
+@@ -56,7 +56,7 @@ export const metadata: Metadata = {
+     other: [
+       {
+         rel: 'manifest',
+-        url: '/images/site.webmanifest',
++        url: '/manifest.webmanifest',
+       },
+     ],
+   },
+diff --git a/src/app/manifest.ts b/src/app/manifest.ts
+new file mode 100644
+index 0000000..0306126
+--- /dev/null
++++ b/src/app/manifest.ts
+@@ -0,0 +1,22 @@
++import { PRODUCT_CONFIG } from '@config/product'
++import type { MetadataRoute } from 'next'
++
++export default function manifest(): MetadataRoute.Manifest {
++  return {
++    name: PRODUCT_CONFIG.name,
++    short_name: PRODUCT_CONFIG.shortName,
++    description: PRODUCT_CONFIG.description,
++    start_url: '/',
++    scope: '/',
++    icons: PRODUCT_CONFIG.pwa.icons.map((icon) => ({
++      src: icon.src,
++      sizes: icon.sizes,
++      type: icon.type,
++      purpose: 'maskable' as const,
++    })),
++    theme_color: PRODUCT_CONFIG.pwa.themeColor,
++    background_color: PRODUCT_CONFIG.pwa.backgroundColor,
++    orientation: PRODUCT_CONFIG.pwa.orientation,
++    display: PRODUCT_CONFIG.pwa.display,
++  }
++}
+diff --git a/src/app/page.tsx b/src/app/page.tsx
+index 5447cad..6b3cc22 100644
+--- a/src/app/page.tsx
++++ b/src/app/page.tsx
+@@ -10,7 +10,7 @@ import { ArticleItem } from '~/components/Views/Article/Block/server/ArticleItem
+ import { FALLBACK_THUMBNAIL_IMAGE } from '~/constants'
+ import { getServerT } from '~/lib/i18n/server'
+ import { getAlternateOgLocale, toOgLocale } from '~/lib/seo/articleLanguage'
+-import { BOILERPLATE_DEMO_URL, BOILERPLATE_GITHUB_REPO_URL, seoConfig } from '~/lib/seo/config'
++import { seoConfig } from '~/lib/seo/config'
+ import { getFaqPageJsonLd, getOrganizationJsonLd, getPersonJsonLd, getSoftwareApplicationJsonLd, getWebSiteJsonLd, JsonLd } from '~/lib/seo/jsonld'
+ 
+ const ARTICLE_EN_URL = 'https://github.com/Fedorrychkov/fedorrychkov/blob/main/articles/standalone-nextjs-production-ready-boilerplate/ARTICLE_EN.md'
+@@ -57,6 +57,8 @@ export default async function Home() {
+   const personJsonLd = getPersonJsonLd()
+   const webSiteJsonLd = getWebSiteJsonLd()
+   const softwareJsonLd = getSoftwareApplicationJsonLd(t('home.metaDescription'))
++  const githubUrl = seoConfig.links.github
++  const demoUrl = seoConfig.links.demo
+   const faqJsonLd = getFaqPageJsonLd([
+     { question: t('home.faq1Question'), answer: t('home.faq1Answer') },
+     { question: t('home.faq2Question'), answer: t('home.faq2Answer') },
+@@ -67,15 +69,15 @@ export default async function Home() {
+ 
+   const articles = await getServerForPublicArticlesPaginated({ limit: 4, offset: 0 })
+ 
+-  const readmeUrl = `${BOILERPLATE_GITHUB_REPO_URL}/blob/main/README.md`
+-  const docsTreeUrl = `${BOILERPLATE_GITHUB_REPO_URL}/tree/main/docs`
++  const readmeUrl = githubUrl ? `${githubUrl}/blob/main/README.md` : null
++  const docsTreeUrl = githubUrl ? `${githubUrl}/tree/main/docs` : null
+ 
+   return (
+     <>
+       <JsonLd data={organizationJsonLd} />
+-      <JsonLd data={personJsonLd} />
++      {personJsonLd ? <JsonLd data={personJsonLd} /> : null}
+       <JsonLd data={webSiteJsonLd} />
+-      <JsonLd data={softwareJsonLd} />
++      {softwareJsonLd ? <JsonLd data={softwareJsonLd} /> : null}
+       <JsonLd data={faqJsonLd} />
+       <PreviewUniversalLayout
+         content={
+@@ -107,9 +109,13 @@ export default async function Home() {
+           </div>
+           <p className="max-w-prose text-lg leading-8 text-zinc-600 dark:text-zinc-400">
+             {t('home.lookingForAStartingPointOrMoreInstructionsHeadOverTo')}{' '}
+-            <a href={BOILERPLATE_GITHUB_REPO_URL} className="font-medium text-zinc-950 dark:text-zinc-50">
+-              {t('home.githubRepository')}
+-            </a>{' '}
++            {githubUrl ? (
++              <a href={githubUrl} className="font-medium text-zinc-950 dark:text-zinc-50">
++                {t('home.githubRepository')}
++              </a>
++            ) : (
++              <span className="font-medium text-zinc-950 dark:text-zinc-50">{t('home.githubRepository')}</span>
++            )}{' '}
+             {t('home.orThe')}{' '}
+             <a href={ARTICLE_EN_URL} className="font-medium text-zinc-950 dark:text-zinc-50">
+               {t('home.aboutBoilerplate')}
+@@ -163,16 +169,20 @@ export default async function Home() {
+             <p className="mt-3 max-w-prose text-base leading-7 text-zinc-600 dark:text-zinc-400">{t('home.sectionLearnBody')}</p>
+             <nav>
+               <ul className="mt-4 flex flex-col gap-2 text-base font-medium text-blue-600 dark:text-blue-400">
+-                <li>
+-                  <a href={readmeUrl} className="underline-offset-4 hover:underline" rel="noopener noreferrer">
+-                    {t('home.linkReadme')}
+-                  </a>
+-                </li>
+-                <li>
+-                  <a href={docsTreeUrl} className="underline-offset-4 hover:underline" rel="noopener noreferrer">
+-                    {t('home.linkDocsFolder')}
+-                  </a>
+-                </li>
++                {readmeUrl ? (
++                  <li>
++                    <a href={readmeUrl} className="underline-offset-4 hover:underline" rel="noopener noreferrer">
++                      {t('home.linkReadme')}
++                    </a>
++                  </li>
++                ) : null}
++                {docsTreeUrl ? (
++                  <li>
++                    <a href={docsTreeUrl} className="underline-offset-4 hover:underline" rel="noopener noreferrer">
++                      {t('home.linkDocsFolder')}
++                    </a>
++                  </li>
++                ) : null}
+                 <li>
+                   <a href={ARTICLE_EN_URL} className="underline-offset-4 hover:underline" rel="noopener noreferrer">
+                     {t('home.linkArticleEn')}
+@@ -183,11 +193,13 @@ export default async function Home() {
+                     {t('home.linkArticleRu')}
+                   </a>
+                 </li>
+-                <li>
+-                  <a href={BOILERPLATE_DEMO_URL} className="underline-offset-4 hover:underline" rel="noopener noreferrer">
+-                    {t('home.linkLiveDemo')}
+-                  </a>
+-                </li>
++                {demoUrl ? (
++                  <li>
++                    <a href={demoUrl} className="underline-offset-4 hover:underline" rel="noopener noreferrer">
++                      {t('home.linkLiveDemo')}
++                    </a>
++                  </li>
++                ) : null}
+                 <li>
+                   <Link href="/articles" className="underline-offset-4 hover:underline">
+                     {t('home.linkArticlesIndex')}
+diff --git a/src/constants/routes.ts b/src/constants/routes.ts
+index a95b4ea..c474e45 100644
+--- a/src/constants/routes.ts
++++ b/src/constants/routes.ts
+@@ -1,3 +1,21 @@
++export type RouteSeoConfig = {
++  sitemap?: {
++    priority: number
++    changeFrequency: 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never'
++  }
++  /** Include in JSON-LD breadcrumb chains (use `breadcrumbOrder` for sort). */
++  breadcrumb?: boolean
++  breadcrumbOrder?: number
++}
++
++export type AppRoute = {
++  path: string
++  name: string
++  tKey: string
++  needAuth: boolean
++  seo?: RouteSeoConfig
++}
++
+ export const routes = {
+   users: {
+     path: '/admin/users',
+@@ -10,12 +28,20 @@ export const routes = {
+     name: 'Home',
+     tKey: 'navigation.home' as const,
+     needAuth: false,
++    seo: {
++      sitemap: { priority: 1, changeFrequency: 'weekly' },
++      breadcrumb: true,
++      breadcrumbOrder: 1,
++    },
+   },
+   uiKit: {
+     path: '/ui-kit',
+     name: 'UI Kit',
+     tKey: 'navigation.uiKit' as const,
+     needAuth: false,
++    seo: {
++      sitemap: { priority: 0.6, changeFrequency: 'monthly' },
++    },
+   },
+   profile: {
+     path: '/profile',
+@@ -112,6 +138,11 @@ export const routes = {
+     name: 'Articles',
+     tKey: 'navigation.articlesPublic' as const,
+     needAuth: false,
++    seo: {
++      sitemap: { priority: 0.9, changeFrequency: 'weekly' },
++      breadcrumb: true,
++      breadcrumbOrder: 2,
++    },
+   },
+   articlePreview: {
+     path: '/preview/:slug',
+@@ -125,4 +156,4 @@ export const routes = {
+     tKey: 'navigation.articlePrivate' as const,
+     needAuth: true,
+   },
+-}
++} satisfies Record<string, AppRoute>
+diff --git a/src/lib/routes/seo.ts b/src/lib/routes/seo.ts
+new file mode 100644
+index 0000000..cd37e9a
+--- /dev/null
++++ b/src/lib/routes/seo.ts
+@@ -0,0 +1,70 @@
++import { PRODUCT_CONFIG } from '@config/product'
++import type { MetadataRoute } from 'next'
++
++import { type AppRoute, routes } from '~/constants/routes'
++
++type SitemapFrequency = NonNullable<MetadataRoute.Sitemap[number]['changeFrequency']>
++
++export type RouteKey = keyof typeof routes
++
++const routeEntries = Object.entries(routes) as [RouteKey, AppRoute][]
++
++/** Public routes flagged with `seo.sitemap`, sorted by priority (desc). */
++export function getSitemapRoutesFromConfig(baseUrl: string): MetadataRoute.Sitemap {
++  const base = baseUrl.replace(/\/+$/, '')
++
++  const fromRoutes = routeEntries
++    .filter((entry): entry is [RouteKey, AppRoute & { seo: NonNullable<AppRoute['seo']> }] => Boolean(entry[1].seo?.sitemap))
++    .map(([, route]) => {
++      const sitemap = route.seo.sitemap!
++
++      return {
++        url: `${base}${route.path}`,
++        lastModified: new Date(),
++        changeFrequency: sitemap.changeFrequency as SitemapFrequency,
++        priority: sitemap.priority,
++      }
++    })
++
++  const extras = PRODUCT_CONFIG.sitemapExtras.map((extra) => ({
++    url: `${base}${extra.path}`,
++    lastModified: new Date(),
++    changeFrequency: extra.changeFrequency as SitemapFrequency,
++    priority: extra.priority,
++  }))
++
++  return [...fromRoutes, ...extras].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0))
++}
++
++/** Breadcrumb chain for public content (ordered by `seo.breadcrumbOrder`). */
++export function getBreadcrumbRouteKeys(): RouteKey[] {
++  return routeEntries
++    .filter((entry): entry is [RouteKey, AppRoute & { seo: NonNullable<AppRoute['seo']> }] => Boolean(entry[1].seo?.breadcrumb))
++    .sort((a, b) => (a[1].seo.breadcrumbOrder ?? 99) - (b[1].seo.breadcrumbOrder ?? 99))
++    .map(([key]) => key)
++}
++
++export function buildBreadcrumbJsonLdItems(params: { labels: Partial<Record<RouteKey, string>>; terminal: { name: string; item: string }; baseUrl: string }) {
++  const base = params.baseUrl.replace(/\/+$/, '')
++  const chain = getBreadcrumbRouteKeys()
++
++  const items = chain.map((key, index) => {
++    const route = routes[key]
++
++    return {
++      '@type': 'ListItem' as const,
++      position: index + 1,
++      name: params.labels[key] ?? route.name,
++      item: `${base}${route.path}`,
++    }
++  })
++
++  items.push({
++    '@type': 'ListItem',
++    position: items.length + 1,
++    name: params.terminal.name,
++    item: params.terminal.item,
++  })
++
++  return items
++}
+diff --git a/src/lib/seo/config.ts b/src/lib/seo/config.ts
+index 6ba11e7..c3226ab 100644
+--- a/src/lib/seo/config.ts
++++ b/src/lib/seo/config.ts
+@@ -1,27 +1,30 @@
+ import { NEXT_PUBLIC_ORGANIZATION_SAME_AS, NEXT_PUBLIC_SITE_URL } from '@config/env'
++import { PRODUCT_CONFIG } from '@config/product'
+ 
+ import { getDefaultLocale } from '../i18n'
+ 
+-const FALLBACK_SITE_URL = NEXT_PUBLIC_SITE_URL
++function parseOrganizationSameAs(raw: string | undefined): string[] {
++  if (!raw?.trim()) {
++    return []
++  }
+ 
+-/** Canonical GitHub repository for this boilerplate (SEO, JSON-LD, homepage links). */
+-export const BOILERPLATE_GITHUB_REPO_URL = 'https://github.com/Fedorrychkov/nextjs-super-boilerplate' as const
+-
+-/** Public demo instance (see README); use for marketing links — set your own when forking. */
+-export const BOILERPLATE_DEMO_URL = 'https://nextjs-super-boilerplate.visn-ai.io' as const
+-
+-/** Single author for public articles / JSON-LD (demo site). */
+-export const AUTHOR_NAME = 'Fedor Rychkov' as const
+-export const AUTHOR_GITHUB_URL = 'https://github.com/Fedorrychkov' as const
++  return raw
++    .split(',')
++    .map((url) => url.trim())
++    .filter((url) => url.length > 0)
++}
+ 
+ export const seoConfig = {
+-  siteName: 'Production Ready Next.js Boilerplate',
+-  siteUrl: FALLBACK_SITE_URL,
+-  defaultTitle: 'Production Ready Next.js Boilerplate',
+-  defaultDescription: 'You can use this boilerplate to start your best next project',
++  siteName: PRODUCT_CONFIG.name,
++  siteUrl: NEXT_PUBLIC_SITE_URL,
++  defaultTitle: PRODUCT_CONFIG.defaultTitle,
++  defaultDescription: PRODUCT_CONFIG.description,
+   defaultLocale: getDefaultLocale(),
+-  organizationSameAs:
+-    NEXT_PUBLIC_ORGANIZATION_SAME_AS?.split(',')
+-      ?.map((url) => url.trim())
+-      ?.filter((url) => url.length > 0) ?? ([] as string[]),
++  organizationSameAs: parseOrganizationSameAs(NEXT_PUBLIC_ORGANIZATION_SAME_AS),
++  author: PRODUCT_CONFIG.author,
++  links: PRODUCT_CONFIG.links,
++  schema: {
++    person: PRODUCT_CONFIG.schema.person && Boolean(PRODUCT_CONFIG.author),
++    softwareApplication: PRODUCT_CONFIG.schema.softwareApplication && Boolean(PRODUCT_CONFIG.links.github),
++  },
+ }
+diff --git a/src/lib/seo/jsonld.tsx b/src/lib/seo/jsonld.tsx
+index 1761592..222dd0b 100644
+--- a/src/lib/seo/jsonld.tsx
++++ b/src/lib/seo/jsonld.tsx
+@@ -3,8 +3,10 @@ import type { Article, BreadcrumbList, FAQPage, Organization, Person, SoftwareAp
+ 
+ import { jsonStringifySafety } from '~/utils/jsonSafe'
+ 
++import type { RouteKey } from '../routes/seo'
++import { buildBreadcrumbJsonLdItems } from '../routes/seo'
+ import { toAbsoluteSiteUrl } from './absoluteUrl'
+-import { AUTHOR_GITHUB_URL, AUTHOR_NAME, BOILERPLATE_GITHUB_REPO_URL, seoConfig } from './config'
++import { seoConfig } from './config'
+ 
+ export const getOrganizationJsonLd = (): WithContext<Organization> => ({
+   '@context': 'https://schema.org',
+@@ -22,28 +24,41 @@ export const getWebSiteJsonLd = (): WithContext<WebSite> => ({
+   inLanguage: seoConfig.defaultLocale,
+ })
+ 
+-/** Open-source boilerplate as a software product (homepage rich result / entity hints). */
+-export const getPersonJsonLd = (): WithContext<Person> => ({
+-  '@context': 'https://schema.org',
+-  '@type': 'Person',
+-  name: AUTHOR_NAME,
+-  url: AUTHOR_GITHUB_URL,
+-  ...(seoConfig.organizationSameAs.length ? { sameAs: seoConfig.organizationSameAs } : {}),
+-})
++export const getPersonJsonLd = (): WithContext<Person> | null => {
++  if (!seoConfig.schema.person || !seoConfig.author) {
++    return null
++  }
+ 
+-export const getSoftwareApplicationJsonLd = (description: string): WithContext<SoftwareApplication> => ({
+-  '@context': 'https://schema.org',
+-  '@type': 'SoftwareApplication',
+-  name: seoConfig.siteName,
+-  description,
+-  url: seoConfig.siteUrl,
+-  applicationCategory: 'DeveloperApplication',
+-  operatingSystem: 'Any',
+-  installUrl: BOILERPLATE_GITHUB_REPO_URL,
+-  sameAs: BOILERPLATE_GITHUB_REPO_URL,
+-  isAccessibleForFree: true,
+-  license: `${BOILERPLATE_GITHUB_REPO_URL}/blob/main/LICENSE`,
+-})
++  return {
++    '@context': 'https://schema.org',
++    '@type': 'Person',
++    name: seoConfig.author.name,
++    url: seoConfig.author.url,
++    ...(seoConfig.organizationSameAs.length ? { sameAs: seoConfig.organizationSameAs } : {}),
++  }
++}
++
++export const getSoftwareApplicationJsonLd = (description: string): WithContext<SoftwareApplication> | null => {
++  const github = seoConfig.links.github
++
++  if (!seoConfig.schema.softwareApplication || !github) {
++    return null
++  }
++
++  return {
++    '@context': 'https://schema.org',
++    '@type': 'SoftwareApplication',
++    name: seoConfig.siteName,
++    description,
++    url: seoConfig.siteUrl,
++    applicationCategory: 'DeveloperApplication',
++    operatingSystem: 'Any',
++    installUrl: github,
++    sameAs: github,
++    isAccessibleForFree: true,
++    license: `${github}/blob/main/LICENSE`,
++  }
++}
+ 
+ export const getArticleJsonLd = (props: {
+   slug: string
+@@ -58,50 +73,64 @@ export const getArticleJsonLd = (props: {
+   language?: string | null
+   /** Public articles: true; private / restricted: false. */
+   isAccessibleForFree?: boolean
+-}): WithContext<Article> => ({
+-  '@context': 'https://schema.org',
+-  '@type': 'Article',
+-  '@id': `${props.canonicalUrl}#article`,
+-  url: props.canonicalUrl,
+-  mainEntityOfPage: props.canonicalUrl,
+-  headline: props.title,
+-  description: props.description ?? undefined,
+-  image: toAbsoluteSiteUrl(props.image ?? undefined),
+-  datePublished: props.datePublished ?? undefined,
+-  dateModified: props.dateModified ?? undefined,
+-  ...(props.keywords?.trim() ? { keywords: props.keywords.trim() } : {}),
+-  ...(props.isAccessibleForFree !== undefined ? { isAccessibleForFree: props.isAccessibleForFree } : {}),
+-  author: {
+-    '@type': 'Person',
+-    name: AUTHOR_NAME,
+-    url: AUTHOR_GITHUB_URL,
+-  },
+-  publisher: {
++}): WithContext<Article> => {
++  const publisher: Organization = {
+     '@type': 'Organization',
+     name: seoConfig.siteName,
+     url: seoConfig.siteUrl,
+     ...(seoConfig.organizationSameAs.length ? { sameAs: seoConfig.organizationSameAs } : {}),
+-  },
+-  inLanguage: props.language?.trim() || seoConfig.defaultLocale,
+-})
++  }
++
++  const author =
++    seoConfig.author != null
++      ? ({
++          '@type': 'Person' as const,
++          name: seoConfig.author.name,
++          url: seoConfig.author.url,
++        } satisfies Person)
++      : publisher
++
++  return {
++    '@context': 'https://schema.org',
++    '@type': 'Article',
++    '@id': `${props.canonicalUrl}#article`,
++    url: props.canonicalUrl,
++    mainEntityOfPage: props.canonicalUrl,
++    headline: props.title,
++    description: props.description ?? undefined,
++    image: toAbsoluteSiteUrl(props.image ?? undefined),
++    datePublished: props.datePublished ?? undefined,
++    dateModified: props.dateModified ?? undefined,
++    ...(props.keywords?.trim() ? { keywords: props.keywords.trim() } : {}),
++    ...(props.isAccessibleForFree !== undefined ? { isAccessibleForFree: props.isAccessibleForFree } : {}),
++    author,
++    publisher,
++    inLanguage: props.language?.trim() || seoConfig.defaultLocale,
++  }
++}
+ 
+ export const getArticleBreadcrumbJsonLd = (params: {
+-  /** Same as `<title>` / `headline` — short label for last crumb */
+   articleName: string
+   canonicalUrl: string
++  labels?: Partial<Record<RouteKey, string>>
++  /** @deprecated Prefer `labels` built from route `tKey`s */
+   homeLabel?: string
+   articlesLabel?: string
+ }): WithContext<BreadcrumbList> => {
+-  const base = seoConfig.siteUrl.replace(/\/+$/, '')
++  const labels: Partial<Record<RouteKey, string>> = {
++    ...params.labels,
++    ...(params.homeLabel ? { home: params.homeLabel } : {}),
++    ...(params.articlesLabel ? { articlesPublic: params.articlesLabel } : {}),
++  }
+ 
+   return {
+     '@context': 'https://schema.org',
+     '@type': 'BreadcrumbList',
+-    itemListElement: [
+-      { '@type': 'ListItem', position: 1, name: params.homeLabel ?? 'Home', item: `${base}/` },
+-      { '@type': 'ListItem', position: 2, name: params.articlesLabel ?? 'Articles', item: `${base}/articles` },
+-      { '@type': 'ListItem', position: 3, name: params.articleName, item: params.canonicalUrl },
+-    ],
++    itemListElement: buildBreadcrumbJsonLdItems({
++      labels,
++      terminal: { name: params.articleName, item: params.canonicalUrl },
++      baseUrl: seoConfig.siteUrl,
++    }),
+   }
+ }
+ 
+diff --git a/src/lib/seo/sitemap.ts b/src/lib/seo/sitemap.ts
+index a1d8e32..b3e8206 100644
+--- a/src/lib/seo/sitemap.ts
++++ b/src/lib/seo/sitemap.ts
+@@ -7,6 +7,7 @@ import type { MetadataRoute } from 'next'
+ import { ArticleStatus, ArticleVisibility } from '~/api/article'
+ import type { ArticleRevisionSeoMetadata } from '~/api/article-revision'
+ import { getDefaultLocale } from '~/lib/i18n/config'
++import { getSitemapRoutesFromConfig } from '~/lib/routes/seo'
+ 
+ import { buildDefaultArticleUrl } from './articleCanonical'
+ import { loadPublishedIndexableAlternatesLanguagesMap } from './articleTranslationAlternates'
+@@ -30,32 +31,7 @@ export type PublicSeoArticle = {
+ 
+ const baseUrl = seoConfig.siteUrl.replace(/\/+$/, '')
+ 
+-export const getStaticRoutes = (): MetadataRoute.Sitemap => [
+-  {
+-    url: baseUrl,
+-    lastModified: new Date(),
+-    changeFrequency: 'weekly',
+-    priority: 1,
+-  },
+-  {
+-    url: `${baseUrl}/articles`,
+-    lastModified: new Date(),
+-    changeFrequency: 'weekly',
+-    priority: 0.9,
+-  },
+-  {
+-    url: `${baseUrl}/ui-kit`,
+-    lastModified: new Date(),
+-    changeFrequency: 'monthly',
+-    priority: 0.6,
+-  },
+-  {
+-    url: `${baseUrl}/rss.xml`,
+-    lastModified: new Date(),
+-    changeFrequency: 'daily',
+-    priority: 0.6,
+-  },
+-]
++export const getStaticRoutes = (): MetadataRoute.Sitemap => getSitemapRoutesFromConfig(baseUrl)
+ 
+ function toTimeMs(value: string | Date | null | undefined): number {
+   if (value == null) {

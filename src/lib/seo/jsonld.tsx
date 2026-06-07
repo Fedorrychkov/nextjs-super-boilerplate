@@ -3,8 +3,10 @@ import type { Article, BreadcrumbList, FAQPage, Organization, Person, SoftwareAp
 
 import { jsonStringifySafety } from '~/utils/jsonSafe'
 
+import type { RouteKey } from '../routes/seo'
+import { buildBreadcrumbJsonLdItems } from '../routes/seo'
 import { toAbsoluteSiteUrl } from './absoluteUrl'
-import { AUTHOR_GITHUB_URL, AUTHOR_NAME, BOILERPLATE_GITHUB_REPO_URL, seoConfig } from './config'
+import { seoConfig } from './config'
 
 export const getOrganizationJsonLd = (): WithContext<Organization> => ({
   '@context': 'https://schema.org',
@@ -22,28 +24,41 @@ export const getWebSiteJsonLd = (): WithContext<WebSite> => ({
   inLanguage: seoConfig.defaultLocale,
 })
 
-/** Open-source boilerplate as a software product (homepage rich result / entity hints). */
-export const getPersonJsonLd = (): WithContext<Person> => ({
-  '@context': 'https://schema.org',
-  '@type': 'Person',
-  name: AUTHOR_NAME,
-  url: AUTHOR_GITHUB_URL,
-  ...(seoConfig.organizationSameAs.length ? { sameAs: seoConfig.organizationSameAs } : {}),
-})
+export const getPersonJsonLd = (): WithContext<Person> | null => {
+  if (!seoConfig.schema.person || !seoConfig.author) {
+    return null
+  }
 
-export const getSoftwareApplicationJsonLd = (description: string): WithContext<SoftwareApplication> => ({
-  '@context': 'https://schema.org',
-  '@type': 'SoftwareApplication',
-  name: seoConfig.siteName,
-  description,
-  url: seoConfig.siteUrl,
-  applicationCategory: 'DeveloperApplication',
-  operatingSystem: 'Any',
-  installUrl: BOILERPLATE_GITHUB_REPO_URL,
-  sameAs: BOILERPLATE_GITHUB_REPO_URL,
-  isAccessibleForFree: true,
-  license: `${BOILERPLATE_GITHUB_REPO_URL}/blob/main/LICENSE`,
-})
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    name: seoConfig.author.name,
+    url: seoConfig.author.url,
+    ...(seoConfig.organizationSameAs.length ? { sameAs: seoConfig.organizationSameAs } : {}),
+  }
+}
+
+export const getSoftwareApplicationJsonLd = (description: string): WithContext<SoftwareApplication> | null => {
+  const github = seoConfig.links.github
+
+  if (!seoConfig.schema.softwareApplication || !github) {
+    return null
+  }
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: seoConfig.siteName,
+    description,
+    url: seoConfig.siteUrl,
+    applicationCategory: 'DeveloperApplication',
+    operatingSystem: 'Any',
+    installUrl: github,
+    sameAs: github,
+    isAccessibleForFree: true,
+    license: `${github}/blob/main/LICENSE`,
+  }
+}
 
 export const getArticleJsonLd = (props: {
   slug: string
@@ -58,50 +73,64 @@ export const getArticleJsonLd = (props: {
   language?: string | null
   /** Public articles: true; private / restricted: false. */
   isAccessibleForFree?: boolean
-}): WithContext<Article> => ({
-  '@context': 'https://schema.org',
-  '@type': 'Article',
-  '@id': `${props.canonicalUrl}#article`,
-  url: props.canonicalUrl,
-  mainEntityOfPage: props.canonicalUrl,
-  headline: props.title,
-  description: props.description ?? undefined,
-  image: toAbsoluteSiteUrl(props.image ?? undefined),
-  datePublished: props.datePublished ?? undefined,
-  dateModified: props.dateModified ?? undefined,
-  ...(props.keywords?.trim() ? { keywords: props.keywords.trim() } : {}),
-  ...(props.isAccessibleForFree !== undefined ? { isAccessibleForFree: props.isAccessibleForFree } : {}),
-  author: {
-    '@type': 'Person',
-    name: AUTHOR_NAME,
-    url: AUTHOR_GITHUB_URL,
-  },
-  publisher: {
+}): WithContext<Article> => {
+  const publisher: Organization = {
     '@type': 'Organization',
     name: seoConfig.siteName,
     url: seoConfig.siteUrl,
     ...(seoConfig.organizationSameAs.length ? { sameAs: seoConfig.organizationSameAs } : {}),
-  },
-  inLanguage: props.language?.trim() || seoConfig.defaultLocale,
-})
+  }
+
+  const author =
+    seoConfig.author != null
+      ? ({
+          '@type': 'Person' as const,
+          name: seoConfig.author.name,
+          url: seoConfig.author.url,
+        } satisfies Person)
+      : publisher
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    '@id': `${props.canonicalUrl}#article`,
+    url: props.canonicalUrl,
+    mainEntityOfPage: props.canonicalUrl,
+    headline: props.title,
+    description: props.description ?? undefined,
+    image: toAbsoluteSiteUrl(props.image ?? undefined),
+    datePublished: props.datePublished ?? undefined,
+    dateModified: props.dateModified ?? undefined,
+    ...(props.keywords?.trim() ? { keywords: props.keywords.trim() } : {}),
+    ...(props.isAccessibleForFree !== undefined ? { isAccessibleForFree: props.isAccessibleForFree } : {}),
+    author,
+    publisher,
+    inLanguage: props.language?.trim() || seoConfig.defaultLocale,
+  }
+}
 
 export const getArticleBreadcrumbJsonLd = (params: {
-  /** Same as `<title>` / `headline` — short label for last crumb */
   articleName: string
   canonicalUrl: string
+  labels?: Partial<Record<RouteKey, string>>
+  /** @deprecated Prefer `labels` built from route `tKey`s */
   homeLabel?: string
   articlesLabel?: string
 }): WithContext<BreadcrumbList> => {
-  const base = seoConfig.siteUrl.replace(/\/+$/, '')
+  const labels: Partial<Record<RouteKey, string>> = {
+    ...params.labels,
+    ...(params.homeLabel ? { home: params.homeLabel } : {}),
+    ...(params.articlesLabel ? { articlesPublic: params.articlesLabel } : {}),
+  }
 
   return {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: params.homeLabel ?? 'Home', item: `${base}/` },
-      { '@type': 'ListItem', position: 2, name: params.articlesLabel ?? 'Articles', item: `${base}/articles` },
-      { '@type': 'ListItem', position: 3, name: params.articleName, item: params.canonicalUrl },
-    ],
+    itemListElement: buildBreadcrumbJsonLdItems({
+      labels,
+      terminal: { name: params.articleName, item: params.canonicalUrl },
+      baseUrl: seoConfig.siteUrl,
+    }),
   }
 }
 

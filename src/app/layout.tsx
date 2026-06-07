@@ -36,7 +36,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(seoConfig.siteUrl),
-  manifest: '/images/site.webmanifest',
+  manifest: '/manifest.webmanifest',
   title: {
     default: seoConfig.defaultTitle,
     template: `%s | ${seoConfig.siteName}`,
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
     other: [
       {
         rel: 'manifest',
-        url: '/images/site.webmanifest',
+        url: '/manifest.webmanifest',
       },
     ],
   },
