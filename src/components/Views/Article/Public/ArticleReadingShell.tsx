@@ -1,4 +1,3 @@
-import Image from 'next/image'
 import Link from 'next/link'
 
 import { cn } from '~/utils/cn'
@@ -65,13 +64,6 @@ export const ArticleReadingShell = ({ breadcrumbs, title, thumbnailUrl, articleL
         {/* Meta row: author + date + listen */}
         {meta && <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground border-b border-border/60 pb-5">{meta}</div>}
       </header>
-
-      {/* Thumbnail hero */}
-      {thumbnailUrl && (
-        <div className="relative w-full aspect-[16/9] rounded-2xl overflow-hidden mb-10 bg-muted">
-          <Image src={thumbnailUrl} alt={title} fill className="object-cover" priority sizes="(max-width: 768px) 100vw, 768px" />
-        </div>
-      )}
 
       {/* Article body */}
       <div className="tiptap readonly prose prose-neutral dark:prose-invert max-w-none" lang={articleLanguage} dangerouslySetInnerHTML={{ __html: bodyHtml }} />

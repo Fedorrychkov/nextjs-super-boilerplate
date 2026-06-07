@@ -1,7 +1,6 @@
 'use client'
 
 import { AxiosError } from 'axios'
-import Image from 'next/image'
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from 'react-query'
@@ -446,17 +445,8 @@ export const MediaUrlUploadField = (props: Props) => {
             <audio className="h-10 w-full max-w-md" controls preload="metadata" src={audioPreviewSrc || undefined} />
           ) : resourceType === MediaResourceType.VIDEO ? (
             <video className="w-full max-w-md" controls preload="metadata" src={videoPreviewSrc || undefined} />
-          ) : value?.includes('cdn') && !value?.includes('http') ? (
-            <Image
-              src={`${window?.location?.origin ?? ''}${value}`}
-              alt="Media"
-              width={100}
-              height={100}
-              className="w-full h-full max-w-40 max-h-40 object-contain"
-              unoptimized
-            />
           ) : (
-            <ImageLoader src={value} className="w-full h-full max-w-40 max-h-40 object-contain" />
+            <ImageLoader src={value} alt="Media" className="w-full h-full max-w-40 max-h-40 object-contain" />
           )}
         </div>
       )}
