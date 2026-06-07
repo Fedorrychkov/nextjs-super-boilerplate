@@ -1,12 +1,12 @@
 'use client'
 
-import { Eye, EyeOff, Lock, Mail, UserRoundPlusIcon } from 'lucide-react'
+import { getPasswordPolicyErrorMessage } from '@lib/validation/password-policy'
+import { Mail, UserRoundPlusIcon } from 'lucide-react'
 import * as React from 'react'
 import { useState } from 'react'
 
-import { InputField } from '~/components/Fields'
+import { InputField, PasswordField } from '~/components/Fields'
 import { Button, Typography } from '~/components/ui'
-import { useSwitch } from '~/hooks/useSwitch'
 import { useT } from '~/providers'
 
 type Props = {
@@ -17,13 +17,12 @@ type Props = {
 
 const SignUpBlock = (props: Props) => {
   const t = useT()
-  const [isPasswordVisible, { toggle: togglePasswordVisibility }] = useSwitch(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
 
-  const validateEmail = (email: string) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  const validateEmail = (emailValue: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)
   }
 
   const handle = (e: React.FormEvent<HTMLFormElement>) => {
@@ -40,8 +39,16 @@ const SignUpBlock = (props: Props) => {
 
       return
     }
-    setError('')
 
+    const policyError = getPasswordPolicyErrorMessage(password, t)
+
+    if (policyError) {
+      setError(policyError)
+
+      return
+    }
+
+    setError('')
     props.onSubmit(email, password)
   }
 
@@ -79,30 +86,16 @@ const SignUpBlock = (props: Props) => {
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
-          <div className="relative">
-            <InputField
-              placeholder={t('auth.ui.password')}
-              type={isPasswordVisible ? 'text' : 'password'}
-              name="password"
-              value={password}
-              additionalLeftComponent={
-                <span className="ml-3 text-gray-400">
-                  <Lock className="w-4 h-4" />
-                </span>
-              }
-              additionalRightComponent={
-                <Button type="button" size="input-icon" variant="ghost" className="text-gray-400 mr-3 cursor-pointer" onClick={togglePasswordVisibility}>
-                  {isPasswordVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </Button>
-              }
-              disabled={props.isLoading}
-              classNames={{
-                input: 'w-full pl-10 pr-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm',
-              }}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer text-xs select-none"></span>
-          </div>
+          <PasswordField
+            name="password"
+            placeholder={t('auth.ui.password')}
+            value={password}
+            onChange={setPassword}
+            disabled={props.isLoading}
+            classNames={{
+              input: 'w-full rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm',
+            }}
+          />
 
           <div className="w-full flex justify-end">{error && <div className="text-sm text-red-500 text-left">{error}</div>}</div>
         </div>

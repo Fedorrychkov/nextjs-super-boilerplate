@@ -52,3 +52,42 @@ export async function notifyNewLogin(params: { recipientUserId: string; t: TFunc
     t: params.t,
   })
 }
+
+export async function notifyPasswordChanged(params: { recipientUserId: string; t: TFunction }): Promise<void> {
+  await deliverEventNotification({
+    eventId: 'password',
+    recipientUserId: params.recipientUserId,
+    type: PlatformNotificationType.PASSWORD_CHANGED,
+    title: params.t('platformNotifications.triggers.passwordChanged.title'),
+    body: params.t('platformNotifications.triggers.passwordChanged.body'),
+    urlPath: PROFILE_URL_PATH,
+    source: 'password_change',
+    t: params.t,
+  })
+}
+
+export async function notifyPasswordReset(params: { recipientUserId: string; t: TFunction }): Promise<void> {
+  await deliverEventNotification({
+    eventId: 'password',
+    recipientUserId: params.recipientUserId,
+    type: PlatformNotificationType.PASSWORD_RESET,
+    title: params.t('platformNotifications.triggers.passwordReset.title'),
+    body: params.t('platformNotifications.triggers.passwordReset.body'),
+    urlPath: PROFILE_URL_PATH,
+    source: 'password_forgot',
+    t: params.t,
+  })
+}
+
+export async function notifyAdminPasswordSet(params: { recipientUserId: string; t: TFunction }): Promise<void> {
+  await deliverEventNotification({
+    eventId: 'password',
+    recipientUserId: params.recipientUserId,
+    type: PlatformNotificationType.ADMIN_PASSWORD_SET,
+    title: params.t('platformNotifications.triggers.adminPasswordSet.title'),
+    body: params.t('platformNotifications.triggers.adminPasswordSet.body'),
+    urlPath: PROFILE_URL_PATH,
+    source: 'admin_password_set',
+    t: params.t,
+  })
+}

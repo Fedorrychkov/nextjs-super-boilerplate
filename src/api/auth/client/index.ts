@@ -123,4 +123,46 @@ export class ClientAuthApi {
 
     return response.data
   }
+
+  async getRecoveryCapabilities(): Promise<Record<string, unknown>> {
+    const response = await this.client.get('/api/v1/auth/recovery/capabilities')
+
+    return response.data
+  }
+
+  async requestPasswordChange(body: { currentPassword: string; newPassword: string }) {
+    const response = await this.client.post('/api/v1/auth/password/change', body)
+
+    return response.data
+  }
+
+  async confirmPasswordChange(body: { pendingId: string; emailCode?: string; totp?: string; flexibleFactor?: 'email' | 'totp' }) {
+    const response = await this.client.put('/api/v1/auth/password/change', body)
+
+    return response.data
+  }
+
+  async startPasswordForgot(body: { email: string }) {
+    const response = await this.client.post('/api/v1/auth/password/forgot', body)
+
+    return response.data
+  }
+
+  async verifyForgotEmail(body: { pendingId: string; emailCode: string }) {
+    const response = await this.client.post('/api/v1/auth/password/forgot/verify-email', body)
+
+    return response.data
+  }
+
+  async verifyForgotTotp(body: { pendingId: string; totp: string }) {
+    const response = await this.client.post('/api/v1/auth/password/forgot/verify-totp', body)
+
+    return response.data
+  }
+
+  async completePasswordForgot(body: { pendingId: string; newPassword: string; emailCode?: string; totp?: string; flexibleFactor?: 'email' | 'totp' }) {
+    const response = await this.client.post('/api/v1/auth/password/forgot/complete', body)
+
+    return response.data
+  }
 }

@@ -18,6 +18,10 @@ const SignUpBlock = React.lazy(() => import('~/components/Views/Auth/Blocks/Sign
 const SignUpVerifyBlock = React.lazy(() => import('~/components/Views/Auth/Blocks/SignUpVerifyBlock').then((module) => ({ default: module.SignUpVerifyBlock })))
 const MfaCodeBlock = React.lazy(() => import('~/components/Views/Auth/Blocks/MfaCodeBlock').then((module) => ({ default: module.MfaCodeBlock })))
 
+function postAuthRedirectPath(nextPath: string | null): string {
+  return nextPath || '/'
+}
+
 // Component for handling searchParams
 const LoginWithParams = () => {
   const t = useT()
@@ -126,11 +130,7 @@ const LoginWithParams = () => {
       if (response.success && response.nextStep === 'logged_in' && 'user' in response) {
         await refetch?.()
 
-        if (nextPath) {
-          router.replace(nextPath)
-        } else {
-          router.replace('/')
-        }
+        router.replace(postAuthRedirectPath(nextPath))
 
         return
       }
@@ -183,11 +183,7 @@ const LoginWithParams = () => {
         setSignUpStep('credentials')
         setSignUpEmail('')
 
-        if (nextPath) {
-          router.replace(nextPath)
-        } else {
-          router.replace('/')
-        }
+        router.replace(postAuthRedirectPath(nextPath))
       }
     } catch (error) {
       logger.error(error)

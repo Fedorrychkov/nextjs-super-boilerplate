@@ -23,6 +23,9 @@ export enum PlatformNotificationType {
   MFA_ENABLED = 'mfa_enabled',
   MFA_DISABLED = 'mfa_disabled',
   NEW_LOGIN = 'new_login',
+  PASSWORD_CHANGED = 'password_changed',
+  PASSWORD_RESET = 'password_reset',
+  ADMIN_PASSWORD_SET = 'admin_password_set',
 }
 
 export type NotificationChannelDeliveryModel = {

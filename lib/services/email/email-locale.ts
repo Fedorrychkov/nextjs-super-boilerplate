@@ -11,3 +11,14 @@ export function isRussianEmailLocale(locale?: string | null): boolean {
 export function resolveVerifyEmailTemplateName(locale?: string | null): string {
   return isRussianEmailLocale(locale) ? (EMAIL_CONFIG.templateVerifyEmailRu ?? '') : (EMAIL_CONFIG.templateVerifyEmailEn ?? '')
 }
+
+/** Optional Elastic template for password change / forgot. Empty string → send plain `text` from i18n only. */
+export function resolvePasswordEmailTemplateName(purpose: 'change' | 'forgot', locale?: string | null): string {
+  const isRu = isRussianEmailLocale(locale)
+
+  if (purpose === 'change') {
+    return (isRu ? EMAIL_CONFIG.templatePasswordChangeRu : EMAIL_CONFIG.templatePasswordChangeEn) ?? ''
+  }
+
+  return (isRu ? EMAIL_CONFIG.templatePasswordForgotRu : EMAIL_CONFIG.templatePasswordForgotEn) ?? ''
+}

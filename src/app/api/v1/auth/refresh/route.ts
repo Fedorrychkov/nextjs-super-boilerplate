@@ -1,13 +1,15 @@
 import { clearAuthCookies, setAuthCookies } from '@lib/cookies'
 import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
 import { authService } from '@lib/services/auth.service'
+import { getRequestClientMeta } from '@lib/utils/request-client-meta'
 import { cookies } from 'next/headers'
 import { NextRequest } from 'next/server'
 
+import { getPreferredLanguageCodeFromAcceptLanguage } from '~/lib/i18n/detectLocale'
 import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 
 const handler = (request: NextRequest) => {
-  return apiErrorHandlerContainer(request)(async (res) => {
+  return apiErrorHandlerContainer(request)(async (res, req) => {
     const { t } = await getServerTFromNextRequestAsync(request)
 
     const cookieStore = await cookies()
@@ -21,7 +23,8 @@ const handler = (request: NextRequest) => {
     }
 
     try {
-      const authResponse = await authService.refreshTokens(refreshToken)
+      const languageCode = getPreferredLanguageCodeFromAcceptLanguage(req.headers.get('accept-language'))
+      const authResponse = await authService.refreshTokens(refreshToken, { languageCode, clientMeta: getRequestClientMeta(req) })
 
       const response = res.json(
         {

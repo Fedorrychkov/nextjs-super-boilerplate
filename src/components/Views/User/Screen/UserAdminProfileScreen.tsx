@@ -8,6 +8,9 @@ import { useT } from '~/providers'
 import { useUserQuery } from '~/query/user/query'
 import { time } from '~/utils/time'
 
+import { AdminUserRecoveryPanel } from '../Blocks/AdminUserRecoveryPanel'
+import { AdminUserSecurityAuditPanel } from '../Blocks/AdminUserSecurityAuditPanel'
+import { AdminUserSessionsPanel } from '../Blocks/AdminUserSessionsPanel'
 import { UserNotificationsPanel } from '../Blocks/UserNotificationsPanel'
 import { UserPushSubscriptionsPanel } from '../Blocks/UserPushSubscriptionsPanel'
 
@@ -46,9 +49,24 @@ export const UserAdminProfileScreen = ({ userId }: Props) => {
         children: <UserPushSubscriptionsPanel userId={userId} />,
       },
       {
+        value: 'sessions',
+        label: t('user.adminProfile.tabs.sessions'),
+        children: <AdminUserSessionsPanel userId={userId} />,
+      },
+      {
         value: 'notifications',
         label: t('user.adminProfile.tabs.notifications'),
         children: <UserNotificationsPanel userId={userId} />,
+      },
+      {
+        value: 'recovery',
+        label: t('user.adminProfile.userRecovery.title'),
+        children: <AdminUserRecoveryPanel userId={userId} />,
+      },
+      {
+        value: 'security-audit',
+        label: t('user.adminProfile.tabs.securityAudit'),
+        children: <AdminUserSecurityAuditPanel userId={userId} />,
       },
     ],
     [t, user, userId],
@@ -65,7 +83,7 @@ export const UserAdminProfileScreen = ({ userId }: Props) => {
         </div>
       </div>
 
-      <TabsContainer tabs={tabs} searchMutable={false} mode="now" />
+      <TabsContainer tabs={tabs} searchMutable mode="lazy" />
     </div>
   )
 }

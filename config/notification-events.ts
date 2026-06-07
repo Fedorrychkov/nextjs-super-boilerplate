@@ -2,7 +2,7 @@ import { NotificationChannel } from '~/api/notification'
 
 import { EMAIL_CONFIG, NOTIFICATION_CONFIG } from './env'
 
-export type NotificationEventId = 'article' | 'mfa' | 'login'
+export type NotificationEventId = 'article' | 'mfa' | 'login' | 'password'
 
 export type NotificationEventConfig = {
   enabled: boolean
@@ -85,6 +85,10 @@ const NOTIFICATION_EVENTS_CONFIG: Record<NotificationEventId, NotificationEventC
   login: {
     enabled: parseBoolFlag(NOTIFICATION_CONFIG.loginEnabled, true),
     channels: parseChannelsCsv(NOTIFICATION_CONFIG.loginChannels, [NotificationChannel.EMAIL]),
+  },
+  password: {
+    enabled: parseBoolFlag(NOTIFICATION_CONFIG.passwordEnabled, true),
+    channels: parseChannelsCsv(NOTIFICATION_CONFIG.passwordChannels, [NotificationChannel.EMAIL]),
   },
 }
 

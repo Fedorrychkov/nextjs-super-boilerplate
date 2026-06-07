@@ -51,6 +51,11 @@ const {
   /** Elastic template names for sign-up code (`{code}` merge field). Defaults match dashboard names. */
   EMAIL_TEMPLATE_VERIFY_EMAIL_EN = process.env.EMAIL_TEMPLATE_VERIFY_EMAIL_EN,
   EMAIL_TEMPLATE_VERIFY_EMAIL_RU = process.env.EMAIL_TEMPLATE_VERIFY_EMAIL_RU,
+  /** Optional Elastic templates for password codes (`{code}` merge field). Empty → plain text from i18n. */
+  EMAIL_TEMPLATE_PASSWORD_CHANGE_EN = process.env.EMAIL_TEMPLATE_PASSWORD_CHANGE_EN,
+  EMAIL_TEMPLATE_PASSWORD_CHANGE_RU = process.env.EMAIL_TEMPLATE_PASSWORD_CHANGE_RU,
+  EMAIL_TEMPLATE_PASSWORD_FORGOT_EN = process.env.EMAIL_TEMPLATE_PASSWORD_FORGOT_EN,
+  EMAIL_TEMPLATE_PASSWORD_FORGOT_RU = process.env.EMAIL_TEMPLATE_PASSWORD_FORGOT_RU,
   EMAIL_REPLY_TO = process.env.EMAIL_REPLY_TO || '',
   REGISTRATION_MODE = process.env.REGISTRATION_MODE || '',
 
@@ -67,6 +72,8 @@ const {
    * NOTIFY_MFA_CHANNELS=all
    * NOTIFY_LOGIN_ENABLED=1
    * NOTIFY_LOGIN_CHANNELS=email
+   * NOTIFY_PASSWORD_ENABLED=1
+   * NOTIFY_PASSWORD_CHANNELS=email
    */
   NOTIFY_ARTICLE_ENABLED = process.env.NOTIFY_ARTICLE_ENABLED || '0',
   NOTIFY_ARTICLE_CHANNELS = process.env.NOTIFY_ARTICLE_CHANNELS || 'all',
@@ -74,6 +81,21 @@ const {
   NOTIFY_MFA_CHANNELS = process.env.NOTIFY_MFA_CHANNELS || 'all',
   NOTIFY_LOGIN_ENABLED = process.env.NOTIFY_LOGIN_ENABLED || '0',
   NOTIFY_LOGIN_CHANNELS = process.env.NOTIFY_LOGIN_CHANNELS || 'email',
+  NOTIFY_PASSWORD_ENABLED = process.env.NOTIFY_PASSWORD_ENABLED || '0',
+  NOTIFY_PASSWORD_CHANNELS = process.env.NOTIFY_PASSWORD_CHANNELS || 'email',
+
+  /** Account security features (0=off, 1=on unless noted) */
+  AUTH_PASSWORD_CHANGE_ENABLED = process.env.AUTH_PASSWORD_CHANGE_ENABLED || '0',
+  AUTH_PASSWORD_FORGOT_ENABLED = process.env.AUTH_PASSWORD_FORGOT_ENABLED || '0',
+  AUTH_RECOVERY_STRICTNESS = process.env.AUTH_RECOVERY_STRICTNESS || 'strict',
+  AUTH_ADMIN_ACCOUNT_RECOVERY_ENABLED = process.env.AUTH_ADMIN_ACCOUNT_RECOVERY_ENABLED || '0',
+  AUTH_SESSIONS_ENABLED = process.env.AUTH_SESSIONS_ENABLED || '0',
+  ONBOARDING_ENABLED = process.env.ONBOARDING_ENABLED || '0',
+  ONBOARDING_PUSH_PROMPT_ENABLED = process.env.ONBOARDING_PUSH_PROMPT_ENABLED || '0',
+  NEXT_PUBLIC_ONBOARDING_ENABLED = process.env.NEXT_PUBLIC_ONBOARDING_ENABLED || '0',
+  NEXT_PUBLIC_ONBOARDING_PUSH_PROMPT_ENABLED = process.env.NEXT_PUBLIC_ONBOARDING_PUSH_PROMPT_ENABLED || '0',
+  NEXT_PUBLIC_PUSH_IOS_PWA_HINT_ENABLED = process.env.NEXT_PUBLIC_PUSH_IOS_PWA_HINT_ENABLED || '0',
+  ONBOARDING_VERSION = process.env.ONBOARDING_VERSION || '0',
 } = process.env
 
 const isDevelop = [APP_ENV, NEXT_PUBLIC_APP_ENV].includes('development')
@@ -153,6 +175,10 @@ const EMAIL_CONFIG = {
   replyTo: EMAIL_REPLY_TO.trim(),
   templateVerifyEmailEn: EMAIL_TEMPLATE_VERIFY_EMAIL_EN,
   templateVerifyEmailRu: EMAIL_TEMPLATE_VERIFY_EMAIL_RU,
+  templatePasswordChangeEn: EMAIL_TEMPLATE_PASSWORD_CHANGE_EN,
+  templatePasswordChangeRu: EMAIL_TEMPLATE_PASSWORD_CHANGE_RU,
+  templatePasswordForgotEn: EMAIL_TEMPLATE_PASSWORD_FORGOT_EN,
+  templatePasswordForgotRu: EMAIL_TEMPLATE_PASSWORD_FORGOT_RU,
 }
 
 const NOTIFICATION_CONFIG = {
@@ -162,6 +188,8 @@ const NOTIFICATION_CONFIG = {
   mfaChannels: NOTIFY_MFA_CHANNELS,
   loginEnabled: NOTIFY_LOGIN_ENABLED,
   loginChannels: NOTIFY_LOGIN_CHANNELS,
+  passwordEnabled: NOTIFY_PASSWORD_ENABLED,
+  passwordChannels: NOTIFY_PASSWORD_CHANNELS,
 }
 
 const THEME_CONFIG = {
@@ -169,7 +197,44 @@ const THEME_CONFIG = {
   publicDefaultMode: NEXT_PUBLIC_DEFAULT_THEME_MODE,
 }
 
+const ACCOUNT_CONFIG = {
+  passwordChangeEnabled: parseBoolEnv(AUTH_PASSWORD_CHANGE_ENABLED, false),
+  passwordForgotEnabled: parseBoolEnv(AUTH_PASSWORD_FORGOT_ENABLED, false),
+  recoveryStrictness: AUTH_RECOVERY_STRICTNESS === 'flexible' ? 'flexible' : 'strict',
+  adminAccountRecoveryEnabled: parseBoolEnv(AUTH_ADMIN_ACCOUNT_RECOVERY_ENABLED, false),
+  sessionsEnabled: parseBoolEnv(AUTH_SESSIONS_ENABLED, false),
+  onboardingEnabled: parseBoolEnv(ONBOARDING_ENABLED, false),
+  onboardingPushPromptEnabled: parseBoolEnv(ONBOARDING_PUSH_PROMPT_ENABLED, false),
+  publicOnboardingEnabled: parseBoolEnv(NEXT_PUBLIC_ONBOARDING_ENABLED, false),
+  publicOnboardingPushPromptEnabled: parseBoolEnv(NEXT_PUBLIC_ONBOARDING_PUSH_PROMPT_ENABLED, false),
+  publicPushIosPwaHintEnabled: parseBoolEnv(NEXT_PUBLIC_PUSH_IOS_PWA_HINT_ENABLED, false),
+  onboardingVersion: parseNumberEnv(ONBOARDING_VERSION, 0),
+}
+
+function parseBoolEnv(value: string | undefined, defaultValue: boolean): boolean {
+  if (value == null || value.trim() === '') {
+    return defaultValue
+  }
+
+  const normalized = value.trim().toLowerCase()
+
+  if (normalized === '0' || normalized === 'false' || normalized === 'no' || normalized === 'off') {
+    return false
+  }
+
+  return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on'
+}
+
+function parseNumberEnv(value: string | undefined, defaultValue: number): number {
+  if (value == null || value.trim() === '') {
+    return defaultValue
+  }
+
+  return Number(value.trim())
+}
+
 export {
+  ACCOUNT_CONFIG,
   APP_ENV,
   APP_INTERNAL_ORIGIN,
   CDN_CONFIG,

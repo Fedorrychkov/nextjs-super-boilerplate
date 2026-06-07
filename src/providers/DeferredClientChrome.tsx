@@ -41,11 +41,17 @@ const CookieConsentBanner = safeDynamicImport(
   'CookieConsentBanner',
 )
 
+const OnboardingModalHost = safeDynamicImport(
+  () => import('~/components/Views/Onboarding/OnboardingModalHost').then((m) => ({ default: m.OnboardingModalHost })),
+  'OnboardingModalHost',
+)
+
 export function DeferredClientChrome() {
   return (
     <>
       <WebVitalsReporter />
       <CookieConsentBanner />
+      <OnboardingModalHost />
     </>
   )
 }

@@ -5,6 +5,8 @@ export type JwtPayload = {
   email: string
   role: UserRole
   status: UserStatus | null
+  /** RefreshToken document id — binds access JWT to a revocable server session */
+  sid?: string
   exp?: number
 }
 

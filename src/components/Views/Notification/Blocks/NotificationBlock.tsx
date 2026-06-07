@@ -5,6 +5,7 @@ import { Bell } from 'lucide-react'
 
 import { ClientSubscriptionApi } from '~/api/subscription'
 import { AlertBlock, Button, Typography } from '~/components/ui'
+import { IosPwaHint } from '~/components/Views/Push/IosPwaHint'
 import { useT } from '~/providers'
 import { useNotify } from '~/providers/notify'
 import { usePush } from '~/providers/push'
@@ -52,6 +53,7 @@ export const NotificationBlock = () => {
             ? t('notification.ui.youHaveSuccessfullySubscribedToUpdates')
             : t('notification.ui.toReceiveNotificationsWhenTheTabIsNotActivePleaseGrantPermissionToNotificationsInTheApplication')}
         </Typography>
+        <IosPwaHint />
         <Button variant="outline" onClick={handleSubscribe}>
           {subscribed ? t('notification.ui.unsubscribe') : t('notification.ui.subscribe')}
         </Button>
