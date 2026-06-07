@@ -54,7 +54,11 @@ function applyNotificationFilterFields(q: QueryFilter<IPlatformNotification>, fi
   }
 
   if (filter.deliveryStatus != null && String(filter.deliveryStatus).trim()) {
-    q.deliveryStatus = String(filter.deliveryStatus).trim()
+    const deliveryStatus = String(filter.deliveryStatus).trim()
+
+    if ((Object.values(NotificationDeliveryStatus) as string[]).includes(deliveryStatus)) {
+      q.deliveryStatus = deliveryStatus as NotificationDeliveryStatus
+    }
   }
 
   if (filter.type != null && String(filter.type).trim()) {
