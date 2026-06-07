@@ -1,3 +1,21 @@
+export type RouteSeoConfig = {
+  sitemap?: {
+    priority: number
+    changeFrequency: 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never'
+  }
+  /** Include in JSON-LD breadcrumb chains (use `breadcrumbOrder` for sort). */
+  breadcrumb?: boolean
+  breadcrumbOrder?: number
+}
+
+export type AppRoute = {
+  path: string
+  name: string
+  tKey: string
+  needAuth: boolean
+  seo?: RouteSeoConfig
+}
+
 export const routes = {
   users: {
     path: '/admin/users',
@@ -10,17 +28,43 @@ export const routes = {
     name: 'Home',
     tKey: 'navigation.home' as const,
     needAuth: false,
+    seo: {
+      sitemap: { priority: 1, changeFrequency: 'weekly' },
+      breadcrumb: true,
+      breadcrumbOrder: 1,
+    },
   },
   uiKit: {
     path: '/ui-kit',
     name: 'UI Kit',
     tKey: 'navigation.uiKit' as const,
     needAuth: false,
+    seo: {
+      sitemap: { priority: 0.6, changeFrequency: 'monthly' },
+    },
   },
   profile: {
     path: '/profile',
     name: 'Profile',
     tKey: 'navigation.profile' as const,
+    needAuth: true,
+  },
+  notifications: {
+    path: '/notifications',
+    name: 'Notifications',
+    tKey: 'navigation.notifications' as const,
+    needAuth: true,
+  },
+  adminNotifications: {
+    path: '/admin/notifications',
+    name: 'Admin Notifications',
+    tKey: 'navigation.adminNotifications' as const,
+    needAuth: true,
+  },
+  adminSecurityAudit: {
+    path: '/admin/security-audit',
+    name: 'Security audit',
+    tKey: 'navigation.adminSecurityAudit' as const,
     needAuth: true,
   },
   login: {
@@ -94,6 +138,11 @@ export const routes = {
     name: 'Articles',
     tKey: 'navigation.articlesPublic' as const,
     needAuth: false,
+    seo: {
+      sitemap: { priority: 0.9, changeFrequency: 'weekly' },
+      breadcrumb: true,
+      breadcrumbOrder: 2,
+    },
   },
   articlePreview: {
     path: '/preview/:slug',
@@ -107,4 +156,4 @@ export const routes = {
     tKey: 'navigation.articlePrivate' as const,
     needAuth: true,
   },
-}
+} satisfies Record<string, AppRoute>

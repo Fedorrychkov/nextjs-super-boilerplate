@@ -55,7 +55,12 @@ export const NotifyProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         if (document.visibilityState === 'visible') {
-          handleNotify(event.data.payload.body, 'info', { soundEnabled: true })
+          const p = event.data.payload
+          const message = p?.title && p?.body && p.title !== p.body ? `${p.title}: ${p.body}` : p?.body || p?.title || ''
+
+          if (message) {
+            handleNotify(message, 'info', { soundEnabled: true, delay: 8000 })
+          }
         }
       }
     }

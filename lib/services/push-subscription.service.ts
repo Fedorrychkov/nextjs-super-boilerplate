@@ -1,5 +1,6 @@
 import connectDB from '@lib/db/client'
 import PushSubscription, { IPushSubscription } from '@lib/db/models/PushSubscription'
+import mongoose from 'mongoose'
 
 export type PushSubscribeDto = {
   endpoint: string
@@ -40,6 +41,26 @@ export class PushSubscriptionService {
     await connectDB()
 
     await PushSubscription.deleteOne({ userId, endpoint }).exec()
+  }
+
+  async checkSubscriptionById(userId: string, subscriptionId: string): Promise<IPushSubscription | null> {
+    if (!mongoose.isValidObjectId(subscriptionId)) {
+      return null
+    }
+
+    await connectDB()
+
+    return PushSubscription.findOne({ userId, _id: subscriptionId }).exec()
+  }
+
+  async unsubscribeById(userId: string, subscriptionId: string): Promise<void> {
+    if (!mongoose.isValidObjectId(subscriptionId)) {
+      return
+    }
+
+    await connectDB()
+
+    await PushSubscription.deleteOne({ userId, _id: subscriptionId }).exec()
   }
   async list(filter: { userId?: string; endpoint?: string }): Promise<IPushSubscription[]> {
     await connectDB()

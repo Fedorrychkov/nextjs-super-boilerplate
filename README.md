@@ -10,7 +10,7 @@ Next.js 16 (App Router) app with production deploy (GitHub Actions), optional Do
 - **Data & ops:** MongoDB; deploy via GitHub Actions (stage/prod) with nginx, optional HTTPS (Let’s Encrypt), Redis, metrics (Prometheus, Grafana, Loki, etc.).
 - **Product:** Auth + roles, multi-step article editor, preview/publish, public article pages, RSS and sitemap, admin article views; optional OpenAI-backed chat/audit in the editor when `NEXT_PUBLIC_LLM_ENABLED=true` (see [`docs/AI_FEATURES_ROADMAP.md`](./docs/AI_FEATURES_ROADMAP.md)).
 - **SEO & agents:** Route metadata, JSON-LD, `public/llms.txt`, Markdown negotiation for public articles (`Accept: text/markdown`; see AI roadmap).
-- **All docs in one place:** **[`docs/README.md`](./docs/README.md)** (roadmaps, FAQ, GEO).
+- **All docs in one place:** **[`docs/README.md`](./docs/README.md)** — v0.2.0 start guide, env reference, roadmaps, FAQ.
 
 ## Scope
 
@@ -43,11 +43,12 @@ Next.js 16 (App Router) app with production deploy (GitHub Actions), optional Do
 ## Local run
 
 1. Install dependencies: `pnpm install` (or `npm install` / `yarn`).
-2. Copy env: `cp .env.example .env.local` and set values (JWT, MongoDB, etc.).
-3. (Optional) Start local MongoDB: `make up-local` — runs mongo from `docker-compose.dev.yml`. Use `MONGO_HOST=localhost` in `.env.local` when the app runs on the host. Stop: `make down-local`.
-4. Start dev server: `pnpm run dev:local` (or `npm run dev:local`). App: http://localhost:3000.
+2. Copy env: `cp .env.example .env.local` and set values (JWT, MongoDB, etc.). Run `pnpm doctor` to validate.
+3. Customize product branding in `config/product.ts` (name, author, links) — see [`docs/GETTING_STARTED.md`](./docs/GETTING_STARTED.md).
+4. (Optional) Start local MongoDB: `make up-local` — runs mongo from `docker-compose.dev.yml`. Use `MONGO_HOST=localhost` in `.env.local` when the app runs on the host. Stop: `make down-local`.
+5. Start dev server: `pnpm run dev:local` (or `npm run dev:local`). App: http://localhost:3000.
 
-To use an external MongoDB instead of local, set `MONGO_URI` in `.env.local` and skip step 3.
+To use an external MongoDB instead of local, set `MONGO_URI` in `.env.local` and skip step 4.
 
 ---
 
@@ -168,7 +169,7 @@ Deploy runs via GitHub Actions on push to the configured branch (`develop` → s
 | `deploy_mode` | `default` = build on server; `registry` = build in CI, image from GHCR. |
 | `node_version` | Node version in CI (e.g. `24`). Must match [.docker/Dockerfile](.docker/Dockerfile). |
 | `registry_subname` | GHCR image name fragment (e.g. `web` → `ghcr.io/owner/web:sha`). |
-| `notigy_enabled` | Telegram notifications (start/success/failure). |
+| `notify_enabled` | Telegram notifications (start/success/failure). |
 | `tag` | Tag for Telegram messages. |
 | `redis_enabled` | Start Redis container. |
 | `metrics_enabled` | Start metrics stack (Prometheus, Grafana, Loki, etc.). |

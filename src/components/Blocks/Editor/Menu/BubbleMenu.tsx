@@ -66,7 +66,11 @@ export const CustomBubbleMenu = (props: Props) => {
   const shouldShow = useCallback((menuProps: BubbleMenuShouldShowProps) => bubbleMenuShouldShow(menuProps, hideWhenActive), [hideWhenActive])
 
   return (
-    <BubbleMenu editor={editor} shouldShow={shouldShow} className="bg-neutral-400/80 bg-blend-overlay shadow-md rounded-md p-1 gap-2 flex flex-wrap max-w-md">
+    <BubbleMenu
+      editor={editor}
+      shouldShow={shouldShow}
+      className="bg-neutral-400/80 bg-blend-overlay shadow-md rounded-md p-1 gap-2 flex flex-wrap max-w-md z-10"
+    >
       {buttons.map((button) => (
         <Button key={button.label} variant="outline" size="sm-md" onMouseDown={(e) => e.preventDefault()} onClick={button.onClick}>
           {button.label}

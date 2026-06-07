@@ -1,12 +1,25 @@
 'use client'
 
-import { ActivityIcon, BarChart3Icon, BotIcon, EyeIcon, HomeIcon, LanguagesIcon, TextQuoteIcon, UserIcon, WrenchIcon } from 'lucide-react'
+import {
+  ActivityIcon,
+  BarChart3Icon,
+  BellIcon,
+  BotIcon,
+  EyeIcon,
+  HomeIcon,
+  LanguagesIcon,
+  ShieldCheckIcon,
+  TextQuoteIcon,
+  UserIcon,
+  WrenchIcon,
+} from 'lucide-react'
 import { useMemo } from 'react'
 
 import { UserRole } from '~/api/user'
 import { Sidebar } from '~/components/ui/sidebar'
 import { routes } from '~/constants'
 import { useAuth, useT } from '~/providers'
+import { ThemeShell } from '~/providers/theme'
 
 export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
   const t = useT()
@@ -34,6 +47,11 @@ export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
             label: t(routes.profile.tKey),
             icon: <UserIcon width={16} height={16} />,
             href: routes.profile.path,
+          },
+          {
+            label: t(routes.notifications.tKey),
+            icon: <BellIcon width={16} height={16} />,
+            href: routes.notifications.path,
           },
         ],
       },
@@ -81,6 +99,18 @@ export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
                   icon: <TextQuoteIcon width={16} height={16} />,
                   href: routes.articles.path,
                 },
+                {
+                  label: t(routes.adminNotifications.tKey),
+                  icon: <BellIcon width={16} height={16} />,
+                  disabled: authUser?.role !== UserRole.ADMIN,
+                  href: routes.adminNotifications.path,
+                },
+                {
+                  label: t(routes.adminSecurityAudit.tKey),
+                  icon: <ShieldCheckIcon width={16} height={16} />,
+                  disabled: authUser?.role !== UserRole.ADMIN,
+                  href: routes.adminSecurityAudit.path,
+                },
               ],
             },
           ]
@@ -89,5 +119,9 @@ export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
     [authUser?.role, t],
   )
 
-  return <Sidebar navigation={isLoading || !isFetched ? [] : navigation}>{children}</Sidebar>
+  return (
+    <ThemeShell className="flex min-h-full flex-1 flex-col">
+      <Sidebar navigation={isLoading || !isFetched ? [] : navigation}>{children}</Sidebar>
+    </ThemeShell>
+  )
 }

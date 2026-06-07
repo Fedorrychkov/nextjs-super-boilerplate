@@ -9,6 +9,7 @@ import { ArticleVisibility } from '~/api/article'
 import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { ArticlePublishedDate } from '~/components/Views/Article/Block/server/ArticlePublishedDate'
 import { ArticlePublicListenAudio } from '~/components/Views/Article/Public/ArticlePublicListenAudio'
+import { ArticleReadingShell } from '~/components/Views/Article/Public/ArticleReadingShell'
 import { ArticleTranslationAcceptBanner } from '~/components/Views/Article/Public/ArticleTranslationAcceptBanner'
 import { ArticleTranslationLanguageNav } from '~/components/Views/Article/Public/ArticleTranslationLanguageNav'
 import { ArticleViewTracker } from '~/components/Views/Article/Public/ArticleViewTracker'
@@ -24,7 +25,7 @@ import {
   loadPublishedIndexableTranslationMembers,
   resolvePublishedArticleHreflangKey,
 } from '~/lib/seo/articleTranslationAlternates'
-import { AUTHOR_GITHUB_URL, AUTHOR_NAME } from '~/lib/seo/config'
+import { seoConfig } from '~/lib/seo/config'
 import { getArticleBreadcrumbJsonLd, getArticleJsonLd, JsonLd } from '~/lib/seo/jsonld'
 import { Logger } from '~/utils/logger'
 
@@ -71,6 +72,7 @@ export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Pr
   const ogImage = toAbsoluteSiteUrl(meta.image)
 
   const translationLanguages = await loadPublishedIndexableAlternatesLanguagesMap(response.article.translationGroupId ?? undefined)
+  const author = seoConfig.author
 
   return {
     title: canonicalTitle,
@@ -97,7 +99,7 @@ export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Pr
       alternateLocale: [getAlternateOgLocale(articleLanguage)],
       publishedTime: publishedAt ?? undefined,
       modifiedTime: modifiedAt ?? undefined,
-      authors: [AUTHOR_GITHUB_URL],
+      ...(author ? { authors: [author.url] } : {}),
     },
     twitter: {
       card: seoData?.twitterCard || 'summary_large_image',
@@ -109,7 +111,7 @@ export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Pr
       'article:language': articleLanguage,
       ...(publishedAt ? { 'article:published_time': publishedAt } : {}),
       ...(modifiedAt ? { 'article:modified_time': modifiedAt } : {}),
-      'article:author': AUTHOR_GITHUB_URL,
+      ...(author ? { 'article:author': author.url } : {}),
     },
   }
 }
@@ -172,46 +174,72 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
   const breadcrumbJsonLd = getArticleBreadcrumbJsonLd({
     articleName: canonicalTitle,
     canonicalUrl: pageMeta.canonical,
-    homeLabel: t('navigation.home'),
-    articlesLabel: t('navigation.articles'),
+    labels: {
+      home: t('navigation.home'),
+      articlesPublic: t('navigation.articlesPublic'),
+    },
   })
 
   const publishedAt = response.revision.publishedAt ?? response.article.publishedAt
+
+  const thumbnailUrl = response.revision.thumbnailUrl || null
 
   return (
     <>
       <ArticleViewTracker slug={slugResolved} surface="public" />
       <JsonLd data={breadcrumbJsonLd} />
       <JsonLd data={articleJsonLd} />
-      <p className="mb-2 text-sm text-muted-foreground">
-        <span>{t('article.ui.authorBylinePrefix')}</span>{' '}
-        <a href={AUTHOR_GITHUB_URL} rel="author noopener noreferrer" className="font-medium text-foreground underline underline-offset-2 hover:no-underline">
-          {AUTHOR_NAME}
-        </a>
-      </p>
-      <ArticlePublishedDate publishedAt={publishedAt} className="mb-4 text-muted-foreground" />
-      {translationMembers.length >= 2 ? (
-        <ArticleTranslationLanguageNav
-          ariaLabel={t('article.public.translationLanguagesNavAria')}
-          items={translationMembers.map((m) => ({
-            hreflangKey: m.hreflangKey,
-            url: m.canonicalUrl,
-            isCurrent: m.slug === slugResolved,
-          }))}
-        />
-      ) : null}
-      {bannerTarget && translationGroupId ? (
-        <ArticleTranslationAcceptBanner
-          storageKey={`translation-banner-dismissed:${translationGroupId}`}
-          suggestedUrl={bannerTarget.canonicalUrl}
-          leadLabel={t('article.public.translationBannerLead', { language: languageDisplayName(bannerTarget.hreflangKey) })}
-          openButtonLabel={t('article.public.translationOpenIn', { language: languageDisplayName(bannerTarget.hreflangKey) })}
-          laterLabel={t('article.public.translationNotNow')}
-          regionAriaLabel={t('article.public.translationBannerAria')}
-        />
-      ) : null}
-      <ArticlePublicListenAudio assetId={response.article.listenAudioAssetId} />
-      <div className="max-w-full tiptap readonly" lang={articleLanguage} dangerouslySetInnerHTML={{ __html: bodyHtml }} />
+
+      <ArticleReadingShell
+        breadcrumbs={[{ label: t('navigation.home'), href: '/' }, { label: t('navigation.articlesPublic'), href: '/articles' }, { label: canonicalTitle }]}
+        title={canonicalTitle}
+        thumbnailUrl={thumbnailUrl}
+        articleLanguage={articleLanguage}
+        bodyHtml={bodyHtml}
+        backLink={{ label: t('navigation.articlesPublic'), href: '/articles' }}
+        banners={
+          <>
+            {translationMembers.length >= 2 ? (
+              <ArticleTranslationLanguageNav
+                ariaLabel={t('article.public.translationLanguagesNavAria')}
+                items={translationMembers.map((m) => ({
+                  hreflangKey: m.hreflangKey,
+                  url: m.canonicalUrl,
+                  isCurrent: m.slug === slugResolved,
+                }))}
+              />
+            ) : null}
+            {bannerTarget && translationGroupId ? (
+              <ArticleTranslationAcceptBanner
+                storageKey={`translation-banner-dismissed:${translationGroupId}`}
+                suggestedUrl={bannerTarget.canonicalUrl}
+                leadLabel={t('article.public.translationBannerLead', { language: languageDisplayName(bannerTarget.hreflangKey) })}
+                openButtonLabel={t('article.public.translationOpenIn', { language: languageDisplayName(bannerTarget.hreflangKey) })}
+                laterLabel={t('article.public.translationNotNow')}
+                regionAriaLabel={t('article.public.translationBannerAria')}
+              />
+            ) : null}
+          </>
+        }
+        meta={
+          <>
+            {seoConfig.author ? (
+              <span>
+                <span className="mr-1">{t('article.ui.authorBylinePrefix')}</span>
+                <a
+                  href={seoConfig.author.url}
+                  rel="author noopener noreferrer"
+                  className="font-medium text-foreground underline underline-offset-2 hover:no-underline"
+                >
+                  {seoConfig.author.name}
+                </a>
+              </span>
+            ) : null}
+            <ArticlePublishedDate publishedAt={publishedAt} />
+            <ArticlePublicListenAudio assetId={response.article.listenAudioAssetId} />
+          </>
+        }
+      />
     </>
   )
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 
-import { PreviewUniversalLayout } from '~/components/Layouts/PreviewUniversalLayout'
+import { LandingLayout } from '~/components/Layouts/LandingLayout'
+import { seoConfig } from '~/lib/seo/config'
 
 export const metadata: Metadata = {
   title: {
@@ -22,5 +23,9 @@ export default function PreviewLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  return <PreviewUniversalLayout isNavEnabled>{children}</PreviewUniversalLayout>
+  return (
+    <LandingLayout githubUrl={seoConfig.links.github} demoUrl={seoConfig.links.demo}>
+      {children}
+    </LandingLayout>
+  )
 }

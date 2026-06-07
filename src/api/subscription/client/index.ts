@@ -1,6 +1,7 @@
 import { Request } from '@lib/request'
 import { AxiosInstance } from 'axios'
 
+import { PushSubscriptionPublicItemModel } from '~/api/user'
 import { AnyString } from '~/types'
 
 /**
@@ -29,5 +30,16 @@ export class ClientSubscriptionApi {
 
   async test(dto: { type: 'test' | AnyString }): Promise<{ ok: boolean }> {
     return this.client.post('/api/v1/push/send', dto)
+  }
+
+  async listSubscriptions(currentEndpoint?: string | null): Promise<{ list: PushSubscriptionPublicItemModel[] }> {
+    const headers = currentEndpoint ? { 'X-Push-Subscription-Endpoint': currentEndpoint } : undefined
+    const response = await this.client.get('/api/v1/push/subscriptions', { headers })
+
+    return response.data
+  }
+
+  async deleteSubscription(dto: { id: string }): Promise<void> {
+    await this.client.delete('/api/v1/push/subscriptions', { data: dto })
   }
 }

@@ -9,12 +9,11 @@ import { ClientPublicArticleListApi } from '~/api/article/client/publicArticleLi
 import { PUBLIC_ARTICLES_PAGE_SIZE, type PublicArticleListItem, serializePublicListFilters } from '~/api/article/publicListQuery'
 import type { ArticleFilter } from '~/api/article/types'
 import { SortBy, SortOrder } from '~/api/article/types'
-import { Button } from '~/components/ui/button'
-import { Select } from '~/components/ui/select-1'
-import { Typography } from '~/components/ui/Typography/Typography'
 import { ArticleItemClient } from '~/components/Views/Article/Block/client/ArticleItemClient'
+import type { TFunction } from '~/lib/i18n'
 import { useT } from '~/providers'
 import type { PaginationMeta } from '~/types'
+import { cn } from '~/utils/cn'
 
 type Props = {
   initial: PaginationMeta<PublicArticleListItem>
@@ -23,16 +22,43 @@ type Props = {
   children: ReactNode
 }
 
-const SORT_BY_OPTIONS = [
-  { value: SortBy.publishedAt, label: 'Published date' },
-  { value: SortBy.createdAt, label: 'Created date' },
-  { value: SortBy.updatedAt, label: 'Updated date' },
+const getSortByOptions = (t: TFunction) => [
+  { value: SortBy.publishedAt, label: t('article.common.publishedAt') },
+  { value: SortBy.createdAt, label: t('article.common.createdAt') },
+  { value: SortBy.updatedAt, label: t('article.common.updatedAt') },
 ]
 
-const SORT_ORDER_OPTIONS = [
-  { value: SortOrder.desc, label: 'Newest first' },
-  { value: SortOrder.asc, label: 'Oldest first' },
+const getSortOrderOptions = (t: TFunction) => [
+  { value: SortOrder.desc, label: t('article.common.newestFirst') },
+  { value: SortOrder.asc, label: t('article.common.oldestFirst') },
 ]
+
+type PillSelectProps = {
+  label: string
+  options: { value: string; label: string }[]
+  value: string
+  onChange: (value: string) => void
+}
+
+const PillSelect = ({ label, options, value, onChange }: PillSelectProps) => (
+  <div className="flex items-center gap-1.5 flex-wrap">
+    <span className="text-xs text-muted-foreground shrink-0">{label}:</span>
+    {options.map((opt) => (
+      <button
+        key={opt.value}
+        onClick={() => onChange(opt.value)}
+        className={cn(
+          'rounded-full px-3 py-1 text-xs font-medium transition-colors border',
+          opt.value === value
+            ? 'bg-foreground text-background border-foreground'
+            : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground/40',
+        )}
+      >
+        {opt.label}
+      </button>
+    ))}
+  </div>
+)
 
 export function ArticlesPublicFeed({ initial, listQuery, children }: Props) {
   const t = useT()
@@ -40,7 +66,6 @@ export function ArticlesPublicFeed({ initial, listQuery, children }: Props) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  /** Items loaded only via “Load more” (first page is `children` from the server). */
   const [extraItems, setExtraItems] = useState<PublicArticleListItem[]>([])
   const [totalCount, setTotalCount] = useState(initial.count)
   const [loading, setLoading] = useState(false)
@@ -70,9 +95,7 @@ export function ArticlesPublicFeed({ initial, listQuery, children }: Props) {
   }
 
   const loadMore = async () => {
-    if (loading || !hasMore) {
-      return
-    }
+    if (loading || !hasMore) return
 
     setLoading(true)
     setError(null)
@@ -101,60 +124,60 @@ export function ArticlesPublicFeed({ initial, listQuery, children }: Props) {
   const currentQs = searchParams.toString()
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <Typography variant="heading-3">{t('article.ui.articles')}</Typography>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <Select
-            size="small"
-            label="Sort by"
-            value={sortBy}
-            options={SORT_BY_OPTIONS}
-            onChange={(e) => applyFiltersToUrl({ sortBy: e.target.value as SortBy, sortOrder })}
-          />
-          <Select
-            size="small"
-            label="Order"
-            value={sortOrder}
-            options={SORT_ORDER_OPTIONS}
-            onChange={(e) => applyFiltersToUrl({ sortBy, sortOrder: e.target.value as SortOrder })}
-          />
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-3 text-sm text-muted-foreground">
-        <span>
-          Showing {shownCount} of {totalCount}
+    <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12 flex flex-col gap-8">
+      {/* Page header */}
+      <div className="border-b border-border/60 pb-6">
+        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-2">{t('article.ui.articles')}</h1>
+        <p className="text-muted-foreground text-sm">
+          {t('article.common.showing', { count: shownCount, total: totalCount })}
           {currentQs ? (
             <>
               {' '}
               —{' '}
-              <Link href={pathname} className="underline">
+              <Link href={pathname} className="underline underline-offset-2 hover:text-foreground transition-colors">
                 {t('article.ui.clearFilters')}
               </Link>
             </>
           ) : null}
-        </span>
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      {/* Pill filters */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-3">
+        <PillSelect
+          label={t('article.common.sortBy')}
+          value={sortBy}
+          options={getSortByOptions(t)}
+          onChange={(v) => applyFiltersToUrl({ sortBy: v as SortBy, sortOrder })}
+        />
+        <PillSelect
+          label={t('article.common.order')}
+          value={sortOrder}
+          options={getSortOrderOptions(t)}
+          onChange={(v) => applyFiltersToUrl({ sortBy, sortOrder: v as SortOrder })}
+        />
+      </div>
+
+      {/* Articles grid */}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {children}
         {extraItems.map((article) => (
           <ArticleItemClient key={article.id} article={article} />
         ))}
       </div>
 
-      {error ? (
-        <Typography variant="Body/S/Regular" className="text-destructive">
-          {error}
-        </Typography>
-      ) : null}
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
       {hasMore ? (
-        <div className="flex justify-center">
-          <Button type="button" variant="outline" disabled={loading} onClick={() => void loadMore()}>
+        <div className="flex justify-center pt-2">
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => void loadMore()}
+            className="flex h-10 items-center rounded-full border border-border px-6 text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+          >
             {loading ? t('article.ui.loading') : t('article.ui.loadMore')}
-          </Button>
+          </button>
         </div>
       ) : null}
     </div>

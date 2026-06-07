@@ -267,7 +267,7 @@ export const ImageEditorDialog = (props: Props) => {
 
           <Input label="Alt" value={form.alt} onChange={(v) => setForm((s) => ({ ...s, alt: v }))} placeholder="Description for accessibility" />
           <div className="flex flex-col gap-1">
-            <span className="text-[13px] text-gray-900 capitalize">{t('media.ui.captionUnderTheImage')}</span>
+            <span className="text-[13px] text-muted-foreground capitalize">{t('media.ui.captionUnderTheImage')}</span>
             <Textarea
               value={form.caption}
               onChange={(e) => setForm((s) => ({ ...s, caption: e.target.value }))}
@@ -277,9 +277,9 @@ export const ImageEditorDialog = (props: Props) => {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1">
-              <span className="text-[13px] text-gray-900">{t('media.ui.objectFit')}</span>
+              <span className="text-[13px] text-muted-foreground">{t('media.ui.objectFit')}</span>
               <select
-                className="h-10 rounded-md border border-input bg-background px-2 text-sm"
+                className="h-10 rounded-md border border-border bg-background px-2 text-sm"
                 value={form.objectFit}
                 onChange={(e) => setForm((s) => ({ ...s, objectFit: e.target.value as ArticleImageObjectFit }))}
               >
@@ -288,9 +288,9 @@ export const ImageEditorDialog = (props: Props) => {
               </select>
             </div>
             <div className="flex flex-col gap-1">
-              <span className="text-[13px] text-gray-900">{t('media.ui.alignment')}</span>
+              <span className="text-[13px] text-muted-foreground">{t('media.ui.alignment')}</span>
               <select
-                className="h-10 rounded-md border border-input bg-background px-2 text-sm"
+                className="h-10 rounded-md border border-border bg-background px-2 text-sm"
                 value={form.align}
                 onChange={(e) => setForm((s) => ({ ...s, align: e.target.value as ArticleImageAlign }))}
               >

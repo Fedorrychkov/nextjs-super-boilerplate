@@ -89,6 +89,7 @@ export const ru = {
     users: 'Пользователи',
     uiKit: 'UI Kit',
     profile: 'Профиль',
+    notifications: 'Уведомления',
     login: 'Вход',
     logout: 'Выход',
     refresh: 'Обновить',
@@ -98,6 +99,8 @@ export const ru = {
     llmUsageDashboard: 'Использование LLM',
     i18nDashboard: 'Переводы',
     articles: 'Статьи',
+    adminNotifications: 'Уведомления',
+    adminSecurityAudit: 'Аудит безопасности',
     articlesCreate: 'Создать статью',
     articlePublic: 'Публичная статья',
     articlesPublic: 'Публичные статьи',
@@ -136,61 +139,170 @@ export const ru = {
         'Эти коды есть в базе, но их нет в SUPPORTED_LOCALES (в коде не подключён файл сообщений): {codes}. Добавьте файл и расширьте SUPPORTED_LOCALES, если нужна подгрузка строк из файлов в админке.',
     },
   },
-  home: {
-    latestArticles: 'Последние статьи',
-    viewAll: 'Смотреть все',
-    minimalProductionReadyNextjsBoilerplate: 'Минимальный Production Ready Next.js Boilerplate',
-    lookingForAStartingPointOrMoreInstructionsHeadOverTo: 'Ищете отправную точку или больше инструкций? Переходите в',
-    githubRepository: 'Репозиторий GitHub',
-    aboutBoilerplate: 'О проекте',
-    openUiKit: 'Открыть UI Kit',
-    tryAuth: 'Внутренняя панель',
-    orThe: 'или',
-    metaTitle: 'Open-source Next.js: авторизация, статьи, админка, деплой',
-    metaDescription:
-      'Бойлерплейт Next.js App Router: JWT/OAuth, статьи в MongoDB с SEO в редакторе, админка, UI kit, CI/CD. Клонируйте с GitHub, смотрите демо, docs — в репозитории.',
-    definitionParagraph1:
-      'Production Ready Next.js Boilerplate — бесплатный open-source старт для продакшен-приложений на Next.js App Router. В комплекте авторизация (логин/пароль и OAuth), статьи в MongoDB с ревизиями и SEO-метаданными на сервере, админка для пользователей и контента, уведомления, инструменты под аналитику и сценарии деплоя под Docker, GitHub Actions и типичный хостинг. Лицензия MIT: клонируйте репозиторий, при форке меняйте слой данных и используйте для маркетингового сайта, продукта с кабинетом или контентного издания.',
-    definitionParagraph2:
-      'Это публичное демо крутится на том же стеке, что и репозиторий: статьи, UI kit, потоки авторизации и llms.txt для машиночитаемого обзора. Бизнес-логика в сервисах и server actions, маршруты остаются тонкими; строгий TypeScript и общий UI снижают разброс по кодовой базе.',
-    sectionFeaturesHeading: 'Что входит в этот бойлерплейт Next.js?',
-    sectionFeaturesIntro: 'Стек сужен там, где это экономит время, и остаётся гибким там, где отличается ваш продукт:',
-    featureAuth: 'Авторизация: логин/пароль, OAuth, сессии и защищённые разделы.',
-    featureArticles: 'Статьи: публичные и приватные материалы, ревизии, Markdown в редакторе и SEO-метаданные на сервере.',
-    featureAdmin: 'Админка: пользователи, статьи, уведомления, аналитика и операционные инструменты.',
-    featureDeploy: 'Деплой: Docker, GitHub Actions и профили окружений (local / stage / prod).',
-    featureDevEx: 'DX: строгий TypeScript, общий UI kit и предсказуемая раскладка сервисов.',
-    sectionStackHeading: 'Какой стек и какой охват у проекта?',
-    sectionStackBody:
-      'Next.js (App Router), React и Tailwind CSS; MongoDB и Redis для данных и очередей; при необходимости Uploadcare для медиа. Бизнес-логика в сервисах и server actions, маршруты остаются тонкими. Главная, список статей, авторизация и UI kit — полноценные маршруты, которые можно расширять или заменять.',
-    sectionLearnHeading: 'Где документация и исходный код?',
-    sectionLearnBody:
-      'Начните с README на GitHub: установка и переменные окружения. Направление продукта — в docs (например PRODUCT_ROADMAP, AI_FEATURES_ROADMAP); инфраструктура — в отдельных infra-доках. Развёрнутое объяснение — в статьях:',
-    linkReadme: 'README на GitHub',
-    linkDocsFolder: 'каталог docs/ в репозитории',
-    linkArticleEn: 'Статья (EN)',
-    linkArticleRu: 'Статья (RU)',
-    sectionAgentsHeading: 'Чем это полезно разработчикам и AI-агентам?',
-    sectionAgentsBody:
-      'Публичные статьи поддерживают Markdown и согласование ответов для инструментов. На сайте есть llms.txt со ссылками на репозиторий, документацию и sitemap — чтобы краулеры и ассистенты находили точки входа. Машиночитаемое резюме:',
-    linkLlmsTxt: 'llms.txt',
-    sectionAboutHeading: 'Активно ли ведётся проект?',
-    sectionAboutBody:
-      'Проект ведётся открыто; issues и PR приветствуются на GitHub. При деплое своего инстанса задайте NEXT_PUBLIC_SITE_URL и прочие SEO-переменные, чтобы заголовки, канонические URL и структурированные данные совпадали с вашим доменом.',
-    linkArticlesIndex: 'К опубликованным статьям',
-    linkLiveDemo: 'Живое демо (эталонный деплой)',
-    faqHeading: 'Вопросы и ответы',
-    faq1Question: 'Можно ли использовать бойлерплейт в коммерческих проектах?',
-    faq1Answer: 'Да. Лицензия MIT — используйте в закрытых и коммерческих проектах, изменяйте код и распространяйте на тех же условиях.',
-    faq2Question: 'Какая авторизация включена?',
-    faq2Answer: 'Учётные записи, OAuth, сессии и защищённые маршруты; детали и переменные окружения — в README.',
-    faq3Question: 'Можно ли деплоить на Vercel, в Docker или на VPS?',
-    faq3Answer: 'Да. В репозитории есть Docker-ориентированные заметки и CI; подойдёт любой хостинг с Node.js.',
-    faq4Question: 'Обязателен ли MongoDB?',
-    faq4Answer: 'В демо MongoDB хранит пользователей и статьи. При форке слой данных можно заменить — сервисы вынесены отдельно от роутов.',
-    faq5Question: 'Чем это отличается от create-next-app?',
-    faq5Answer:
-      'create-next-app даёт минимальный каркас. Здесь — авторизация, CMS статей с ревизиями и SEO, админка, уведомления и продакшен-настройки по умолчанию.',
+  /** Новый лендинг (/) — переименуйте или удалите этот root, чтобы убрать весь маркетинговый блок */
+  nbs: {
+    meta: {
+      title: 'Open-source Next.js: авторизация, статьи, админка, деплой',
+      description: 'Бойлерплейт Next.js App Router: JWT/MFA, статьи в MongoDB с SEO, админка, UI kit, CI/CD. Форк на GitHub, демо, документация в репозитории.',
+    },
+    layout: {
+      navArticles: 'Статьи',
+      navUiKit: 'UI Kit',
+      navGithub: 'GitHub',
+      signIn: 'Войти',
+      liveDemo: 'Демо',
+      getStarted: 'Начать',
+    },
+    hero: {
+      badge: 'Open source · MIT · v0.2',
+      titleBefore: 'Запустите Next.js-продукт',
+      titleHighlight: 'без боли',
+      titleAfter: 'от бойлерплейта',
+      subtitle: 'Auth, блог, админка, SEO, push, AI — уже подключено и готово к продакшену. Сделайте форк, настройте',
+      subtitleConfigFile: 'config/product.ts',
+      subtitleAfter: ' и деплойте.',
+      ctaGithub: 'Открыть на GitHub',
+      ctaDemo: 'Живое демо →',
+      ctaAuth: 'Попробовать вход',
+      tech: {
+        nextjs: 'Next.js 16',
+        typescript: 'TypeScript',
+        tailwind: 'Tailwind CSS',
+        mongodb: 'MongoDB',
+        redis: 'Redis',
+        jwtMfa: 'JWT + MFA',
+        docker: 'Docker',
+        i18n: 'i18n EN/RU',
+      },
+    },
+    features: {
+      title: 'Всё, что вы бы всё равно писали сами',
+      subtitle: 'Меньше настройки — больше продукта. Батарейки в комплекте.',
+      items: {
+        auth: {
+          title: 'Auth и безопасность',
+          description: 'JWT + HttpOnly cookies, MFA (TOTP), список сессий с отзывом, смена и восстановление пароля, журнал security audit.',
+        },
+        cms: {
+          title: 'CMS статей',
+          description: 'Редактор, ревизии, публичные и приватные посты, SEO на сервере, RSS, аналитика просмотров.',
+        },
+        admin: {
+          title: 'Админ-панель',
+          description: 'Пользователи, модерация статей, push-рассылки, LLM usage, i18n admin, RUM dashboard.',
+        },
+        seo: {
+          title: 'SEO и discovery',
+          description: 'Sitemap, canonical, JSON-LD, llms.txt для AI-краулеров, Open Graph и Twitter cards.',
+        },
+        push: {
+          title: 'Push-уведомления',
+          description: 'Web Push, подсказка iOS PWA, рассылка из админки, управление подписками пользователя.',
+        },
+        ai: {
+          title: 'AI-интеграции',
+          description: 'LLM-чат, подсказки контента, генерация изображений, аудит статей, трекинг AI-referrals.',
+        },
+        i18n: {
+          title: 'i18n EN / RU',
+          description: 'Два языка, серверные переводы, locale-aware routing, админка переводов.',
+        },
+        deploy: {
+          title: 'Продакшен-деплой',
+          description: 'Docker Compose, GitHub Actions, профили local / stage / prod, Redis по желанию, RUM.',
+        },
+        dx: {
+          title: 'UI Kit и DX',
+          description: 'Strict TypeScript, Tailwind v4, тёмная/светлая тема, библиотека компонентов, маршрут /ui-kit, pnpm.',
+        },
+      },
+    },
+    quickStart: {
+      title: 'Запуск за несколько минут',
+      subtitle: 'Четыре шага от нуля до рабочего продукта.',
+      stepLabel: 'Шаг',
+      steps: {
+        fork: { title: 'Форк и клон' },
+        product: { title: 'Имя продукта' },
+        env: { title: 'Переменные окружения' },
+        run: { title: 'Локальный запуск' },
+      },
+      code: {
+        product: 'config/product.ts  →  name, author, links',
+        env: 'cp .env.example .env.local',
+        run: 'pnpm install && pnpm dev',
+      },
+      footnoteBefore: 'Настроить название, брендинг или feature flags?',
+      footnoteFile: 'config/product.ts',
+      footnoteAfter: '— единая точка правды.',
+    },
+    articles: {
+      title: 'Последние статьи',
+      subtitle: 'Гайды, разборы и заметки о релизах проекта.',
+      viewAll: 'Все статьи',
+      viewAllMobile: 'Все статьи →',
+    },
+    faq: {
+      title: 'Вопросы и ответы',
+      items: {
+        q1: {
+          question: 'Можно ли использовать в коммерческих проектах?',
+          answer: 'Да. Лицензия MIT — закрытые и коммерческие проекты, правки и распространение на тех же условиях.',
+        },
+        q2: {
+          question: 'Какая авторизация включена?',
+          answer: 'Логин/пароль, MFA (TOTP), сессии с отзывом, защищённые маршруты. Переменные окружения — в README.',
+        },
+        q3: {
+          question: 'Деплой на Vercel, Docker или VPS?',
+          answer: 'Да. Docker-доки и CI в репозитории; подойдёт любой хостинг с Node.js.',
+        },
+        q4: {
+          question: 'Обязателен ли MongoDB?',
+          answer: 'В демо — MongoDB для пользователей и статей. При форке слой данных можно заменить.',
+        },
+        q5: {
+          question: 'Чем отличается от create-next-app?',
+          answer: 'create-next-app — минимальный каркас. Здесь auth, CMS с SEO, админка, уведомления и продакшен-настройки.',
+        },
+        q6: {
+          question: 'Можно ли отключить ненужные фичи?',
+          answer:
+            'Да — почти всё включается через флаги в config/env.ts. LLM-функции, push-уведомления, верификация почты, RUM-мониторинг и многое другое отключаются одной переменной окружения. Запускаете только то, что реально нужно.',
+        },
+        q7: {
+          question: 'Как быстро поднять рабочий продукт с нуля?',
+          answer:
+            'С готовым MongoDB и базовыми env-переменными приложение запускается за минуты. Задайте имя продукта в config/product.ts, пропишите NEXT_PUBLIC_SITE_URL и JWT_SECRET — и получаете живую платформу с auth и статьями. Claude-скилл /setup-nsb в Cowork проведёт по всем шагам интерактивно.',
+        },
+        q8: {
+          question: 'Как добавить OAuth (Google, GitHub и т.д.)?',
+          answer:
+            'OAuth запланирован в v0.3. Сейчас в бойлерплейте — auth по логин/паролю с MFA и управлением сессиями. Поверх можно подключить NextAuth или Lucia — auth-сервис достаточно изолирован для замены.',
+        },
+        q9: {
+          question: 'Подходит ли для вайбкодинга — разработки с ИИ-ассистентом?',
+          answer:
+            'Именно под это и проектировался. Кодовая база следует предсказуемым паттернам (тонкие роуты, сервисы, server actions), которые LLM хорошо понимает. config/product.ts — один файл для всего брендинга. Claude-скилл настраивает проект интерактивно. llms.txt делает репозиторий видимым для ИИ-агентов.',
+        },
+        q10: {
+          question: 'Поддерживается ли Telegram Mini App?',
+          answer:
+            'Частично. CSS-слой содержит переменные safe-area для Telegram-вьюпорта (--tg-safe-area-inset-*, --tg-content-safe-area-inset-*), и theme shell их учитывает. Полный Mini App режим (bot API, Telegram auth, WebApp SDK) по умолчанию не настроен, но фундамент лейаута готов.',
+        },
+      },
+    },
+    footer: {
+      tagline: 'Production-ready Next.js boilerplate. Лицензия MIT.',
+      navArticles: 'Статьи',
+      navUiKit: 'UI Kit',
+      navDashboard: 'Панель',
+      navGithub: 'GitHub',
+      navDemo: 'Демо',
+      builtBy: 'Сделано',
+      authorFallback: 'автором',
+      bottomLine: 'Open source · MIT · Next.js App Router',
+    },
   },
   cookie: {
     cookieConsentBannerText:
@@ -203,12 +315,133 @@ export const ru = {
       notFound: 'Профиль не найден',
     },
   },
+  theme: {
+    appearanceHeading: 'Оформление',
+    appearanceHint: 'Светлая, тёмная тема или как в системе. Выбор сохраняется в cookie.',
+    modeLight: 'Светлая',
+    modeDark: 'Тёмная',
+    modeSystem: 'Системная',
+  },
   notFound: {
     title: '404 - Страница не найдена',
   },
   tooManyRequests: {
     title: '429 - Слишком много запросов',
     pleaseTryAgainLater: 'Попробуйте позже.',
+  },
+  platformNotifications: {
+    title: 'Уведомления',
+    adminTitle: 'Все уведомления',
+    empty: 'Уведомлений пока нет',
+    typeLabel: 'Тип',
+    sourceLabel: 'Источник',
+    openTarget: 'Открыть',
+    raw: 'RAW',
+    rawHide: 'Скрыть RAW',
+    deliveryStatus: {
+      pending: 'В очереди',
+      delivered: 'Доставлено',
+      failed: 'Ошибка',
+      skipped_no_subscription: 'Нет push-подписки',
+      skipped: 'Пропущено',
+      record_only: 'Только запись',
+    },
+    channel: {
+      web_push: 'Web push',
+      email: 'Email',
+    },
+    type: {
+      system: 'Системное',
+      test: 'Тест',
+      article_published: 'Статья опубликована',
+      article_updated: 'Статья обновлена',
+      user_message: 'Сообщение пользователю',
+      mfa_enabled: 'MFA включена',
+      mfa_disabled: 'MFA отключена',
+      new_login: 'Новый вход',
+      password_changed: 'Пароль изменён',
+      password_reset: 'Пароль сброшен',
+      admin_password_set: 'Пароль задан админом',
+    },
+    source: {
+      manual_test: 'Ручной тест',
+      webhook: 'Webhook',
+      system: 'Система',
+      manual: 'Вручную',
+      article_publish: 'Публикация статьи',
+      article_update: 'Обновление статьи',
+      mfa_enable: 'Включение MFA',
+      mfa_disable: 'Отключение MFA',
+      auth_login: 'Вход в аккаунт',
+      password_change: 'Смена пароля',
+      password_forgot: 'Сброс пароля',
+      admin_password_set: 'Пароль задан админом',
+    },
+    filters: {
+      deliveryStatus: 'Статус доставки',
+      type: 'Тип',
+      recipientUserId: 'ID получателя',
+      recipientUserIdPlaceholder: 'MongoDB ObjectId',
+    },
+    errors: {
+      titleRequired: 'Заголовок уведомления обязателен',
+      invalidUrlPath: 'Некорректный путь ссылки уведомления',
+      invalidRecipientUserId: 'Некорректный id получателя',
+      emailNotConfigured: 'Email-канал не настроен',
+      emailSendFailed: 'Не удалось отправить email-уведомление',
+    },
+    triggers: {
+      articlePublished: {
+        title: 'Статья опубликована',
+        body: 'Статья «{title}» опубликована',
+        fallbackTitle: 'Статья без названия',
+      },
+      articleUpdated: {
+        title: 'Статья обновлена',
+        body: 'Статья «{title}» была обновлена',
+      },
+      mfaEnabled: {
+        title: 'Двухфакторная аутентификация включена',
+        body: 'На вашем аккаунте включена двухфакторная аутентификация.',
+      },
+      mfaDisabled: {
+        title: 'Двухфакторная аутентификация отключена',
+        body: 'На вашем аккаунте отключена двухфакторная аутентификация.',
+      },
+      newLogin: {
+        title: 'Новый вход в аккаунт',
+        body: 'Вход с IP {ip}. Устройство: {userAgent}.{backup}',
+        unknownIp: 'неизвестный IP',
+        unknownDevice: 'неизвестное устройство',
+        usedBackupCode: ' Использован резервный код.',
+      },
+      passwordChanged: {
+        title: 'Пароль изменён',
+        body: 'Пароль аккаунта изменён. Все другие сессии завершены.',
+      },
+      passwordReset: {
+        title: 'Пароль сброшен',
+        body: 'Пароль аккаунта сброшен через «Забыли пароль». Все другие сессии завершены.',
+      },
+      adminPasswordSet: {
+        title: 'Пароль обновлён поддержкой',
+        body: 'Администратор задал новый пароль для вашего аккаунта. Войдите и смените его в профиле.',
+      },
+    },
+  },
+  securityAudit: {
+    title: 'Журнал безопасности',
+    userTitle: 'События безопасности',
+    empty: 'События безопасности не зафиксированы',
+    targetUser: 'Пользователь',
+    actorUser: 'Инициатор',
+    systemActor: 'Система',
+    actions: {
+      password_changed: 'Смена пароля (профиль)',
+      password_reset: 'Сброс пароля (forgot)',
+      admin_password_set: 'Админ задал пароль',
+      admin_mfa_reset: 'Админ сбросил MFA',
+    },
   },
   notification: {
     ui: {
@@ -246,6 +479,27 @@ export const ru = {
     containersDescription:
       'Containers используются как обертки для контента страницы: copied content, tooltip content, pretty container, number format и другое.',
     tableDescription: 'Гибкая настройка колонок, строк и пагинации. Выбирайте, какие колонки отображать, через props компонента.',
+  },
+  password: {
+    policy: {
+      minLength: 'Минимально {min} символов',
+      digit: 'Минимально 1 цифра',
+      lowercase: 'Минимально 1 строчная буква',
+      uppercase: 'Минимально 1 заглавная буква',
+      tooLong: 'Пароль должен быть не длиннее {max} символов',
+      invalid: 'Пароль не соответствует требованиям безопасности',
+      mustContain: 'Должен содержать',
+      requirementMet: 'Требование выполнено',
+      requirementNotMet: 'Требование не выполнено',
+      showPassword: 'Показать пароль',
+      hidePassword: 'Скрыть пароль',
+      strength: {
+        enter: 'Введите пароль',
+        weak: 'Слабый пароль',
+        medium: 'Средняя сложность',
+        strong: 'Надёжный пароль',
+      },
+    },
   },
   auth: {
     ui: {
@@ -330,6 +584,96 @@ export const ru = {
       invalidEmailOrPassword: 'Неверный email или пароль',
       userAccountIsBlocked: 'Аккаунт пользователя заблокирован',
     },
+    email: {
+      signUp: {
+        subject: 'Код регистрации',
+        text: 'Код подтверждения: {code}\n\nОн действителен 30 минут. Если вы не запрашивали регистрацию, проигнорируйте это письмо.',
+      },
+    },
+    password: {
+      title: 'Смена пароля',
+      expand: 'Сменить пароль',
+      collapse: 'Скрыть',
+      currentPassword: 'Текущий пароль',
+      newPassword: 'Новый пароль',
+      confirmPassword: 'Подтвердите новый пароль',
+      emailCode: 'Код из email',
+      totpCode: 'Код authenticator',
+      submitRequest: 'Продолжить',
+      submitConfirm: 'Сменить пароль',
+      forgotLink: 'Забыли пароль?',
+      messages: {
+        changeStarted: 'Проверьте email — мы отправили код подтверждения.',
+        changeSuccess: 'Пароль изменён. Войдите снова.',
+        forgotStarted: 'Если аккаунт существует, мы отправили инструкции на email.',
+        forgotSuccess: 'Пароль обновлён. Можно войти.',
+      },
+      email: {
+        changeSubject: 'Подтверждение смены пароля',
+        forgotSubject: 'Код для сброса пароля',
+        codeText: 'Код подтверждения: {code}\n\nДействителен 30 минут.',
+      },
+      errors: {
+        featureDisabled: 'Функция отключена.',
+        passwordTooShort: 'Пароль должен быть не короче 8 символов.',
+        samePassword: 'Новый пароль должен отличаться от текущего.',
+        pendingExpired: 'Сессия истекла. Начните заново.',
+        factorsIncomplete: 'Завершите все шаги подтверждения.',
+        emailFailed: 'Не удалось отправить email. Попробуйте позже.',
+        sendLimitReached: 'Слишком много запросов кода. Попробуйте позже.',
+        verifyLocked: 'Слишком много попыток. Попробуйте позже.',
+        tooManyAttempts: 'Слишком много попыток. Попробуйте позже.',
+        invalidCodeFormat: 'Введите 6-значный код из email.',
+        emailCodeNotRequired: 'Код из email для этого шага не требуется.',
+        passwordsMismatch: 'Пароли не совпадают.',
+      },
+    },
+    recovery: {
+      contactSupport: 'Автоматическое восстановление недоступно. Напишите на support@example.com с адреса регистрации.',
+      lostEmail: 'Нет доступа к почте',
+      lostTotp: 'Нет доступа к authenticator',
+      lostBoth: 'Нет доступа к почте и authenticator',
+      errors: {
+        emailNotAvailable: 'Подтверждение по email на этом сервере недоступно.',
+        supportRequired: 'Для восстановления аккаунта обратитесь в поддержку.',
+      },
+    },
+  },
+  onboarding: {
+    title: 'Завершите настройку',
+    description: 'Выполните шаги ниже, чтобы защитить аккаунт и получать уведомления.',
+    done: 'Готово',
+    go: 'Открыть',
+    setupBelow: 'Настроить ниже',
+    dismiss: 'Больше не показывать',
+    modal: {
+      title: 'Добро пожаловать — завершите настройку',
+      description: 'Несколько шагов, чтобы защитить аккаунт и включить уведомления.',
+      skip: 'Пропустить',
+      next: 'Далее',
+      back: 'Назад',
+      finish: 'Понятно',
+      openMfa: 'Настроить 2FA',
+      openPush: 'Открыть настройки уведомлений',
+    },
+    steps: {
+      profile: {
+        title: 'Проверьте профиль',
+        description: 'Убедитесь, что email и данные аккаунта верны.',
+      },
+      mfa: {
+        title: 'Включите двухфакторную аутентификацию',
+        description: 'Защитите вход с помощью authenticator-приложения.',
+      },
+      push: {
+        title: 'Включите push-уведомления',
+        description: 'Получайте оповещения, когда вкладка неактивна.',
+      },
+    },
+    errors: {
+      featureDisabled: 'Онбординг отключён.',
+      invalidParams: 'Некорректный запрос.',
+    },
   },
   totp: {
     errors: {
@@ -350,6 +694,76 @@ export const ru = {
       baseTitle: 'Основная информация',
       tabs: {
         base: 'Основная',
+        pushSubscriptions: 'Push-подписки',
+        notifications: 'Уведомления',
+        sessions: 'Сессии',
+        securityAudit: 'Безопасность',
+      },
+      pushSubscriptions: {
+        title: 'Push-подписки',
+        empty: 'Нет push-подписок',
+        delete: 'Удалить',
+        deleteConfirm: 'Удалить эту push-подписку у пользователя?',
+        deleted: 'Подписка удалена',
+        deleteFailed: 'Не удалось удалить подписку',
+        providers: {
+          apple: 'Apple Push',
+          fcm: 'FCM',
+          mozilla: 'Mozilla',
+          unknown: 'Неизвестно',
+        },
+      },
+      notifications: {
+        title: 'Уведомления пользователя',
+      },
+      userRecovery: {
+        title: 'Восстановление доступа (support)',
+        resetMfa: 'Сбросить MFA',
+        setPassword: 'Задать новый пароль',
+        newPassword: 'Новый пароль',
+        resetMfaConfirm: 'Сбросить MFA у этого пользователя?',
+        setPasswordConfirm: 'Задать новый пароль и разлогинить на всех устройствах?',
+        resetMfaSuccess: 'MFA сброшена.',
+        setPasswordSuccess: 'Пароль обновлён. Передайте его пользователю по защищённому каналу и попросите сменить в профиле.',
+        adminHint: 'Сообщите временный пароль пользователю безопасно и попросите сменить его в личном кабинете.',
+      },
+      sessions: {
+        title: 'Активные сессии',
+        revokeConfirm: 'Завершить эту сессию?',
+        revoked: 'Сессия завершена',
+        revokeFailed: 'Не удалось завершить сессию',
+        revokeAll: 'Выйти на всех устройствах',
+        revokeAllConfirm: 'Завершить все сессии пользователя?',
+        revokedAll: 'Все сессии завершены',
+      },
+    },
+    profile: {
+      pushSubscriptions: {
+        title: 'Активные подписки на уведомления',
+        currentDevice: 'Текущее устройство',
+        otherDevices: 'Другие подписки',
+        revokeDevice: 'Отписаться на этом устройстве',
+        revokeDeviceConfirm: 'Отписаться от push-уведомлений на этом устройстве?',
+      },
+    },
+    sessions: {
+      title: 'Активные сессии',
+      empty: 'Нет активных сессий',
+      currentDevice: 'Текущее устройство',
+      loginAt: 'Вход',
+      lastSeenAt: 'Последняя активность',
+      revoke: 'Выйти',
+      revokeConfirm: 'Завершить сессию на этом устройстве?',
+      revoked: 'Сессия завершена',
+      revokeFailed: 'Не удалось завершить сессию',
+      revokeOthers: 'Выйти на всех других устройствах',
+      revokeOthersConfirm: 'Завершить все сессии кроме текущей?',
+      revokedOthers: 'Другие сессии завершены',
+      errors: {
+        featureDisabled: 'Управление сессиями отключено.',
+        invalidParams: 'Некорректный запрос.',
+        cannotRevokeCurrent: 'Для текущего устройства используйте «Выход».',
+        notFound: 'Сессия не найдена.',
       },
     },
     roles: {
@@ -386,10 +800,6 @@ export const ru = {
         title: 'Регистрация пользователя администратором',
         description: 'Регистрация нового пользователя администратором',
         userRegisteredSuccessfully: 'Пользователь успешно зарегистрирован',
-        minimum6Characters: 'Минимально 6 символов',
-        minimum1Digit: 'Минимально 1 цифра',
-        minimum1LowercaseLetter: 'Минимально 1 lowercase буква',
-        minimum1UppercaseLetter: 'Минимально 1 uppercase буква',
         login: 'Логин',
         password: 'Пароль',
         email: 'Email',
@@ -417,6 +827,16 @@ export const ru = {
     },
   },
   article: {
+    common: {
+      showing: 'Показано {count} из {total}',
+      sortBy: 'Сортировка по',
+      order: 'Порядок',
+      newestFirst: 'Новые первыми',
+      oldestFirst: 'Старые первыми',
+      publishedAt: 'Дата публикации',
+      createdAt: 'Дата создания',
+      updatedAt: 'Дата обновления',
+    },
     fields: {
       id: 'ID',
       slug: 'Путь (URL)',
@@ -867,6 +1287,10 @@ export const ru = {
     },
   },
   push: {
+    iosPwaHint: {
+      title: 'Установите приложение для push на iPhone',
+      description: 'Safari → «Поделиться» → «На экран Домой», затем войдите и включите уведомления в профиле.',
+    },
     messages: {
       newMessage: 'Новое сообщение',
       exampleBody: 'Пример текста для запроса типа {type}',
@@ -874,6 +1298,7 @@ export const ru = {
     errors: {
       invalidSubscription: 'Некорректная подписка',
       invalidParams: 'Некорректные параметры',
+      subscriptionNotFound: 'Подписка не найдена',
     },
   },
   rum: {

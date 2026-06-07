@@ -6,6 +6,8 @@ import { assertLoginNotBlocked, recordLoginFailure } from '@lib/security/brutefo
 import { createLoginChallenge } from '@lib/security/login-challenge'
 import { getClientKey } from '@lib/security/rate-limit'
 import { authService } from '@lib/services/auth.service'
+import { notifyNewLogin } from '@lib/services/security-notification.service'
+import { getRequestClientMeta } from '@lib/utils/request-client-meta'
 import { NextRequest } from 'next/server'
 
 import { LoginEmailDto } from '~/api/auth/types'
@@ -28,7 +30,7 @@ const handler = (request: NextRequest) => {
       const settings = await UserSettings.findOne({ userId: user._id })
 
       if (!settings || !settings.mfaEnabled || !settings.mfaSecret) {
-        const authResponse = await authService.login(body, { languageCode, t })
+        const authResponse = await authService.login(body, { languageCode, clientMeta: getRequestClientMeta(req), t })
 
         const response = res.json(
           {
@@ -39,6 +41,12 @@ const handler = (request: NextRequest) => {
         )
 
         setAuthCookies(response, authResponse.accessToken, authResponse.refreshToken, authResponse.expiresIn)
+
+        void notifyNewLogin({
+          recipientUserId: user._id.toString(),
+          t,
+          client: getRequestClientMeta(req),
+        })
 
         return response
       }

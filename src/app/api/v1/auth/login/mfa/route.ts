@@ -7,6 +7,8 @@ import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
 import { consumeLoginChallenge } from '@lib/security/login-challenge'
 import { consumeBackupCode, decryptSecret, verifyTotpCode } from '@lib/security/totp'
 import { authService } from '@lib/services/auth.service'
+import { notifyNewLogin } from '@lib/services/security-notification.service'
+import { getRequestClientMeta } from '@lib/utils/request-client-meta'
 import { NextRequest } from 'next/server'
 
 import { getPreferredLanguageCodeFromAcceptLanguage } from '~/lib/i18n/detectLocale'
@@ -66,7 +68,7 @@ const handler = (request: NextRequest) => {
       backupUsed = true
     }
 
-    const authResponse = await authService.createAuthTokensForUser(user, { languageCode })
+    const authResponse = await authService.createAuthTokensForUser(user, { languageCode, clientMeta: getRequestClientMeta(req) })
 
     const response = res.json(
       {
@@ -80,6 +82,13 @@ const handler = (request: NextRequest) => {
     )
 
     setAuthCookies(response, authResponse.accessToken, authResponse.refreshToken, authResponse.expiresIn)
+
+    void notifyNewLogin({
+      recipientUserId: user._id.toString(),
+      t,
+      client: getRequestClientMeta(req),
+      usedMfaBackupCode: backupUsed,
+    })
 
     return response
   })

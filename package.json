@@ -1,6 +1,6 @@
 {
   "name": "nextjs-super-boilerplate",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "scripts": {
     "dev:local": "env-cmd -f .env.local next dev",
@@ -20,6 +20,8 @@
     "lint-staged": "lint-staged --allow-empty",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test *.test.ts src/**/*.test.ts",
+    "doctor": "env-cmd -f .env.local tsx scripts/doctor.ts -- .env.local",
+    "doctor:prod": "env-cmd -f .env.prod tsx scripts/doctor.ts -- .env.prod",
     "prepare": "husky"
   },
   "engines": {

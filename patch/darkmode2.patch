@@ -1,0 +1,389 @@
+diff --git a/src/components/Blocks/Editor/Menu/BubbleMenu.tsx b/src/components/Blocks/Editor/Menu/BubbleMenu.tsx
+index eb5d389..0a3a759 100644
+--- a/src/components/Blocks/Editor/Menu/BubbleMenu.tsx
++++ b/src/components/Blocks/Editor/Menu/BubbleMenu.tsx
+@@ -66,7 +66,11 @@ export const CustomBubbleMenu = (props: Props) => {
+   const shouldShow = useCallback((menuProps: BubbleMenuShouldShowProps) => bubbleMenuShouldShow(menuProps, hideWhenActive), [hideWhenActive])
+ 
+   return (
+-    <BubbleMenu editor={editor} shouldShow={shouldShow} className="bg-neutral-400/80 bg-blend-overlay shadow-md rounded-md p-1 gap-2 flex flex-wrap max-w-md">
++    <BubbleMenu
++      editor={editor}
++      shouldShow={shouldShow}
++      className="bg-neutral-400/80 bg-blend-overlay shadow-md rounded-md p-1 gap-2 flex flex-wrap max-w-md z-10"
++    >
+       {buttons.map((button) => (
+         <Button key={button.label} variant="outline" size="sm-md" onMouseDown={(e) => e.preventDefault()} onClick={button.onClick}>
+           {button.label}
+diff --git a/src/components/Blocks/Editor/image/ImageEditorDialog.tsx b/src/components/Blocks/Editor/image/ImageEditorDialog.tsx
+index 503556c..3785581 100644
+--- a/src/components/Blocks/Editor/image/ImageEditorDialog.tsx
++++ b/src/components/Blocks/Editor/image/ImageEditorDialog.tsx
+@@ -267,7 +267,7 @@ export const ImageEditorDialog = (props: Props) => {
+ 
+           <Input label="Alt" value={form.alt} onChange={(v) => setForm((s) => ({ ...s, alt: v }))} placeholder="Description for accessibility" />
+           <div className="flex flex-col gap-1">
+-            <span className="text-[13px] text-gray-900 capitalize">{t('media.ui.captionUnderTheImage')}</span>
++            <span className="text-[13px] text-muted-foreground capitalize">{t('media.ui.captionUnderTheImage')}</span>
+             <Textarea
+               value={form.caption}
+               onChange={(e) => setForm((s) => ({ ...s, caption: e.target.value }))}
+@@ -277,9 +277,9 @@ export const ImageEditorDialog = (props: Props) => {
+           </div>
+           <div className="grid grid-cols-2 gap-3">
+             <div className="flex flex-col gap-1">
+-              <span className="text-[13px] text-gray-900">{t('media.ui.objectFit')}</span>
++              <span className="text-[13px] text-muted-foreground">{t('media.ui.objectFit')}</span>
+               <select
+-                className="h-10 rounded-md border border-input bg-background px-2 text-sm"
++                className="h-10 rounded-md border border-border bg-background px-2 text-sm"
+                 value={form.objectFit}
+                 onChange={(e) => setForm((s) => ({ ...s, objectFit: e.target.value as ArticleImageObjectFit }))}
+               >
+@@ -288,9 +288,9 @@ export const ImageEditorDialog = (props: Props) => {
+               </select>
+             </div>
+             <div className="flex flex-col gap-1">
+-              <span className="text-[13px] text-gray-900">{t('media.ui.alignment')}</span>
++              <span className="text-[13px] text-muted-foreground">{t('media.ui.alignment')}</span>
+               <select
+-                className="h-10 rounded-md border border-input bg-background px-2 text-sm"
++                className="h-10 rounded-md border border-border bg-background px-2 text-sm"
+                 value={form.align}
+                 onChange={(e) => setForm((s) => ({ ...s, align: e.target.value as ArticleImageAlign }))}
+               >
+diff --git a/src/components/Blocks/Editor/styles/editor.styles.scss b/src/components/Blocks/Editor/styles/editor.styles.scss
+index 6ba1e4a..10cb319 100644
+--- a/src/components/Blocks/Editor/styles/editor.styles.scss
++++ b/src/components/Blocks/Editor/styles/editor.styles.scss
+@@ -297,7 +297,8 @@
+     }
+ 
+     th {
+-      background-color: var(--color-neutral-100);
++      background-color: var(--muted);
++      // background-color: var(--color-neutral-100);
+       font-weight: bold;
+       text-align: left;
+     }
+@@ -422,6 +423,7 @@
+       width: 100%;
+       max-width: 100%;
+       height: auto;
++      border-radius: 0.5rem;
+     }
+   }
+ 
+diff --git a/src/components/Blocks/Tabs/TabsContainer.tsx b/src/components/Blocks/Tabs/TabsContainer.tsx
+index b543303..0a5785b 100644
+--- a/src/components/Blocks/Tabs/TabsContainer.tsx
++++ b/src/components/Blocks/Tabs/TabsContainer.tsx
+@@ -88,7 +88,7 @@ export const TabsContainer = (props: Props) => {
+               <Typography
+                 variant="Body/S/Regular"
+                 className={cn('whitespace-nowrap text-nowrap text-neutral', {
+-                  'text-foreground': finalActiveTab === tab.value,
++                  'text-primary-foreground': finalActiveTab === tab.value,
+                   'text-muted-foreground': finalActiveTab !== tab.value,
+                 })}
+               >
+diff --git a/src/components/Fields/Input/media/MediaUrlUploadField.tsx b/src/components/Fields/Input/media/MediaUrlUploadField.tsx
+index 0fd518e..c3c0023 100644
+--- a/src/components/Fields/Input/media/MediaUrlUploadField.tsx
++++ b/src/components/Fields/Input/media/MediaUrlUploadField.tsx
+@@ -633,7 +633,7 @@ export const MediaUrlUploadField = (props: Props) => {
+                         </label>
+                         <select
+                           id={`${mainFileInputId}-ai-model`}
+-                          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
++                          className="h-9 rounded-md border border-border bg-background px-2 text-sm"
+                           value={selectedImageModel?.id ?? ''}
+                           disabled={disabled || aiModalBusy}
+                           onChange={(e) => setAiImageModelId(e.target.value)}
+@@ -651,7 +651,7 @@ export const MediaUrlUploadField = (props: Props) => {
+                         </label>
+                         <select
+                           id={`${mainFileInputId}-ai-aspect`}
+-                          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
++                          className="h-9 rounded-md border border-border bg-background px-2 text-sm"
+                           value={aiAspectId}
+                           disabled={disabled || aiModalBusy || !selectedImageModel}
+                           onChange={(e) => setAiAspectId(e.target.value)}
+diff --git a/src/components/Filters/FilterContainer.tsx b/src/components/Filters/FilterContainer.tsx
+index df91946..85cfd68 100644
+--- a/src/components/Filters/FilterContainer.tsx
++++ b/src/components/Filters/FilterContainer.tsx
+@@ -60,7 +60,7 @@ export const FilterContainer = <T,>(props: FilterContainerProps<T>, ref: React.F
+     }
+ 
+   return (
+-    <div ref={ref} className={cn('flex flex-col rounded-md gap-4 bg-slate-100 p-2', className, isFilterOpen ? 'flex' : 'hidden')}>
++    <div ref={ref} className={cn('flex flex-col rounded-md gap-4 bg-muted p-2', className, isFilterOpen ? 'flex' : 'hidden')}>
+       <Typography variant="Body/M/Semibold">{t('common.filters')}</Typography>
+       <div className="flex flex-col gap-2">
+         <Typography variant="Body/S/Regular">{t('common.byDate')}</Typography>
+diff --git a/src/components/Views/Article/Block/ArticleItemComponent.tsx b/src/components/Views/Article/Block/ArticleItemComponent.tsx
+index d64d9d9..f42a935 100644
+--- a/src/components/Views/Article/Block/ArticleItemComponent.tsx
++++ b/src/components/Views/Article/Block/ArticleItemComponent.tsx
+@@ -23,7 +23,7 @@ export const ArticleItemComponent = async (props: Props) => {
+   const { article, publishComponent, t } = props
+ 
+   return (
+-    <article key={article.id} aria-label={article.title ?? 'Article'} className="flex flex-col gap-4 bg-white p-4 rounded-md shadow-md">
++    <article key={article.id} aria-label={article.title ?? 'Article'} className="flex flex-col gap-4 bg-muted p-4 rounded-md shadow-md">
+       {article.thumbnailUrl ? (
+         <ImageLoader
+           src={article.thumbnailUrl}
+diff --git a/src/components/Views/Article/Public/ArticlesPublicFeed.tsx b/src/components/Views/Article/Public/ArticlesPublicFeed.tsx
+index ee06d52..9994049 100644
+--- a/src/components/Views/Article/Public/ArticlesPublicFeed.tsx
++++ b/src/components/Views/Article/Public/ArticlesPublicFeed.tsx
+@@ -13,6 +13,7 @@ import { Button } from '~/components/ui/button'
+ import { Select } from '~/components/ui/select-1'
+ import { Typography } from '~/components/ui/Typography/Typography'
+ import { ArticleItemClient } from '~/components/Views/Article/Block/client/ArticleItemClient'
++import type { TFunction } from '~/lib/i18n'
+ import { useT } from '~/providers'
+ import type { PaginationMeta } from '~/types'
+ 
+@@ -23,15 +24,15 @@ type Props = {
+   children: ReactNode
+ }
+ 
+-const SORT_BY_OPTIONS = [
+-  { value: SortBy.publishedAt, label: 'Published date' },
+-  { value: SortBy.createdAt, label: 'Created date' },
+-  { value: SortBy.updatedAt, label: 'Updated date' },
++const getSortByOptions = (t: TFunction) => [
++  { value: SortBy.publishedAt, label: t('article.common.publishedAt') },
++  { value: SortBy.createdAt, label: t('article.common.createdAt') },
++  { value: SortBy.updatedAt, label: t('article.common.updatedAt') },
+ ]
+ 
+-const SORT_ORDER_OPTIONS = [
+-  { value: SortOrder.desc, label: 'Newest first' },
+-  { value: SortOrder.asc, label: 'Oldest first' },
++const getSortOrderOptions = (t: TFunction) => [
++  { value: SortOrder.desc, label: t('article.common.newestFirst') },
++  { value: SortOrder.asc, label: t('article.common.oldestFirst') },
+ ]
+ 
+ export function ArticlesPublicFeed({ initial, listQuery, children }: Props) {
+@@ -107,16 +108,16 @@ export function ArticlesPublicFeed({ initial, listQuery, children }: Props) {
+         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+           <Select
+             size="small"
+-            label="Sort by"
++            label={t('article.common.sortBy')}
+             value={sortBy}
+-            options={SORT_BY_OPTIONS}
++            options={getSortByOptions(t)}
+             onChange={(e) => applyFiltersToUrl({ sortBy: e.target.value as SortBy, sortOrder })}
+           />
+           <Select
+             size="small"
+-            label="Order"
++            label={t('article.common.order')}
+             value={sortOrder}
+-            options={SORT_ORDER_OPTIONS}
++            options={getSortOrderOptions(t)}
+             onChange={(e) => applyFiltersToUrl({ sortBy, sortOrder: e.target.value as SortOrder })}
+           />
+         </div>
+@@ -124,7 +125,7 @@ export function ArticlesPublicFeed({ initial, listQuery, children }: Props) {
+ 
+       <div className="flex flex-col gap-3 text-sm text-muted-foreground">
+         <span>
+-          Showing {shownCount} of {totalCount}
++          {t('article.common.showing', { count: shownCount, total: totalCount })}
+           {currentQs ? (
+             <>
+               {' '}
+diff --git a/src/components/Views/Article/Screen/Editable/ArticleEditableEntry.tsx b/src/components/Views/Article/Screen/Editable/ArticleEditableEntry.tsx
+index ea252e1..ea2872b 100644
+--- a/src/components/Views/Article/Screen/Editable/ArticleEditableEntry.tsx
++++ b/src/components/Views/Article/Screen/Editable/ArticleEditableEntry.tsx
+@@ -671,8 +671,8 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
+                   <Typography
+                     variant="Body/S/Regular"
+                     className={cn('whitespace-nowrap text-nowrap', {
+-                      'text-neutral-1000': item.id !== activeRevisionId,
+-                      'text-neutral': item.id === activeRevisionId,
++                      'text-muted-foreground': item.id !== activeRevisionId,
++                      'text-primary-foreground': item.id === activeRevisionId,
+                     })}
+                   >
+                     {item.publishedAt ? time(item.publishedAt).format('DD.MM.YYYY HH:mm') : time(item.createdAt).format('DD.MM.YYYY HH:mm')}
+@@ -713,7 +713,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
+                 type: 'info',
+                 message: (
+                   <div className="flex flex-col gap-2 items-start">
+-                    <Typography variant="Body/S/Regular" className="text-neutral-1000">
++                    <Typography variant="Body/S/Regular" className="text-muted-foreground">
+                       {t('article.ui.youAreNotAllowedToEditTheLastPublishedArticlePleaseStartTheNewVersion')}
+                     </Typography>
+                     {!isHasDraftRevision ? (
+@@ -721,7 +721,7 @@ export const ArticleEditableEntry = (props: ArticleEditableEntryProps) => {
+                         {t('article.ui.startNewVersion')}
+                       </Button>
+                     ) : null}
+-                    <Typography variant="Body/S/Regular" className="text-neutral-1000">
++                    <Typography variant="Body/S/Regular" className="text-muted-foreground">
+                       {t('article.ui.orRepublishEarlyVersion')}
+                     </Typography>
+                   </div>
+diff --git a/src/components/theme/ThemeModeSelect.tsx b/src/components/theme/ThemeModeSelect.tsx
+index 0f810ca..1cc74d8 100644
+--- a/src/components/theme/ThemeModeSelect.tsx
++++ b/src/components/theme/ThemeModeSelect.tsx
+@@ -38,7 +38,7 @@ export function ThemeModeSelect({ className }: Props) {
+               type="button"
+               onClick={() => setPreference(value)}
+               className={cn(
+-                'inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-[13px] font-medium transition-colors',
++                'inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-[13px] font-medium transition-colors',
+                 isActive ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-foreground hover:bg-muted',
+               )}
+             >
+diff --git a/src/components/ui/button-2.tsx b/src/components/ui/button-2.tsx
+index e8302c6..097ede2 100644
+--- a/src/components/ui/button-2.tsx
++++ b/src/components/ui/button-2.tsx
+@@ -14,9 +14,9 @@ const buttonVariants = cva(
+         mono: 'bg-zinc-950 text-white dark:bg-zinc-300 dark:text-black hover:bg-zinc-950/90 dark:hover:bg-zinc-300/90 data-[state=open]:bg-zinc-950/90 dark:data-[state=open]:bg-zinc-300/90',
+         destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90 data-[state=open]:bg-destructive/90',
+         secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/90 data-[state=open]:bg-secondary/90',
+-        outline: 'bg-background text-accent-foreground border border-input hover:bg-accent data-[state=open]:bg-accent',
++        outline: 'bg-background text-accent-foreground border border-border hover:bg-accent data-[state=open]:bg-accent',
+         dashed:
+-          'text-accent-foreground border border-input border-dashed bg-background hover:bg-accent hover:text-accent-foreground data-[state=open]:text-accent-foreground',
++          'text-accent-foreground border border-border border-dashed bg-background hover:bg-accent hover:text-accent-foreground data-[state=open]:text-accent-foreground',
+         ghost: 'text-accent-foreground hover:bg-accent hover:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground',
+         dim: 'text-muted-foreground hover:text-foreground data-[state=open]:text-foreground',
+         foreground: '',
+diff --git a/src/components/ui/button.tsx b/src/components/ui/button.tsx
+index eb3f7be..bf76a4a 100644
+--- a/src/components/ui/button.tsx
++++ b/src/components/ui/button.tsx
+@@ -13,7 +13,7 @@ export const buttonVariants = cva(
+       variant: {
+         default: 'bg-primary text-primary-foreground hover:bg-primary/90',
+         destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+-        outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
++        outline: 'border border-border bg-background hover:bg-accent hover:text-accent-foreground',
+         secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+         ghost: 'hover:bg-accent hover:text-accent-foreground',
+         link: 'text-primary underline-offset-4 hover:underline',
+diff --git a/src/components/ui/fields/textarea.tsx b/src/components/ui/fields/textarea.tsx
+index 573563b..6676bbd 100644
+--- a/src/components/ui/fields/textarea.tsx
++++ b/src/components/ui/fields/textarea.tsx
+@@ -6,7 +6,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, React.ComponentProps<'tex
+   return (
+     <textarea
+       className={cn(
+-        'flex min-h-[80px] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm shadow-black/5 transition-shadow placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-50',
++        'flex min-h-[80px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm shadow-black/5 transition-shadow placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-50',
+         className,
+       )}
+       ref={ref}
+diff --git a/src/components/ui/input.tsx b/src/components/ui/input.tsx
+index 620bbbd..9da86ec 100644
+--- a/src/components/ui/input.tsx
++++ b/src/components/ui/input.tsx
+@@ -91,7 +91,7 @@ export const Input = ({
+             ? 'shadow-error-input hover:shadow-error-input-hover'
+             : 'border border-gray-alpha-400 hover:border-gray-alpha-500 focus-within:border-transparent focus-within:shadow-focus-input',
+           sizes[size],
+-          disabled ? 'cursor-not-allowed bg-gray-100' : 'bg-background-100',
++          disabled ? 'cursor-not-allowed bg-muted' : 'bg-background-100',
+           wrapperClassName,
+         )}
+       >
+@@ -110,7 +110,7 @@ export const Input = ({
+           className={clsx(
+             'w-full inline-flex appearance-none placeholder:text-muted-foreground/60 placeholder:opacity-70 outline-none',
+             size === 'xSmall' || size === 'mediumSmall' ? 'px-2' : 'px-3',
+-            disabled ? 'cursor-not-allowed bg-gray-100 text-gray-700' : 'bg-background-100 text-geist-foreground',
++            disabled ? 'cursor-not-allowed bg-muted text-muted-foreground' : 'bg-background-100 text-geist-foreground',
+             className,
+           )}
+           id={id}
+diff --git a/src/components/ui/multiselect.tsx b/src/components/ui/multiselect.tsx
+index b9e61bb..f9a5108 100644
+--- a/src/components/ui/multiselect.tsx
++++ b/src/components/ui/multiselect.tsx
+@@ -429,7 +429,7 @@ const MultipleSelector = React.forwardRef<MultipleSelectorRef, MultipleSelectorP
+       >
+         <div
+           className={cn(
+-            'relative min-h-[38px] rounded-lg border border-input text-sm transition-shadow focus-within:border-ring focus-within:outline-none focus-within:ring-[3px] focus-within:ring-ring/20 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50',
++            'relative min-h-[38px] rounded-lg border border-border text-sm transition-shadow focus-within:border-ring focus-within:outline-none focus-within:ring-[3px] focus-within:ring-ring/20 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50',
+             {
+               'p-1': selected.length !== 0,
+               'cursor-text': !disabled && selected.length !== 0,
+@@ -529,7 +529,7 @@ const MultipleSelector = React.forwardRef<MultipleSelectorRef, MultipleSelectorP
+         <div className="relative">
+           <div
+             className={cn(
+-              'absolute top-2 z-10 w-full overflow-hidden rounded-lg border border-input',
++              'absolute top-2 z-10 w-full overflow-hidden rounded-lg border border-border',
+               'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
+               !open && 'hidden',
+             )}
+diff --git a/src/components/ui/select-1.tsx b/src/components/ui/select-1.tsx
+index 4d153aa..a562d5b 100644
+--- a/src/components/ui/select-1.tsx
++++ b/src/components/ui/select-1.tsx
+@@ -63,7 +63,7 @@ export const Select = ({
+   return (
+     <div>
+       {label && (
+-        <label htmlFor="select" className="cursor-text block font-sans text-[13px] text-gray-900 capitalize mb-2">
++        <label htmlFor="select" className="cursor-text block font-sans text-[13px] text-foreground capitalize mb-2">
+           {label}
+         </label>
+       )}
+diff --git a/src/lib/i18n/messages/en.ts b/src/lib/i18n/messages/en.ts
+index c5d827e..9136415 100644
+--- a/src/lib/i18n/messages/en.ts
++++ b/src/lib/i18n/messages/en.ts
+@@ -426,6 +426,16 @@ export const en = {
+     },
+   },
+   article: {
++    common: {
++      showing: 'Showing {count} of {total}',
++      sortBy: 'Sort by',
++      order: 'Order',
++      newestFirst: 'Newest first',
++      oldestFirst: 'Oldest first',
++      publishedAt: 'Published date',
++      createdAt: 'Created date',
++      updatedAt: 'Updated date',
++    },
+     fields: {
+       id: 'ID',
+       slug: 'Slug',
+diff --git a/src/lib/i18n/messages/ru.ts b/src/lib/i18n/messages/ru.ts
+index ea90206..528ef0b 100644
+--- a/src/lib/i18n/messages/ru.ts
++++ b/src/lib/i18n/messages/ru.ts
+@@ -424,6 +424,16 @@ export const ru = {
+     },
+   },
+   article: {
++    common: {
++      showing: 'Показано {count} из {total}',
++      sortBy: 'Сортировка по',
++      order: 'Порядок',
++      newestFirst: 'Новые первыми',
++      oldestFirst: 'Старые первыми',
++      publishedAt: 'Дата публикации',
++      createdAt: 'Дата создания',
++      updatedAt: 'Дата обновления',
++    },
+     fields: {
+       id: 'ID',
+       slug: 'Путь (URL)',

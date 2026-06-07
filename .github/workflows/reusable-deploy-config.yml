@@ -52,7 +52,7 @@ on:
         default: ''
         type: string
 
-      notigy_enabled:
+      notify_enabled:
         description: Enable notification
         required: false
         default: false
@@ -174,7 +174,7 @@ jobs:
           echo 'Server host: ${{ secrets.server_host }}'
 
       - name: Send Telegram Message
-        if: ${{ inputs.notigy_enabled }}
+        if: ${{ inputs.notify_enabled }}
         env:
           TG_TOKEN: ${{ secrets.tg_token }}
           TG_CHAT_ID: ${{ secrets.tg_chat_id }}
@@ -492,7 +492,7 @@ jobs:
 
       
   failure-notify:
-    if: ${{ failure() && inputs.notigy_enabled }}
+    if: ${{ failure() && inputs.notify_enabled }}
     needs: [deploy]
     runs-on: ubuntu-latest
     steps:
@@ -518,7 +518,7 @@ jobs:
         bash scripts/notify-telegram.sh
 
   success-notify:
-    if: ${{ success() && inputs.notigy_enabled }}
+    if: ${{ success() && inputs.notify_enabled }}
     needs: [deploy]
     runs-on: ubuntu-latest
     steps:
@@ -544,7 +544,7 @@ jobs:
         bash scripts/notify-telegram.sh
 
   cancel-notify:
-    if: ${{ cancelled() && inputs.notigy_enabled }}
+    if: ${{ cancelled() && inputs.notify_enabled }}
     needs: [deploy]
     runs-on: ubuntu-latest
     steps:

@@ -1,6 +1,7 @@
 import connectDB from '@lib/db/client'
 import Article from '@lib/db/models/Article'
 import ArticleRevision from '@lib/db/models/ArticleRevision'
+import { articleDocumentToApiJson } from '@lib/db/utils/articleApiJson'
 
 import { ArticleFilter, ArticleStatus, ArticleVisibility, PublicArticleListItem, SortBy, SortOrder } from '~/api/article'
 import { PaginationMeta } from '~/types'
@@ -32,14 +33,16 @@ export async function getPublicArticlesListEnriched(filter: ArticleFilter): Prom
 
   return {
     ...articles,
-    list: articles.list.map((article) => ({
-      ...article.toObject(),
-      id: article._id.toString(),
-      revisionId: article.revisionId?.toString() ?? null,
-      title: revisionById.get(String(article.revisionId))?.title ?? null,
-      description: revisionById.get(String(article.revisionId))?.description ?? null,
-      thumbnailUrl: revisionById.get(String(article.revisionId))?.thumbnailUrl ?? null,
-    })) as PublicArticleListItem[],
+    list: articles.list.map((article) => {
+      const revision = revisionById.get(String(article.revisionId))
+
+      return {
+        ...articleDocumentToApiJson(article),
+        title: revision?.title ?? null,
+        description: revision?.description ?? null,
+        thumbnailUrl: revision?.thumbnailUrl ?? null,
+      } as PublicArticleListItem
+    }),
   }
 }
 

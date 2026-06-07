@@ -32,7 +32,7 @@ export const BottomNavigation = (props: Props) => {
 
   return (
     <nav className={cn('fixed bottom-0 left-0 right-0 px-4 py-1 flex justify-center items-center pb-safe', props?.className)}>
-      <ul className="flex justify-between gap-2 bg-white rounded-lg shadow-md shadow-black/30">
+      <ul className="flex justify-between gap-2 bg-background rounded-lg shadow-md shadow-foreground/30">
         {props?.nav?.map((item) => (
           <li key={[item.url, item.title].join('-')}>
             <Link

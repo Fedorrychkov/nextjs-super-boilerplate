@@ -25,6 +25,36 @@ export type UserPushStatusDto = {
   hasPushSubscription: boolean
 }
 
+export type PushSubscriptionProvider = 'apple' | 'fcm' | 'mozilla' | 'unknown'
+
+/** User-facing list item — no endpoint or browser metadata. */
+export type PushSubscriptionPublicItemModel = {
+  id: string
+  provider: PushSubscriptionProvider
+  createdAt: string | null
+  updatedAt: string | null
+  isCurrent: boolean
+}
+
+/** Admin list item — includes endpoint and user-agent for support. */
+export type PushSubscriptionItemModel = {
+  id: string
+  userId: string
+  endpoint: string
+  userAgent: string | null
+  provider: PushSubscriptionProvider
+  createdAt: string | null
+  updatedAt: string | null
+}
+
+export type PushSubscriptionsListResponse = {
+  list: PushSubscriptionItemModel[]
+}
+
+export type PushSubscriptionsPublicListResponse = {
+  list: PushSubscriptionPublicItemModel[]
+}
+
 export type UserMfaStatusDto = {
   mfaEnabled: boolean
 }

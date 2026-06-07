@@ -89,6 +89,7 @@ export const en = {
     users: 'Users',
     uiKit: 'UI Kit',
     profile: 'Profile',
+    notifications: 'Notifications',
     login: 'Login',
     logout: 'Logout',
     refresh: 'Refresh',
@@ -98,6 +99,8 @@ export const en = {
     llmUsageDashboard: 'LLM usage',
     i18nDashboard: 'Translations',
     articles: 'Articles',
+    adminNotifications: 'Notifications',
+    adminSecurityAudit: 'Security audit',
     articlesCreate: 'Create Article',
     articlePublic: 'Article Public',
     articlesPublic: 'Articles Public',
@@ -136,62 +139,174 @@ export const en = {
         'These codes exist in the database but are not listed in SUPPORTED_LOCALES (no matching messages file wired in code): {codes}. Add a messages file and extend SUPPORTED_LOCALES if you want the admin grid to load strings from files.',
     },
   },
-  home: {
-    latestArticles: 'Latest Articles',
-    viewAll: 'View all',
-    minimalProductionReadyNextjsBoilerplate: 'Minimal Production Ready Next.js Boilerplate',
-    lookingForAStartingPointOrMoreInstructionsHeadOverTo: 'Looking for a starting point or more instructions? Head over to',
-    githubRepository: 'GitHub Repository',
-    aboutBoilerplate: 'About boilerplate',
-    openUiKit: 'Open UI Kit',
-    tryAuth: 'Dashboard',
-    orThe: 'or the',
-    metaTitle: 'Next.js App Router starter — auth, articles, admin, deploy',
-    metaDescription:
-      'Next.js App Router boilerplate: JWT/OAuth, MongoDB articles with SEO tooling, admin dashboard, UI kit, CI/CD. Clone on GitHub, try the demo, read in-repo docs.',
-    definitionParagraph1:
-      'Production Ready Next.js Boilerplate is a free, open-source starter for building production-grade web apps with Next.js App Router. It ships authentication (credentials and OAuth), a MongoDB-backed article system with revisions and server-side SEO metadata, an admin area for users and content, notifications, analytics-oriented tooling, and deployment patterns suited to Docker, GitHub Actions, and common hosting. The codebase is MIT-licensed: clone it, adapt the data layer when you fork, and use it for a marketing site, a logged-in product, or a content publication.',
-    definitionParagraph2:
-      'This public demo runs the same stack as the repository—browse articles, try the UI kit and auth flows, and use llms.txt for machine-readable discovery. Business logic lives in services and server actions so routes stay thin; strict TypeScript and shared UI primitives keep the baseline consistent.',
-    sectionFeaturesHeading: 'What does this Next.js boilerplate include?',
-    sectionFeaturesIntro: 'The stack is opinionated where it saves time and flexible where your product differs:',
-    featureAuth: 'Authentication: credentials, OAuth, sessions, and protected routes.',
-    featureArticles: 'Articles: public and private posts, revisions, Markdown editor, and server-side SEO metadata.',
-    featureAdmin: 'Admin: users, articles, notifications, analytics, and operational tooling.',
-    featureDeploy: 'Deploy: Docker-friendly, GitHub Actions, and environment profiles (local / stage / prod).',
-    featureDevEx: 'Developer experience: strict TypeScript, shared UI kit route, and a clear service layout.',
-    sectionStackHeading: 'What tech stack and scope does it use?',
-    sectionStackBody:
-      'Built on Next.js (App Router), React, and Tailwind CSS; MongoDB and Redis for persistence and queues where needed; optional Uploadcare for media. Business logic lives in services and server actions so routes stay thin. The home page, article listing, auth flows, and UI kit are first-class routes you can extend or replace.',
-    sectionLearnHeading: 'Where are documentation and the repository?',
-    sectionLearnBody:
-      'Start with the README on GitHub for setup and environment variables. Product direction lives in docs such as PRODUCT_ROADMAP and AI_FEATURES_ROADMAP; infrastructure is covered in infra docs. For a longer narrative, use the deep-dive articles:',
-    linkReadme: 'README on GitHub',
-    linkDocsFolder: 'docs/ in the repository',
-    linkArticleEn: 'Deep-dive article (EN)',
-    linkArticleRu: 'Deep-dive article (RU)',
-    sectionAgentsHeading: 'How does this demo help developers and AI agents?',
-    sectionAgentsBody:
-      'Public articles support Markdown and negotiated responses for tooling. This site exposes llms.txt with pointers to the repo, documentation, and sitemap so crawlers and assistants can find entry points. Machine-readable summary:',
-    linkLlmsTxt: 'llms.txt',
-    sectionAboutHeading: 'Is the project actively maintained?',
-    sectionAboutBody:
-      'The project is maintained in the open; issues and PRs are welcome on GitHub. When you deploy your own instance, set NEXT_PUBLIC_SITE_URL and related SEO variables so titles, canonical URLs, and structured data match your domain.',
-    linkArticlesIndex: 'Browse published articles',
-    linkLiveDemo: 'Live demo (reference deploy)',
-    faqHeading: 'FAQ',
-    faq1Question: 'Is this boilerplate free for commercial use?',
-    faq1Answer: 'Yes. It is MIT-licensed — you can use it in private and commercial projects, modify it, and redistribute it under the same license.',
-    faq2Question: 'What authentication options are included?',
-    faq2Answer:
-      'Credential-based auth, OAuth integrations, sessions, and protected routes are part of the stack; see the README for environment variables and provider wiring.',
-    faq3Question: 'Can I deploy to Vercel, Docker, or a VPS?',
-    faq3Answer: 'Yes. The repo includes Docker-oriented docs and CI patterns; deploy anywhere Node.js runs — Vercel, a VPS, or containers.',
-    faq4Question: 'Does it require MongoDB?',
-    faq4Answer: 'The demo uses MongoDB for users and articles. If you fork, you can replace the data layer — services are structured to keep routes thin.',
-    faq5Question: 'How is this different from create-next-app?',
-    faq5Answer:
-      'create-next-app gives a minimal scaffold. This project adds auth, article CMS with revisions and SEO tooling, admin surfaces, notifications, and production-oriented defaults.',
+  /** New landing page (/) — rename or drop this root to swap the whole marketing block */
+  nbs: {
+    meta: {
+      title: 'Next.js App Router starter — auth, articles, admin, deploy',
+      description:
+        'Next.js App Router boilerplate: JWT/MFA, MongoDB articles with SEO tooling, admin dashboard, UI kit, CI/CD. Fork on GitHub, try the demo, read in-repo docs.',
+    },
+    layout: {
+      navArticles: 'Articles',
+      navUiKit: 'UI Kit',
+      navGithub: 'GitHub',
+      signIn: 'Sign in',
+      liveDemo: 'Live demo',
+      getStarted: 'Get started',
+    },
+    hero: {
+      badge: 'Open source · MIT license · v0.2',
+      titleBefore: 'Ship your Next.js product',
+      titleHighlight: 'without the boilerplate',
+      titleAfter: 'headaches',
+      subtitle: 'Auth, blog, admin dashboard, SEO, push notifications, AI integrations — all wired up and production-ready. Fork it, customize',
+      subtitleConfigFile: 'config/product.ts',
+      subtitleAfter: ', deploy.',
+      ctaGithub: 'View on GitHub',
+      ctaDemo: 'Live demo →',
+      ctaAuth: 'Try auth flow',
+      tech: {
+        nextjs: 'Next.js 16',
+        typescript: 'TypeScript',
+        tailwind: 'Tailwind CSS',
+        mongodb: 'MongoDB',
+        redis: 'Redis',
+        jwtMfa: 'JWT + MFA',
+        docker: 'Docker',
+        i18n: 'i18n EN/RU',
+      },
+    },
+    features: {
+      // eslint-disable-next-line prettier/prettier
+      title: 'Everything you\'d build anyway',
+      subtitle: 'Skip the setup, focus on your product. All batteries included.',
+      items: {
+        auth: {
+          title: 'Auth & Security',
+          description: 'JWT + HttpOnly cookies, MFA (TOTP), session list with revoke, password change & forgot flow, security audit log.',
+        },
+        cms: {
+          title: 'Article CMS',
+          description: 'Rich-text editor, draft revisions, public/private posts, server-side SEO metadata, RSS feed, article views analytics.',
+        },
+        admin: {
+          title: 'Admin Dashboard',
+          description: 'User management, article moderation, push notifications panel, LLM usage tracking, i18n admin, RUM dashboard.',
+        },
+        seo: {
+          title: 'SEO & Discovery',
+          description: 'Sitemap, robots.txt, canonical URLs, JSON-LD structured data, llms.txt for AI crawlers, OpenGraph & Twitter cards.',
+        },
+        push: {
+          title: 'Push Notifications',
+          description: 'Web Push with service worker, iOS PWA hint, admin broadcast, per-user subscription management.',
+        },
+        ai: {
+          title: 'AI Integration',
+          description: 'LLM chat with streaming, content suggestions, image generation, article audit, AI referral tracking.',
+        },
+        i18n: {
+          title: 'i18n EN / RU',
+          description: 'Full bilingual support, locale-aware routing, server-side translations, i18n admin UI.',
+        },
+        deploy: {
+          title: 'Production Deploy',
+          description: 'Docker Compose, GitHub Actions CI/CD, environment profiles (local / stage / prod), Redis optional, RUM monitoring.',
+        },
+        dx: {
+          title: 'UI Kit & DX',
+          description: 'Strict TypeScript, Tailwind CSS v4, dark/light theme, shared component library, live /ui-kit route, pnpm.',
+        },
+      },
+    },
+    quickStart: {
+      title: 'Up and running in minutes',
+      subtitle: 'Four steps from zero to a working product.',
+      stepLabel: 'Step',
+      steps: {
+        fork: { title: 'Fork & clone' },
+        product: { title: 'Name your product' },
+        env: { title: 'Set env variables' },
+        run: { title: 'Run locally' },
+      },
+      code: {
+        product: 'config/product.ts  →  name, author, links',
+        env: 'cp .env.example .env.local',
+        run: 'pnpm install && pnpm dev',
+      },
+      footnoteBefore: 'Need to configure your product name, branding, or feature flags?',
+      footnoteFile: 'config/product.ts',
+      footnoteAfter: 'is the single source of truth.',
+    },
+    articles: {
+      title: 'Latest articles',
+      subtitle: 'Deep-dives, guides, and release notes from the project.',
+      viewAll: 'View all',
+      viewAllMobile: 'View all articles →',
+    },
+    faq: {
+      title: 'FAQ',
+      items: {
+        q1: {
+          question: 'Is this boilerplate free for commercial use?',
+          answer: 'Yes. It is MIT-licensed — you can use it in private and commercial projects, modify it, and redistribute it under the same license.',
+        },
+        q2: {
+          question: 'What authentication options are included?',
+          answer: 'Credential-based auth, MFA (TOTP), sessions with revoke, and protected routes. See the README for environment variables.',
+        },
+        q3: {
+          question: 'Can I deploy to Vercel, Docker, or a VPS?',
+          answer: 'Yes. The repo includes Docker-oriented docs and CI patterns; deploy anywhere Node.js runs.',
+        },
+        q4: {
+          question: 'Does it require MongoDB?',
+          answer: 'The demo uses MongoDB for users and articles. If you fork, you can replace the data layer — services keep routes thin.',
+        },
+        q5: {
+          question: 'How is this different from create-next-app?',
+          answer:
+            'create-next-app gives a minimal scaffold. This project adds auth, article CMS with SEO tooling, admin surfaces, notifications, and production defaults.',
+        },
+        q6: {
+          // eslint-disable-next-line prettier/prettier
+          question: 'Can I turn off features I don\'t need?',
+          answer:
+            'Yes — almost everything is gated behind feature flags in config/env.ts. LLM features, push notifications, email verification, RUM monitoring, and more can be disabled with a single env variable. You only run what you actually use.',
+        },
+        q7: {
+          question: 'How quickly can I go from fork to a working product?',
+          answer:
+            'With a MongoDB instance and basic env vars, the app boots in minutes. Rename the product in config/product.ts, set NEXT_PUBLIC_SITE_URL and JWT_SECRET, and you have a live auth + article platform. The Claude setup skill (/setup-nsb in Cowork) walks you through every step interactively.',
+        },
+        q8: {
+          question: 'How do I add OAuth providers (Google, GitHub, etc.)?',
+          answer:
+            'OAuth is in the roadmap for v0.3. Right now the boilerplate ships credential-based auth with MFA and session management. You can layer in NextAuth or Lucia on top of the existing session infrastructure — the auth service is isolated enough to swap.',
+        },
+        q9: {
+          question: 'Is it good for vibe coding — building with AI assistance?',
+          answer:
+            'It was designed with that in mind. The codebase follows consistent patterns (thin routes, services, server actions) that LLMs predict well. config/product.ts is a single file for branding. The Claude setup skill can configure the whole project interactively. And llms.txt makes the repo discoverable for AI tools.',
+        },
+        q10: {
+          question: 'Does it support Telegram Mini Apps?',
+          answer:
+            'Partially. The CSS layer includes safe-area variables for Telegram viewport (--tg-safe-area-inset-*, --tg-content-safe-area-inset-*) and the theme shell adapts to them. Full Mini App mode (bot API, Telegram auth, WebApp SDK) is not wired by default but the layout groundwork is there.',
+        },
+      },
+    },
+    footer: {
+      tagline: 'Production-ready Next.js boilerplate. MIT license.',
+      navArticles: 'Articles',
+      navUiKit: 'UI Kit',
+      navDashboard: 'Dashboard',
+      navGithub: 'GitHub',
+      navDemo: 'Live demo',
+      builtBy: 'Built by',
+      authorFallback: 'the author',
+      bottomLine: 'Open source · MIT · Next.js App Router',
+    },
   },
   cookie: {
     cookieConsentBannerText:
@@ -204,12 +319,133 @@ export const en = {
       notFound: 'Profile not found',
     },
   },
+  theme: {
+    appearanceHeading: 'Appearance',
+    appearanceHint: 'Choose light, dark, or match your system settings. Your choice is saved in a cookie.',
+    modeLight: 'Light',
+    modeDark: 'Dark',
+    modeSystem: 'System',
+  },
   notFound: {
     title: '404 - Page Not Found',
   },
   tooManyRequests: {
     title: '429 - Too Many Requests',
     pleaseTryAgainLater: 'Please try again later.',
+  },
+  platformNotifications: {
+    title: 'Notifications',
+    adminTitle: 'All notifications',
+    empty: 'No notifications yet',
+    typeLabel: 'Type',
+    sourceLabel: 'Source',
+    openTarget: 'Open',
+    raw: 'RAW',
+    rawHide: 'Hide RAW',
+    deliveryStatus: {
+      pending: 'Pending',
+      delivered: 'Delivered',
+      failed: 'Failed',
+      skipped_no_subscription: 'No push subscription',
+      skipped: 'Skipped',
+      record_only: 'Record only',
+    },
+    channel: {
+      web_push: 'Web push',
+      email: 'Email',
+    },
+    type: {
+      system: 'System',
+      test: 'Test',
+      article_published: 'Article published',
+      article_updated: 'Article updated',
+      user_message: 'User message',
+      mfa_enabled: 'MFA enabled',
+      mfa_disabled: 'MFA disabled',
+      new_login: 'New sign-in',
+      password_changed: 'Password changed',
+      password_reset: 'Password reset',
+      admin_password_set: 'Admin password set',
+    },
+    source: {
+      manual_test: 'Manual test',
+      webhook: 'Webhook',
+      system: 'System',
+      manual: 'Manual',
+      article_publish: 'Article publish',
+      article_update: 'Article update',
+      mfa_enable: 'MFA enable',
+      mfa_disable: 'MFA disable',
+      auth_login: 'Sign-in',
+      password_change: 'Password change',
+      password_forgot: 'Password reset',
+      admin_password_set: 'Admin password set',
+    },
+    filters: {
+      deliveryStatus: 'Delivery status',
+      type: 'Type',
+      recipientUserId: 'Recipient user ID',
+      recipientUserIdPlaceholder: 'MongoDB ObjectId',
+    },
+    errors: {
+      titleRequired: 'Notification title is required',
+      invalidUrlPath: 'Invalid notification link path',
+      invalidRecipientUserId: 'Invalid recipient user id',
+      emailNotConfigured: 'Email channel is not configured',
+      emailSendFailed: 'Failed to send email notification',
+    },
+    triggers: {
+      articlePublished: {
+        title: 'Article published',
+        body: 'Article "{title}" is now live',
+        fallbackTitle: 'Untitled article',
+      },
+      articleUpdated: {
+        title: 'Article updated',
+        body: 'Article "{title}" was updated',
+      },
+      mfaEnabled: {
+        title: 'Two-factor authentication enabled',
+        body: 'Two-factor authentication was enabled on your account.',
+      },
+      mfaDisabled: {
+        title: 'Two-factor authentication disabled',
+        body: 'Two-factor authentication was disabled on your account.',
+      },
+      newLogin: {
+        title: 'New sign-in to your account',
+        body: 'Sign-in from IP {ip}. Device: {userAgent}.{backup}',
+        unknownIp: 'unknown IP',
+        unknownDevice: 'unknown device',
+        usedBackupCode: ' A backup code was used.',
+      },
+      passwordChanged: {
+        title: 'Password changed',
+        body: 'Your account password was changed. All other sessions were signed out.',
+      },
+      passwordReset: {
+        title: 'Password reset',
+        body: 'Your account password was reset via forgot password. All other sessions were signed out.',
+      },
+      adminPasswordSet: {
+        title: 'Password updated by support',
+        body: 'An administrator set a new password for your account. Sign in and change it in your profile.',
+      },
+    },
+  },
+  securityAudit: {
+    title: 'Security audit log',
+    userTitle: 'Security events',
+    empty: 'No security events recorded',
+    targetUser: 'Target user',
+    actorUser: 'Actor',
+    systemActor: 'System',
+    actions: {
+      password_changed: 'Password changed (profile)',
+      password_reset: 'Password reset (forgot)',
+      admin_password_set: 'Admin set password',
+      admin_mfa_reset: 'Admin reset MFA',
+    },
   },
   notification: {
     ui: {
@@ -247,6 +483,27 @@ export const en = {
     containersDescription:
       'Containers are used to wrap the content of the page. They are used to add copied content, tooltip content, pretty container, number format, etc.',
     tableDescription: 'Customization for columns, rows and pagination. Choose what columns you need to display by using component props.',
+  },
+  password: {
+    policy: {
+      minLength: 'Minimum {min} characters',
+      digit: 'Minimum 1 digit',
+      lowercase: 'Minimum 1 lowercase letter',
+      uppercase: 'Minimum 1 uppercase letter',
+      tooLong: 'Password must be at most {max} characters',
+      invalid: 'Password does not meet security requirements',
+      mustContain: 'Must contain',
+      requirementMet: 'Requirement met',
+      requirementNotMet: 'Requirement not met',
+      showPassword: 'Show password',
+      hidePassword: 'Hide password',
+      strength: {
+        enter: 'Enter password',
+        weak: 'Weak password',
+        medium: 'Medium strength',
+        strong: 'Strong password',
+      },
+    },
   },
   auth: {
     ui: {
@@ -331,6 +588,96 @@ export const en = {
       invalidEmailOrPassword: 'Invalid email or password',
       userAccountIsBlocked: 'User account is blocked',
     },
+    email: {
+      signUp: {
+        subject: 'Registration code',
+        text: 'Registration code: {code}\n\nIt expires in 30 minutes. If you did not request this, ignore this email.',
+      },
+    },
+    password: {
+      title: 'Change password',
+      expand: 'Change password',
+      collapse: 'Hide',
+      currentPassword: 'Current password',
+      newPassword: 'New password',
+      confirmPassword: 'Confirm new password',
+      emailCode: 'Email code',
+      totpCode: 'Authenticator code',
+      submitRequest: 'Continue',
+      submitConfirm: 'Change password',
+      forgotLink: 'Forgot password?',
+      messages: {
+        changeStarted: 'Check your email for the verification code.',
+        changeSuccess: 'Password changed. Please sign in again.',
+        forgotStarted: 'If an account exists for this email, we sent further instructions.',
+        forgotSuccess: 'Password updated. You can sign in now.',
+      },
+      email: {
+        changeSubject: 'Confirm password change',
+        forgotSubject: 'Password reset code',
+        codeText: 'Your verification code: {code}\n\nIt expires in 30 minutes.',
+      },
+      errors: {
+        featureDisabled: 'This feature is disabled.',
+        passwordTooShort: 'Password must be at least 8 characters.',
+        samePassword: 'New password must differ from the current one.',
+        pendingExpired: 'Session expired. Start again.',
+        factorsIncomplete: 'Complete all required verification steps.',
+        emailFailed: 'Could not send email. Try again later.',
+        sendLimitReached: 'Too many code requests. Try again later.',
+        verifyLocked: 'Too many attempts. Try again later.',
+        tooManyAttempts: 'Too many attempts. Try again later.',
+        invalidCodeFormat: 'Enter the 6-digit code from the email.',
+        emailCodeNotRequired: 'Email code is not required for this step.',
+        passwordsMismatch: 'Passwords do not match.',
+      },
+    },
+    recovery: {
+      contactSupport: 'Automatic recovery is unavailable. Contact support at support@example.com from your registration email.',
+      lostEmail: 'No access to email',
+      lostTotp: 'No access to authenticator',
+      lostBoth: 'No access to email or authenticator',
+      errors: {
+        emailNotAvailable: 'Email verification is not available on this server.',
+        supportRequired: 'Contact support to recover your account.',
+      },
+    },
+  },
+  onboarding: {
+    title: 'Finish setup',
+    description: 'Complete these steps to secure your account and stay updated.',
+    done: 'Done',
+    go: 'Open',
+    setupBelow: 'Set up below',
+    dismiss: 'Do not show again',
+    modal: {
+      title: 'Welcome — finish setup',
+      description: 'A few quick steps to secure your account and enable notifications.',
+      skip: 'Skip for now',
+      next: 'Next',
+      back: 'Back',
+      finish: 'Got it',
+      openMfa: 'Set up two-factor auth',
+      openPush: 'Open notification settings',
+    },
+    steps: {
+      profile: {
+        title: 'Review profile',
+        description: 'Check your email and account details.',
+      },
+      mfa: {
+        title: 'Enable two-factor authentication',
+        description: 'Protect sign-in with an authenticator app.',
+      },
+      push: {
+        title: 'Enable push notifications',
+        description: 'Get alerts when you are away from the tab.',
+      },
+    },
+    errors: {
+      featureDisabled: 'Onboarding is disabled.',
+      invalidParams: 'Invalid request.',
+    },
   },
   totp: {
     errors: {
@@ -351,6 +698,76 @@ export const en = {
       baseTitle: 'Main information',
       tabs: {
         base: 'Main',
+        pushSubscriptions: 'Push subscriptions',
+        notifications: 'Notifications',
+        sessions: 'Sessions',
+        securityAudit: 'Security',
+      },
+      pushSubscriptions: {
+        title: 'Push subscriptions',
+        empty: 'No push subscriptions',
+        delete: 'Remove',
+        deleteConfirm: 'Remove this push subscription from the account?',
+        deleted: 'Subscription removed',
+        deleteFailed: 'Failed to remove subscription',
+        providers: {
+          apple: 'Apple Push',
+          fcm: 'FCM',
+          mozilla: 'Mozilla',
+          unknown: 'Unknown',
+        },
+      },
+      notifications: {
+        title: 'User notifications',
+      },
+      userRecovery: {
+        title: 'Account recovery (support)',
+        resetMfa: 'Reset MFA',
+        setPassword: 'Set new password',
+        newPassword: 'New password',
+        resetMfaConfirm: 'Reset MFA for this user?',
+        setPasswordConfirm: 'Set a new password and log the user out everywhere?',
+        resetMfaSuccess: 'MFA has been reset.',
+        setPasswordSuccess: 'Password updated. Share it with the user via a secure channel and ask them to change it in profile.',
+        adminHint: 'Tell the user the temporary password securely and ask them to change it in their account settings.',
+      },
+      sessions: {
+        title: 'Active sessions',
+        revokeConfirm: 'Sign out this session?',
+        revoked: 'Session revoked',
+        revokeFailed: 'Failed to revoke session',
+        revokeAll: 'Sign out everywhere',
+        revokeAllConfirm: 'Sign out this user on all devices?',
+        revokedAll: 'All sessions revoked',
+      },
+    },
+    profile: {
+      pushSubscriptions: {
+        title: 'Active notification subscriptions',
+        currentDevice: 'Current device',
+        otherDevices: 'Other subscriptions',
+        revokeDevice: 'Unsubscribe on this device',
+        revokeDeviceConfirm: 'Unsubscribe push notifications on this device?',
+      },
+    },
+    sessions: {
+      title: 'Active sessions',
+      empty: 'No active sessions',
+      currentDevice: 'Current device',
+      loginAt: 'Signed in',
+      lastSeenAt: 'Last activity',
+      revoke: 'Sign out',
+      revokeConfirm: 'Sign out this device?',
+      revoked: 'Session revoked',
+      revokeFailed: 'Failed to revoke session',
+      revokeOthers: 'Sign out all other devices',
+      revokeOthersConfirm: 'Sign out all other devices?',
+      revokedOthers: 'Other sessions revoked',
+      errors: {
+        featureDisabled: 'Sessions management is disabled.',
+        invalidParams: 'Invalid request.',
+        cannotRevokeCurrent: 'Use Logout for the current device.',
+        notFound: 'Session not found.',
       },
     },
     roles: {
@@ -388,10 +805,6 @@ export const en = {
         title: 'Register by admin user',
         description: 'Register a new user by admin',
         userRegisteredSuccessfully: 'User registered successfully',
-        minimum6Characters: 'Minimum 6 characters',
-        minimum1Digit: 'Minimum 1 digit',
-        minimum1LowercaseLetter: 'Minimum 1 lowercase letter',
-        minimum1UppercaseLetter: 'Minimum 1 uppercase letter',
         login: 'Login',
         password: 'Password',
         email: 'Email',
@@ -419,6 +832,16 @@ export const en = {
     },
   },
   article: {
+    common: {
+      showing: 'Showing {count} of {total}',
+      sortBy: 'Sort by',
+      order: 'Order',
+      newestFirst: 'Newest first',
+      oldestFirst: 'Oldest first',
+      publishedAt: 'Published date',
+      createdAt: 'Created date',
+      updatedAt: 'Updated date',
+    },
     fields: {
       id: 'ID',
       slug: 'Slug',
@@ -871,6 +1294,10 @@ export const en = {
     },
   },
   push: {
+    iosPwaHint: {
+      title: 'Install the app for push on iPhone',
+      description: 'Open Safari menu → Share → Add to Home Screen, then sign in and enable notifications from your profile.',
+    },
     messages: {
       newMessage: 'New message',
       exampleBody: 'Example body for {type} request',
@@ -878,6 +1305,7 @@ export const en = {
     errors: {
       invalidSubscription: 'Invalid subscription',
       invalidParams: 'Invalid params',
+      subscriptionNotFound: 'Subscription not found',
     },
   },
   rum: {

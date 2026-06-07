@@ -633,7 +633,7 @@ export const MediaUrlUploadField = (props: Props) => {
                         </label>
                         <select
                           id={`${mainFileInputId}-ai-model`}
-                          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                          className="h-9 rounded-md border border-border bg-background px-2 text-sm"
                           value={selectedImageModel?.id ?? ''}
                           disabled={disabled || aiModalBusy}
                           onChange={(e) => setAiImageModelId(e.target.value)}
@@ -651,7 +651,7 @@ export const MediaUrlUploadField = (props: Props) => {
                         </label>
                         <select
                           id={`${mainFileInputId}-ai-aspect`}
-                          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                          className="h-9 rounded-md border border-border bg-background px-2 text-sm"
                           value={aiAspectId}
                           disabled={disabled || aiModalBusy || !selectedImageModel}
                           onChange={(e) => setAiAspectId(e.target.value)}

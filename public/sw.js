@@ -1,10 +1,27 @@
 // Lightweight Service Worker for Web Push notifications + basic offline support
 
 // Bump suffix when changing caching rules so activate() drops old buckets (avoids stale/error payloads).
-const STATIC_CACHE = 'static-v2'
-const HTML_CACHE = 'html-v2'
-const API_PUBLIC_CACHE = 'api-public-v2'
+const STATIC_CACHE = 'static-v3'
+const HTML_CACHE = 'html-v3'
+const API_PUBLIC_CACHE = 'api-public-v3'
+/** 192px — iOS часто не показывает баннер с мелкой иконкой 48px */
 const APP_ICON = '/images/favicon.svg'
+
+function resolveNotificationAsset(pathOrUrl) {
+	if (!pathOrUrl) {
+		return new URL(APP_ICON, self.location.origin).href
+	}
+
+	if (typeof pathOrUrl === 'string' && pathOrUrl.startsWith('http')) {
+		return pathOrUrl
+	}
+
+	return new URL(pathOrUrl, self.location.origin).href
+}
+
+function isIOS() {
+	return /iPad|iPhone|iPod/.test(self.navigator.userAgent || '')
+}
 
 // Shell-pages, for precache (can be expanded to your project)
 const PRECACHE_URLS = ['/', APP_ICON, '/images/site.webmanifest']
@@ -14,8 +31,13 @@ self.addEventListener('push', (event) => {
 
 	try {
 		payload = event.data ? event.data.json() : null
-    } catch {
-		payload = null
+	} catch {
+		try {
+			const text = event.data?.text?.() || ''
+			payload = text ? { title: 'Notification', body: text, url: '/' } : null
+		} catch {
+			payload = null
+		}
 	}
 
 	if (!payload) {
@@ -23,69 +45,86 @@ self.addEventListener('push', (event) => {
 	}
 
 	const title = payload.title || 'Notification'
-	
-	// Create a unique tag for accumulating notifications
+	const body = (payload.body && String(payload.body).trim()) || title
+
 	const uniqueTag = payload.tag ? `${payload.tag}:${Date.now()}` : `notification:${Date.now()}`
-	
-	const options = {
-		body: payload.body,
-		icon: payload.icon || APP_ICON,
-		badge: payload.badge || APP_ICON,
-		tag: uniqueTag, //  Unique tag for each notification
-		data: {
-			url: payload.url || '/',
-			dedupId: payload.dedupId,
-			ts: payload.ts || Date.now(),
-		},
-		renotify: true, // Enable repeated notifications
-		// Sound options for system notifications
-		silent: false, // Enable sound
-		requireInteraction: false, // Require interaction
-		vibrate: [200, 100, 200], // More noticeable vibration
-		timestamp: payload.ts || Date.now(),
-		// Additional options for sound
-		actions: [], // Empty array of actions
+
+	const data = {
+		url: payload.url || '/',
+		dedupId: payload.dedupId,
+		ts: payload.ts || Date.now(),
 	}
-	
+
+	const options = {
+		body,
+		icon: resolveNotificationAsset(payload.icon),
+		tag: uniqueTag,
+		data,
+		silent: false,
+	}
+
+	// badge — в основном Android; на iOS иногда ломает showNotification
+	if (!isIOS()) {
+		options.badge = resolveNotificationAsset(payload.badge)
+	}
+
+	const notifyClients = () =>
+		self.clients
+			.matchAll({ type: 'window', includeUncontrolled: true })
+			.then((clients) => {
+				clients.forEach((client) => {
+					client.postMessage({
+						type: 'NOTIFICATION_RECEIVED',
+						payload,
+						timestamp: Date.now(),
+					})
+				})
+			})
+			.catch((e) => console.error('[SW] Failed to notify clients:', e))
+
+	const show = () =>
+		self.registration
+			.showNotification(title, options)
+			.catch((error) => {
+				console.warn('[SW] showNotification failed, retry minimal options:', error)
+
+				return self.registration.showNotification(title, { body, data })
+			})
+
+	// iOS отзывает подписку, если push пришёл, а уведомление не показали
 	event.waitUntil(
-		self.registration.showNotification(title, options)
+		show()
 			.then(() => {
 				console.info('[SW] Notification shown successfully')
-				
-				// Notify all open tabs about the new notification for sound playback
-				self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-					.then(clients => {
-						clients.forEach(client => {
-							client.postMessage({
-								type: 'NOTIFICATION_RECEIVED',
-								payload: payload,
-								timestamp: Date.now()
-							})
-						})
-					})
-					.catch(e => console.error('[SW] Failed to notify clients:', e))
+				return notifyClients()
 			})
 			.catch((error) => {
 				console.error('[SW] Failed to show notification:', error)
-			})
+			}),
 	)
 })
 
 self.addEventListener('notificationclick', (event) => {
 	event.notification.close()
-	const url = event.notification?.data?.url || '/'
+	const rawUrl = event.notification?.data?.url || '/'
+	const targetUrl = rawUrl.startsWith('http') ? rawUrl : new URL(rawUrl, self.location.origin).href
+
+	let targetPathname = rawUrl
+	try {
+		targetPathname = new URL(targetUrl).pathname
+	} catch {}
 
 	event.waitUntil(
 		clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
 			for (const client of clientList) {
 				try {
 					const clientUrl = new URL(client.url)
-					if (clientUrl.pathname === url || clientUrl.href === url) {
+					if (clientUrl.pathname === targetPathname || clientUrl.href === targetUrl) {
 						return client.focus()
 					}
 				} catch {}
 			}
-			return clients.openWindow(url)
+			return clients.openWindow(targetUrl)
 		})
 	)
 })

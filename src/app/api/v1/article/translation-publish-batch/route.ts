@@ -4,6 +4,7 @@ import ArticleRevision from '@lib/db/models/ArticleRevision'
 import { articleDocumentToApiJson } from '@lib/db/utils/articleApiJson'
 import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
+import { notifyArticlePublishedFromRevision } from '@lib/services/article-notification.service'
 import mongoose from 'mongoose'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
@@ -88,6 +89,13 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
       )
 
       published.push(id)
+
+      await notifyArticlePublishedFromRevision({
+        recipientUserId: authResult.payload.sub,
+        articleId: id,
+        revisionTitle: rev.title,
+        t,
+      })
     }
 
     const groupIds = new Set<string>()

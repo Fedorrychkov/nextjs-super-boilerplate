@@ -1,3 +1,5 @@
+import { ThemeShell } from '~/providers/theme'
+
 export const SimpleLayout = ({ children }: { children: React.ReactNode }) => {
-  return <div className="w-full h-full flex-1 flex flex-col">{children}</div>
+  return <ThemeShell className="flex flex-1 flex-col">{children}</ThemeShell>
 }

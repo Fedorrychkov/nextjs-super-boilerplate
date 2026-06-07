@@ -11,6 +11,7 @@ import { cn } from '~/utils/cn'
 import { matchesPathname } from '~/utils/matchPath'
 
 import { Skeleton } from '../Loaders'
+import { Logo } from './Logo'
 
 const AnimatedMenuToggle = ({ toggle, isOpen }: { toggle: () => void; isOpen: boolean }) => (
   <button onClick={toggle} aria-label="Toggle menu" className="focus:outline-none z-999">
@@ -22,7 +23,7 @@ const AnimatedMenuToggle = ({ toggle, isOpen }: { toggle: () => void; isOpen: bo
         initial="closed"
         animate={isOpen ? 'open' : 'closed'}
         transition={{ duration: 0.3 }}
-        className="text-black"
+        className="text-foreground"
       >
         <motion.path
           fill="transparent"
@@ -65,7 +66,7 @@ const CollapsibleSection = ({ title, children, defaultOpen }: { title: string; c
 
   return (
     <>
-      <button className="w-full flex items-center justify-between py-2 px-4 rounded-xl hover:bg-gray-100" onClick={() => setOpen(!open)}>
+      <button className="w-full flex items-center justify-between py-2 px-4 rounded-xl hover:bg-muted" onClick={() => setOpen(!open)}>
         <span className="font-semibold text-md text-left">{title}</span>
         {open ? <XIcon /> : <MenuIcon />}
       </button>
@@ -108,8 +109,11 @@ const Footer = () => {
   }
 
   return (
-    <div className="p-4 border-t border-gray-200">
-      <button onClick={handleLogout} className="w-full cursor-pointer font-medium text-sm p-2 text-center bg-blue-100 rounded-xl hover:bg-blue-200">
+    <div className="p-4 border-t border-border">
+      <button
+        onClick={handleLogout}
+        className="w-full cursor-pointer font-medium text-sm p-2 text-center bg-blue-100 dark:bg-blue-900 rounded-xl hover:bg-blue-200 dark:hover:bg-blue-800"
+      >
         {t('common.signOut')}
       </button>
     </div>
@@ -122,19 +126,24 @@ const ProfileSection = () => {
   const { authUser, isLoading, isFetched } = useAuth()
 
   return (
-    <div className="p-4 border-b border-gray-200">
-      <div className="flex items-center space-x-3 cursor-pointer" onClick={() => router.push('/profile')}>
-        <div className="w-12 min-w-12 h-12 min-h-12 bg-gray-200 rounded-full flex items-center justify-center">
-          <User className="h-6 w-6 min-w-6 min-h-6" />
-        </div>
-        <div className="w-full overflow-hidden">
-          {isLoading || !isFetched ? (
-            <Skeleton width="100%" height={24} />
-          ) : (
-            <div className="flex flex-col gap-1">
-              <p className="text-sm text-gray-500 truncate">{authUser?.email ?? 'Anonymous'}</p>
-            </div>
-          )}
+    <div className="border-b border-border">
+      {/* Logo → home */}
+      <Link href="/" className="flex items-center gap-2 px-4 py-3 hover:bg-muted transition-colors">
+        <Logo size={24} showText />
+      </Link>
+      {/* User profile row */}
+      <div className="px-4 py-3 border-t border-border/50">
+        <div className="flex items-center space-x-3 cursor-pointer" onClick={() => router.push('/profile')}>
+          <div className="w-8 min-w-8 h-8 min-h-8 dark:bg-muted-foreground bg-slate-100 rounded-full flex items-center justify-center">
+            <User className="h-4 w-4 min-w-4 min-h-4" />
+          </div>
+          <div className="w-full overflow-hidden">
+            {isLoading || !isFetched ? (
+              <Skeleton width="100%" height={20} />
+            ) : (
+              <p className="text-xs text-muted-foreground truncate">{authUser?.email ?? 'Anonymous'}</p>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -200,9 +209,12 @@ const NavigationSection = ({ navigation, toggle }: { navigation: NavigationSecti
                               <Link
                                 onClick={toggle}
                                 href={item.href || ''}
-                                className={cn('w-full font-medium text-sm flex flex-start items-center gap-2 text-left p-2 rounded-xl hover:bg-gray-100', {
-                                  'bg-gray-100': matchesPathname(item.href || '', pathname),
-                                })}
+                                className={cn(
+                                  'w-full text-muted-foreground font-medium text-sm flex flex-start items-center gap-2 text-left p-2 rounded-xl hover:bg-muted',
+                                  {
+                                    'bg-muted text-foreground': matchesPathname(item.href || '', pathname),
+                                  },
+                                )}
                               >
                                 {item.icon}
                                 {item.label}
@@ -211,7 +223,7 @@ const NavigationSection = ({ navigation, toggle }: { navigation: NavigationSecti
                           ))}
                       </ul>
                     ) : (
-                      <p className="text-sm text-gray-500">{nav.content}</p>
+                      <p className="text-sm text-muted-foreground">{nav.content}</p>
                     )}
                   </CollapsibleSection>
                 </li>
@@ -227,9 +239,12 @@ const NavigationSection = ({ navigation, toggle }: { navigation: NavigationSecti
                       <Link
                         onClick={toggle}
                         href={item.href || ''}
-                        className={cn('w-full font-medium text-sm flex flex-start items-center gap-2 text-left p-2 rounded-xl hover:bg-gray-100', {
-                          'bg-gray-100': matchesPathname(item.href || '', pathname),
-                        })}
+                        className={cn(
+                          'w-full text-muted-foreground font-medium text-sm flex flex-start items-center gap-2 text-left p-2 rounded-xl hover:bg-muted',
+                          {
+                            'bg-muted text-foreground': matchesPathname(item.href || '', pathname),
+                          },
+                        )}
                       >
                         {item.icon}
                         {item.label}
@@ -270,7 +285,7 @@ const Sidebar = ({ children, navigation }: SidebarProps) => {
             exit="hidden"
             variants={mobileSidebarVariants}
             transition={{ duration: 0.3 }}
-            className="md:hidden max-w-[100vw] fixed inset-0 z-50 bg-white text-black"
+            className="md:hidden max-w-[100vw] fixed inset-0 z-50 bg-background text-foreground"
           >
             <div className="flex flex-col h-full">
               {/* Profile Section */}
@@ -285,7 +300,7 @@ const Sidebar = ({ children, navigation }: SidebarProps) => {
       </AnimatePresence>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col fixed top-0 left-0 h-full bg-white text-black shadow max-w-[200px] w-full">
+      <aside className="hidden md:flex flex-col fixed top-0 left-0 h-full bg-background text-foreground shadow dark:shadow-foreground/30 max-w-[200px] w-full">
         {/* Profile Section */}
         <ProfileSection />
         {/* Navigation Section */}
@@ -297,7 +312,7 @@ const Sidebar = ({ children, navigation }: SidebarProps) => {
       {/* Main Content Area */}
       <div className="flex-1 ml-0 md:ml-[200px] transition-all overflow-hidden duration-300 flex-col flex">
         {/* Top bar for mobile toggle */}
-        <div className="p-4 bg-gray-100 border-b border-gray-200 md:hidden flex justify-end items-center">
+        <div className="p-4 bg-background border-b border-border md:hidden flex justify-end items-center">
           <AnimatedMenuToggle toggle={toggleSidebar} isOpen={isOpen} />
         </div>
         <div className="md:p-6 p-2 flex-1 flex flex-col max-w-[100vw]">{children}</div>

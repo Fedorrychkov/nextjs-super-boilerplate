@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { FormProvider, useForm } from 'react-hook-form'
 
 import { RegisterByAdminDto } from '~/api/auth/types'
-import { UserModel, UserRole } from '~/api/user'
+import { AuthUserSnapshot, UserRole } from '~/api/user'
 import { DefaultFieldContainer, DefaultMultiselectField, InputWithPassword } from '~/components/Fields'
 import { Option, Typography } from '~/components/ui'
 import { Button } from '~/components/ui/button'
@@ -18,7 +18,7 @@ type Props = {
   isOpen?: boolean
   isLoading?: boolean
   toggle?: () => void
-  onSubmit?: (dto: RegisterByAdminDto) => Promise<{ user: Pick<UserModel, 'id' | 'email' | 'role' | 'status'> | undefined } | undefined>
+  onSubmit?: (dto: RegisterByAdminDto) => Promise<{ user: AuthUserSnapshot | undefined } | undefined>
 }
 
 const roles: Option[] = [
@@ -37,7 +37,7 @@ const roles: Option[] = [
 ]
 
 export const RegisterByAdminUserDialog = (props: Props) => {
-  const [data, setData] = useState<{ user: (Pick<UserModel, 'id' | 'email' | 'role' | 'status'> & { password: string }) | undefined } | undefined>(undefined)
+  const [data, setData] = useState<{ user: (AuthUserSnapshot & { password: string }) | undefined } | undefined>(undefined)
 
   const t = useT()
   const { children, isOpen, toggle, onSubmit: defaultOnSubmit, isLoading } = props

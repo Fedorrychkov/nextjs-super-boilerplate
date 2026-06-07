@@ -7,6 +7,7 @@ import type { MetadataRoute } from 'next'
 import { ArticleStatus, ArticleVisibility } from '~/api/article'
 import type { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { getDefaultLocale } from '~/lib/i18n/config'
+import { getSitemapRoutesFromConfig } from '~/lib/routes/seo'
 
 import { buildDefaultArticleUrl } from './articleCanonical'
 import { loadPublishedIndexableAlternatesLanguagesMap } from './articleTranslationAlternates'
@@ -30,32 +31,7 @@ export type PublicSeoArticle = {
 
 const baseUrl = seoConfig.siteUrl.replace(/\/+$/, '')
 
-export const getStaticRoutes = (): MetadataRoute.Sitemap => [
-  {
-    url: baseUrl,
-    lastModified: new Date(),
-    changeFrequency: 'weekly',
-    priority: 1,
-  },
-  {
-    url: `${baseUrl}/articles`,
-    lastModified: new Date(),
-    changeFrequency: 'weekly',
-    priority: 0.9,
-  },
-  {
-    url: `${baseUrl}/ui-kit`,
-    lastModified: new Date(),
-    changeFrequency: 'monthly',
-    priority: 0.6,
-  },
-  {
-    url: `${baseUrl}/rss.xml`,
-    lastModified: new Date(),
-    changeFrequency: 'daily',
-    priority: 0.6,
-  },
-]
+export const getStaticRoutes = (): MetadataRoute.Sitemap => getSitemapRoutesFromConfig(baseUrl)
 
 function toTimeMs(value: string | Date | null | undefined): number {
   if (value == null) {

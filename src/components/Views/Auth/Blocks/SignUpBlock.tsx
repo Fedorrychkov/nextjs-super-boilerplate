@@ -1,12 +1,12 @@
 'use client'
 
-import { Eye, EyeOff, Lock, Mail, UserRoundPlusIcon } from 'lucide-react'
+import { getPasswordPolicyErrorMessage } from '@lib/validation/password-policy'
+import { Mail, UserRoundPlusIcon } from 'lucide-react'
 import * as React from 'react'
 import { useState } from 'react'
 
-import { InputField } from '~/components/Fields'
-import { Button } from '~/components/ui'
-import { useSwitch } from '~/hooks/useSwitch'
+import { InputField, PasswordField } from '~/components/Fields'
+import { Button, Typography } from '~/components/ui'
 import { useT } from '~/providers'
 
 type Props = {
@@ -17,13 +17,12 @@ type Props = {
 
 const SignUpBlock = (props: Props) => {
   const t = useT()
-  const [isPasswordVisible, { toggle: togglePasswordVisibility }] = useSwitch(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
 
-  const validateEmail = (email: string) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  const validateEmail = (emailValue: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)
   }
 
   const handle = (e: React.FormEvent<HTMLFormElement>) => {
@@ -40,24 +39,34 @@ const SignUpBlock = (props: Props) => {
 
       return
     }
-    setError('')
 
+    const policyError = getPasswordPolicyErrorMessage(password, t)
+
+    if (policyError) {
+      setError(policyError)
+
+      return
+    }
+
+    setError('')
     props.onSubmit(email, password)
   }
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-white rounded-xl z-1">
+    <div className="min-h-screen w-full flex items-center justify-center bg-white dark:bg-transparent rounded-xl z-1">
       <form
         onSubmit={handle}
-        className="w-full max-w-sm bg-gradient-to-b from-sky-50/50 to-white  rounded-3xl shadow-xl shadow-opacity-10 p-8 flex flex-col items-center border border-blue-100 text-black"
+        className="w-full max-w-sm bg-gradient-to-b from-sky-50/50 to-background dark:from-sky-900/50 rounded-3xl shadow-xl shadow-opacity-10 dark:shadow-sky-900/50 p-8 flex flex-col items-center border border-blue-100 dark:border-background text-foreground"
       >
-        <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-white mb-6 shadow-lg shadow-opacity-5">
-          <UserRoundPlusIcon className="w-7 h-7 text-black" />
+        <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-background mb-6 shadow-lg shadow-opacity-5">
+          <UserRoundPlusIcon className="w-7 h-7 text-foreground" />
         </div>
-        <h2 className="text-2xl font-semibold mb-2 text-center">{t('auth.ui.createAccountToContinue')}</h2>
-        <p className="text-gray-500 text-sm mb-6 text-center">
+        <Typography variant="Body/L/Semibold" asTag="h2" className="mb-2 text-center">
+          {t('auth.ui.createAccountToContinue')}
+        </Typography>
+        <Typography variant="Body/M/Regular" asTag="p" className="text-sm mb-6 text-center text-muted-foreground">
           {t('auth.ui.pleaseEnterYourEmailAndPasswordToCreateAnAccountYouWillBeAbleToSignInUsingTheseCredentialsInTheFuture')}
-        </p>
+        </Typography>
         <div className="w-full flex flex-col gap-3 mb-2">
           <div className="relative">
             <InputField
@@ -72,48 +81,32 @@ const SignUpBlock = (props: Props) => {
                 </span>
               }
               classNames={{
-                input:
-                  'w-full pl-10 pr-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-gray-50 text-black text-sm',
+                input: 'w-full pl-10 pr-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm',
               }}
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
-          <div className="relative">
-            <InputField
-              placeholder={t('auth.ui.password')}
-              type={isPasswordVisible ? 'text' : 'password'}
-              name="password"
-              value={password}
-              additionalLeftComponent={
-                <span className="ml-3 text-gray-400">
-                  <Lock className="w-4 h-4" />
-                </span>
-              }
-              additionalRightComponent={
-                <Button type="button" size="input-icon" variant="ghost" className="text-gray-400 mr-3 cursor-pointer" onClick={togglePasswordVisibility}>
-                  {isPasswordVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </Button>
-              }
-              disabled={props.isLoading}
-              classNames={{
-                input:
-                  'w-full pl-10 pr-10 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-gray-50 text-black text-sm',
-              }}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer text-xs select-none"></span>
-          </div>
+          <PasswordField
+            name="password"
+            placeholder={t('auth.ui.password')}
+            value={password}
+            onChange={setPassword}
+            disabled={props.isLoading}
+            classNames={{
+              input: 'w-full rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm',
+            }}
+          />
 
           <div className="w-full flex justify-end">{error && <div className="text-sm text-red-500 text-left">{error}</div>}</div>
         </div>
         <button
           type="submit"
           disabled={props.isLoading}
-          className="w-full bg-gradient-to-b from-gray-700 to-gray-900 text-white font-medium py-2 rounded-xl shadow hover:brightness-105 cursor-pointer transition mb-4 mt-2"
+          className="w-full bg-gradient-to-b from-gray-700 to-gray-900 text-white dark:from-gray-700 dark:to-gray-900 dark:text-foreground dark:hover:text-foreground font-medium py-2 rounded-xl shadow hover:brightness-105 cursor-pointer transition mb-4 mt-2"
         >
           {t('auth.ui.createAccount')}
         </button>
-        <Button variant="link" onClick={props.onChange}>
+        <Button variant="ghost" className="w-full" onClick={props.onChange}>
           {t('auth.ui.signIn')}
         </Button>
       </form>

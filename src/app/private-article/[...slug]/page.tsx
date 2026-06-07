@@ -12,6 +12,7 @@ import { UserRole } from '~/api/user'
 import { defaultExtensions } from '~/components/Blocks/Editor/extensions'
 import { ArticlePublishedDate } from '~/components/Views/Article/Block/server/ArticlePublishedDate'
 import { ArticlePublicListenAudio } from '~/components/Views/Article/Public/ArticlePublicListenAudio'
+import { ArticleReadingShell } from '~/components/Views/Article/Public/ArticleReadingShell'
 import { ArticleViewTracker } from '~/components/Views/Article/Public/ArticleViewTracker'
 import { FALLBACK_THUMBNAIL_IMAGE } from '~/constants'
 import { finalizeArticleBodyHtml } from '~/lib/editor/finalizeArticleBodyHtml'
@@ -140,13 +141,33 @@ const PrivateArticleRoot = async (props: PageProps<{ slug: string[] }>) => {
 
   const publishedAt = response.revision.publishedAt ?? response.article.publishedAt
 
+  const title = response.revision.title ?? response.article.slug ?? 'Article'
+  const thumbnailUrl = response.revision.thumbnailUrl || null
+
   return (
     <>
       <ArticleViewTracker slug={slugResolved} surface="private" />
       <JsonLd data={articleJsonLd} />
-      <ArticlePublishedDate publishedAt={publishedAt} className="mb-4 text-muted-foreground" />
-      <ArticlePublicListenAudio assetId={response.article.listenAudioAssetId} />
-      <div className="max-w-full tiptap readonly" lang={articleLanguage} dangerouslySetInnerHTML={{ __html: generatedPageString }} />
+
+      <ArticleReadingShell
+        breadcrumbs={[{ label: 'Home', href: '/' }, { label: title }]}
+        title={title}
+        thumbnailUrl={thumbnailUrl}
+        articleLanguage={articleLanguage}
+        bodyHtml={generatedPageString}
+        backLink={{ label: 'Home', href: '/' }}
+        badge={
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-800 px-3 py-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+            🔒 Private
+          </span>
+        }
+        meta={
+          <>
+            <ArticlePublishedDate publishedAt={publishedAt} />
+            <ArticlePublicListenAudio assetId={response.article.listenAudioAssetId} />
+          </>
+        }
+      />
     </>
   )
 }

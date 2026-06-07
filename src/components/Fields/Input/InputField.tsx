@@ -4,7 +4,7 @@ import { Input } from '~/components/ui/fields/input'
 import { Label } from '~/components/ui/fields/label'
 import { cn } from '~/utils/cn'
 
-export type InputFieldProps = {
+export type InputFieldProps = React.ComponentProps<'input'> & {
   name: string
   placeholder?: string
   hintText?: string | React.ReactNode

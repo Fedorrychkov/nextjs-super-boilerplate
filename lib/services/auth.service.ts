@@ -4,12 +4,20 @@ import RefreshToken, { IRefreshToken } from '@lib/db/models/RefreshToken'
 import User, { IUser } from '@lib/db/models/User'
 import { ForbiddenError, NotFoundError, UnauthorizedError, ValidationError } from '@lib/error/custom-errors'
 import { generateAccessToken, generateRefreshToken, getTokenExpiration, verifyAccessToken, verifyRefreshToken } from '@lib/jwt/utils'
-import type { HydratedDocument } from 'mongoose'
+import { assertActiveAccessSession, inheritedSessionMeta, sessionMetaFromRequest } from '@lib/services/user-session.service'
+import type { RequestClientMeta } from '@lib/utils/request-client-meta'
+import { assertPasswordPolicy } from '@lib/validation/password-policy'
+import mongoose, { type HydratedDocument } from 'mongoose'
 
 import { AuthResponse } from '~/api/auth/model'
 import { LoginEmailDto, RegisterByAdminDto, RegisterDto } from '~/api/auth/types'
 import { AuthUserSnapshot, UserRole, UserStatus } from '~/api/user'
 import { TFunction } from '~/lib/i18n'
+
+type AuthSessionOptions = {
+  languageCode?: string | null
+  clientMeta?: RequestClientMeta | null
+}
 
 export class AuthService {
   private async updateUserLanguage(userId: string, languageCode?: string | null): Promise<void> {
@@ -23,13 +31,21 @@ export class AuthService {
   /**
    * Registration of a user
    */
-  async register(data: RegisterDto, isAdmin: boolean = false, options?: { languageCode?: string | null; t: TFunction }): Promise<AuthResponse> {
+  async register(
+    data: RegisterDto,
+    isAdmin: boolean = false,
+    options?: { languageCode?: string | null; clientMeta?: RequestClientMeta | null; t: TFunction },
+  ): Promise<AuthResponse> {
     await connectDB()
 
     const existingUser = await User.findOne({ email: data.email.toLowerCase() })
 
     if (existingUser) {
       throw new ValidationError(options?.t?.('auth.errors.userWithThisEmailAlreadyExists') ?? 'User with this email already exists')
+    }
+
+    if (options?.t) {
+      assertPasswordPolicy(data.password, options.t)
     }
 
     const user = await User.create({
@@ -40,7 +56,7 @@ export class AuthService {
       languageCode: options?.languageCode ?? null,
     })
 
-    return this.generateAuthResponse(user, options)
+    return this.generateAuthResponse(user, { languageCode: options?.languageCode, clientMeta: options?.clientMeta })
   }
 
   /**
@@ -48,7 +64,7 @@ export class AuthService {
    */
   async registerWithVerifiedPasswordHash(
     data: { email: string; passwordHash: string },
-    options?: { languageCode?: string | null; t: TFunction },
+    options?: { languageCode?: string | null; clientMeta?: RequestClientMeta | null; t: TFunction },
   ): Promise<AuthResponse> {
     await connectDB()
 
@@ -71,7 +87,7 @@ export class AuthService {
     hydrated.$locals = { ...hydrated.$locals, skipPasswordHash: true }
     await user.save()
 
-    return this.generateAuthResponse(user, options)
+    return this.generateAuthResponse(user, { languageCode: options?.languageCode, clientMeta: options?.clientMeta })
   }
 
   async registerByAdmin(data: RegisterByAdminDto, t: TFunction): Promise<AuthUserSnapshot> {
@@ -89,6 +105,8 @@ export class AuthService {
       throw new ValidationError(t('auth.errors.invalidRole'))
     }
 
+    assertPasswordPolicy(data.password, t)
+
     const user = await User.create({
       email: data.email.toLowerCase(),
       role: data.role,
@@ -104,18 +122,16 @@ export class AuthService {
     }
   }
 
-  async login(data: LoginEmailDto, options: { languageCode?: string | null; t: TFunction }): Promise<AuthResponse> {
+  async login(data: LoginEmailDto, options: AuthSessionOptions & { t: TFunction }): Promise<AuthResponse> {
     const user = await this.validateUserCredentials(data, options.t)
 
-    return this.generateAuthResponse(user, options)
+    return this.generateAuthResponse(user, { languageCode: options?.languageCode, clientMeta: options?.clientMeta })
   }
 
-  async refreshTokens(refreshTokenString: string): Promise<AuthResponse> {
+  async refreshTokens(refreshTokenString: string, options?: AuthSessionOptions): Promise<AuthResponse> {
     const { user, storedToken } = await this.validateRefreshToken(refreshTokenString)
 
-    await RefreshToken.deleteOne({ _id: storedToken._id })
-
-    return this.generateAuthResponse(user)
+    return this.rotateRefreshToken(user, storedToken, options)
   }
 
   /**
@@ -126,6 +142,9 @@ export class AuthService {
     await connectDB()
 
     const payload = verifyAccessToken(accessToken)
+
+    await assertActiveAccessSession(payload)
+
     const user = await User.findById(payload.sub)
 
     if (!user || user.status !== UserStatus.ACTIVE) {
@@ -152,6 +171,10 @@ export class AuthService {
     })
 
     if (!storedToken) {
+      throw new UnauthorizedError('Invalid refresh token')
+    }
+
+    if (payload.sid && payload.sid !== storedToken._id.toString()) {
       throw new UnauthorizedError('Invalid refresh token')
     }
 
@@ -206,15 +229,17 @@ export class AuthService {
     return user
   }
 
-  private async generateAuthResponse(user: IUser, options?: { languageCode?: string | null }): Promise<AuthResponse> {
+  private async rotateRefreshToken(user: IUser, storedToken: IRefreshToken, options?: AuthSessionOptions): Promise<AuthResponse> {
     await connectDB()
     await this.updateUserLanguage(user._id.toString(), options?.languageCode)
 
+    const sid = storedToken._id.toString()
     const payload = {
       sub: user._id.toString(),
       email: user.email,
       role: user.role,
       status: user.status,
+      sid,
     }
 
     const accessToken = generateAccessToken(payload)
@@ -222,11 +247,65 @@ export class AuthService {
 
     const expiresIn = getTokenExpiration(Number(JWT_CONFIG.refreshExpiresIn))
     const expiresAt = new Date(Date.now() + expiresIn * 1000)
+    const sessionMeta = inheritedSessionMeta(storedToken)
+
+    await RefreshToken.updateOne(
+      { _id: storedToken._id },
+      {
+        $set: {
+          token: refreshToken,
+          expiresAt,
+          lastSeenAt: sessionMeta.lastSeenAt,
+        },
+      },
+    )
+
+    const accessExpiresIn = getTokenExpiration(Number(JWT_CONFIG.accessExpiresIn))
+
+    return {
+      accessToken,
+      refreshToken,
+      expiresIn: accessExpiresIn,
+      refreshExpiresIn: expiresIn,
+      user: {
+        id: user._id.toString(),
+        email: user.email,
+        role: user.role,
+        status: user.status,
+      },
+    }
+  }
+
+  private async generateAuthResponse(user: IUser, options?: AuthSessionOptions): Promise<AuthResponse> {
+    await connectDB()
+    await this.updateUserLanguage(user._id.toString(), options?.languageCode)
+
+    const sessionId = new mongoose.Types.ObjectId()
+    const sid = sessionId.toString()
+    const payload = {
+      sub: user._id.toString(),
+      email: user.email,
+      role: user.role,
+      status: user.status,
+      sid,
+    }
+
+    const accessToken = generateAccessToken(payload)
+    const refreshToken = generateRefreshToken(payload)
+
+    const expiresIn = getTokenExpiration(Number(JWT_CONFIG.refreshExpiresIn))
+    const expiresAt = new Date(Date.now() + expiresIn * 1000)
+    const sessionMeta = sessionMetaFromRequest(options?.clientMeta)
 
     await RefreshToken.create({
+      _id: sessionId,
       token: refreshToken,
       userId: user._id,
       expiresAt,
+      deviceLabel: sessionMeta.deviceLabel,
+      userAgent: sessionMeta.userAgent,
+      ip: sessionMeta.ip,
+      lastSeenAt: sessionMeta.lastSeenAt,
     })
 
     const accessExpiresIn = getTokenExpiration(Number(JWT_CONFIG.accessExpiresIn))
@@ -245,8 +324,8 @@ export class AuthService {
     }
   }
 
-  async createAuthTokensForUser(user: IUser, options?: { languageCode?: string | null }): Promise<AuthResponse> {
-    return this.generateAuthResponse(user, options)
+  async createAuthTokensForUser(user: IUser, options?: AuthSessionOptions): Promise<AuthResponse> {
+    return this.generateAuthResponse(user, { languageCode: options?.languageCode, clientMeta: options?.clientMeta })
   }
 }
 

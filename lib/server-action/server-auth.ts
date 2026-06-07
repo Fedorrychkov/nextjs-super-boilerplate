@@ -3,12 +3,12 @@ import { AxiosError } from 'axios'
 import { headers } from 'next/headers'
 
 import { ClientAuthApi } from '~/api/auth'
-import { UserModel } from '~/api/user'
+import { AuthUserSnapshot } from '~/api/user'
 import { Logger } from '~/utils/logger'
 
 const logger = new Logger(['getServerProfile', '[lib/server-auth.ts]'])
 
-export async function getServerProfile(): Promise<Pick<UserModel, 'id' | 'email' | 'role' | 'status'> | null> {
+export async function getServerProfile(): Promise<AuthUserSnapshot | null> {
   try {
     const headersStore = await headers()
     const host = headersStore.get('host') || ''
