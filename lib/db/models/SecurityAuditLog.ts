@@ -1,10 +1,12 @@
 import mongoose, { type Document, type HydratedDocument, type Model, type QueryFilter, Schema } from 'mongoose'
 
-import type { SecurityAuditFilter, SecurityAuditItemModel } from '~/api/security-audit'
+import type { SecurityAuditAction, SecurityAuditFilter, SecurityAuditItemModel } from '~/api/security-audit'
 import type { PaginationMeta } from '~/types/pagination'
 
 import { applyCreatedAtRange } from '../utils/applyCreatedAtRange'
 import { buildPaginationMeta, clampLimit } from '../utils/buildPaginationMeta'
+
+const SECURITY_AUDIT_ACTIONS: SecurityAuditAction[] = ['password_changed', 'password_reset', 'admin_password_set', 'admin_mfa_reset']
 
 export interface ISecurityAuditLog extends Document, Omit<SecurityAuditItemModel, 'id' | 'actorUserId' | 'targetUserId'> {
   actorUserId: mongoose.Types.ObjectId | null
@@ -25,7 +27,11 @@ function applySecurityAuditFilterFields(q: QueryFilter<ISecurityAuditLog>, filte
   }
 
   if (filter.action != null && String(filter.action).trim()) {
-    q.action = String(filter.action).trim()
+    const action = String(filter.action).trim()
+
+    if ((SECURITY_AUDIT_ACTIONS as string[]).includes(action)) {
+      q.action = action as SecurityAuditAction
+    }
   }
 }
 
