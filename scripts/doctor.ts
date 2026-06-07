@@ -160,11 +160,11 @@ async function main() {
 
   for (const f of findings) {
     const prefix = f.level === 'error' ? '✖' : f.level === 'warn' ? '⚠' : 'ℹ'
-    console.log(`${prefix} [${f.code}] ${f.message}`)
+    console.info(`${prefix} [${f.code}] ${f.message}`)
   }
 
-  console.log('')
-  console.log(`Summary: ${errors.length} error(s), ${warnings.length} warning(s), ${findings.length - errors.length - warnings.length} info`)
+  console.info('')
+  console.info(`Summary: ${errors.length} error(s), ${warnings.length} warning(s), ${findings.length - errors.length - warnings.length} info`)
 
   if (errors.length > 0) {
     process.exit(1)

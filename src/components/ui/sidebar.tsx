@@ -11,6 +11,7 @@ import { cn } from '~/utils/cn'
 import { matchesPathname } from '~/utils/matchPath'
 
 import { Skeleton } from '../Loaders'
+import { Logo } from './Logo'
 
 const AnimatedMenuToggle = ({ toggle, isOpen }: { toggle: () => void; isOpen: boolean }) => (
   <button onClick={toggle} aria-label="Toggle menu" className="focus:outline-none z-999">
@@ -125,19 +126,24 @@ const ProfileSection = () => {
   const { authUser, isLoading, isFetched } = useAuth()
 
   return (
-    <div className="p-4 border-b border-border">
-      <div className="flex items-center space-x-3 cursor-pointer" onClick={() => router.push('/profile')}>
-        <div className="w-12 min-w-12 h-12 min-h-12 dark:bg-muted-foreground bg-slate-100 rounded-full flex items-center justify-center">
-          <User className="h-6 w-6 min-w-6 min-h-6" />
-        </div>
-        <div className="w-full overflow-hidden">
-          {isLoading || !isFetched ? (
-            <Skeleton width="100%" height={24} />
-          ) : (
-            <div className="flex flex-col gap-1">
-              <p className="text-sm text-gray-500 truncate">{authUser?.email ?? 'Anonymous'}</p>
-            </div>
-          )}
+    <div className="border-b border-border">
+      {/* Logo → home */}
+      <Link href="/" className="flex items-center gap-2 px-4 py-3 hover:bg-muted transition-colors">
+        <Logo size={24} showText />
+      </Link>
+      {/* User profile row */}
+      <div className="px-4 py-3 border-t border-border/50">
+        <div className="flex items-center space-x-3 cursor-pointer" onClick={() => router.push('/profile')}>
+          <div className="w-8 min-w-8 h-8 min-h-8 dark:bg-muted-foreground bg-slate-100 rounded-full flex items-center justify-center">
+            <User className="h-4 w-4 min-w-4 min-h-4" />
+          </div>
+          <div className="w-full overflow-hidden">
+            {isLoading || !isFetched ? (
+              <Skeleton width="100%" height={20} />
+            ) : (
+              <p className="text-xs text-muted-foreground truncate">{authUser?.email ?? 'Anonymous'}</p>
+            )}
+          </div>
         </div>
       </div>
     </div>

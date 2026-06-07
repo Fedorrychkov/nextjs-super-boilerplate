@@ -1,23 +1,198 @@
-# Production Ready Next.js Boilerplate
+# Production Ready Next.js Boilerplate (NSB)
 
-> Open-source Next.js (App Router) starter: authentication, MongoDB-backed articles with SEO-aware editing, admin dashboard, UI kit, CI/CD-oriented deploy, and optional LLM integration.
+> Self-hosted, open-source Next.js 16 (App Router) starter kit. Covers the full lifecycle from user registration to content publishing — auth, article CMS, admin dashboard, SEO tooling, push notifications, optional AI/LLM features, and CI/CD-ready deploy. MIT license. Fork, rename in one file, deploy.
 
-## Primary links
+Version: 0.2.0 · Runtime: Node.js ≥ 22 · Package manager: pnpm
 
-- Source code: https://github.com/Fedorrychkov/nextjs-super-boilerplate
-- Documentation folder: https://github.com/Fedorrychkov/nextjs-super-boilerplate/tree/main/docs
-- README: https://github.com/Fedorrychkov/nextjs-super-boilerplate/blob/main/README.md
-- Product roadmap: https://github.com/Fedorrychkov/nextjs-super-boilerplate/blob/main/docs/PRODUCT_ROADMAP.md
-- GEO / discoverability roadmap: https://github.com/Fedorrychkov/nextjs-super-boilerplate/blob/main/docs/IMPROVEMENTS_ROADMAP.md
+---
 
-## Human-readable articles (author blog, Markdown)
+## What this project is
 
-- EN: https://github.com/Fedorrychkov/fedorrychkov/blob/main/articles/standalone-nextjs-production-ready-boilerplate/ARTICLE_EN.md
-- RU: https://github.com/Fedorrychkov/fedorrychkov/blob/main/articles/standalone-nextjs-production-ready-boilerplate/ARTICLE_RU.md
+NSB is a **production-grade monorepo boilerplate** for Next.js applications. It is not a page builder, not a hosted SaaS, and not a minimal scaffold — it is a full-featured starting point that eliminates the boilerplate work developers repeat on every project: authentication, content management, admin tooling, SEO wiring, and deploy configuration.
 
-## This site (public demo)
+**Primary use cases:**
+- Personal or team products that need auth, a blog/knowledge base, and an admin panel
+- Content platforms with SEO requirements
+- Starting points for AI-assisted ("vibe coding") product development
+- Self-hosted alternatives to managed starters
 
-- Demo app: https://nextjs-super-boilerplate.visn-ai.io
-- Sitemap (replace origin with your deployment): https://nextjs-super-boilerplate.visn-ai.io/sitemap.xml
+**Not the right fit for:** multi-tenant SaaS, built-in Stripe billing, hosted deployment (it requires your own MongoDB and server).
 
-Canonical path on each deployment: `/llms.txt` (static file in `public/`). Replace the demo origin in the sitemap line with `NEXT_PUBLIC_SITE_URL` when self-hosting.
+---
+
+## Technical stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16, App Router, React 19 |
+| Language | TypeScript (strict) |
+| Styling | Tailwind CSS v4, dark/light theme via CSS variables |
+| Database | MongoDB (Mongoose ODM) |
+| Cache / rate limiting | Redis (optional) |
+| Authentication | JWT access + refresh tokens in HttpOnly cookies |
+| i18n | EN / RU (next-intl), locale-aware routing |
+| Package manager | pnpm |
+| Deploy | Docker Compose, GitHub Actions CI/CD |
+
+---
+
+## Feature inventory
+
+### Authentication & security
+- Email/password registration with optional OTP email verification (`REGISTRATION_MODE=email`)
+- MFA (TOTP): setup, confirm, disable, separate login step
+- JWT access tokens scoped to server sessions (`sid` claim) — revoke a session → immediate 401, no TTL wait
+- Session list with per-device revoke
+- Password change and forgot-password flow (email codes)
+- Security audit log (new login, password events, MFA changes)
+- Admin account recovery (`AUTH_ADMIN_ACCOUNT_RECOVERY_ENABLED`)
+- User onboarding modal + checklist (`ONBOARDING_ENABLED`)
+
+### Article CMS
+- Rich-text editor (Tiptap) with inline media (images, audio, video via Uploadcare)
+- Draft revisions — edit without affecting the published version
+- Public and private visibility; private articles support role-based access lists
+- Server-side SEO metadata per article (canonical, OG image, Twitter card, noindex, hreflang)
+- Translation groups — link articles across languages with hreflang alternates
+- `Accept: text/markdown` negotiation on `/article/[slug]` — machine-readable Markdown + YAML front matter for AI agents
+- Article view counters, RSS feed, IndexNow + Google Search Console indexing on publish
+- Listen audio: TTS generation stored via media pipeline, served from `/cdn/`
+
+### Admin dashboard
+- User list with role management (`USER`, `EDITOR`, `ADMIN`)
+- Article list with moderation controls
+- Push notification broadcast panel
+- LLM usage dashboard (tokens, cost by model and article)
+- Article view analytics dashboard
+- AI referral tracking (tracks LLM-driven traffic via `llms.txt` + `Referer`)
+- i18n admin panel (manage translation keys in the UI)
+- RUM (Real User Monitoring) dashboard — Core Web Vitals (LCP, INP, CLS) from real sessions
+
+### SEO & discoverability
+- XML sitemap generated from `routes.ts` — add a route, it appears in the sitemap automatically
+- `robots.txt`, `llms.txt` (this file), RSS feed
+- JSON-LD structured data: Organization, Person, WebSite, SoftwareApplication, Article, BreadcrumbList, FAQPage
+- OpenGraph and Twitter card metadata on all pages
+- `Vary: Accept` on article pages for correct caching of HTML vs Markdown responses
+
+### Push notifications
+- Web Push API with service worker
+- iOS PWA install hint (`NEXT_PUBLIC_PUSH_IOS_PWA_HINT_ENABLED`)
+- Per-user subscription management
+- Admin broadcast with delivery tracking (pending / delivered / failed / skipped)
+- Notification types: system, article published/updated, new login, password events, MFA events
+
+### LLM / AI features (optional, `NEXT_PUBLIC_LLM_ENABLED=true`)
+- Streaming chat assistant for article body and SEO fields (server-only API key)
+- Structured SEO suggestion, preview suggestion, content suggestion
+- Article quality audit (JSON-mode structured response)
+- Image generation (GPT Image models) stored via media pipeline
+- TTS audio generation for articles
+- Per-user rate limiting (`LLM_CHAT_RATE_LIMIT_POINTS`, `LLM_CHAT_RATE_DURATION_SEC`)
+- LLM usage tracking by article, user, and model
+
+### Developer experience
+- Single branding file: `config/product.ts` (name, author, links, PWA, JSON-LD toggles)
+- Feature flags in `config/env.ts` — everything optional has an env switch
+- `pnpm doctor` — validates env / flag consistency before deploy
+- Live UI Kit route at `/ui-kit`
+- Consistent service layer pattern: thin routes → services → server actions
+- `src/constants/routes.ts` — central route registry with auth and SEO config per route
+- Shared component library with Typography, Skeleton, ImageLoader, Select, Editor, etc.
+
+---
+
+## Configuration entry points
+
+**After forking, touch these files first:**
+
+1. `config/product.ts` — product name, author, GitHub/demo links, PWA colors, JSON-LD schema toggles
+2. `.env.local` (from `.env.example`) — secrets and feature flags
+3. `NEXT_PUBLIC_SITE_URL` — your domain; used for canonical URLs, OG tags, sitemaps
+4. `JWT_SECRET` — sign access and refresh JWTs (generate with `openssl rand -base64 32`)
+5. `MONGO_URI` — MongoDB connection string
+6. `FIRST_ADMIN_LOGIN` / `FIRST_ADMIN_PASSWORD` — bootstraps the first admin on startup
+
+**Key feature flags (all off by default unless noted):**
+- `REGISTRATION_MODE=email` — require email OTP on sign-up
+- `AUTH_PASSWORD_CHANGE_ENABLED`, `AUTH_PASSWORD_FORGOT_ENABLED`, `AUTH_SESSIONS_ENABLED`
+- `ONBOARDING_ENABLED`, `ONBOARDING_PUSH_PROMPT_ENABLED`
+- `NEXT_PUBLIC_LLM_ENABLED=true` + `LLM_API_KEY` — enables AI authoring features
+- `VAPID_SUBJECT` + `NEXT_PUBLIC_VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` — Web Push
+- `EMAIL_SEND_MODE=elastic` + `EMAIL_API_KEY` — transactional email (Elastic Email)
+- `REDIS_URL` — enables Redis-backed rate limiting and queues
+- `RUM_ENABLED` — server-side RUM ingest; `NEXT_PUBLIC_RUM_SAMPLE_RATE` controls sampling
+
+---
+
+## Key source paths for AI agents
+
+```
+config/
+  product.ts          # Brand identity, links, PWA, JSON-LD schema toggles
+  env.ts              # All env variables, feature flag parsing, config objects
+
+src/
+  app/                # Next.js App Router pages and layouts
+    page.tsx          # Landing page (public)
+    article/[...slug]/  # Public article detail
+    articles/           # Public article listing
+    admin/              # Admin dashboard (protected: ADMIN or EDITOR)
+    profile/            # User profile (protected: authenticated)
+    preview/[...slug]/  # Editor preview (protected: ADMIN or EDITOR)
+  components/
+    Landing/          # Landing page sections (Hero, Features, QuickStart, etc.)
+    Layouts/          # LandingLayout, PlatformLayout, SimpleLayout
+    Views/Article/    # Article card, reading shell, editor, feed
+    ui/               # Shared primitives (Logo, Typography, Skeleton, …)
+    Blocks/Editor/    # Tiptap editor extensions and toolbar
+  constants/
+    routes.ts         # Central route registry (path, auth, SEO config)
+  lib/
+    seo/              # JSON-LD builders, sitemap, canonical URL utils
+    i18n/             # Translation files (en.ts, ru.ts), server/client helpers
+    services/         # Business logic (auth, article, notification, llm, push)
+    cache/            # unstable_cache wrappers for article pages
+```
+
+---
+
+## Machine-readable article access
+
+Public articles support content negotiation:
+
+```
+GET /article/{slug}
+Accept: text/markdown   →  Markdown + YAML front matter (title, description, publishedAt, language, canonical, keywords)
+Accept: text/html       →  Full HTML page (default)
+```
+
+Response headers include `Content-Signal` and `x-markdown-tokens` (approximate token count) on Markdown responses. Use `Vary: Accept` is set for correct CDN caching.
+
+---
+
+## Links
+
+- **Source:** https://github.com/Fedorrychkov/nextjs-super-boilerplate
+- **Live demo:** https://nextjs-super-boilerplate.visn-ai.io
+- **Sitemap:** https://nextjs-super-boilerplate.visn-ai.io/sitemap.xml
+- **RSS:** https://nextjs-super-boilerplate.visn-ai.io/rss.xml
+- **README:** https://github.com/Fedorrychkov/nextjs-super-boilerplate/blob/main/README.md
+- **Docs folder:** https://github.com/Fedorrychkov/nextjs-super-boilerplate/tree/main/docs
+- **Getting started:** https://github.com/Fedorrychkov/nextjs-super-boilerplate/blob/main/docs/GETTING_STARTED.md
+- **Configuration reference:** https://github.com/Fedorrychkov/nextjs-super-boilerplate/blob/main/docs/CONFIGURATION.md
+- **Product roadmap:** https://github.com/Fedorrychkov/nextjs-super-boilerplate/blob/main/docs/PRODUCT_ROADMAP.md
+- **AI features roadmap:** https://github.com/Fedorrychkov/nextjs-super-boilerplate/blob/main/docs/AI_FEATURES_ROADMAP.md
+- **Deep-dive article (EN):** https://github.com/Fedorrychkov/fedorrychkov/blob/main/articles/standalone-nextjs-production-ready-boilerplate/ARTICLE_EN.md
+- **Deep-dive article (RU):** https://github.com/Fedorrychkov/fedorrychkov/blob/main/articles/standalone-nextjs-production-ready-boilerplate/ARTICLE_RU.md
+- **Author:** https://github.com/Fedorrychkov
+
+---
+
+## Notes for AI agents reading this file
+
+- This file is served at `/llms.txt` on every deployment. Update the demo origin URLs above when self-hosting.
+- Replace `https://nextjs-super-boilerplate.visn-ai.io` with `NEXT_PUBLIC_SITE_URL` value for your deployment.
+- The sitemap lists all public indexable routes including published articles.
+- Articles published on this demo instance are real content about the boilerplate — fetch them via `Accept: text/markdown` for token-efficient consumption.
+- If you are helping a developer set up this boilerplate, start with `config/product.ts` and `config/env.ts`. The Claude Cowork skill `/setup-nsb` provides an interactive setup wizard.

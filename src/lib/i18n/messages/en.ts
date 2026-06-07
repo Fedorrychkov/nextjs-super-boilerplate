@@ -139,62 +139,174 @@ export const en = {
         'These codes exist in the database but are not listed in SUPPORTED_LOCALES (no matching messages file wired in code): {codes}. Add a messages file and extend SUPPORTED_LOCALES if you want the admin grid to load strings from files.',
     },
   },
-  home: {
-    latestArticles: 'Latest Articles',
-    viewAll: 'View all',
-    minimalProductionReadyNextjsBoilerplate: 'Minimal Production Ready Next.js Boilerplate',
-    lookingForAStartingPointOrMoreInstructionsHeadOverTo: 'Looking for a starting point or more instructions? Head over to',
-    githubRepository: 'GitHub Repository',
-    aboutBoilerplate: 'About boilerplate',
-    openUiKit: 'Open UI Kit',
-    tryAuth: 'Dashboard',
-    orThe: 'or the',
-    metaTitle: 'Next.js App Router starter — auth, articles, admin, deploy',
-    metaDescription:
-      'Next.js App Router boilerplate: JWT/OAuth, MongoDB articles with SEO tooling, admin dashboard, UI kit, CI/CD. Clone on GitHub, try the demo, read in-repo docs.',
-    definitionParagraph1:
-      'Production Ready Next.js Boilerplate is a free, open-source starter for building production-grade web apps with Next.js App Router. It ships authentication (credentials and OAuth), a MongoDB-backed article system with revisions and server-side SEO metadata, an admin area for users and content, notifications, analytics-oriented tooling, and deployment patterns suited to Docker, GitHub Actions, and common hosting. The codebase is MIT-licensed: clone it, adapt the data layer when you fork, and use it for a marketing site, a logged-in product, or a content publication.',
-    definitionParagraph2:
-      'This public demo runs the same stack as the repository—browse articles, try the UI kit and auth flows, and use llms.txt for machine-readable discovery. Business logic lives in services and server actions so routes stay thin; strict TypeScript and shared UI primitives keep the baseline consistent.',
-    sectionFeaturesHeading: 'What does this Next.js boilerplate include?',
-    sectionFeaturesIntro: 'The stack is opinionated where it saves time and flexible where your product differs:',
-    featureAuth: 'Authentication: credentials, OAuth, sessions, and protected routes.',
-    featureArticles: 'Articles: public and private posts, revisions, Markdown editor, and server-side SEO metadata.',
-    featureAdmin: 'Admin: users, articles, notifications, analytics, and operational tooling.',
-    featureDeploy: 'Deploy: Docker-friendly, GitHub Actions, and environment profiles (local / stage / prod).',
-    featureDevEx: 'Developer experience: strict TypeScript, shared UI kit route, and a clear service layout.',
-    sectionStackHeading: 'What tech stack and scope does it use?',
-    sectionStackBody:
-      'Built on Next.js (App Router), React, and Tailwind CSS; MongoDB and Redis for persistence and queues where needed; optional Uploadcare for media. Business logic lives in services and server actions so routes stay thin. The home page, article listing, auth flows, and UI kit are first-class routes you can extend or replace.',
-    sectionLearnHeading: 'Where are documentation and the repository?',
-    sectionLearnBody:
-      'Start with the README on GitHub for setup and environment variables. Product direction lives in docs such as PRODUCT_ROADMAP and AI_FEATURES_ROADMAP; infrastructure is covered in infra docs. For a longer narrative, use the deep-dive articles:',
-    linkReadme: 'README on GitHub',
-    linkDocsFolder: 'docs/ in the repository',
-    linkArticleEn: 'Deep-dive article (EN)',
-    linkArticleRu: 'Deep-dive article (RU)',
-    sectionAgentsHeading: 'How does this demo help developers and AI agents?',
-    sectionAgentsBody:
-      'Public articles support Markdown and negotiated responses for tooling. This site exposes llms.txt with pointers to the repo, documentation, and sitemap so crawlers and assistants can find entry points. Machine-readable summary:',
-    linkLlmsTxt: 'llms.txt',
-    sectionAboutHeading: 'Is the project actively maintained?',
-    sectionAboutBody:
-      'The project is maintained in the open; issues and PRs are welcome on GitHub. When you deploy your own instance, set NEXT_PUBLIC_SITE_URL and related SEO variables so titles, canonical URLs, and structured data match your domain.',
-    linkArticlesIndex: 'Browse published articles',
-    linkLiveDemo: 'Live demo (reference deploy)',
-    faqHeading: 'FAQ',
-    faq1Question: 'Is this boilerplate free for commercial use?',
-    faq1Answer: 'Yes. It is MIT-licensed — you can use it in private and commercial projects, modify it, and redistribute it under the same license.',
-    faq2Question: 'What authentication options are included?',
-    faq2Answer:
-      'Credential-based auth, OAuth integrations, sessions, and protected routes are part of the stack; see the README for environment variables and provider wiring.',
-    faq3Question: 'Can I deploy to Vercel, Docker, or a VPS?',
-    faq3Answer: 'Yes. The repo includes Docker-oriented docs and CI patterns; deploy anywhere Node.js runs — Vercel, a VPS, or containers.',
-    faq4Question: 'Does it require MongoDB?',
-    faq4Answer: 'The demo uses MongoDB for users and articles. If you fork, you can replace the data layer — services are structured to keep routes thin.',
-    faq5Question: 'How is this different from create-next-app?',
-    faq5Answer:
-      'create-next-app gives a minimal scaffold. This project adds auth, article CMS with revisions and SEO tooling, admin surfaces, notifications, and production-oriented defaults.',
+  /** New landing page (/) — rename or drop this root to swap the whole marketing block */
+  nbs: {
+    meta: {
+      title: 'Next.js App Router starter — auth, articles, admin, deploy',
+      description:
+        'Next.js App Router boilerplate: JWT/MFA, MongoDB articles with SEO tooling, admin dashboard, UI kit, CI/CD. Fork on GitHub, try the demo, read in-repo docs.',
+    },
+    layout: {
+      navArticles: 'Articles',
+      navUiKit: 'UI Kit',
+      navGithub: 'GitHub',
+      signIn: 'Sign in',
+      liveDemo: 'Live demo',
+      getStarted: 'Get started',
+    },
+    hero: {
+      badge: 'Open source · MIT license · v0.2',
+      titleBefore: 'Ship your Next.js product',
+      titleHighlight: 'without the boilerplate',
+      titleAfter: 'headaches',
+      subtitle: 'Auth, blog, admin dashboard, SEO, push notifications, AI integrations — all wired up and production-ready. Fork it, customize',
+      subtitleConfigFile: 'config/product.ts',
+      subtitleAfter: ', deploy.',
+      ctaGithub: 'View on GitHub',
+      ctaDemo: 'Live demo →',
+      ctaAuth: 'Try auth flow',
+      tech: {
+        nextjs: 'Next.js 16',
+        typescript: 'TypeScript',
+        tailwind: 'Tailwind CSS',
+        mongodb: 'MongoDB',
+        redis: 'Redis',
+        jwtMfa: 'JWT + MFA',
+        docker: 'Docker',
+        i18n: 'i18n EN/RU',
+      },
+    },
+    features: {
+      // eslint-disable-next-line prettier/prettier
+      title: 'Everything you\'d build anyway',
+      subtitle: 'Skip the setup, focus on your product. All batteries included.',
+      items: {
+        auth: {
+          title: 'Auth & Security',
+          description: 'JWT + HttpOnly cookies, MFA (TOTP), session list with revoke, password change & forgot flow, security audit log.',
+        },
+        cms: {
+          title: 'Article CMS',
+          description: 'Rich-text editor, draft revisions, public/private posts, server-side SEO metadata, RSS feed, article views analytics.',
+        },
+        admin: {
+          title: 'Admin Dashboard',
+          description: 'User management, article moderation, push notifications panel, LLM usage tracking, i18n admin, RUM dashboard.',
+        },
+        seo: {
+          title: 'SEO & Discovery',
+          description: 'Sitemap, robots.txt, canonical URLs, JSON-LD structured data, llms.txt for AI crawlers, OpenGraph & Twitter cards.',
+        },
+        push: {
+          title: 'Push Notifications',
+          description: 'Web Push with service worker, iOS PWA hint, admin broadcast, per-user subscription management.',
+        },
+        ai: {
+          title: 'AI Integration',
+          description: 'LLM chat with streaming, content suggestions, image generation, article audit, AI referral tracking.',
+        },
+        i18n: {
+          title: 'i18n EN / RU',
+          description: 'Full bilingual support, locale-aware routing, server-side translations, i18n admin UI.',
+        },
+        deploy: {
+          title: 'Production Deploy',
+          description: 'Docker Compose, GitHub Actions CI/CD, environment profiles (local / stage / prod), Redis optional, RUM monitoring.',
+        },
+        dx: {
+          title: 'UI Kit & DX',
+          description: 'Strict TypeScript, Tailwind CSS v4, dark/light theme, shared component library, live /ui-kit route, pnpm.',
+        },
+      },
+    },
+    quickStart: {
+      title: 'Up and running in minutes',
+      subtitle: 'Four steps from zero to a working product.',
+      stepLabel: 'Step',
+      steps: {
+        fork: { title: 'Fork & clone' },
+        product: { title: 'Name your product' },
+        env: { title: 'Set env variables' },
+        run: { title: 'Run locally' },
+      },
+      code: {
+        product: 'config/product.ts  →  name, author, links',
+        env: 'cp .env.example .env.local',
+        run: 'pnpm install && pnpm dev',
+      },
+      footnoteBefore: 'Need to configure your product name, branding, or feature flags?',
+      footnoteFile: 'config/product.ts',
+      footnoteAfter: 'is the single source of truth.',
+    },
+    articles: {
+      title: 'Latest articles',
+      subtitle: 'Deep-dives, guides, and release notes from the project.',
+      viewAll: 'View all',
+      viewAllMobile: 'View all articles →',
+    },
+    faq: {
+      title: 'FAQ',
+      items: {
+        q1: {
+          question: 'Is this boilerplate free for commercial use?',
+          answer: 'Yes. It is MIT-licensed — you can use it in private and commercial projects, modify it, and redistribute it under the same license.',
+        },
+        q2: {
+          question: 'What authentication options are included?',
+          answer: 'Credential-based auth, MFA (TOTP), sessions with revoke, and protected routes. See the README for environment variables.',
+        },
+        q3: {
+          question: 'Can I deploy to Vercel, Docker, or a VPS?',
+          answer: 'Yes. The repo includes Docker-oriented docs and CI patterns; deploy anywhere Node.js runs.',
+        },
+        q4: {
+          question: 'Does it require MongoDB?',
+          answer: 'The demo uses MongoDB for users and articles. If you fork, you can replace the data layer — services keep routes thin.',
+        },
+        q5: {
+          question: 'How is this different from create-next-app?',
+          answer:
+            'create-next-app gives a minimal scaffold. This project adds auth, article CMS with SEO tooling, admin surfaces, notifications, and production defaults.',
+        },
+        q6: {
+          // eslint-disable-next-line prettier/prettier
+          question: 'Can I turn off features I don\'t need?',
+          answer:
+            'Yes — almost everything is gated behind feature flags in config/env.ts. LLM features, push notifications, email verification, RUM monitoring, and more can be disabled with a single env variable. You only run what you actually use.',
+        },
+        q7: {
+          question: 'How quickly can I go from fork to a working product?',
+          answer:
+            'With a MongoDB instance and basic env vars, the app boots in minutes. Rename the product in config/product.ts, set NEXT_PUBLIC_SITE_URL and JWT_SECRET, and you have a live auth + article platform. The Claude setup skill (/setup-nsb in Cowork) walks you through every step interactively.',
+        },
+        q8: {
+          question: 'How do I add OAuth providers (Google, GitHub, etc.)?',
+          answer:
+            'OAuth is in the roadmap for v0.3. Right now the boilerplate ships credential-based auth with MFA and session management. You can layer in NextAuth or Lucia on top of the existing session infrastructure — the auth service is isolated enough to swap.',
+        },
+        q9: {
+          question: 'Is it good for vibe coding — building with AI assistance?',
+          answer:
+            'It was designed with that in mind. The codebase follows consistent patterns (thin routes, services, server actions) that LLMs predict well. config/product.ts is a single file for branding. The Claude setup skill can configure the whole project interactively. And llms.txt makes the repo discoverable for AI tools.',
+        },
+        q10: {
+          question: 'Does it support Telegram Mini Apps?',
+          answer:
+            'Partially. The CSS layer includes safe-area variables for Telegram viewport (--tg-safe-area-inset-*, --tg-content-safe-area-inset-*) and the theme shell adapts to them. Full Mini App mode (bot API, Telegram auth, WebApp SDK) is not wired by default but the layout groundwork is there.',
+        },
+      },
+    },
+    footer: {
+      tagline: 'Production-ready Next.js boilerplate. MIT license.',
+      navArticles: 'Articles',
+      navUiKit: 'UI Kit',
+      navDashboard: 'Dashboard',
+      navGithub: 'GitHub',
+      navDemo: 'Live demo',
+      builtBy: 'Built by',
+      authorFallback: 'the author',
+      bottomLine: 'Open source · MIT · Next.js App Router',
+    },
   },
   cookie: {
     cookieConsentBannerText:
