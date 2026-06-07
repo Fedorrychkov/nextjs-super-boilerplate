@@ -30,7 +30,7 @@ const handler = (request: NextRequest) => {
       const settings = await UserSettings.findOne({ userId: user._id })
 
       if (!settings || !settings.mfaEnabled || !settings.mfaSecret) {
-        const authResponse = await authService.login(body, { languageCode, t })
+        const authResponse = await authService.login(body, { languageCode, clientMeta: getRequestClientMeta(req), t })
 
         const response = res.json(
           {

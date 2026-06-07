@@ -4,6 +4,7 @@ import { ensureCanRegister } from '@lib/security/bruteforce'
 import { getClientKey } from '@lib/security/rate-limit'
 import { authService } from '@lib/services/auth.service'
 import { completeSignupWithCode } from '@lib/services/registration/sign-up-verification.service'
+import { getRequestClientMeta } from '@lib/utils/request-client-meta'
 import { NextRequest } from 'next/server'
 
 import { SignUpCompleteDto } from '~/api/auth/types'
@@ -27,7 +28,7 @@ const handler = (request: NextRequest) => {
       t,
     )
 
-    const authResponse = await authService.registerWithVerifiedPasswordHash({ email, passwordHash }, { languageCode, t })
+    const authResponse = await authService.registerWithVerifiedPasswordHash({ email, passwordHash }, { languageCode, clientMeta: getRequestClientMeta(req), t })
 
     const response = res.json(
       {

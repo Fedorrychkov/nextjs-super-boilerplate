@@ -1,6 +1,18 @@
 'use client'
 
-import { ActivityIcon, BarChart3Icon, BellIcon, BotIcon, EyeIcon, HomeIcon, LanguagesIcon, TextQuoteIcon, UserIcon, WrenchIcon } from 'lucide-react'
+import {
+  ActivityIcon,
+  BarChart3Icon,
+  BellIcon,
+  BotIcon,
+  EyeIcon,
+  HomeIcon,
+  LanguagesIcon,
+  ShieldCheckIcon,
+  TextQuoteIcon,
+  UserIcon,
+  WrenchIcon,
+} from 'lucide-react'
 import { useMemo } from 'react'
 
 import { UserRole } from '~/api/user'
@@ -92,6 +104,12 @@ export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
                   icon: <BellIcon width={16} height={16} />,
                   disabled: authUser?.role !== UserRole.ADMIN,
                   href: routes.adminNotifications.path,
+                },
+                {
+                  label: t(routes.adminSecurityAudit.tKey),
+                  icon: <ShieldCheckIcon width={16} height={16} />,
+                  disabled: authUser?.role !== UserRole.ADMIN,
+                  href: routes.adminSecurityAudit.path,
                 },
               ],
             },

@@ -1,4 +1,5 @@
 import { verifyAccessToken } from '@lib/jwt/utils'
+import { assertActiveAccessSession } from '@lib/services/user-session.service'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { JwtPayload } from '~/api/auth/model'
@@ -43,6 +44,8 @@ export async function authMiddleware(request: NextRequest): Promise<AuthResult> 
 
   try {
     const payload = verifyAccessToken(accessToken)
+
+    await assertActiveAccessSession(payload)
 
     // Add user to request headers for use in route handlers
     const requestHeaders = new Headers(request.headers)

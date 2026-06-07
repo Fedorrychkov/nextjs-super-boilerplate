@@ -68,7 +68,7 @@ const handler = (request: NextRequest) => {
       backupUsed = true
     }
 
-    const authResponse = await authService.createAuthTokensForUser(user, { languageCode })
+    const authResponse = await authService.createAuthTokensForUser(user, { languageCode, clientMeta: getRequestClientMeta(req) })
 
     const response = res.json(
       {

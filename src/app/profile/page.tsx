@@ -1,11 +1,15 @@
 import { defaultGuard, PageProps } from '@lib/page'
 import { getServerProfile } from '@lib/server-action/server-auth'
+import { Suspense } from 'react'
 
 import { ThemeModeSelect } from '~/components/theme/ThemeModeSelect'
 import { Typography } from '~/components/ui'
 import { NotificationBlock } from '~/components/Views/Notification'
+import { OnboardingCard } from '~/components/Views/Onboarding/OnboardingCard'
+import { ProfileChangePasswordPanel } from '~/components/Views/Profile/ProfileChangePasswordPanel'
 import { ProfileMfaBlock } from '~/components/Views/Profile/ProfileMfaBlock'
 import { UserPushSubscriptionsSelfPanel } from '~/components/Views/User/Blocks/UserPushSubscriptionsSelfPanel'
+import { UserSessionsPanel } from '~/components/Views/User/Blocks/UserSessionsPanel'
 import { getServerT } from '~/lib/i18n/server'
 
 const ProfileRoot = async (props: PageProps) => {
@@ -43,11 +47,23 @@ const ProfileRoot = async (props: PageProps) => {
         <ThemeModeSelect />
       </div>
 
-      <NotificationBlock />
+      <Suspense fallback={null}>
+        <OnboardingCard />
+      </Suspense>
+
+      <div id="profile-notifications">
+        <NotificationBlock />
+      </div>
 
       <UserPushSubscriptionsSelfPanel />
 
-      <ProfileMfaBlock />
+      <UserSessionsPanel />
+
+      <ProfileChangePasswordPanel />
+
+      <div id="profile-mfa">
+        <ProfileMfaBlock />
+      </div>
     </div>
   )
 }

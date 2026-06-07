@@ -48,7 +48,8 @@ const MfaCodeBlock = (props: Props) => {
         </Typography>
         <div className="w-full flex flex-col gap-3 mb-4">
           <InputField
-            placeholder={t('auth.ui.email')}
+            placeholder={t('auth.password.totpCode')}
+            label={t('auth.password.totpCode')}
             type="text"
             name="code"
             inputMode="numeric"

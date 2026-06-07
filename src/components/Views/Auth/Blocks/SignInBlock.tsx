@@ -1,6 +1,7 @@
 'use client'
 
 import { Eye, EyeOff, Lock, LogIn, Mail } from 'lucide-react'
+import Link from 'next/link'
 import * as React from 'react'
 import { useState } from 'react'
 
@@ -104,6 +105,11 @@ const SignInBlock = (props: Props) => {
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer text-xs select-none"></span>
           </div>
           <div className="w-full flex justify-end">{error && <div className="text-sm text-red-500 text-left">{error}</div>}</div>
+          <div className="w-full flex justify-end">
+            <Link href="/forgot-password" className="text-xs text-primary underline">
+              {t('auth.password.forgotLink')}
+            </Link>
+          </div>
         </div>
         <button
           type="submit"

@@ -1,5 +1,6 @@
 import { isDevelop, REGISTRATION_CONFIG } from '@config/env'
 import { cacheClient } from '@lib/cache'
+import { assertPasswordPolicy } from '@lib/validation/password-policy'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 
@@ -115,6 +116,7 @@ export async function requestSignupCode(params: { email: string; password: strin
   const email = normalizeEmail(params.email)
 
   await assertCanSendCode(email, t)
+  assertPasswordPolicy(params.password, t)
 
   const code = generateSixDigitCode()
   const codeHash = hashCode(email, code)

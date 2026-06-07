@@ -61,4 +61,16 @@ export class ClientUserApi {
   async deleteUserPushSubscription(userId: string, endpoint: string): Promise<void> {
     await this.client.delete(`/api/v1/user/push-subscriptions/${userId}`, { data: { endpoint } })
   }
+
+  async adminResetUserMfa(userId: string): Promise<{ success: boolean }> {
+    const response = await this.client.post(`/api/v1/user/${userId}/mfa/reset`)
+
+    return response.data
+  }
+
+  async adminSetUserPassword(userId: string, newPassword: string): Promise<{ success: boolean }> {
+    const response = await this.client.post(`/api/v1/user/${userId}/password/reset`, { newPassword })
+
+    return response.data
+  }
 }
