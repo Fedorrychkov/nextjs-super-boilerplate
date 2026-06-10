@@ -411,7 +411,7 @@
 
   /* ── Success (used by badge "success" variant) ───── */
   --success: oklch(0.696 0.17 162.48);
-  --success-foreground: oklch(1 0 0);
+  --success-foreground: oklch(0.696 1 162.48);
 
   /* ── Brand alias (useful for explicit brand references) */
   --brand: #6c63ff;

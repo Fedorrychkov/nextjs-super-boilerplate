@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import React, { Suspense, useCallback, useEffect, useState } from 'react'
 
 import { SpinnerScreen } from '~/components/Loaders'
+import type { AppMessageKey } from '~/lib/i18n/types'
 import { useAuth, useT } from '~/providers'
 import { useNotify } from '~/providers/notify'
 import { useLoginMfaMutation, useLoginMutation, useLogoutQuery, useSignUpMutation } from '~/query/auth'
@@ -28,6 +29,8 @@ const LoginWithParams = () => {
   const searchParams = useSearchParams()
   const nextPath = searchParams.get('nextPath')
   const searchVariant = searchParams.get('variant')
+  const oauthError = searchParams.get('oauthError')
+  const oauthMfaChallenge = searchParams.get('oauthMfaChallenge')
   const [variant, setVariant] = useState<'sign-in' | 'sign-up'>(searchVariant === 'sign-up' ? 'sign-up' : 'sign-in')
   const [signUpStep, setSignUpStep] = useState<'credentials' | 'verify'>('credentials')
   const [signUpEmail, setSignUpEmail] = useState('')
@@ -50,6 +53,29 @@ const LoginWithParams = () => {
         })
     }
   }, [refetchLogout, isClient])
+
+  useEffect(() => {
+    if (oauthMfaChallenge) {
+      queueMicrotask(() => {
+        setMfaChallengeId(oauthMfaChallenge)
+        setLoginStep('mfa')
+        setVariant('sign-in')
+      })
+    }
+  }, [oauthMfaChallenge])
+
+  useEffect(() => {
+    if (!oauthError) return
+
+    const map: Record<string, AppMessageKey> = {
+      oauth_account_not_found: 'auth.oauth.errors.accountNotFound',
+      oauth_email_collision: 'auth.oauth.errors.emailCollision',
+      oauth_account_exists: 'auth.oauth.errors.accountExists',
+      oauth_provider_error: 'auth.oauth.errors.providerError',
+    }
+
+    notify(t(map[oauthError] ?? 'auth.oauth.errors.unknown'), 'destructive')
+  }, [oauthError, notify, t])
 
   const { loginMutation } = useLoginMutation()
   const { loginMfaMutation } = useLoginMfaMutation()
@@ -250,7 +276,7 @@ const LoginWithParams = () => {
 
       {variant === 'sign-in' && loginStep === 'credentials' && (
         <Suspense fallback={<SpinnerScreen />}>
-          <SignInBlock isLoading={loginMutation.isLoading || isLoading} onSubmit={handleSignIn} onChange={handleChange('sign-up')} />
+          <SignInBlock isLoading={loginMutation.isLoading || isLoading} onSubmit={handleSignIn} onChange={handleChange('sign-up')} nextPath={nextPath} />
         </Suspense>
       )}
 
@@ -260,6 +286,7 @@ const LoginWithParams = () => {
             isLoading={signUpRequestMutation.isLoading || loginMutation.isLoading || isLoading}
             onSubmit={handleSignUpRequest}
             onChange={handleChange('sign-in')}
+            nextPath={nextPath}
           />
         </Suspense>
       )}

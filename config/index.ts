@@ -1,3 +1,5 @@
+export type { AuthUiMode, OAuthProviderContext, OAuthProviderId } from './auth-oauth'
+export { OAUTH_CONFIG } from './auth-oauth'
 export {
   ACCOUNT_CONFIG,
   APP_ENV,

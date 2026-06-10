@@ -4,13 +4,14 @@ import { getPasswordPolicyErrorMessage } from '@lib/validation/password-policy'
 import { AxiosError } from 'axios'
 import { ChevronDown, KeyRound } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { InputField, PasswordField } from '~/components/Fields'
 import { Button, Typography } from '~/components/ui'
 import { useT } from '~/providers'
 import { useNotify } from '~/providers/notify'
 import { usePasswordChangeMutation } from '~/query/auth/mutation/usePasswordChangeMutation'
+import { useOAuthAccountsQuery } from '~/query/auth/query/useOAuthAccountsQuery'
 import { useRecoveryCapabilitiesQuery } from '~/query/auth/query/useRecoveryCapabilitiesQuery'
 import { cn } from '~/utils/cn'
 
@@ -18,8 +19,16 @@ export function ProfileChangePasswordPanel() {
   const t = useT()
   const router = useRouter()
   const { notify } = useNotify()
-  const { data: capabilities } = useRecoveryCapabilitiesQuery(true)
+  const [hydrated, setHydrated] = useState(false)
+  const { data: capabilities } = useRecoveryCapabilitiesQuery(hydrated)
+  const { data: oauthAccounts } = useOAuthAccountsQuery(hydrated)
   const { requestMutation, confirmMutation } = usePasswordChangeMutation()
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      setHydrated(true)
+    })
+  }, [])
 
   const [expanded, setExpanded] = useState(false)
   const [step, setStep] = useState<'form' | 'confirm'>('form')
@@ -32,7 +41,15 @@ export function ProfileChangePasswordPanel() {
   const [emailCode, setEmailCode] = useState('')
   const [totp, setTotp] = useState('')
 
+  if (!hydrated) {
+    return null
+  }
+
   if (capabilities && !capabilities.passwordChangeEnabled) {
+    return null
+  }
+
+  if (oauthAccounts && !oauthAccounts.hasPassword) {
     return null
   }
 

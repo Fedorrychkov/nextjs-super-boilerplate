@@ -101,6 +101,7 @@ export const en = {
     articles: 'Articles',
     adminNotifications: 'Notifications',
     adminSecurityAudit: 'Security audit',
+    adminOAuthAttempts: 'OAuth attempts',
     articlesCreate: 'Create Article',
     articlePublic: 'Article Public',
     articlesPublic: 'Articles Public',
@@ -282,7 +283,7 @@ export const en = {
         q8: {
           question: 'How do I add OAuth providers (Google, GitHub, etc.)?',
           answer:
-            'OAuth is in the roadmap for v0.3. Right now the boilerplate ships credential-based auth with MFA and session management. You can layer in NextAuth or Lucia on top of the existing session infrastructure — the auth service is isolated enough to swap.',
+            'OAuth is built in (v0.2.2): enable providers in .env (AUTH_OAUTH_*_ENABLED, client id/secret), list them in AUTH_OAUTH_SIGN_IN_PROVIDERS, and run pnpm doctor. Yandex, Google, and GitHub ship out of the box. See docs/AUTH_OAUTH.md for link/unlink, MFA after OAuth sign-in, and AUTH_UI_MODE.',
         },
         q9: {
           question: 'Is it good for vibe coding — building with AI assistance?',
@@ -447,6 +448,35 @@ export const en = {
       admin_mfa_reset: 'Admin reset MFA',
     },
   },
+  oauthAttempts: {
+    title: 'OAuth attempts log',
+    userTitle: 'OAuth events',
+    empty: 'No OAuth attempts recorded',
+    providerEmail: 'Provider email',
+    providerUserId: 'Provider user ID',
+    collisionUser: 'Existing account (collision)',
+    actorUser: 'Actor user',
+    filters: {
+      all: 'All',
+      emailCollision: 'Email collision',
+      providerTaken: 'Provider taken',
+      notFound: 'Not found',
+      error: 'Error',
+      success: 'Success',
+    },
+    flows: {
+      signIn: 'Sign in',
+      signUp: 'Sign up',
+      link: 'Link',
+    },
+    outcomes: {
+      success: 'Success',
+      email_collision: 'Email collision',
+      provider_taken: 'Provider taken',
+      not_found: 'Not found',
+      error: 'Error',
+    },
+  },
   notification: {
     ui: {
       unsubscribe: 'Unsubscribe',
@@ -588,6 +618,38 @@ export const en = {
       invalidEmailOrPassword: 'Invalid email or password',
       userAccountIsBlocked: 'User account is blocked',
     },
+    oauth: {
+      continueWith: 'Continue with {provider}',
+      orContinueWithEmail: 'Or continue with email',
+      connectedAccountsTitle: 'Connected accounts',
+      connectedAccountsDescription: 'Link external providers to sign in without a password, or add extra sign-in methods.',
+      link: 'Connect',
+      unlink: 'Disconnect',
+      setPasswordTitle: 'Set a password',
+      setPasswordDescription: 'Optional: enable email and password sign-in for this account.',
+      setPasswordAction: 'Set password',
+      totpOptional: '2FA code (if enabled)',
+      messages: {
+        linked: '{provider} connected successfully.',
+        unlinked: '{provider} disconnected.',
+        passwordSet: 'Password set. You can now sign in with email and password.',
+      },
+      errors: {
+        unknownProvider: 'Unknown OAuth provider.',
+        invalidCallback: 'Invalid OAuth callback.',
+        stateExpired: 'OAuth session expired. Please try again.',
+        linkSessionExpired: 'Link session expired. Sign in and try again.',
+        accountNotFound: 'No account linked to this provider. Sign up first or connect it in your profile.',
+        accountExists: 'This provider is already linked to an account. Sign in instead.',
+        emailCollision: 'An account with this email already exists. Sign in with password and connect the provider in your profile.',
+        providerTaken: 'This external account is already linked to another user.',
+        providerError: 'The provider rejected the sign-in request.',
+        cannotUnlinkLastMethod: 'You cannot disconnect the last sign-in method without setting a password first.',
+        accountNotLinked: 'This provider is not connected.',
+        passwordAlreadySet: 'Password is already set. Use change password instead.',
+        unknown: 'OAuth sign-in failed. Please try again.',
+      },
+    },
     email: {
       signUp: {
         subject: 'Registration code',
@@ -702,6 +764,7 @@ export const en = {
         notifications: 'Notifications',
         sessions: 'Sessions',
         securityAudit: 'Security',
+        oauthAttempts: 'OAuth',
       },
       pushSubscriptions: {
         title: 'Push subscriptions',
@@ -779,11 +842,17 @@ export const en = {
       active: 'Active',
       blocked: 'Blocked',
     },
+    emailOrigins: {
+      credentials: 'Credentials',
+      oauth: 'OAuth',
+      admin: 'Admin',
+    },
     fields: {
       id: 'ID',
       role: 'Role',
       email: 'Email',
       status: 'Status',
+      emailOrigin: 'Email origin',
       createdAt: 'Created At',
       updatedAt: 'Updated At',
       sortBy: 'Sort By',

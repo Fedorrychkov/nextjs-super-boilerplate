@@ -7,17 +7,24 @@ import { useState } from 'react'
 
 import { InputField } from '~/components/Fields'
 import { Button, Typography } from '~/components/ui'
+import { OAuthDivider, OAuthProviderButtons } from '~/components/Views/Auth/OAuthProviderButtons'
 import { useSwitch } from '~/hooks/useSwitch'
+import { getPublicOAuthConfig } from '~/lib/auth/oauth-public-config'
 import { useT } from '~/providers'
 
 type Props = {
   onSubmit: (email: string, password: string) => void
   isLoading: boolean
   onChange?: () => void
+  nextPath?: string | null
 }
 
 const SignInBlock = (props: Props) => {
   const t = useT()
+  const oauthConfig = getPublicOAuthConfig()
+  const oauthFirst = oauthConfig.uiMode === 'oauth_first'
+  const credentialsOnly = oauthConfig.uiMode === 'credentials_only'
+  const oauthOnly = oauthConfig.uiMode === 'oauth_only'
   const [isPasswordVisible, { toggle: togglePasswordVisibility }] = useSwitch(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -61,66 +68,81 @@ const SignInBlock = (props: Props) => {
         <Typography variant="Body/M/Regular" asTag="p" className="text-sm mb-6 text-center text-muted-foreground">
           {t('auth.ui.signInToContinueWorking')}
         </Typography>
-        <div className="w-full flex flex-col gap-3 mb-2">
-          <div className="relative">
-            <InputField
-              placeholder={t('auth.ui.email')}
-              type="email"
-              name="email"
-              value={email}
-              disabled={props.isLoading}
-              additionalLeftComponent={
-                <span className="ml-3 text-gray-400">
-                  <Mail className="w-4 h-4" />
-                </span>
-              }
-              classNames={{
-                input: 'w-full pl-10 pr-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm',
-              }}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+
+        {oauthFirst && !credentialsOnly ? <OAuthProviderButtons flow="signIn" nextPath={props.nextPath} disabled={props.isLoading} /> : null}
+        {oauthFirst && !credentialsOnly ? <OAuthDivider flow="signIn" /> : null}
+
+        {!oauthOnly ? (
+          <div className="w-full flex flex-col gap-3 mb-2">
+            <div className="relative">
+              <InputField
+                placeholder={t('auth.ui.email')}
+                type="email"
+                name="email"
+                value={email}
+                disabled={props.isLoading}
+                additionalLeftComponent={
+                  <span className="ml-3 text-gray-400">
+                    <Mail className="w-4 h-4" />
+                  </span>
+                }
+                classNames={{
+                  input: 'w-full pl-10 pr-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm',
+                }}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div className="relative">
+              <InputField
+                placeholder={t('auth.ui.password')}
+                type={isPasswordVisible ? 'text' : 'password'}
+                name="password"
+                value={password}
+                additionalLeftComponent={
+                  <span className="ml-3 text-gray-400">
+                    <Lock className="w-4 h-4" />
+                  </span>
+                }
+                additionalRightComponent={
+                  <Button type="button" size="input-icon" variant="ghost" className="text-gray-400 mr-3 cursor-pointer" onClick={togglePasswordVisibility}>
+                    {isPasswordVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </Button>
+                }
+                disabled={props.isLoading}
+                classNames={{
+                  input: 'w-full pl-10 pr-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm',
+                }}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer text-xs select-none"></span>
+            </div>
+            <div className="w-full flex justify-end">{error && <div className="text-sm text-red-500 text-left">{error}</div>}</div>
+            <div className="w-full flex justify-end">
+              <Link href="/forgot-password" className="text-xs text-primary underline">
+                {t('auth.password.forgotLink')}
+              </Link>
+            </div>
           </div>
-          <div className="relative">
-            <InputField
-              placeholder={t('auth.ui.password')}
-              type={isPasswordVisible ? 'text' : 'password'}
-              name="password"
-              value={password}
-              additionalLeftComponent={
-                <span className="ml-3 text-gray-400">
-                  <Lock className="w-4 h-4" />
-                </span>
-              }
-              additionalRightComponent={
-                <Button type="button" size="input-icon" variant="ghost" className="text-gray-400 mr-3 cursor-pointer" onClick={togglePasswordVisibility}>
-                  {isPasswordVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </Button>
-              }
-              disabled={props.isLoading}
-              classNames={{
-                input: 'w-full pl-10 pr-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm',
-              }}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer text-xs select-none"></span>
-          </div>
-          <div className="w-full flex justify-end">{error && <div className="text-sm text-red-500 text-left">{error}</div>}</div>
-          <div className="w-full flex justify-end">
-            <Link href="/forgot-password" className="text-xs text-primary underline">
-              {t('auth.password.forgotLink')}
-            </Link>
-          </div>
-        </div>
-        <button
-          type="submit"
-          disabled={props.isLoading}
-          className="w-full bg-gradient-to-b from-gray-700 to-gray-900 text-white dark:from-gray-700 dark:to-gray-900 dark:text-foreground dark:hover:text-foreground font-medium py-2 rounded-xl shadow hover:brightness-105 cursor-pointer transition mb-4 mt-2"
-        >
-          {t('auth.ui.signIn')}
-        </button>
-        <Button variant="ghost" className="w-full" onClick={props.onChange}>
-          {t('auth.ui.signUp')}
-        </Button>
+        ) : null}
+
+        {!oauthOnly ? (
+          <button
+            type="submit"
+            disabled={props.isLoading}
+            className="w-full bg-gradient-to-b from-gray-700 to-gray-900 text-white dark:from-gray-700 dark:to-gray-900 dark:text-foreground dark:hover:text-foreground font-medium py-2 rounded-xl shadow hover:brightness-105 cursor-pointer transition mb-4 mt-2"
+          >
+            {t('auth.ui.signIn')}
+          </button>
+        ) : null}
+
+        {!oauthFirst && !credentialsOnly ? <OAuthDivider flow="signIn" /> : null}
+        {!oauthFirst && !credentialsOnly ? <OAuthProviderButtons flow="signIn" nextPath={props.nextPath} disabled={props.isLoading} /> : null}
+
+        {props.onChange ? (
+          <Button variant="ghost" className="w-full mt-2" onClick={props.onChange}>
+            {t('auth.ui.signUp')}
+          </Button>
+        ) : null}
       </form>
     </div>
   )
