@@ -100,6 +100,11 @@ export const UserListTable = ({ isLoading, data, onSelect }: Props) => {
                 </div>
               </TableCell>
             )}
+            {columnKeys?.includes('emailOrigin') && (
+              <TableCell className="whitespace-nowrap">
+                <Badge className="whitespace-nowrap bg-muted text-foreground">{item.emailOrigin ? t(`user.emailOrigins.${item.emailOrigin}`) : '-'}</Badge>
+              </TableCell>
+            )}
             {columnKeys?.includes('time') && (
               <TableCell className="whitespace-nowrap">
                 <div className="flex flex-col gap-1">

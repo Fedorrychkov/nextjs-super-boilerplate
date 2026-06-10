@@ -17,6 +17,7 @@ Planning, configuration, and FAQ. Root **[`README.md`](../README.md)** — local
 |------|----------|---------|
 | [`PRODUCT_ROADMAP.md`](./PRODUCT_ROADMAP.md) | EN | Article platform, editor, SEO, analytics |
 | [`SECURITY_AND_ACCOUNT_ROADMAP.md`](./SECURITY_AND_ACCOUNT_ROADMAP.md) | RU | Account security — **implemented** (phases 1–5) |
+| [`AUTH_OAUTH.md`](./AUTH_OAUTH.md) | RU | OAuth / social login — **implemented** (Yandex, Google, GitHub) |
 | [`AI_FEATURES_ROADMAP.md`](./AI_FEATURES_ROADMAP.md) | EN | LLM, markdown for agents |
 | [`IMPROVEMENTS_ROADMAP.md`](./IMPROVEMENTS_ROADMAP.md) | EN | GEO / discoverability |
 | [`INFRASTRUCTURE_PLAN.md`](./INFRASTRUCTURE_PLAN.md) | EN | Deploy vs Plan A/B |

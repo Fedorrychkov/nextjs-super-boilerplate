@@ -74,6 +74,7 @@ async function main() {
 
   const { ACCOUNT_CONFIG, EMAIL_CONFIG, JWT_CONFIG, LLM_CONFIG, MFA_CONFIG, MONGODB_CONFIG, NOTIFICATION_CONFIG, PUSH_CONFIG, REGISTRATION_CONFIG, isProd } =
     await import('../config/env')
+  const { OAUTH_CONFIG } = await import('../config/auth-oauth')
 
   const findings: Finding[] = []
 
@@ -151,6 +152,41 @@ async function main() {
 
   if (!process.env.FIRST_ADMIN_LOGIN?.trim() && !process.env.FIRST_ADMIN_PASSWORD?.trim()) {
     push(findings, 'info', 'first_admin', 'FIRST_ADMIN_LOGIN/PASSWORD unset — create an admin via seed or DB manually.')
+  }
+
+  const oauthContexts = [
+    { name: 'signIn', list: OAUTH_CONFIG.signInProviders },
+    { name: 'signUp', list: OAUTH_CONFIG.signUpProviders },
+    { name: 'link', list: OAUTH_CONFIG.linkProviders },
+  ] as const
+
+  for (const ctx of oauthContexts) {
+    for (const provider of ctx.list) {
+      if (!OAUTH_CONFIG.isProviderEnabled(provider)) {
+        push(
+          findings,
+          'error',
+          `oauth_${ctx.name}_${provider}`,
+          `Provider "${provider}" is listed in AUTH_OAUTH_${ctx.name.toUpperCase()}_PROVIDERS but AUTH_OAUTH_${provider.toUpperCase()}_ENABLED is off.`,
+        )
+      } else if (!OAUTH_CONFIG.isProviderConfigured(provider)) {
+        push(findings, 'error', `oauth_${ctx.name}_${provider}_creds`, `Provider "${provider}" is enabled for ${ctx.name} but client id/secret is missing.`)
+      }
+    }
+  }
+
+  const configuredSignIn = OAUTH_CONFIG.getProvidersForContext('signIn')
+
+  if (OAUTH_CONFIG.uiMode === 'oauth_only' && configuredSignIn.length === 0) {
+    push(findings, 'error', 'oauth_only_empty', 'AUTH_UI_MODE=oauth_only but no sign-in OAuth providers are configured.')
+  }
+
+  if (OAUTH_CONFIG.uiMode === 'credentials_only' && configuredSignIn.length > 0) {
+    push(findings, 'warn', 'oauth_credentials_only', 'AUTH_UI_MODE=credentials_only but sign-in OAuth providers are configured — buttons will stay hidden.')
+  }
+
+  if (configuredSignIn.length > 0) {
+    push(findings, 'info', 'oauth_sign_in', `OAuth sign-in providers: ${configuredSignIn.join(', ')}`)
   }
 
   push(findings, 'info', 'product_config', 'Customize branding in config/product.ts (name, author, PWA, sitemap extras).')

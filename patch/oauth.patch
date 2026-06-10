@@ -1,0 +1,4779 @@
+diff --git a/.env.example b/.env.example
+index 34899b1..b86f883 100644
+--- a/.env.example
++++ b/.env.example
+@@ -137,3 +137,30 @@ ONBOARDING_PUSH_PROMPT_ENABLED=0
+ NEXT_PUBLIC_ONBOARDING_ENABLED=0
+ NEXT_PUBLIC_ONBOARDING_PUSH_PROMPT_ENABLED=0
+ NEXT_PUBLIC_PUSH_IOS_PWA_HINT_ENABLED=0
++
++# OAuth / social login (see docs/AUTH_OAUTH.md)
++# AUTH_UI_MODE: credentials_first | oauth_first | credentials_only | oauth_only
++AUTH_UI_MODE=credentials_only
++NEXT_PUBLIC_AUTH_UI_MODE=credentials_only
++AUTH_OAUTH_SIGN_IN_PROVIDERS=yandex,google,github
++AUTH_OAUTH_SIGN_UP_PROVIDERS=yandex,google,github
++NEXT_PUBLIC_AUTH_OAUTH_SIGN_IN_PROVIDERS=yandex,google,github
++NEXT_PUBLIC_AUTH_OAUTH_SIGN_UP_PROVIDERS=yandex,google,github
++AUTH_OAUTH_LINK_PROVIDERS=yandex,google,github
++NEXT_PUBLIC_AUTH_OAUTH_LINK_PROVIDERS=yandex,google,github
++# Enable providers individually (1/on = enabled)
++AUTH_OAUTH_YANDEX_ENABLED=0
++YANDEX_OAUTH_CLIENT_ID=
++YANDEX_OAUTH_CLIENT_SECRET=
++AUTH_OAUTH_GOOGLE_ENABLED=0
++GOOGLE_OAUTH_CLIENT_ID=
++GOOGLE_OAUTH_CLIENT_SECRET=
++AUTH_OAUTH_GITHUB_ENABLED=0
++GITHUB_OAUTH_CLIENT_ID=
++GITHUB_OAUTH_CLIENT_SECRET=
++AUTH_OAUTH_VK_ENABLED=0
++VK_OAUTH_CLIENT_ID=
++VK_OAUTH_CLIENT_SECRET=
++AUTH_OAUTH_DISCORD_ENABLED=0
++DISCORD_OAUTH_CLIENT_ID=
++DISCORD_OAUTH_CLIENT_SECRET=
+diff --git a/config/auth-oauth.ts b/config/auth-oauth.ts
+new file mode 100644
+index 0000000..37a5488
+--- /dev/null
++++ b/config/auth-oauth.ts
+@@ -0,0 +1,107 @@
++import { NEXT_PUBLIC_SITE_URL } from './env'
++
++export const OAUTH_PROVIDER_IDS = ['yandex', 'google', 'github', 'apple', 'vk', 'telegram', 'microsoft', 'discord'] as const
++
++export type OAuthProviderId = (typeof OAUTH_PROVIDER_IDS)[number]
++
++export type AuthUiMode = 'credentials_first' | 'oauth_first' | 'credentials_only' | 'oauth_only'
++
++export type OAuthProviderContext = 'signIn' | 'signUp' | 'link'
++
++function parseBool(value: string | undefined): boolean {
++  if (!value?.trim()) return false
++  const n = value.trim().toLowerCase()
++
++  return n === '1' || n === 'true' || n === 'yes' || n === 'on'
++}
++
++function parseProviderList(raw: string | undefined): OAuthProviderId[] {
++  if (!raw?.trim()) return []
++
++  return raw
++    .split(',')
++    .map((s) => s.trim().toLowerCase())
++    .filter((id): id is OAuthProviderId => (OAUTH_PROVIDER_IDS as readonly string[]).includes(id))
++}
++
++function parseAuthUiMode(raw: string | undefined): AuthUiMode {
++  const v = raw?.trim().toLowerCase()
++
++  if (v === 'oauth_first' || v === 'credentials_only' || v === 'oauth_only') {
++    return v
++  }
++
++  return 'credentials_first'
++}
++
++function isProviderEnabled(id: OAuthProviderId): boolean {
++  const key = `AUTH_OAUTH_${id.toUpperCase()}_ENABLED`
++
++  return parseBool(process.env[key])
++}
++
++function getProviderClientId(id: OAuthProviderId): string {
++  const map: Record<OAuthProviderId, string> = {
++    yandex: process.env.YANDEX_OAUTH_CLIENT_ID ?? '',
++    google: process.env.GOOGLE_OAUTH_CLIENT_ID ?? '',
++    github: process.env.GITHUB_OAUTH_CLIENT_ID ?? '',
++    apple: process.env.APPLE_OAUTH_CLIENT_ID ?? '',
++    vk: process.env.VK_OAUTH_CLIENT_ID ?? '',
++    telegram: process.env.TELEGRAM_BOT_USERNAME ?? '',
++    microsoft: process.env.MICROSOFT_OAUTH_CLIENT_ID ?? '',
++    discord: process.env.DISCORD_OAUTH_CLIENT_ID ?? '',
++  }
++
++  return map[id]?.trim() ?? ''
++}
++
++function getProviderClientSecret(id: OAuthProviderId): string {
++  const map: Record<OAuthProviderId, string> = {
++    yandex: process.env.YANDEX_OAUTH_CLIENT_SECRET ?? '',
++    google: process.env.GOOGLE_OAUTH_CLIENT_SECRET ?? '',
++    github: process.env.GITHUB_OAUTH_CLIENT_SECRET ?? '',
++    apple: process.env.APPLE_OAUTH_PRIVATE_KEY ?? '',
++    vk: process.env.VK_OAUTH_CLIENT_SECRET ?? '',
++    telegram: process.env.TELEGRAM_BOT_TOKEN ?? '',
++    microsoft: process.env.MICROSOFT_OAUTH_CLIENT_SECRET ?? '',
++    discord: process.env.DISCORD_OAUTH_CLIENT_SECRET ?? '',
++  }
++
++  return map[id]?.trim() ?? ''
++}
++
++const siteBase = () => NEXT_PUBLIC_SITE_URL.replace(/\/+$/, '')
++
++export function getOAuthCallbackUrl(provider: OAuthProviderId, intent: 'auth' | 'link'): string {
++  const suffix = intent === 'link' ? 'link/callback' : 'callback'
++
++  return `${siteBase()}/api/v1/auth/oauth/${provider}/${suffix}`
++}
++
++export const OAUTH_CONFIG = {
++  uiMode: parseAuthUiMode(process.env.AUTH_UI_MODE ?? process.env.NEXT_PUBLIC_AUTH_UI_MODE),
++  publicUiMode: parseAuthUiMode(process.env.NEXT_PUBLIC_AUTH_UI_MODE ?? process.env.AUTH_UI_MODE),
++  signInProviders: parseProviderList(process.env.AUTH_OAUTH_SIGN_IN_PROVIDERS ?? process.env.NEXT_PUBLIC_AUTH_OAUTH_SIGN_IN_PROVIDERS),
++  signUpProviders: parseProviderList(process.env.AUTH_OAUTH_SIGN_UP_PROVIDERS ?? process.env.NEXT_PUBLIC_AUTH_OAUTH_SIGN_UP_PROVIDERS),
++  linkProviders: parseProviderList(process.env.AUTH_OAUTH_LINK_PROVIDERS ?? process.env.NEXT_PUBLIC_AUTH_OAUTH_LINK_PROVIDERS),
++  publicSignInProviders: parseProviderList(process.env.NEXT_PUBLIC_AUTH_OAUTH_SIGN_IN_PROVIDERS ?? process.env.AUTH_OAUTH_SIGN_IN_PROVIDERS),
++  publicSignUpProviders: parseProviderList(process.env.NEXT_PUBLIC_AUTH_OAUTH_SIGN_UP_PROVIDERS ?? process.env.AUTH_OAUTH_SIGN_UP_PROVIDERS),
++  publicLinkProviders: parseProviderList(process.env.NEXT_PUBLIC_AUTH_OAUTH_LINK_PROVIDERS ?? process.env.AUTH_OAUTH_LINK_PROVIDERS),
++  isProviderEnabled,
++  getProviderClientId,
++  getProviderClientSecret,
++  isProviderConfigured(id: OAuthProviderId): boolean {
++    return isProviderEnabled(id) && Boolean(getProviderClientId(id)) && Boolean(getProviderClientSecret(id))
++  },
++  getProvidersForContext(context: OAuthProviderContext): OAuthProviderId[] {
++    const list = context === 'signIn' ? OAUTH_CONFIG.signInProviders : context === 'signUp' ? OAUTH_CONFIG.signUpProviders : OAUTH_CONFIG.linkProviders
++
++    return list.filter((id) => OAUTH_CONFIG.isProviderConfigured(id))
++  },
++  getPublicProvidersForContext(context: OAuthProviderContext): OAuthProviderId[] {
++    const list =
++      context === 'signIn' ? OAUTH_CONFIG.publicSignInProviders : context === 'signUp' ? OAUTH_CONFIG.publicSignUpProviders : OAUTH_CONFIG.publicLinkProviders
++
++    return list.filter((id) => OAUTH_CONFIG.isProviderConfigured(id))
++  },
++}
+diff --git a/config/index.ts b/config/index.ts
+index c983d39..9c72201 100644
+--- a/config/index.ts
++++ b/config/index.ts
+@@ -1,3 +1,5 @@
++export type { AuthUiMode, OAuthProviderContext, OAuthProviderId } from './auth-oauth'
++export { OAUTH_CONFIG } from './auth-oauth'
+ export {
+   ACCOUNT_CONFIG,
+   APP_ENV,
+diff --git a/docs/AUTH_OAUTH.md b/docs/AUTH_OAUTH.md
+new file mode 100644
+index 0000000..6eef559
+--- /dev/null
++++ b/docs/AUTH_OAUTH.md
+@@ -0,0 +1,610 @@
++# OAuth & Social Auth — спецификация (v0.2.2)
++
++Планируемое расширение credential-based auth: вход и регистрация через внешние провайдеры, **ручная привязка** аккаунтов в профиле, гибкая конфигурация через env.
++
++**Статус:** 📋 спецификация (код ещё не реализован).  
++**Версия цели:** v0.2.2  
++**Связанные документы:** [`SECURITY_AND_ACCOUNT_ROADMAP.md`](./SECURITY_AND_ACCOUNT_ROADMAP.md), [`CONFIGURATION.md`](./CONFIGURATION.md), [`ENV_REFERENCE.md`](./ENV_REFERENCE.md)
++
++---
++
++## Содержание
++
++1. [Цели и принципы](#цели-и-принципы)
++2. [Связь с текущим auth](#связь-с-текущим-auth)
++3. [Провайдеры](#провайдеры)
++4. [MFA и email-верификация](#mfa-и-email-верификация)
++5. [Способы входа у одного пользователя](#способы-входа-у-одного-пользователя)
++6. [Три сценария: sign-up, sign-in, link](#три-сценария-sign-up-sign-in-link)
++7. [Коллизии email (без автолинка)](#коллизии-email-без-автолинка)
++8. [Состояния аккаунта и пароль](#состояния-аккаунта-и-пароль)
++9. [Конфигурация env](#конфигурация-env)
++10. [Модель данных](#модель-данных)
++11. [API (план)](#api-план)
++12. [Структура кода (план)](#структура-кода-план)
++13. [Admin anti-fraud](#admin-anti-fraud)
++14. [Особенности провайдеров](#особенности-провайдеров)
++15. [Валидация `pnpm doctor`](#валидация-pnpm-doctor)
++16. [Фазы реализации](#фазы-реализации)
++17. [FAQ / edge cases](#faq--edge-cases)
++
++---
++
++## Цели и принципы
++
++### Зачем
++
++- Baseline ожидание 2026: вход через Google / GitHub / Яндекс и т.д.
++- **Self-hosted** без vendor lock-in: провайдеры включаются env-флагами, не переписывая auth.
++- Сохранить **session-bound JWT** (`sid` → `RefreshToken`): revoke сессии = немедленный 401.
++- Максимальная **пластичность форка**: отдельные списки «кто на login/register» и «кто в профиле для link».
++
++### Жёсткие правила
++
++| # | Правило |
++|---|---------|
++| 1 | **Нет автолинка по email** — ни при sign-in, ни при sign-up, ни при link. |
++| 2 | Identity провайдера = пара **`(provider, providerUserId)`**, не email. |
++| 3 | **Sign-in через OAuth** только если `OAuthAccount` уже привязан к пользователю (кроме sign-up, который создаёт первую привязку). |
++| 4 | **Link** только из залогиненного профиля (authenticated flow). |
++| 5 | Все успешные входы → тот же pipeline: `createAuthTokensForUser()` → HttpOnly cookies + `sid`. |
++| 6 | Провайдер = **плагин** с общим интерфейсом + env per provider. |
++
++### Что не делаем в v0.2.2
++
++- **ЕСИА / Госуслуги** — отдельная бюрократия (КЭП, типовое решение, ГОСТ-подпись). Вне scope.
++- Twitter/X, Facebook, Reddit — не в целевом списке v0.2.2.
++
++---
++
++## Связь с текущим auth
++
++Уже реализовано (см. [`SECURITY_AND_ACCOUNT_ROADMAP.md`](./SECURITY_AND_ACCOUNT_ROADMAP.md)):
++
++| Компонент | Роль для OAuth |
++|-----------|----------------|
++| `AuthService.generateAuthResponse()` | Единая выдача access/refresh после любого способа входа |
++| `sid` в JWT | Привязка access к `RefreshToken`; revoke = мгновенный logout |
++| `setAuthCookies()` | HttpOnly cookies |
++| `assertActiveAccessSession()` | Проверка живой сессии на каждый API-запрос |
++| MFA (TOTP) | После OAuth sign-in — **тот же челлендж**, если MFA включён |
++| `REGISTRATION_MODE=email` | OTP при credential sign-up; **не применяется** к OAuth sign-up |
++| `notifyNewLogin()` | Срабатывает и после OAuth login |
++| Rate limit | На все auth routes |
++
++OAuth **не заменяет** NextAuth/Lucia целиком — добавляется нативно поверх существующего `AuthService`, чтобы не ломать `sid`-модель.
++
++---
++
++## Провайдеры
++
++### Целевой список v0.2.2
++
++| ID | Название | Протокол | Sign-up / Sign-in | Link в профиле |
++|----|----------|----------|-------------------|----------------|
++| `yandex` | Яндекс | OAuth 2.0 | ✅ | ✅ |
++| `google` | Google | OIDC | ✅ | ✅ |
++| `github` | GitHub | OAuth 2.0 | ✅ | ✅ |
++| `apple` | Apple | OIDC | ✅ | ✅ |
++| `vk` | VK ID | OAuth 2.0 | ✅ | ✅ |
++| `telegram` | Telegram | Login Widget | ✅ | ✅ |
++| `microsoft` | Microsoft | OIDC | ✅ | ✅ |
++| `discord` | Discord | OAuth 2.0 | ✅ | ✅ |
++
++Списки **sign-in/sign-up** и **link** задаются env отдельно. Пример: на `/register` только `yandex,google`, в профиле link ещё и `github` (для будущих GitHub API / pipelines).
++
++### Расширение в будущем (registry, не v0.2.2)
++
++| ID | Зачем |
++|----|-------|
++| `oidc` | Generic OIDC — Keycloak, Authentik, корпоративный IdP одним env-блоком |
++| `linkedin` | B2B SaaS |
++
++---
++
++## MFA и email-верификация
++
++### Регистрация через соцсеть
++
++- **Email OTP не нужен** — внешний IdP уже подтвердил контакт (или выдал идентификатор без email, см. Apple relay).
++- `REGISTRATION_MODE=email` **не блокирует** OAuth sign-up.
++
++### Вход через соцсеть
++
++| Условие | Поведение |
++|---------|-----------|
++| У пользователя **MFA выключен** | OAuth callback → сразу tokens + cookies |
++| У пользователя **MFA включён** | OAuth callback → `challengeId` → `MfaCodeBlock` → tokens (как после email+password) |
++
++OAuth доказывает «ты у Яндекса/Google». TOTP доказывает «это твой аккаунт в нашей системе с 2FA». Оба слоя независимы.
++
++### Другие действия (как сейчас + OAuth)
++
++| Действие | MFA / re-auth |
++|----------|----------------|
++| Link провайдера в профиле | TOTP если включён (или подтверждение паролем) |
++| Unlink провайдера | TOTP если включён |
++| Установить пароль (oauth-only) | TOTP если включён |
++| Смена / forgot пароля | Только если пароль уже есть; MFA по текущим правилам |
++| Revoke сессий | По текущим правилам |
++
++---
++
++## Способы входа у одного пользователя
++
++Один `User` может иметь **несколько независимых способов входа**:
++
++```
++User
++├── email + password     (если password установлен)
++├── OAuthAccount yandex  (если привязан)
++├── OAuthAccount google  (если привязан)
++├── OAuthAccount github  (если привязан)
++└── …
++```
++
++- Вход по паролю — если `password != null`.
++- Вход через Яндекс — только если в БД есть `OAuthAccount(provider=yandex, providerUserId=…)`.
++- Первый OAuth при **sign-up** создаёт `User` + первый `OAuthAccount` — это не «link», а первичная регистрация.
++
++---
++
++## Три сценария: sign-up, sign-in, link
++
++### Sign-up (регистрация через OAuth)
++
++```
++GET /api/v1/auth/oauth/{provider}/start?flow=signUp&next=/
++  → state + PKCE в Redis
++  → redirect на IdP
++
++GET /api/v1/auth/oauth/{provider}/callback?flow=signUp
++  → exchange code → profile(providerUserId, email?, …)
++  → OAuthAccount(provider, providerUserId) уже есть?
++       да → ошибка «аккаунт уже существует, войдите»
++  → email занят другим User (credential или другой OAuth user)?
++       да → email_collision, лог, ошибка (см. ниже)
++  → иначе: создать User (password=null, emailOrigin=oauth) + OAuthAccount
++  → MFA включён у нового user? (обычно нет) → tokens
++```
++
++### Sign-in (вход через OAuth)
++
++```
++GET /api/v1/auth/oauth/{provider}/start?flow=signIn&next=/
++
++GET /api/v1/auth/oauth/{provider}/callback?flow=signIn
++  → OAuthAccount(provider, providerUserId) найден?
++       нет → «Аккаунт не найден. Зарегистрируйтесь или войдите по паролю»
++       да  → загрузить User
++             → mfaEnabled? → MFA challenge → tokens
++             → иначе → tokens
++```
++
++**Важно:** sign-in **не создаёт** пользователя и **не линкует** по email.
++
++### Link (привязка в профиле)
++
++Только для **аутентифицированного** пользователя (`accessToken` + живая сессия `sid`).
++
++```
++GET /api/v1/auth/oauth/{provider}/link/start
++  → state привязан к currentUserId (+ PKCE)
++
++GET /api/v1/auth/oauth/{provider}/link/callback
++  → OAuthAccount(provider, providerUserId) уже у другого userId?
++       да → ошибка «этот аккаунт {Provider} уже привязан к другому пользователю»
++  → иначе: создать OAuthAccount для currentUserId
++  → опционально сохранить scopes / encrypted tokens для API (GitHub)
++```
++
++После link пользователь может **входить через этот провайдер** на `/login` (sign-in flow).
++
++### Unlink
++
++```
++DELETE /api/v1/auth/oauth/{provider}
++  → запретить, если после unlink не останется способа входа:
++     (нет password И это последний OAuthAccount)
++  → TOTP если включён
++```
++
++---
++
++## Коллизии email (без автолинка)
++
++Email используется для **UX и антифрода**, не для слияния аккаунтов.
++
++### Сценарии
++
++| # | Ситуация | Действие |
++|---|----------|----------|
++| A | Есть `User` с паролем `ivan@gmail.com`. Sign-up Google с тем же email | **Блок.** Лог `email_collision`. Сообщение: войдите по паролю и подключите Google в профиле. |
++| B | Зарегистрировался через Яндекс. В профиле link Google (другой email) | **OK.** Два провайдера, один User. |
++| C | Зарегистрировался через Яндекс. Sign-up Google с email, совпадающим с Яндекс-user | **Блок** (email уже занят User A). Не второй аккаунт. |
++| D | Google `providerUserId` уже привязан к User A. User B пытается link тот же Google | **Блок** по `providerUserId`. |
++| E | Одна почта в Яндексе и в Google (ivan@gmail.com везде) | Первый sign-up → один User. Второй провайдер — **только link из профиля**, не sign-up. |
++
++### Сообщения пользователю (i18n)
++
++- `auth.errors.oauthAccountNotFound` — sign-in, привязки нет
++- `auth.errors.oauthEmailCollision` — sign-up, email занят
++- `auth.errors.oauthProviderAlreadyLinked` — providerUserId у другого user
++- `auth.errors.oauthCannotUnlinkLastMethod` — unlink заблокирован
++
++---
++
++## Состояния аккаунта и пароль
++
++### Типы аккаунта
++
++| Состояние | password | OAuthAccount | Вход |
++|-----------|----------|--------------|------|
++| `credentials_only` | ✅ | 0 | email + password |
++| `oauth_only` | ❌ | ≥1 | только привязанные провайдеры |
++| `hybrid` | ✅ | ≥1 | пароль + любой привязанный провайдер |
++
++### Установить пароль (oauth_only → hybrid)
++
++Доступно в профиле:
++
++1. Пользователь залогинен (любым способом).
++2. MFA пройден, если включён.
++3. `assertPasswordPolicy`.
++4. `User.password` устанавливается; `emailOrigin` не меняется.
++
++После этого доступны: вход по паролю, forgot password (если включён env), смена пароля.
++
++### Смена / forgot пароля
++
++| Состояние | Смена пароля | Forgot password |
++|-----------|--------------|-----------------|
++| `credentials_only` | ✅ | ✅ (если `AUTH_PASSWORD_FORGOT_ENABLED`) |
++| `oauth_only` | скрыто | скрыто; подсказка «войдите через …» |
++| `hybrid` | ✅ | ✅ |
++
++### OAuth-only и безопасность
++
++- Нет пароля → нет credential brute-force на этот аккаунт.
++- Восстановление — через IdP + link в профиле (если потерял доступ к IdP — admin recovery по [`SECURITY_AND_ACCOUNT_ROADMAP.md`](./SECURITY_AND_ACCOUNT_ROADMAP.md)).
++- Установка пароля — осознанное действие в профиле с MFA, не при первом OAuth sign-up.
++
++---
++
++## Конфигурация env
++
++Планируемый блок: `config/auth-oauth.ts` (парсинг) + переменные в `.env`.
++
++### Глобальные
++
++```env
++# Раскладка UI на /login и /register
++# credentials_first | oauth_first | credentials_only | oauth_only
++AUTH_UI_MODE=credentials_first
++NEXT_PUBLIC_AUTH_UI_MODE=credentials_first
++
++# Кто показывается на входе и регистрации (comma-separated provider ids)
++AUTH_OAUTH_SIGN_IN_PROVIDERS=yandex,google,github
++AUTH_OAUTH_SIGN_UP_PROVIDERS=yandex,google,github
++NEXT_PUBLIC_AUTH_OAUTH_SIGN_IN_PROVIDERS=yandex,google,github
++NEXT_PUBLIC_AUTH_OAUTH_SIGN_UP_PROVIDERS=yandex,google,github
++
++# Кто доступен в профиле «Подключить аккаунт»
++AUTH_OAUTH_LINK_PROVIDERS=yandex,google,github,apple,vk,telegram,microsoft,discord
++NEXT_PUBLIC_AUTH_OAUTH_LINK_PROVIDERS=yandex,google,github
++```
++
++**Правило:** провайдер в списке `SIGN_IN_*` / `LINK_*` должен быть `AUTH_OAUTH_{PROVIDER}_ENABLED=1` и иметь credentials — иначе `pnpm doctor` → error.
++
++### Per-provider (шаблон)
++
++```env
++AUTH_OAUTH_YANDEX_ENABLED=1
++YANDEX_OAUTH_CLIENT_ID=
++YANDEX_OAUTH_CLIENT_SECRET=
++# опционально; default: {NEXT_PUBLIC_SITE_URL}/api/v1/auth/oauth/yandex/callback
++
++AUTH_OAUTH_GOOGLE_ENABLED=1
++GOOGLE_OAUTH_CLIENT_ID=
++GOOGLE_OAUTH_CLIENT_SECRET=
++
++AUTH_OAUTH_GITHUB_ENABLED=1
++GITHUB_OAUTH_CLIENT_ID=
++GITHUB_OAUTH_CLIENT_SECRET=
++
++AUTH_OAUTH_APPLE_ENABLED=0
++APPLE_OAUTH_CLIENT_ID=
++APPLE_OAUTH_TEAM_ID=
++APPLE_OAUTH_KEY_ID=
++APPLE_OAUTH_PRIVATE_KEY=
++
++AUTH_OAUTH_VK_ENABLED=0
++VK_OAUTH_CLIENT_ID=
++VK_OAUTH_CLIENT_SECRET=
++
++AUTH_OAUTH_TELEGRAM_ENABLED=0
++TELEGRAM_BOT_TOKEN=
++TELEGRAM_BOT_USERNAME=
++
++AUTH_OAUTH_MICROSOFT_ENABLED=0
++MICROSOFT_OAUTH_CLIENT_ID=
++MICROSOFT_OAUTH_CLIENT_SECRET=
++MICROSOFT_OAUTH_TENANT=common
++
++AUTH_OAUTH_DISCORD_ENABLED=0
++DISCORD_OAUTH_CLIENT_ID=
++DISCORD_OAUTH_CLIENT_SECRET=
++```
++
++### Пример форка (RU-first, GitHub только link)
++
++```env
++AUTH_UI_MODE=oauth_first
++AUTH_OAUTH_SIGN_IN_PROVIDERS=yandex,google
++AUTH_OAUTH_SIGN_UP_PROVIDERS=yandex,google
++AUTH_OAUTH_LINK_PROVIDERS=yandex,google,github
++
++AUTH_OAUTH_YANDEX_ENABLED=1
++AUTH_OAUTH_GOOGLE_ENABLED=1
++AUTH_OAUTH_GITHUB_ENABLED=1
++```
++
++На `/login` — Яндекс и Google. GitHub подключается в профиле для API / pipelines, после link — вход через GitHub тоже доступен.
++
++---
++
++## Модель данных
++
++### `OAuthAccount` (новая коллекция)
++
++```ts
++{
++  userId: ObjectId              // ref User
++  provider: OAuthProviderId     // 'yandex' | 'google' | ...
++  providerUserId: string        // стабильный id у IdP
++  providerEmail?: string | null // snapshot, не для линка
++  providerLogin?: string | null // github login, telegram username, …
++  scopes?: string[]
++  accessTokenEnc?: string | null   // опционально, для API (GitHub)
++  refreshTokenEnc?: string | null
++  tokenExpiresAt?: Date | null
++  linkedAt: Date
++  lastUsedAt?: Date | null
++}
++// unique index: { provider: 1, providerUserId: 1 }
++// index: { userId: 1 }
++```
++
++### Изменения `User`
++
++```ts
++{
++  email: string                 // unique, lowercase
++  password?: string | null      // optional — для oauth_only
++  emailOrigin: 'credentials' | 'oauth' | 'admin'
++  emailTrust?: 'native' | 'external' | 'disputed' | null  // admin-only
++  // role, status, languageCode, … без изменений
++}
++```
++
++| Поле | Назначение |
++|------|------------|
++| `emailOrigin=credentials` | Регистрация по паролю / admin |
++| `emailOrigin=oauth` | Первый вход через OAuth |
++| `emailTrust=disputed` | Админ: на email был credential-user, были попытки OAuth (антифрод) |
++| `emailTrust=native` | Админ: email считаем «родным» |
++| `emailTrust=external` | Админ: email пришёл только из IdP |
++
++Pre-save hook: если `password` задан — bcrypt; если `null` — пропуск хеширования.
++
++### `OAuthAttemptLog` (антифрод, admin)
++
++```ts
++{
++  provider: OAuthProviderId
++  providerUserId: string
++  providerEmail?: string | null
++  flow: 'signIn' | 'signUp' | 'link'
++  outcome: 'success' | 'email_collision' | 'provider_taken' | 'not_found' | 'error'
++  collisionUserId?: ObjectId | null
++  actorUserId?: ObjectId | null   // для link
++  ip?: string | null
++  userAgent?: string | null
++  createdAt: Date
++}
++```
++
++---
++
++## API (план)
++
++| Method | Path | Auth | Описание |
++|--------|------|------|----------|
++| GET | `/api/v1/auth/oauth/{provider}/start` | — | `flow=signIn\|signUp`, redirect IdP |
++| GET | `/api/v1/auth/oauth/{provider}/callback` | — | Обработка code, cookies или MFA challenge |
++| GET | `/api/v1/auth/oauth/{provider}/link/start` | ✅ | Начало link из профиля |
++| GET | `/api/v1/auth/oauth/{provider}/link/callback` | ✅ | Завершение link |
++| DELETE | `/api/v1/auth/oauth/{provider}` | ✅ | Unlink |
++| GET | `/api/v1/auth/oauth/accounts` | ✅ | Список привязанных провайдеров |
++| GET | `/api/v1/admin/oauth-attempts` | admin | Лог коллизий / попыток |
++
++Redirect URI по умолчанию:
++
++```
++{NEXT_PUBLIC_SITE_URL}/api/v1/auth/oauth/{provider}/callback
++{NEXT_PUBLIC_SITE_URL}/api/v1/auth/oauth/{provider}/link/callback
++```
++
++### State / PKCE
++
++- `state` — CSRF, одноразовый, Redis TTL ~10 min.
++- PKCE — для провайдеров, где требуется (Apple, и др.).
++- Link-flow: в state также `userId` + `intent=link`.
++
++---
++
++## Структура кода (план)
++
++```
++config/auth-oauth.ts                 # парсинг env, getEnabledProviders()
++lib/oauth/
++  types.ts                           # OAuthProvider interface, OAuthProviderId
++  registry.ts                          # реестр провайдеров
++  oauth-flow.service.ts              # start/callback signIn|signUp
++  oauth-link.service.ts              # link/unlink/list
++  oauth-collision.service.ts         # логирование, политики
++  providers/
++    yandex.provider.ts
++    google.provider.ts
++    github.provider.ts
++    apple.provider.ts
++    vk.provider.ts
++    telegram.provider.ts
++    microsoft.provider.ts
++    discord.provider.ts
++lib/db/models/OAuthAccount.ts
++lib/db/models/OAuthAttemptLog.ts
++
++src/app/api/v1/auth/oauth/[provider]/start/route.ts
++src/app/api/v1/auth/oauth/[provider]/callback/route.ts
++src/app/api/v1/auth/oauth/[provider]/link/start/route.ts
++src/app/api/v1/auth/oauth/[provider]/link/callback/route.ts
++src/app/api/v1/auth/oauth/[provider]/route.ts          # DELETE unlink
++src/app/api/v1/auth/oauth/accounts/route.ts
++
++src/components/Views/Auth/OAuthProviderButtons.tsx
++src/components/Views/User/Profile/ConnectedAccountsSection.tsx
++```
++
++### Интерфейс провайдера
++
++```ts
++interface OAuthProvider {
++  id: OAuthProviderId
++  displayName: string
++  getAuthorizationUrl(params: {
++    redirectUri: string
++    state: string
++    pkce?: { codeChallenge: string; method: 'S256' }
++    scopes: string[]
++    flow: 'signIn' | 'signUp' | 'link'
++  }): string | Promise<string>
++
++  exchangeCode(params: {
++    code: string
++    redirectUri: string
++    pkce?: { codeVerifier: string }
++  }): Promise<OAuthTokenSet>
++
++  getProfile(tokens: OAuthTokenSet): Promise<OAuthProfile>
++
++  defaultSignInScopes: string[]
++  defaultLinkScopes: string[]
++  extendedLinkScopes?: string[]   // GitHub: repo, workflow — опционально
++}
++
++type OAuthProfile = {
++  providerUserId: string
++  email?: string | null
++  emailVerified?: boolean
++  name?: string | null
++  avatarUrl?: string | null
++  login?: string | null
++}
++```
++
++---
++
++## Admin anti-fraud
++
++В админке (`/admin/users` или отдельная вкладка):
++
++| Функция | Описание |
++|---------|----------|
++| Колонка **Email origin** | `credentials` / `oauth` / `admin` |
++| Фильтр **Disputed** | `emailTrust=disputed` |
++| Лента **OAuth attempts** | `OAuthAttemptLog`, фильтр по `email_collision` |
++| Действие **Пометить email** | `native` / `external` / `disputed` (без автолинка!) |
++
++Цель: видеть попытки «зайти через Яндекс на чужой email», не сливая аккаунты автоматически.
++
++---
++
++## Особенности провайдеров
++
++| Provider | Заметки |
++|----------|---------|
++| **Yandex** | `oauth.yandex.ru`, userinfo `login.yandex.ru/info` |
++| **Google** | OIDC; стандартные scopes `openid email profile` |
++| **GitHub** | Email может быть private — запросить scope `user:email`; link scopes для API: `repo`, `read:user` |
++| **Apple** | Обязателен `response_mode=form_post`; private relay email; JWT client secret |
++| **VK** | VK ID OAuth 2.0 (не legacy API) |
++| **Telegram** | [Login Widget](https://core.telegram.org/widgets/login) + проверка HMAC подписи; не redirect OAuth |
++| **Microsoft** | Tenant: `common` / `organizations` / GUID; Azure App Registration |
++| **Discord** | Стандартный OAuth2; email scope |
++
++---
++
++## Валидация `pnpm doctor`
++
++| Проверка | Уровень |
++|----------|---------|
++| Провайдер в `SIGN_IN_PROVIDERS`, но `AUTH_OAUTH_*_ENABLED=0` | error |
++| Провайдер enabled, пустой `CLIENT_ID` или `CLIENT_SECRET` | error |
++| `AUTH_UI_MODE=oauth_only`, но нет ни одного sign-in провайдера | error |
++| `LINK_PROVIDERS` содержит id без реализации в registry | warn |
++| Telegram enabled без `TELEGRAM_BOT_TOKEN` | error |
++| Apple enabled без key/team/id | error |
++
++---
++
++## Фазы реализации
++
++| Фаза | Содержание | Приоритет |
++|------|------------|-----------|
++| **0** | `config/auth-oauth.ts`, модели, optional password, collision log, doctor, этот документ | ✅ spec |
++| **1** | Registry + Yandex + Google + GitHub | MVP |
++| **2** | UI: кнопки login/register + Connected accounts + MFA после OAuth | MVP |
++| **3** | Set password, unlink rules, admin collisions UI | ✅ MVP |
++| **4** | Apple, VK, Microsoft, Discord, Telegram |
++| **5** | Encrypted token storage для GitHub API, extended link scopes |
++
++---
++
++## FAQ / edge cases
++
++### Можно ли войти через GitHub, если привязал его только в профиле?
++
++**Да.** Link создаёт `OAuthAccount` → sign-in через GitHub ищет эту запись → тот же `User`.
++
++### Зарегистрировался через Яндекс, хочу тот же аккаунт в Google (та же почта)
++
++Войти по Яндексу → Профиль → Подключить Google. **Не** делать sign-up через Google.
++
++### Включён MFA. Вхожу через Яндекс первый раз после включения TOTP
++
++После callback — экран TOTP (как после пароля).
++
++### OAuth sign-up, а потом хочу пароль
++
++Профиль → Установить пароль (с MFA если включён) → состояние `hybrid`.
++
++### Unlink Яндекс — единственный способ входа, пароля нет
++
++**Запрещено.** Сначала установить пароль или привязать другой провайдер.
++
++### `REGISTRATION_MODE=email` и OAuth
++
++OTP только для **credential** sign-up. OAuth sign-up OTP не требует.
++
++### Legacy JWT без `sid`
++
++Без изменений — см. [`SECURITY_AND_ACCOUNT_ROADMAP.md`](./SECURITY_AND_ACCOUNT_ROADMAP.md). OAuth всегда выдаёт токены с `sid`.
++
++---
++
++## Changelog документа
++
++| Дата | Изменение |
++|------|-----------|
++| 2026-06-07 | Первая версия спецификации v0.2.2 (без ESIA; MFA на OAuth sign-in; без автолинка) |
+diff --git a/docs/ENV_REFERENCE.md b/docs/ENV_REFERENCE.md
+index fec1579..2accb6c 100644
+--- a/docs/ENV_REFERENCE.md
++++ b/docs/ENV_REFERENCE.md
+@@ -90,6 +90,22 @@
+ | `NEXT_PUBLIC_ONBOARDING_PUSH_PROMPT_ENABLED` | 0 | |
+ | `NEXT_PUBLIC_PUSH_IOS_PWA_HINT_ENABLED` | 0 | iOS PWA hint |
+ 
++## OAuth (`OAUTH_CONFIG`)
++
++See [`AUTH_OAUTH.md`](./AUTH_OAUTH.md). `pnpm doctor` validates provider lists vs credentials.
++
++| Variable | Default | Notes |
++|----------|---------|-------|
++| `AUTH_UI_MODE` | credentials_first | `credentials_first` \| `oauth_first` \| `credentials_only` \| `oauth_only` |
++| `NEXT_PUBLIC_AUTH_UI_MODE` | — | Client mirror of `AUTH_UI_MODE` |
++| `AUTH_OAUTH_SIGN_IN_PROVIDERS` | — | Comma-separated: yandex, google, github, … |
++| `AUTH_OAUTH_SIGN_UP_PROVIDERS` | — | |
++| `AUTH_OAUTH_LINK_PROVIDERS` | — | Profile link/unlink |
++| `NEXT_PUBLIC_AUTH_OAUTH_*_PROVIDERS` | — | Public lists for UI |
++| `AUTH_OAUTH_{PROVIDER}_ENABLED` | 0 | Per provider |
++| `{PROVIDER}_OAUTH_CLIENT_ID` | — | Yandex / Google / GitHub |
++| `{PROVIDER}_OAUTH_CLIENT_SECRET` | — | C — server only |
++
+ ## Push (VAPID)
+ 
+ | Variable | Default | Notes |
+diff --git a/docs/README.md b/docs/README.md
+index 7627996..9ca9148 100644
+--- a/docs/README.md
++++ b/docs/README.md
+@@ -17,6 +17,7 @@ Planning, configuration, and FAQ. Root **[`README.md`](../README.md)** — local
+ |------|----------|---------|
+ | [`PRODUCT_ROADMAP.md`](./PRODUCT_ROADMAP.md) | EN | Article platform, editor, SEO, analytics |
+ | [`SECURITY_AND_ACCOUNT_ROADMAP.md`](./SECURITY_AND_ACCOUNT_ROADMAP.md) | RU | Account security — **implemented** (phases 1–5) |
++| [`AUTH_OAUTH.md`](./AUTH_OAUTH.md) | RU | OAuth / social login — **implemented** (Yandex, Google, GitHub) |
+ | [`AI_FEATURES_ROADMAP.md`](./AI_FEATURES_ROADMAP.md) | EN | LLM, markdown for agents |
+ | [`IMPROVEMENTS_ROADMAP.md`](./IMPROVEMENTS_ROADMAP.md) | EN | GEO / discoverability |
+ | [`INFRASTRUCTURE_PLAN.md`](./INFRASTRUCTURE_PLAN.md) | EN | Deploy vs Plan A/B |
+diff --git a/lib/db/models/OAuthAccount.ts b/lib/db/models/OAuthAccount.ts
+new file mode 100644
+index 0000000..33f939b
+--- /dev/null
++++ b/lib/db/models/OAuthAccount.ts
+@@ -0,0 +1,81 @@
++import type { OAuthProviderId } from '@config/auth-oauth'
++import mongoose, { type Document, Schema } from 'mongoose'
++
++export interface IOAuthAccount extends Document {
++  userId: mongoose.Types.ObjectId
++  provider: OAuthProviderId
++  providerUserId: string
++  providerEmail?: string | null
++  providerLogin?: string | null
++  scopes?: string[]
++  accessTokenEnc?: string | null
++  refreshTokenEnc?: string | null
++  tokenExpiresAt?: Date | null
++  linkedAt: Date
++  lastUsedAt?: Date | null
++}
++
++const OAuthAccountSchema = new Schema<IOAuthAccount>(
++  {
++    userId: {
++      type: Schema.Types.ObjectId,
++      ref: 'User',
++      required: true,
++      index: true,
++    },
++    provider: {
++      type: String,
++      required: true,
++      index: true,
++    },
++    providerUserId: {
++      type: String,
++      required: true,
++      trim: true,
++    },
++    providerEmail: {
++      type: String,
++      default: null,
++      lowercase: true,
++      trim: true,
++    },
++    providerLogin: {
++      type: String,
++      default: null,
++      trim: true,
++    },
++    scopes: {
++      type: [String],
++      default: [],
++    },
++    accessTokenEnc: {
++      type: String,
++      default: null,
++      select: false,
++    },
++    refreshTokenEnc: {
++      type: String,
++      default: null,
++      select: false,
++    },
++    tokenExpiresAt: {
++      type: Date,
++      default: null,
++    },
++    linkedAt: {
++      type: Date,
++      default: () => new Date(),
++    },
++    lastUsedAt: {
++      type: Date,
++      default: null,
++    },
++  },
++  { timestamps: false },
++)
++
++OAuthAccountSchema.index({ provider: 1, providerUserId: 1 }, { unique: true })
++
++const OAuthAccount = (mongoose.models.OAuthAccount as mongoose.Model<IOAuthAccount>) || mongoose.model<IOAuthAccount>('OAuthAccount', OAuthAccountSchema)
++
++export default OAuthAccount
+diff --git a/lib/db/models/OAuthAttemptLog.ts b/lib/db/models/OAuthAttemptLog.ts
+new file mode 100644
+index 0000000..38254f5
+--- /dev/null
++++ b/lib/db/models/OAuthAttemptLog.ts
+@@ -0,0 +1,111 @@
++import mongoose, { type Document, type HydratedDocument, type Model, type QueryFilter, Schema } from 'mongoose'
++
++import type { OAuthAttemptOutcome, OAuthFlow, OAuthProviderId } from '~/api/oauth'
++import type { OAuthAttemptFilter, OAuthAttemptItemModel } from '~/api/oauth/types'
++import type { PaginationMeta } from '~/types/pagination'
++
++import { applyCreatedAtRange } from '../utils/applyCreatedAtRange'
++import { buildPaginationMeta, clampLimit } from '../utils/buildPaginationMeta'
++
++const OAUTH_FLOWS: OAuthFlow[] = ['signIn', 'signUp', 'link']
++const OAUTH_OUTCOMES: OAuthAttemptOutcome[] = ['success', 'email_collision', 'provider_taken', 'not_found', 'error']
++
++export interface IOAuthAttemptLog extends Document, Omit<OAuthAttemptItemModel, 'id' | 'collisionUserId' | 'actorUserId' | 'createdAt'> {
++  collisionUserId?: mongoose.Types.ObjectId | null
++  actorUserId?: mongoose.Types.ObjectId | null
++  createdAt: Date
++}
++
++export interface IOAuthAttemptLogModel extends Model<IOAuthAttemptLog> {
++  findListPaginated(filter: OAuthAttemptFilter): Promise<PaginationMeta<HydratedDocument<IOAuthAttemptLog>>>
++}
++
++function applyOAuthAttemptFilterFields(q: QueryFilter<IOAuthAttemptLog>, filter: OAuthAttemptFilter) {
++  if (filter.userId != null && mongoose.Types.ObjectId.isValid(String(filter.userId))) {
++    const oid = new mongoose.Types.ObjectId(String(filter.userId))
++    q.$or = [{ collisionUserId: oid }, { actorUserId: oid }]
++  } else {
++    if (filter.collisionUserId != null && mongoose.Types.ObjectId.isValid(String(filter.collisionUserId))) {
++      q.collisionUserId = new mongoose.Types.ObjectId(String(filter.collisionUserId))
++    }
++
++    if (filter.actorUserId != null && mongoose.Types.ObjectId.isValid(String(filter.actorUserId))) {
++      q.actorUserId = new mongoose.Types.ObjectId(String(filter.actorUserId))
++    }
++  }
++
++  if (filter.provider != null && String(filter.provider).trim()) {
++    q.provider = String(filter.provider).trim().toLowerCase() as OAuthProviderId
++  }
++
++  if (filter.flow != null && String(filter.flow).trim()) {
++    const flow = String(filter.flow).trim()
++
++    if ((OAUTH_FLOWS as string[]).includes(flow)) {
++      q.flow = flow as OAuthFlow
++    }
++  }
++
++  if (filter.outcome != null && String(filter.outcome).trim()) {
++    const outcome = String(filter.outcome).trim()
++
++    if ((OAUTH_OUTCOMES as string[]).includes(outcome)) {
++      q.outcome = outcome as OAuthAttemptOutcome
++    }
++  }
++
++  if (filter.providerEmail != null && String(filter.providerEmail).trim()) {
++    q.providerEmail = String(filter.providerEmail).trim().toLowerCase()
++  }
++}
++
++const OAuthAttemptLogSchema = new Schema<IOAuthAttemptLog>(
++  {
++    provider: { type: String, required: true, index: true },
++    providerUserId: { type: String, required: true },
++    providerEmail: { type: String, default: null, lowercase: true, trim: true },
++    flow: { type: String, required: true, enum: OAUTH_FLOWS },
++    outcome: {
++      type: String,
++      required: true,
++      enum: OAUTH_OUTCOMES,
++      index: true,
++    },
++    collisionUserId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
++    actorUserId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
++    ip: { type: String, default: null },
++    userAgent: { type: String, default: null },
++    createdAt: { type: Date, default: () => new Date(), index: true },
++  },
++  { timestamps: false },
++)
++
++;(OAuthAttemptLogSchema.statics as Record<string, unknown>).findListPaginated = async function findListPaginated(
++  this: Model<IOAuthAttemptLog>,
++  filter: OAuthAttemptFilter,
++): Promise<PaginationMeta<HydratedDocument<IOAuthAttemptLog>>> {
++  const { limit: limitRaw, offset: offsetRaw, startOfDateIso, endOfDateIso, ...rest } = filter
++
++  const limit = clampLimit(typeof limitRaw === 'number' ? limitRaw : Number(limitRaw))
++  const offset = typeof offsetRaw === 'number' ? Math.max(0, Math.floor(offsetRaw)) : Math.max(0, Number(offsetRaw) || 0)
++
++  const base: QueryFilter<IOAuthAttemptLog> = {}
++  applyOAuthAttemptFilterFields(base, rest)
++  applyCreatedAtRange<IOAuthAttemptLog>(base, startOfDateIso, endOfDateIso)
++
++  const count = await this.countDocuments(base)
++  const list = await this.find(base).sort({ createdAt: -1, _id: -1 }).skip(offset).limit(limit).exec()
++
++  return buildPaginationMeta({
++    list,
++    count,
++    limit: typeof limitRaw === 'number' ? limitRaw : Number(limitRaw),
++    offset: typeof offsetRaw === 'number' ? offsetRaw : Number(offsetRaw),
++  })
++}
++
++const OAuthAttemptLog: IOAuthAttemptLogModel =
++  (mongoose.models.OAuthAttemptLog as IOAuthAttemptLogModel | undefined) ||
++  mongoose.model<IOAuthAttemptLog, IOAuthAttemptLogModel>('OAuthAttemptLog', OAuthAttemptLogSchema)
++
++export default OAuthAttemptLog
+diff --git a/lib/db/models/User.ts b/lib/db/models/User.ts
+index 648cd67..42a6299 100644
+--- a/lib/db/models/User.ts
++++ b/lib/db/models/User.ts
+@@ -1,4 +1,3 @@
+-import { ValidationError } from '@lib/error/custom-errors'
+ import bcrypt from 'bcryptjs'
+ import mongoose, { type Document, type HydratedDocument, type Model, type QueryFilter, Schema } from 'mongoose'
+ 
+@@ -58,8 +57,20 @@ const UserSchema: Schema<IUser> = new Schema<IUser>(
+     },
+     password: {
+       type: String,
+-      required: true,
+-      select: false, // Do not return password by default
++      required: false,
++      default: null,
++      select: false,
++    },
++    emailOrigin: {
++      type: String,
++      enum: ['credentials', 'oauth', 'admin'],
++      default: 'credentials',
++      index: true,
++    },
++    emailTrust: {
++      type: String,
++      enum: ['native', 'external', 'disputed', null],
++      default: null,
+     },
+     role: {
+       type: String,
+@@ -95,7 +106,7 @@ UserSchema.pre('save', async function () {
+   if (!this.isModified('password')) return
+ 
+   if (!this.password) {
+-    throw new ValidationError('Password is required')
++    return
+   }
+ 
+   const doc = this as HydratedDocument<IUser>
+@@ -112,6 +123,10 @@ UserSchema.pre('save', async function () {
+ 
+ // Compare password with candidate
+ UserSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {
++  if (!this.password) {
++    return false
++  }
++
+   return bcrypt.compare(candidatePassword, this.password)
+ }
+ ;(UserSchema.statics as Record<string, unknown>).findListPaginated = async function findListPaginated(
+diff --git a/lib/oauth/oauth-account.service.ts b/lib/oauth/oauth-account.service.ts
+new file mode 100644
+index 0000000..f52ae40
+--- /dev/null
++++ b/lib/oauth/oauth-account.service.ts
+@@ -0,0 +1,111 @@
++import connectDB from '@lib/db/client'
++import OAuthAccount, { type IOAuthAccount } from '@lib/db/models/OAuthAccount'
++import User, { type IUser } from '@lib/db/models/User'
++
++import type { OAuthProviderId, OAuthPublicAccountModel } from '~/api/oauth'
++import { UserRole, UserStatus } from '~/api/user'
++
++import type { OAuthProfile, OAuthTokenSet } from './types'
++
++export async function findOAuthAccount(provider: OAuthProviderId, providerUserId: string) {
++  await connectDB()
++
++  return OAuthAccount.findOne({ provider, providerUserId })
++}
++
++export async function listOAuthAccountsForUser(userId: string): Promise<OAuthPublicAccountModel[]> {
++  await connectDB()
++
++  const rows = await OAuthAccount.find({ userId }).sort({ linkedAt: -1 }).lean()
++
++  return rows.map((row) => ({
++    provider: row.provider as OAuthProviderId,
++    providerLogin: row.providerLogin ?? null,
++    providerEmail: row.providerEmail ?? null,
++    linkedAt: row.linkedAt ? new Date(row.linkedAt).toISOString() : null,
++    lastUsedAt: row.lastUsedAt ? new Date(row.lastUsedAt).toISOString() : null,
++  }))
++}
++
++export async function userHasPassword(userId: string): Promise<boolean> {
++  await connectDB()
++
++  const user = await User.findById(userId).select('+password')
++
++  return Boolean(user?.password)
++}
++
++export async function countOAuthAccountsForUser(userId: string): Promise<number> {
++  await connectDB()
++
++  return OAuthAccount.countDocuments({ userId })
++}
++
++export async function createOAuthAccount(params: {
++  userId: string
++  provider: OAuthProviderId
++  profile: OAuthProfile
++  tokens?: OAuthTokenSet
++  scopes?: string[]
++}): Promise<IOAuthAccount> {
++  await connectDB()
++
++  return OAuthAccount.create({
++    userId: params.userId,
++    provider: params.provider,
++    providerUserId: params.profile.providerUserId,
++    providerEmail: params.profile.email ?? null,
++    providerLogin: params.profile.login ?? null,
++    scopes: params.scopes ?? [],
++    tokenExpiresAt: params.tokens?.expiresIn ? new Date(Date.now() + params.tokens.expiresIn * 1000) : null,
++    linkedAt: new Date(),
++    lastUsedAt: new Date(),
++  })
++}
++
++export async function touchOAuthAccount(account: IOAuthAccount, profile?: OAuthProfile): Promise<void> {
++  account.lastUsedAt = new Date()
++
++  if (profile?.email) {
++    account.providerEmail = profile.email
++  }
++
++  if (profile?.login) {
++    account.providerLogin = profile.login
++  }
++
++  await account.save()
++}
++
++export async function deleteOAuthAccountForUser(userId: string, provider: OAuthProviderId): Promise<boolean> {
++  await connectDB()
++
++  const result = await OAuthAccount.deleteOne({ userId, provider })
++
++  return result.deletedCount > 0
++}
++
++export async function createOAuthUser(params: { email: string; languageCode?: string | null }): Promise<IUser> {
++  await connectDB()
++
++  return User.create({
++    email: params.email.toLowerCase(),
++    role: UserRole.USER,
++    status: UserStatus.ACTIVE,
++    password: null,
++    emailOrigin: 'oauth',
++    languageCode: params.languageCode ?? null,
++  })
++}
++
++export type OAuthFlowContext = {
++  flow: import('~/api/oauth').OAuthFlow
++  provider: OAuthProviderId
++  profile: OAuthProfile
++  tokens: OAuthTokenSet
++  scopes: string[]
++  actorUserId?: string | null
++  languageCode?: string | null
++  ip?: string | null
++  userAgent?: string | null
++}
+diff --git a/lib/oauth/oauth-callback.service.ts b/lib/oauth/oauth-callback.service.ts
+new file mode 100644
+index 0000000..31659e8
+--- /dev/null
++++ b/lib/oauth/oauth-callback.service.ts
+@@ -0,0 +1,111 @@
++import { NEXT_PUBLIC_SITE_URL } from '@config/env'
++import { setAuthCookies } from '@lib/cookies'
++import { ValidationError } from '@lib/error/custom-errors'
++import { notifyNewLogin } from '@lib/services/security-notification.service'
++import type { RequestClientMeta } from '@lib/utils/request-client-meta'
++import { NextResponse } from 'next/server'
++
++import type { OAuthProviderId } from '~/api/oauth'
++import type { TFunction } from '~/lib/i18n'
++
++import { handleOAuthAuthCallback, handleOAuthLinkCallback } from './oauth-flow.service'
++import { buildOAuthLoginRedirect, buildProfileRedirect } from './oauth-redirect'
++import { resolveOAuthRedirectUri } from './oauth-redirect-uri'
++import { consumeOAuthState } from './oauth-state'
++import { resolveOAuthProvider } from './registry'
++
++export async function processOAuthCallback(params: {
++  provider: OAuthProviderId
++  code: string | null
++  state: string | null
++  deviceId?: string | null
++  error: string | null
++  intent: 'auth' | 'link'
++  clientMeta?: RequestClientMeta | null
++  languageCode?: string | null
++  t: TFunction
++  ip?: string | null
++  userAgent?: string | null
++}): Promise<NextResponse> {
++  if (params.error) {
++    const url =
++      params.intent === 'link'
++        ? buildProfileRedirect({ oauthError: 'oauth_provider_error' })
++        : buildOAuthLoginRedirect({ oauthError: 'oauth_provider_error', variant: 'sign-in' })
++
++    return NextResponse.redirect(url)
++  }
++
++  if (!params.code || !params.state) {
++    throw new ValidationError(params.t('auth.oauth.errors.invalidCallback'))
++  }
++
++  const stored = await consumeOAuthState(params.state)
++
++  if (!stored || stored.provider !== params.provider) {
++    throw new ValidationError(params.t('auth.oauth.errors.stateExpired'))
++  }
++
++  const adapter = resolveOAuthProvider(params.provider)
++  const redirectIntent = stored.flow === 'link' ? 'link' : 'auth'
++  const redirectUri = resolveOAuthRedirectUri(params.provider, redirectIntent)
++
++  const tokens = await adapter.exchangeCode({
++    code: params.code,
++    redirectUri,
++    codeVerifier: stored.codeVerifier,
++    deviceId: params.deviceId ?? undefined,
++    state: params.state ?? undefined,
++  })
++
++  const profile = await adapter.getProfile(tokens)
++  const scopes = tokens.scope?.split(/[\s,]+/).filter(Boolean) ?? adapter.defaultSignInScopes
++
++  if (stored.flow === 'link' || params.intent === 'link') {
++    const { url } = await handleOAuthLinkCallback({
++      flow: 'link',
++      provider: params.provider,
++      profile,
++      tokens,
++      scopes,
++      actorUserId: stored.userId ?? null,
++      ip: params.ip,
++      userAgent: params.userAgent,
++      t: params.t,
++    })
++
++    return NextResponse.redirect(url)
++  }
++
++  const result = await handleOAuthAuthCallback({
++    flow: stored.flow,
++    provider: params.provider,
++    profile,
++    tokens,
++    scopes,
++    clientMeta: params.clientMeta,
++    languageCode: params.languageCode,
++    nextPath: stored.nextPath,
++    ip: params.ip,
++    userAgent: params.userAgent,
++    t: params.t,
++  })
++
++  if (result.kind === 'redirect') {
++    return NextResponse.redirect(result.url)
++  }
++
++  const nextPath = stored.nextPath?.startsWith('/') ? stored.nextPath : '/'
++  const siteBase = NEXT_PUBLIC_SITE_URL.replace(/\/+$/, '') || 'http://localhost:3000'
++  const siteRedirect = NextResponse.redirect(new URL(nextPath, siteBase))
++
++  setAuthCookies(siteRedirect, result.auth.accessToken, result.auth.refreshToken, result.auth.expiresIn)
++
++  void notifyNewLogin({
++    recipientUserId: result.auth.user.id,
++    t: params.t,
++    client: params.clientMeta ?? { ip: params.ip ?? null, userAgent: params.userAgent ?? null },
++  })
++
++  return siteRedirect
++}
+diff --git a/lib/oauth/oauth-collision.service.ts b/lib/oauth/oauth-collision.service.ts
+new file mode 100644
+index 0000000..a6a185c
+--- /dev/null
++++ b/lib/oauth/oauth-collision.service.ts
+@@ -0,0 +1,47 @@
++import connectDB from '@lib/db/client'
++import OAuthAttemptLog from '@lib/db/models/OAuthAttemptLog'
++import User from '@lib/db/models/User'
++
++import type { OAuthAttemptOutcome, OAuthFlow, OAuthProviderId } from '~/api/oauth'
++
++type LogParams = {
++  provider: OAuthProviderId
++  providerUserId: string
++  providerEmail?: string | null
++  flow: OAuthFlow
++  outcome: OAuthAttemptOutcome
++  collisionUserId?: string | null
++  actorUserId?: string | null
++  ip?: string | null
++  userAgent?: string | null
++}
++
++export async function logOAuthAttempt(params: LogParams): Promise<void> {
++  await connectDB()
++
++  await OAuthAttemptLog.create({
++    provider: params.provider,
++    providerUserId: params.providerUserId,
++    providerEmail: params.providerEmail ?? null,
++    flow: params.flow,
++    outcome: params.outcome,
++    collisionUserId: params.collisionUserId ?? null,
++    actorUserId: params.actorUserId ?? null,
++    ip: params.ip ?? null,
++    userAgent: params.userAgent ?? null,
++  })
++}
++
++export async function findUserByEmailForCollision(email: string | null | undefined) {
++  if (!email?.trim()) {
++    return null
++  }
++
++  await connectDB()
++
++  return User.findOne({ email: email.trim().toLowerCase() })
++}
++
++export function buildInternalOAuthEmail(provider: OAuthProviderId, providerUserId: string): string {
++  return `${provider}_${providerUserId}@oauth.local`
++}
+diff --git a/lib/oauth/oauth-flow.service.ts b/lib/oauth/oauth-flow.service.ts
+new file mode 100644
+index 0000000..2cf08c6
+--- /dev/null
++++ b/lib/oauth/oauth-flow.service.ts
+@@ -0,0 +1,241 @@
++import { OAUTH_CONFIG } from '@config/auth-oauth'
++import connectDB from '@lib/db/client'
++import User from '@lib/db/models/User'
++import UserSettings from '@lib/db/models/UserSettings'
++import { ValidationError } from '@lib/error/custom-errors'
++import { createLoginChallenge } from '@lib/security/login-challenge'
++import { authService } from '@lib/services/auth.service'
++import type { RequestClientMeta } from '@lib/utils/request-client-meta'
++
++import type { AuthResponse } from '~/api/auth/model'
++import type { OAuthFlow, OAuthProviderId } from '~/api/oauth'
++import { UserStatus } from '~/api/user'
++import type { TFunction } from '~/lib/i18n'
++
++import { createOAuthAccount, createOAuthUser, findOAuthAccount, type OAuthFlowContext, touchOAuthAccount } from './oauth-account.service'
++import { buildInternalOAuthEmail, findUserByEmailForCollision, logOAuthAttempt } from './oauth-collision.service'
++import { buildOAuthLoginRedirect, buildProfileRedirect } from './oauth-redirect'
++
++export type OAuthFlowResult = { kind: 'redirect'; url: string } | { kind: 'auth'; auth: AuthResponse }
++
++async function userRequiresMfa(userId: string): Promise<boolean> {
++  await connectDB()
++
++  const settings = await UserSettings.findOne({ userId })
++
++  return Boolean(settings?.mfaEnabled && settings?.mfaSecret)
++}
++
++async function completeLoginForUser(
++  userId: string,
++  options: { languageCode?: string | null; clientMeta?: RequestClientMeta | null; nextPath?: string | null },
++): Promise<OAuthFlowResult> {
++  await connectDB()
++
++  const user = await User.findById(userId)
++
++  if (!user || user.status !== UserStatus.ACTIVE) {
++    throw new ValidationError('User not found or inactive')
++  }
++
++  if (await userRequiresMfa(userId)) {
++    const challengeId = await createLoginChallenge(userId)
++
++    return {
++      kind: 'redirect',
++      url: buildOAuthLoginRedirect({
++        oauthMfaChallenge: challengeId,
++        variant: 'sign-in',
++        nextPath: options.nextPath,
++      }),
++    }
++  }
++
++  const auth = await authService.createAuthTokensForUser(user, options)
++
++  return { kind: 'auth', auth }
++}
++
++export async function handleOAuthAuthCallback(
++  ctx: OAuthFlowContext & {
++    clientMeta?: RequestClientMeta | null
++    nextPath?: string | null
++    t: TFunction
++  },
++): Promise<OAuthFlowResult> {
++  const existing = await findOAuthAccount(ctx.provider, ctx.profile.providerUserId)
++
++  if (ctx.flow === 'signIn') {
++    if (!existing) {
++      await logOAuthAttempt({
++        provider: ctx.provider,
++        providerUserId: ctx.profile.providerUserId,
++        providerEmail: ctx.profile.email,
++        flow: ctx.flow,
++        outcome: 'not_found',
++        ip: ctx.ip,
++        userAgent: ctx.userAgent,
++      })
++
++      return {
++        kind: 'redirect',
++        url: buildOAuthLoginRedirect({
++          oauthError: 'oauth_account_not_found',
++          variant: 'sign-in',
++          nextPath: ctx.nextPath,
++        }),
++      }
++    }
++
++    await touchOAuthAccount(existing, ctx.profile)
++
++    await logOAuthAttempt({
++      provider: ctx.provider,
++      providerUserId: ctx.profile.providerUserId,
++      providerEmail: ctx.profile.email,
++      flow: ctx.flow,
++      outcome: 'success',
++      actorUserId: existing.userId.toString(),
++      ip: ctx.ip,
++      userAgent: ctx.userAgent,
++    })
++
++    return completeLoginForUser(existing.userId.toString(), {
++      languageCode: ctx.languageCode,
++      clientMeta: ctx.clientMeta,
++      nextPath: ctx.nextPath,
++    })
++  }
++
++  if (existing) {
++    return {
++      kind: 'redirect',
++      url: buildOAuthLoginRedirect({
++        oauthError: 'oauth_account_exists',
++        variant: 'sign-in',
++        nextPath: ctx.nextPath,
++      }),
++    }
++  }
++
++  const email = ctx.profile.email?.trim().toLowerCase() ?? buildInternalOAuthEmail(ctx.provider, ctx.profile.providerUserId)
++  const collisionUser = await findUserByEmailForCollision(email)
++
++  if (collisionUser) {
++    await logOAuthAttempt({
++      provider: ctx.provider,
++      providerUserId: ctx.profile.providerUserId,
++      providerEmail: ctx.profile.email,
++      flow: ctx.flow,
++      outcome: 'email_collision',
++      collisionUserId: collisionUser._id.toString(),
++      ip: ctx.ip,
++      userAgent: ctx.userAgent,
++    })
++
++    return {
++      kind: 'redirect',
++      url: buildOAuthLoginRedirect({
++        oauthError: 'oauth_email_collision',
++        variant: 'sign-in',
++        nextPath: ctx.nextPath,
++      }),
++    }
++  }
++
++  const user = await createOAuthUser({ email, languageCode: ctx.languageCode })
++
++  await createOAuthAccount({
++    userId: user._id.toString(),
++    provider: ctx.provider,
++    profile: ctx.profile,
++    tokens: ctx.tokens,
++    scopes: ctx.scopes,
++  })
++
++  await logOAuthAttempt({
++    provider: ctx.provider,
++    providerUserId: ctx.profile.providerUserId,
++    providerEmail: ctx.profile.email,
++    flow: ctx.flow,
++    outcome: 'success',
++    actorUserId: user._id.toString(),
++    ip: ctx.ip,
++    userAgent: ctx.userAgent,
++  })
++
++  return completeLoginForUser(user._id.toString(), {
++    languageCode: ctx.languageCode,
++    clientMeta: ctx.clientMeta,
++    nextPath: ctx.nextPath,
++  })
++}
++
++export async function handleOAuthLinkCallback(
++  ctx: OAuthFlowContext & {
++    t: TFunction
++  },
++): Promise<{ url: string }> {
++  if (!ctx.actorUserId) {
++    throw new ValidationError(ctx.t('auth.oauth.errors.linkSessionExpired'))
++  }
++
++  const taken = await findOAuthAccount(ctx.provider, ctx.profile.providerUserId)
++
++  if (taken && taken.userId.toString() !== ctx.actorUserId) {
++    await logOAuthAttempt({
++      provider: ctx.provider,
++      providerUserId: ctx.profile.providerUserId,
++      providerEmail: ctx.profile.email,
++      flow: 'link',
++      outcome: 'provider_taken',
++      actorUserId: ctx.actorUserId,
++      collisionUserId: taken.userId.toString(),
++      ip: ctx.ip,
++      userAgent: ctx.userAgent,
++    })
++
++    return { url: buildProfileRedirect({ oauthError: 'oauth_provider_taken' }) }
++  }
++
++  if (taken) {
++    await touchOAuthAccount(taken, ctx.profile)
++
++    return { url: buildProfileRedirect({ oauthLinked: ctx.provider }) }
++  }
++
++  await createOAuthAccount({
++    userId: ctx.actorUserId,
++    provider: ctx.provider,
++    profile: ctx.profile,
++    tokens: ctx.tokens,
++    scopes: ctx.scopes,
++  })
++
++  await logOAuthAttempt({
++    provider: ctx.provider,
++    providerUserId: ctx.profile.providerUserId,
++    providerEmail: ctx.profile.email,
++    flow: 'link',
++    outcome: 'success',
++    actorUserId: ctx.actorUserId,
++    ip: ctx.ip,
++    userAgent: ctx.userAgent,
++  })
++
++  return { url: buildProfileRedirect({ oauthLinked: ctx.provider }) }
++}
++
++export function assertOAuthFlow(value: string | null | undefined): OAuthFlow {
++  if (value === 'signIn' || value === 'signUp' || value === 'link') {
++    return value
++  }
++
++  return 'signIn'
++}
++
++export function isProviderAllowedForFlow(provider: OAuthProviderId, flow: OAuthFlow): boolean {
++  const context = flow === 'link' ? 'link' : flow
++
++  return OAUTH_CONFIG.getProvidersForContext(context).includes(provider)
++}
+diff --git a/lib/oauth/oauth-http.ts b/lib/oauth/oauth-http.ts
+new file mode 100644
+index 0000000..6886ff8
+--- /dev/null
++++ b/lib/oauth/oauth-http.ts
+@@ -0,0 +1,43 @@
++export async function postForm<T>(
++  url: string,
++  body: Record<string, string>,
++  headers?: Record<string, string>,
++  basicAuth?: { username: string; password: string },
++): Promise<T> {
++  const requestHeaders: Record<string, string> = {
++    'Content-Type': 'application/x-www-form-urlencoded',
++    Accept: 'application/json',
++    ...headers,
++  }
++
++  if (basicAuth) {
++    const token = Buffer.from(`${basicAuth.username}:${basicAuth.password}`).toString('base64')
++    requestHeaders.Authorization = `Basic ${token}`
++  }
++
++  const response = await fetch(url, {
++    method: 'POST',
++    headers: requestHeaders,
++    body: new URLSearchParams(body).toString(),
++  })
++
++  const text = await response.text()
++
++  if (!response.ok) {
++    throw new Error(`OAuth token exchange failed (${response.status}): ${text.slice(0, 200)}`)
++  }
++
++  return JSON.parse(text) as T
++}
++
++export async function getJson<T>(url: string, headers: Record<string, string>): Promise<T> {
++  const response = await fetch(url, { headers, cache: 'no-store' })
++
++  const text = await response.text()
++
++  if (!response.ok) {
++    throw new Error(`OAuth profile request failed (${response.status}): ${text.slice(0, 200)}`)
++  }
++
++  return JSON.parse(text) as T
++}
+diff --git a/lib/oauth/oauth-redirect-uri.ts b/lib/oauth/oauth-redirect-uri.ts
+new file mode 100644
+index 0000000..9e4cae1
+--- /dev/null
++++ b/lib/oauth/oauth-redirect-uri.ts
+@@ -0,0 +1,12 @@
++import type { OAuthProviderId } from '@config/auth-oauth'
++import { getOAuthCallbackUrl } from '@config/auth-oauth'
++
++import { resolveOAuthProvider } from './registry'
++
++/** Redirect URI sent to the IdP. GitHub allows only one callback URL per OAuth App. */
++export function resolveOAuthRedirectUri(provider: OAuthProviderId, intent: 'auth' | 'link'): string {
++  const adapter = resolveOAuthProvider(provider)
++  const effectiveIntent = adapter.singleRedirectUri ? 'auth' : intent
++
++  return getOAuthCallbackUrl(provider, effectiveIntent)
++}
+diff --git a/lib/oauth/oauth-redirect.ts b/lib/oauth/oauth-redirect.ts
+new file mode 100644
+index 0000000..075de50
+--- /dev/null
++++ b/lib/oauth/oauth-redirect.ts
+@@ -0,0 +1,48 @@
++import { NEXT_PUBLIC_SITE_URL } from '@config/env'
++
++export type OAuthLoginRedirectParams = {
++  nextPath?: string | null
++  oauthError?: string | null
++  oauthMfaChallenge?: string | null
++  variant?: 'sign-in' | 'sign-up'
++}
++
++export function buildOAuthLoginRedirect(params: OAuthLoginRedirectParams): string {
++  const base = NEXT_PUBLIC_SITE_URL.replace(/\/+$/, '')
++  const url = new URL('/login', base)
++
++  if (params.variant) {
++    url.searchParams.set('variant', params.variant)
++  }
++
++  if (params.nextPath?.startsWith('/')) {
++    url.searchParams.set('nextPath', params.nextPath)
++  }
++
++  if (params.oauthError) {
++    url.searchParams.set('oauthError', params.oauthError)
++  }
++
++  if (params.oauthMfaChallenge) {
++    url.searchParams.set('oauthMfaChallenge', params.oauthMfaChallenge)
++  }
++
++  return url.toString()
++}
++
++export function buildProfileRedirect(params?: { oauthLinked?: string; oauthError?: string }): string {
++  const base = NEXT_PUBLIC_SITE_URL.replace(/\/+$/, '')
++  const url = new URL('/profile', base)
++
++  if (params?.oauthLinked) {
++    url.searchParams.set('oauthLinked', params.oauthLinked)
++  }
++
++  if (params?.oauthError) {
++    url.searchParams.set('oauthError', params.oauthError)
++  }
++
++  url.hash = 'connected-accounts'
++
++  return url.toString()
++}
+diff --git a/lib/oauth/oauth-start.service.ts b/lib/oauth/oauth-start.service.ts
+new file mode 100644
+index 0000000..4aebc49
+--- /dev/null
++++ b/lib/oauth/oauth-start.service.ts
+@@ -0,0 +1,55 @@
++import { OAUTH_CONFIG } from '@config/auth-oauth'
++import { ValidationError } from '@lib/error/custom-errors'
++
++import type { OAuthFlow, OAuthProviderId } from '~/api/oauth'
++
++import { isProviderAllowedForFlow } from './oauth-flow.service'
++import { resolveOAuthRedirectUri } from './oauth-redirect-uri'
++import { createOAuthState } from './oauth-state'
++import { generatePkcePair } from './pkce'
++import { resolveOAuthProvider } from './registry'
++
++export async function buildOAuthStartRedirect(params: {
++  provider: OAuthProviderId
++  flow: OAuthFlow
++  nextPath?: string | null
++  actorUserId?: string | null
++}): Promise<string> {
++  if (!isProviderAllowedForFlow(params.provider, params.flow)) {
++    throw new ValidationError(`OAuth provider "${params.provider}" is not enabled for ${params.flow}`)
++  }
++
++  if (!OAUTH_CONFIG.isProviderConfigured(params.provider)) {
++    throw new ValidationError(`OAuth provider "${params.provider}" is not configured`)
++  }
++
++  const adapter = resolveOAuthProvider(params.provider)
++  const intent = params.flow === 'link' ? 'link' : 'auth'
++  const redirectUri = resolveOAuthRedirectUri(params.provider, intent)
++  const scopes = params.flow === 'link' ? adapter.defaultLinkScopes : adapter.defaultSignInScopes
++
++  let codeVerifier: string | undefined
++  let codeChallenge: string | undefined
++
++  if (adapter.usesPkce) {
++    const pkce = generatePkcePair()
++    codeVerifier = pkce.codeVerifier
++    codeChallenge = pkce.codeChallenge
++  }
++
++  const state = await createOAuthState({
++    provider: params.provider,
++    flow: params.flow,
++    codeVerifier,
++    userId: params.actorUserId ?? undefined,
++    nextPath: params.nextPath?.startsWith('/') ? params.nextPath : undefined,
++  })
++
++  return adapter.getAuthorizationUrl({
++    redirectUri,
++    state,
++    codeChallenge,
++    scopes,
++    flow: params.flow,
++  })
++}
+diff --git a/lib/oauth/oauth-state.ts b/lib/oauth/oauth-state.ts
+new file mode 100644
+index 0000000..da644c0
+--- /dev/null
++++ b/lib/oauth/oauth-state.ts
+@@ -0,0 +1,39 @@
++import { cacheClient } from '@lib/cache'
++
++import type { OAuthFlow, OAuthProviderId } from '~/api/oauth'
++import { getUniqueId } from '~/utils/getUniqueId'
++import { jsonParseSafety, jsonStringifySafety } from '~/utils/jsonSafe'
++
++const OAUTH_STATE_TTL_SECONDS = 10 * 60
++
++const buildOAuthStateKey = (id: string) => `auth:oauth:state:${id}`
++
++export type OAuthStatePayload = {
++  provider: OAuthProviderId
++  flow: OAuthFlow
++  codeVerifier?: string
++  userId?: string
++  nextPath?: string
++}
++
++export async function createOAuthState(payload: OAuthStatePayload): Promise<string> {
++  const id = getUniqueId()
++  const key = buildOAuthStateKey(id)
++
++  await cacheClient.set(key, jsonStringifySafety(payload) ?? '', OAUTH_STATE_TTL_SECONDS)
++
++  return id
++}
++
++export async function consumeOAuthState(id: string): Promise<OAuthStatePayload | null> {
++  const key = buildOAuthStateKey(id)
++  const data = await cacheClient.get(key)
++
++  if (!data) {
++    return null
++  }
++
++  await cacheClient.del(key)
++
++  return jsonParseSafety<OAuthStatePayload>(data) ?? null
++}
+diff --git a/lib/oauth/pkce.ts b/lib/oauth/pkce.ts
+new file mode 100644
+index 0000000..0dccbe3
+--- /dev/null
++++ b/lib/oauth/pkce.ts
+@@ -0,0 +1,8 @@
++import { createHash, randomBytes } from 'node:crypto'
++
++export function generatePkcePair(): { codeVerifier: string; codeChallenge: string } {
++  const codeVerifier = randomBytes(32).toString('base64url')
++  const codeChallenge = createHash('sha256').update(codeVerifier).digest('base64url')
++
++  return { codeVerifier, codeChallenge }
++}
+diff --git a/lib/oauth/providers/discord.provider.ts b/lib/oauth/providers/discord.provider.ts
+new file mode 100644
+index 0000000..adc9f84
+--- /dev/null
++++ b/lib/oauth/providers/discord.provider.ts
+@@ -0,0 +1,89 @@
++import { OAUTH_CONFIG } from '@config/auth-oauth'
++
++import { getJson, postForm } from '../oauth-http'
++import type { OAuthProviderAdapter, OAuthTokenSet } from '../types'
++
++type DiscordTokenResponse = {
++  access_token: string
++  refresh_token?: string
++  expires_in?: number
++  token_type?: string
++  scope?: string
++}
++
++type DiscordUser = {
++  id: string
++  username: string
++  global_name?: string | null
++  email?: string | null
++  verified?: boolean
++  avatar?: string | null
++}
++
++function discordAvatarUrl(user: DiscordUser): string | null {
++  if (!user.avatar) {
++    return null
++  }
++
++  return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`
++}
++
++export const discordOAuthProvider: OAuthProviderAdapter = {
++  id: 'discord',
++  displayName: 'Discord',
++  usesPkce: false,
++  defaultSignInScopes: ['identify', 'email'],
++  defaultLinkScopes: ['identify', 'email'],
++
++  getAuthorizationUrl({ redirectUri, state, scopes }) {
++    const params = new URLSearchParams({
++      response_type: 'code',
++      client_id: OAUTH_CONFIG.getProviderClientId('discord'),
++      redirect_uri: redirectUri,
++      state,
++      scope: scopes.join(' '),
++      prompt: 'consent',
++    })
++
++    return `https://discord.com/oauth2/authorize?${params.toString()}`
++  },
++
++  async exchangeCode({ code, redirectUri }) {
++    const clientId = OAUTH_CONFIG.getProviderClientId('discord')
++    const clientSecret = OAUTH_CONFIG.getProviderClientSecret('discord')
++
++    const data = await postForm<DiscordTokenResponse>(
++      'https://discord.com/api/oauth2/token',
++      {
++        grant_type: 'authorization_code',
++        code,
++        redirect_uri: redirectUri,
++      },
++      undefined,
++      { username: clientId, password: clientSecret },
++    )
++
++    return {
++      accessToken: data.access_token,
++      refreshToken: data.refresh_token ?? null,
++      expiresIn: data.expires_in ?? null,
++      tokenType: data.token_type ?? null,
++      scope: data.scope ?? null,
++    }
++  },
++
++  async getProfile(tokens: OAuthTokenSet) {
++    const user = await getJson<DiscordUser>('https://discord.com/api/users/@me', {
++      Authorization: `Bearer ${tokens.accessToken}`,
++    })
++
++    return {
++      providerUserId: user.id,
++      email: user.email?.toLowerCase() ?? null,
++      emailVerified: user.verified ?? Boolean(user.email),
++      name: user.global_name ?? user.username ?? null,
++      avatarUrl: discordAvatarUrl(user),
++      login: user.username,
++    }
++  },
++}
+diff --git a/lib/oauth/providers/github.provider.ts b/lib/oauth/providers/github.provider.ts
+new file mode 100644
+index 0000000..686a1eb
+--- /dev/null
++++ b/lib/oauth/providers/github.provider.ts
+@@ -0,0 +1,98 @@
++import { OAUTH_CONFIG } from '@config/auth-oauth'
++
++import { getJson, postForm } from '../oauth-http'
++import type { OAuthProviderAdapter, OAuthTokenSet } from '../types'
++
++type GitHubTokenResponse = {
++  access_token: string
++  token_type?: string
++  scope?: string
++}
++
++type GitHubUser = {
++  id: number
++  login: string
++  email?: string | null
++  name?: string | null
++  avatar_url?: string | null
++}
++
++type GitHubEmail = {
++  email: string
++  primary: boolean
++  verified: boolean
++  visibility?: string | null
++}
++
++export const githubOAuthProvider: OAuthProviderAdapter = {
++  id: 'github',
++  displayName: 'GitHub',
++  usesPkce: false,
++  singleRedirectUri: true,
++  defaultSignInScopes: ['read:user', 'user:email'],
++  defaultLinkScopes: ['read:user', 'user:email'],
++
++  getAuthorizationUrl({ redirectUri, state, scopes }) {
++    const params = new URLSearchParams({
++      client_id: OAUTH_CONFIG.getProviderClientId('github'),
++      redirect_uri: redirectUri,
++      state,
++      scope: scopes.join(' '),
++      allow_signup: 'true',
++    })
++
++    return `https://github.com/login/oauth/authorize?${params.toString()}`
++  },
++
++  async exchangeCode({ code, redirectUri }) {
++    const data = await postForm<GitHubTokenResponse>(
++      'https://github.com/login/oauth/access_token',
++      {
++        client_id: OAUTH_CONFIG.getProviderClientId('github'),
++        client_secret: OAUTH_CONFIG.getProviderClientSecret('github'),
++        code,
++        redirect_uri: redirectUri,
++      },
++      { Accept: 'application/json' },
++    )
++
++    return {
++      accessToken: data.access_token,
++      tokenType: data.token_type ?? null,
++      scope: data.scope ?? null,
++    }
++  },
++
++  async getProfile(tokens: OAuthTokenSet) {
++    const user = await getJson<GitHubUser>('https://api.github.com/user', {
++      Authorization: `Bearer ${tokens.accessToken}`,
++      Accept: 'application/vnd.github+json',
++      'User-Agent': 'nextjs-super-boilerplate',
++    })
++
++    let email = user.email?.toLowerCase() ?? null
++    let emailVerified = Boolean(email)
++
++    if (!email) {
++      const emails = await getJson<GitHubEmail[]>('https://api.github.com/user/emails', {
++        Authorization: `Bearer ${tokens.accessToken}`,
++        Accept: 'application/vnd.github+json',
++        'User-Agent': 'nextjs-super-boilerplate',
++      })
++
++      const primary = emails.find((e) => e.primary && e.verified) ?? emails.find((e) => e.verified)
++
++      email = primary?.email?.toLowerCase() ?? null
++      emailVerified = Boolean(primary?.verified)
++    }
++
++    return {
++      providerUserId: String(user.id),
++      email,
++      emailVerified,
++      name: user.name ?? null,
++      avatarUrl: user.avatar_url ?? null,
++      login: user.login,
++    }
++  },
++}
+diff --git a/lib/oauth/providers/google.provider.ts b/lib/oauth/providers/google.provider.ts
+new file mode 100644
+index 0000000..18d2127
+--- /dev/null
++++ b/lib/oauth/providers/google.provider.ts
+@@ -0,0 +1,85 @@
++import { OAUTH_CONFIG } from '@config/auth-oauth'
++
++import { getJson, postForm } from '../oauth-http'
++import type { OAuthProviderAdapter, OAuthTokenSet } from '../types'
++
++type GoogleTokenResponse = {
++  access_token: string
++  refresh_token?: string
++  expires_in?: number
++  token_type?: string
++  scope?: string
++}
++
++type GoogleProfile = {
++  sub: string
++  email?: string
++  email_verified?: boolean
++  name?: string
++  picture?: string
++}
++
++export const googleOAuthProvider: OAuthProviderAdapter = {
++  id: 'google',
++  displayName: 'Google',
++  usesPkce: true,
++  defaultSignInScopes: ['openid', 'email', 'profile'],
++  defaultLinkScopes: ['openid', 'email', 'profile'],
++
++  getAuthorizationUrl({ redirectUri, state, scopes, codeChallenge }) {
++    const params = new URLSearchParams({
++      response_type: 'code',
++      client_id: OAUTH_CONFIG.getProviderClientId('google'),
++      redirect_uri: redirectUri,
++      state,
++      scope: scopes.join(' '),
++      access_type: 'online',
++      prompt: 'select_account',
++    })
++
++    if (codeChallenge) {
++      params.set('code_challenge', codeChallenge)
++      params.set('code_challenge_method', 'S256')
++    }
++
++    return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
++  },
++
++  async exchangeCode({ code, redirectUri, codeVerifier }) {
++    const body: Record<string, string> = {
++      grant_type: 'authorization_code',
++      code,
++      client_id: OAUTH_CONFIG.getProviderClientId('google'),
++      client_secret: OAUTH_CONFIG.getProviderClientSecret('google'),
++      redirect_uri: redirectUri,
++    }
++
++    if (codeVerifier) {
++      body.code_verifier = codeVerifier
++    }
++
++    const data = await postForm<GoogleTokenResponse>('https://oauth2.googleapis.com/token', body)
++
++    return {
++      accessToken: data.access_token,
++      refreshToken: data.refresh_token ?? null,
++      expiresIn: data.expires_in ?? null,
++      tokenType: data.token_type ?? null,
++      scope: data.scope ?? null,
++    }
++  },
++
++  async getProfile(tokens: OAuthTokenSet) {
++    const profile = await getJson<GoogleProfile>('https://www.googleapis.com/oauth2/v3/userinfo', {
++      Authorization: `Bearer ${tokens.accessToken}`,
++    })
++
++    return {
++      providerUserId: profile.sub,
++      email: profile.email?.toLowerCase() ?? null,
++      emailVerified: profile.email_verified ?? false,
++      name: profile.name ?? null,
++      avatarUrl: profile.picture ?? null,
++    }
++  },
++}
+diff --git a/lib/oauth/providers/vk.provider.ts b/lib/oauth/providers/vk.provider.ts
+new file mode 100644
+index 0000000..6b3bbbd
+--- /dev/null
++++ b/lib/oauth/providers/vk.provider.ts
+@@ -0,0 +1,114 @@
++import { OAUTH_CONFIG } from '@config/auth-oauth'
++
++import { getJson, postForm } from '../oauth-http'
++import type { OAuthProviderAdapter, OAuthTokenSet } from '../types'
++
++type VkTokenResponse = {
++  access_token: string
++  refresh_token?: string
++  expires_in?: number
++  token_type?: string
++  scope?: string
++  user_id?: number | string
++}
++
++type VkUserInfoResponse = {
++  user?: {
++    user_id?: string | number
++    first_name?: string
++    last_name?: string
++    email?: string
++    avatar?: string
++  }
++}
++
++export const vkOAuthProvider: OAuthProviderAdapter = {
++  id: 'vk',
++  displayName: 'VK ID',
++  usesPkce: true,
++  defaultSignInScopes: ['email'],
++  defaultLinkScopes: ['email'],
++
++  getAuthorizationUrl({ redirectUri, state, scopes, codeChallenge }) {
++    const params = new URLSearchParams({
++      response_type: 'code',
++      client_id: OAUTH_CONFIG.getProviderClientId('vk'),
++      redirect_uri: redirectUri,
++      state,
++      scope: scopes.join(' '),
++    })
++
++    if (codeChallenge) {
++      params.set('code_challenge', codeChallenge)
++      params.set('code_challenge_method', 'S256')
++    }
++
++    return `https://id.vk.ru/authorize?${params.toString()}`
++  },
++
++  async exchangeCode({ code, redirectUri, codeVerifier, deviceId, state }) {
++    if (!codeVerifier) {
++      throw new Error('VK ID requires PKCE code_verifier')
++    }
++
++    if (!deviceId) {
++      throw new Error('VK ID requires device_id from callback')
++    }
++
++    const body: Record<string, string> = {
++      grant_type: 'authorization_code',
++      code,
++      redirect_uri: redirectUri,
++      client_id: OAUTH_CONFIG.getProviderClientId('vk'),
++      code_verifier: codeVerifier,
++      device_id: deviceId,
++    }
++
++    const clientSecret = OAUTH_CONFIG.getProviderClientSecret('vk')
++
++    if (clientSecret) {
++      body.client_secret = clientSecret
++    }
++
++    if (state) {
++      body.state = state
++    }
++
++    const data = await postForm<VkTokenResponse>('https://id.vk.ru/oauth2/auth', body)
++
++    return {
++      accessToken: data.access_token,
++      refreshToken: data.refresh_token ?? null,
++      expiresIn: data.expires_in ?? null,
++      tokenType: data.token_type ?? null,
++      scope: data.scope ?? null,
++    }
++  },
++
++  async getProfile(tokens: OAuthTokenSet) {
++    const data = await postForm<VkUserInfoResponse>('https://id.vk.ru/oauth2/user_info', {
++      client_id: OAUTH_CONFIG.getProviderClientId('vk'),
++      access_token: tokens.accessToken,
++    })
++
++    const user = data.user
++
++    if (!user?.user_id) {
++      throw new Error('VK ID user_info missing user_id')
++    }
++
++    const firstName = user.first_name?.trim() ?? ''
++    const lastName = user.last_name?.trim() ?? ''
++    const name = [firstName, lastName].filter(Boolean).join(' ') || null
++    const email = user.email?.toLowerCase() ?? null
++
++    return {
++      providerUserId: String(user.user_id),
++      email,
++      emailVerified: Boolean(email),
++      name,
++      avatarUrl: user.avatar ?? null,
++      login: null,
++    }
++  },
++}
+diff --git a/lib/oauth/providers/yandex.provider.ts b/lib/oauth/providers/yandex.provider.ts
+new file mode 100644
+index 0000000..77b25c2
+--- /dev/null
++++ b/lib/oauth/providers/yandex.provider.ts
+@@ -0,0 +1,72 @@
++import { OAUTH_CONFIG } from '@config/auth-oauth'
++
++import { getJson, postForm } from '../oauth-http'
++import type { OAuthProviderAdapter, OAuthTokenSet } from '../types'
++
++type YandexTokenResponse = {
++  access_token: string
++  refresh_token?: string
++  expires_in?: number
++  token_type?: string
++}
++
++type YandexProfile = {
++  id: string
++  login?: string
++  default_email?: string
++  emails?: string[]
++}
++
++export const yandexOAuthProvider: OAuthProviderAdapter = {
++  id: 'yandex',
++  displayName: 'Yandex',
++  usesPkce: false,
++  defaultSignInScopes: ['login:email'],
++  defaultLinkScopes: ['login:email'],
++
++  getAuthorizationUrl({ redirectUri, state, scopes }) {
++    const params = new URLSearchParams({
++      response_type: 'code',
++      client_id: OAUTH_CONFIG.getProviderClientId('yandex'),
++      redirect_uri: redirectUri,
++      state,
++    })
++
++    if (scopes.length) {
++      params.set('scope', scopes.join(' '))
++    }
++
++    return `https://oauth.yandex.ru/authorize?${params.toString()}`
++  },
++
++  async exchangeCode({ code }) {
++    const data = await postForm<YandexTokenResponse>('https://oauth.yandex.ru/token', {
++      grant_type: 'authorization_code',
++      code,
++      client_id: OAUTH_CONFIG.getProviderClientId('yandex'),
++      client_secret: OAUTH_CONFIG.getProviderClientSecret('yandex'),
++    })
++
++    return {
++      accessToken: data.access_token,
++      refreshToken: data.refresh_token ?? null,
++      expiresIn: data.expires_in ?? null,
++      tokenType: data.token_type ?? null,
++    }
++  },
++
++  async getProfile(tokens: OAuthTokenSet) {
++    const profile = await getJson<YandexProfile>('https://login.yandex.ru/info?format=json', {
++      Authorization: `OAuth ${tokens.accessToken}`,
++    })
++
++    const email = profile.default_email ?? profile.emails?.[0] ?? null
++
++    return {
++      providerUserId: String(profile.id),
++      email: email?.toLowerCase() ?? null,
++      emailVerified: Boolean(email),
++      login: profile.login ?? null,
++    }
++  },
++}
+diff --git a/lib/oauth/registry.ts b/lib/oauth/registry.ts
+new file mode 100644
+index 0000000..92c5918
+--- /dev/null
++++ b/lib/oauth/registry.ts
+@@ -0,0 +1,41 @@
++import type { OAuthProviderId } from '@config/auth-oauth'
++import { OAUTH_CONFIG } from '@config/auth-oauth'
++import { ValidationError } from '@lib/error/custom-errors'
++
++import { discordOAuthProvider } from './providers/discord.provider'
++import { githubOAuthProvider } from './providers/github.provider'
++import { googleOAuthProvider } from './providers/google.provider'
++import { vkOAuthProvider } from './providers/vk.provider'
++import { yandexOAuthProvider } from './providers/yandex.provider'
++import type { OAuthProviderAdapter } from './types'
++
++const ADAPTERS: Record<OAuthProviderId, OAuthProviderAdapter | null> = {
++  yandex: yandexOAuthProvider,
++  google: googleOAuthProvider,
++  github: githubOAuthProvider,
++  apple: null,
++  vk: vkOAuthProvider,
++  telegram: null,
++  microsoft: null,
++  discord: discordOAuthProvider,
++}
++
++export function resolveOAuthProvider(id: string): OAuthProviderAdapter {
++  const providerId = id.toLowerCase() as OAuthProviderId
++
++  if (!OAUTH_CONFIG.isProviderConfigured(providerId)) {
++    throw new ValidationError(`OAuth provider "${id}" is not configured`)
++  }
++
++  const adapter = ADAPTERS[providerId]
++
++  if (!adapter) {
++    throw new ValidationError(`OAuth provider "${id}" is not implemented yet`)
++  }
++
++  return adapter
++}
++
++export function isKnownOAuthProvider(id: string): id is OAuthProviderId {
++  return (Object.keys(ADAPTERS) as OAuthProviderId[]).includes(id.toLowerCase() as OAuthProviderId)
++}
+diff --git a/lib/oauth/types.ts b/lib/oauth/types.ts
+new file mode 100644
+index 0000000..2a4ab4d
+--- /dev/null
++++ b/lib/oauth/types.ts
+@@ -0,0 +1,46 @@
++import type { OAuthFlow, OAuthProviderId } from '~/api/oauth'
++
++export type OAuthTokenSet = {
++  accessToken: string
++  refreshToken?: string | null
++  expiresIn?: number | null
++  tokenType?: string | null
++  scope?: string | null
++}
++
++export type OAuthProfile = {
++  providerUserId: string
++  email?: string | null
++  emailVerified?: boolean
++  name?: string | null
++  avatarUrl?: string | null
++  login?: string | null
++}
++
++export type OAuthAuthorizeParams = {
++  redirectUri: string
++  state: string
++  codeChallenge?: string
++  scopes: string[]
++  flow: OAuthFlow
++}
++
++export interface OAuthProviderAdapter {
++  id: OAuthProviderId
++  displayName: string
++  usesPkce: boolean
++  /** GitHub OAuth App allows a single Authorization callback URL — use /callback for all flows */
++  singleRedirectUri?: boolean
++  defaultSignInScopes: string[]
++  defaultLinkScopes: string[]
++  getAuthorizationUrl(params: OAuthAuthorizeParams): string
++  exchangeCode(params: {
++    code: string
++    redirectUri: string
++    codeVerifier?: string
++    /** VK ID returns device_id in callback query — required for token exchange */
++    deviceId?: string
++    state?: string
++  }): Promise<OAuthTokenSet>
++  getProfile(tokens: OAuthTokenSet): Promise<OAuthProfile>
++}
+diff --git a/lib/services/oauth-attempt.service.ts b/lib/services/oauth-attempt.service.ts
+new file mode 100644
+index 0000000..f06802c
+--- /dev/null
++++ b/lib/services/oauth-attempt.service.ts
+@@ -0,0 +1,37 @@
++import connectDB from '@lib/db/client'
++import OAuthAttemptLog, { type IOAuthAttemptLog } from '@lib/db/models/OAuthAttemptLog'
++
++import type { OAuthAttemptFilter, OAuthAttemptItemModel } from '~/api/oauth/types'
++import type { PaginationMeta } from '~/types/pagination'
++
++function mapAttemptItem(
++  doc: Pick<
++    IOAuthAttemptLog,
++    '_id' | 'provider' | 'providerUserId' | 'providerEmail' | 'flow' | 'outcome' | 'collisionUserId' | 'actorUserId' | 'ip' | 'userAgent' | 'createdAt'
++  >,
++): OAuthAttemptItemModel {
++  return {
++    id: doc._id.toString(),
++    provider: doc.provider,
++    providerUserId: doc.providerUserId,
++    providerEmail: doc.providerEmail ?? null,
++    flow: doc.flow,
++    outcome: doc.outcome,
++    collisionUserId: doc.collisionUserId?.toString() ?? null,
++    actorUserId: doc.actorUserId?.toString() ?? null,
++    ip: doc.ip ?? null,
++    userAgent: doc.userAgent ?? null,
++    createdAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : null,
++  }
++}
++
++export async function listOAuthAttempts(filter: OAuthAttemptFilter): Promise<PaginationMeta<OAuthAttemptItemModel>> {
++  await connectDB()
++
++  const page = await OAuthAttemptLog.findListPaginated(filter)
++
++  return {
++    ...page,
++    list: page.list.map((doc) => mapAttemptItem(doc)),
++  }
++}
+diff --git a/package.json b/package.json
+index 73d6dd7..c55c102 100644
+--- a/package.json
++++ b/package.json
+@@ -1,6 +1,6 @@
+ {
+   "name": "nextjs-super-boilerplate",
+-  "version": "0.2.1",
++  "version": "0.2.2",
+   "private": true,
+   "scripts": {
+     "dev:local": "env-cmd -f .env.local next dev",
+diff --git a/public/oauth/discord.svg b/public/oauth/discord.svg
+new file mode 100644
+index 0000000..fb70d23
+--- /dev/null
++++ b/public/oauth/discord.svg
+@@ -0,0 +1,3 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-hidden="true">
++  <path fill="#5865F2" d="M20.317 4.3698a19.7913 19.7913 0 0 0-4.8851-1.5152.0741.0741 0 0 0-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 0 0-.0785-.037 19.7363 19.7363 0 0 0-4.8852 1.515.0699.0699 0 0 0-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 0 0 .0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 0 0 .0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 0 0-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 0 1-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 0 1 .0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 0 1 .0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 0 1-.0066.1276 12.2986 12.2986 0 0 1-1.873.8914.0766.0766 0 0 0-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 0 0 .0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 0 0 .0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 0 0-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/>
++</svg>
+diff --git a/public/oauth/github.svg b/public/oauth/github.svg
+new file mode 100644
+index 0000000..5387e55
+--- /dev/null
++++ b/public/oauth/github.svg
+@@ -0,0 +1,3 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-hidden="true">
++  <path fill="#181717" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
++</svg>
+diff --git a/public/oauth/google.svg b/public/oauth/google.svg
+new file mode 100644
+index 0000000..8a1dc89
+--- /dev/null
++++ b/public/oauth/google.svg
+@@ -0,0 +1,6 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-hidden="true">
++  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z"/>
++  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
++  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
++  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
++</svg>
+diff --git a/public/oauth/vk.svg b/public/oauth/vk.svg
+new file mode 100644
+index 0000000..589b93f
+--- /dev/null
++++ b/public/oauth/vk.svg
+@@ -0,0 +1,3 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-hidden="true">
++  <path fill="#0077FF" d="M15.684 0H8.316C1.592 0 0 1.592 0 8.316v7.368C0 22.408 1.592 24 8.316 24h7.368C22.408 24 24 22.408 24 15.684V8.316C24 1.592 22.391 0 15.684 0zm3.692 17.123h-1.744c-.66 0-.864-.525-2.05-1.727-1.033-1-1.49-1.135-1.744-1.135-.356 0-.458.102-.458.593v1.575c0 .424-.135.678-1.253.678-1.846 0-3.896-1.118-5.335-3.202C4.624 10.857 4.03 8.57 4.03 8.096c0-.254.102-.491.593-.491h1.744c.44 0 .61.203.78.677.863 2.49 2.303 4.675 2.896 4.675.22 0 .322-.102.322-.66V9.721c-.068-1.186-.695-1.287-.695-1.71 0-.203.17-.407.44-.407h2.744c.373 0 .508.203.508.643v3.473c0 .372.17.508.271.508.22 0 .407-.136.813-.542 1.254-1.406 2.151-3.574 2.151-3.574.119-.254.322-.491.763-.491h1.744c.525 0 .644.271.525.643-.22 1.017-2.354 4.031-2.354 4.031-.186.305-.254.44 0 .78.186.254.796.779 1.203 1.253.745.847 1.32 1.558 1.473 2.05.17.49-.085.744-.576.744z"/>
++</svg>
+diff --git a/public/oauth/yandex.svg b/public/oauth/yandex.svg
+new file mode 100644
+index 0000000..347b254
+--- /dev/null
++++ b/public/oauth/yandex.svg
+@@ -0,0 +1,4 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-hidden="true">
++  <path fill="#FC3F1D" d="M2.04 12c0-5.523 4.476-10 10-10 5.522 0 10 4.477 10 10s-4.478 10-10 10c-5.524 0-10-4.477-10-10z"/>
++  <path fill="#fff" d="M13.32 7.666h-.924c-1.694 0-2.585.858-2.585 2.123 0 1.43.616 2.1 1.881 2.959l1.045.704-3.003 4.487H7.49l2.695-4.014c-1.55-1.111-2.42-2.19-2.42-4.015 0-2.288 1.595-3.85 4.62-3.85h3.003v11.868H13.32V7.666z"/>
++</svg>
+diff --git a/scripts/doctor.ts b/scripts/doctor.ts
+index dfda401..fcd94f7 100644
+--- a/scripts/doctor.ts
++++ b/scripts/doctor.ts
+@@ -74,6 +74,7 @@ async function main() {
+ 
+   const { ACCOUNT_CONFIG, EMAIL_CONFIG, JWT_CONFIG, LLM_CONFIG, MFA_CONFIG, MONGODB_CONFIG, NOTIFICATION_CONFIG, PUSH_CONFIG, REGISTRATION_CONFIG, isProd } =
+     await import('../config/env')
++  const { OAUTH_CONFIG } = await import('../config/auth-oauth')
+ 
+   const findings: Finding[] = []
+ 
+@@ -153,6 +154,41 @@ async function main() {
+     push(findings, 'info', 'first_admin', 'FIRST_ADMIN_LOGIN/PASSWORD unset — create an admin via seed or DB manually.')
+   }
+ 
++  const oauthContexts = [
++    { name: 'signIn', list: OAUTH_CONFIG.signInProviders },
++    { name: 'signUp', list: OAUTH_CONFIG.signUpProviders },
++    { name: 'link', list: OAUTH_CONFIG.linkProviders },
++  ] as const
++
++  for (const ctx of oauthContexts) {
++    for (const provider of ctx.list) {
++      if (!OAUTH_CONFIG.isProviderEnabled(provider)) {
++        push(
++          findings,
++          'error',
++          `oauth_${ctx.name}_${provider}`,
++          `Provider "${provider}" is listed in AUTH_OAUTH_${ctx.name.toUpperCase()}_PROVIDERS but AUTH_OAUTH_${provider.toUpperCase()}_ENABLED is off.`,
++        )
++      } else if (!OAUTH_CONFIG.isProviderConfigured(provider)) {
++        push(findings, 'error', `oauth_${ctx.name}_${provider}_creds`, `Provider "${provider}" is enabled for ${ctx.name} but client id/secret is missing.`)
++      }
++    }
++  }
++
++  const configuredSignIn = OAUTH_CONFIG.getProvidersForContext('signIn')
++
++  if (OAUTH_CONFIG.uiMode === 'oauth_only' && configuredSignIn.length === 0) {
++    push(findings, 'error', 'oauth_only_empty', 'AUTH_UI_MODE=oauth_only but no sign-in OAuth providers are configured.')
++  }
++
++  if (OAUTH_CONFIG.uiMode === 'credentials_only' && configuredSignIn.length > 0) {
++    push(findings, 'warn', 'oauth_credentials_only', 'AUTH_UI_MODE=credentials_only but sign-in OAuth providers are configured — buttons will stay hidden.')
++  }
++
++  if (configuredSignIn.length > 0) {
++    push(findings, 'info', 'oauth_sign_in', `OAuth sign-in providers: ${configuredSignIn.join(', ')}`)
++  }
++
+   push(findings, 'info', 'product_config', 'Customize branding in config/product.ts (name, author, PWA, sitemap extras).')
+ 
+   const errors = findings.filter((f) => f.level === 'error')
+diff --git a/src/api/auth/client/index.ts b/src/api/auth/client/index.ts
+index da045ac..8d74cb5 100644
+--- a/src/api/auth/client/index.ts
++++ b/src/api/auth/client/index.ts
+@@ -165,4 +165,22 @@ export class ClientAuthApi {
+ 
+     return response.data
+   }
++
++  async getOAuthAccounts() {
++    const response = await this.client.get('/api/v1/auth/oauth/accounts')
++
++    return response.data
++  }
++
++  async unlinkOAuthProvider(provider: string) {
++    const response = await this.client.delete(`/api/v1/auth/oauth/${provider}`)
++
++    return response.data
++  }
++
++  async setPassword(body: { newPassword: string; totpCode?: string }) {
++    const response = await this.client.post('/api/v1/auth/password/set', body)
++
++    return response.data
++  }
+ }
+diff --git a/src/api/oauth/client/index.ts b/src/api/oauth/client/index.ts
+new file mode 100644
+index 0000000..b544636
+--- /dev/null
++++ b/src/api/oauth/client/index.ts
+@@ -0,0 +1,20 @@
++import { Request } from '@lib/request'
++import { AxiosInstance } from 'axios'
++
++import type { PaginationMeta } from '~/types/pagination'
++
++import type { OAuthAttemptFilter, OAuthAttemptItemModel } from '../types'
++
++export class ClientOAuthAdminApi {
++  private readonly client: AxiosInstance
++
++  constructor() {
++    this.client = new Request().apiClient
++  }
++
++  async listAttempts(filter: OAuthAttemptFilter = {}): Promise<PaginationMeta<OAuthAttemptItemModel>> {
++    const response = await this.client.get('/api/v1/admin/oauth-attempts', { params: filter })
++
++    return response.data
++  }
++}
+diff --git a/src/api/oauth/index.ts b/src/api/oauth/index.ts
+new file mode 100644
+index 0000000..1334920
+--- /dev/null
++++ b/src/api/oauth/index.ts
+@@ -0,0 +1,3 @@
++export { ClientOAuthAdminApi } from './client'
++export type { EmailOrigin, EmailTrust, OAuthAccountModel, OAuthAttemptOutcome, OAuthFlow, OAuthProviderId, OAuthPublicAccountModel } from './model'
++export type { OAuthAttemptFilter, OAuthAttemptItemModel } from './types'
+diff --git a/src/api/oauth/model.ts b/src/api/oauth/model.ts
+new file mode 100644
+index 0000000..47c3449
+--- /dev/null
++++ b/src/api/oauth/model.ts
+@@ -0,0 +1,25 @@
++import type { OAuthProviderId } from '@config/auth-oauth'
++
++export type { OAuthProviderId }
++
++export type OAuthFlow = 'signIn' | 'signUp' | 'link'
++
++export type EmailOrigin = 'credentials' | 'oauth' | 'admin'
++
++export type EmailTrust = 'native' | 'external' | 'disputed'
++
++export type OAuthAttemptOutcome = 'success' | 'email_collision' | 'provider_taken' | 'not_found' | 'error'
++
++export type OAuthAccountModel = {
++  id: string
++  userId: string
++  provider: OAuthProviderId
++  providerUserId: string
++  providerEmail?: string | null
++  providerLogin?: string | null
++  scopes?: string[]
++  linkedAt?: string | null
++  lastUsedAt?: string | null
++}
++
++export type OAuthPublicAccountModel = Pick<OAuthAccountModel, 'provider' | 'providerLogin' | 'providerEmail' | 'linkedAt' | 'lastUsedAt'>
+diff --git a/src/api/oauth/types.ts b/src/api/oauth/types.ts
+new file mode 100644
+index 0000000..36eb567
+--- /dev/null
++++ b/src/api/oauth/types.ts
+@@ -0,0 +1,30 @@
++import type { OAuthAttemptOutcome, OAuthFlow, OAuthProviderId } from './model'
++
++export type OAuthAttemptItemModel = {
++  id: string
++  provider: OAuthProviderId
++  providerUserId: string
++  providerEmail?: string | null
++  flow: OAuthFlow
++  outcome: OAuthAttemptOutcome
++  collisionUserId?: string | null
++  actorUserId?: string | null
++  ip?: string | null
++  userAgent?: string | null
++  createdAt?: string | null
++}
++
++export type OAuthAttemptFilter = {
++  provider?: OAuthProviderId | string
++  flow?: OAuthFlow | string
++  outcome?: OAuthAttemptOutcome | string
++  collisionUserId?: string
++  actorUserId?: string
++  /** Matches collisionUserId OR actorUserId */
++  userId?: string
++  providerEmail?: string
++  limit?: number
++  offset?: number
++  startOfDateIso?: string
++  endOfDateIso?: string
++}
+diff --git a/src/api/user/model.ts b/src/api/user/model.ts
+index 8a83ee4..f6b8a7d 100644
+--- a/src/api/user/model.ts
++++ b/src/api/user/model.ts
+@@ -1,3 +1,7 @@
++export type UserEmailOrigin = 'credentials' | 'oauth' | 'admin'
++
++export type UserEmailTrust = 'native' | 'external' | 'disputed' | null
++
+ export type UserModel = {
+   id: string
+   role: UserRole
+@@ -5,6 +9,8 @@ export type UserModel = {
+   email: string
+   status: UserStatus
+   languageCode?: string | null
++  emailOrigin?: UserEmailOrigin | null
++  emailTrust?: UserEmailTrust
+   createdAt?: string | null
+   updatedAt?: string | null
+ }
+diff --git a/src/app/admin/oauth-attempts/page.tsx b/src/app/admin/oauth-attempts/page.tsx
+new file mode 100644
+index 0000000..c192402
+--- /dev/null
++++ b/src/app/admin/oauth-attempts/page.tsx
+@@ -0,0 +1,22 @@
++import { defaultGuard, PageProps } from '@lib/page'
++
++import { UserRole } from '~/api/user'
++import { OAuthAttemptsListScreen } from '~/components/Views/OAuthAttempts/Screen/OAuthAttemptsListScreen'
++
++const AdminOAuthAttemptsPage = async (props: PageProps) => {
++  await defaultGuard({
++    ...props,
++    segments: ['admin', 'oauth-attempts'],
++    fallbackNavigatePath: '/',
++    roles: [UserRole.ADMIN],
++    fallbackRolesNavigatePath: { [UserRole.USER]: '/', [UserRole.EDITOR]: '/' },
++  })
++
++  return (
++    <div className="w-full h-full flex justify-center flex-col flex-1 gap-6">
++      <OAuthAttemptsListScreen />
++    </div>
++  )
++}
++
++export default AdminOAuthAttemptsPage
+diff --git a/src/app/api/v1/admin/oauth-attempts/route.ts b/src/app/api/v1/admin/oauth-attempts/route.ts
+new file mode 100644
+index 0000000..91b3f3f
+--- /dev/null
++++ b/src/app/api/v1/admin/oauth-attempts/route.ts
+@@ -0,0 +1,38 @@
++import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
++import { AuthSuccessResult } from '@lib/security/auth'
++import { listOAuthAttempts } from '@lib/services/oauth-attempt.service'
++import { NextRequest, NextResponse } from 'next/server'
++
++import type { OAuthAttemptFilter } from '~/api/oauth/types'
++import { UserRole } from '~/api/user'
++import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
++
++const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
++  apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
++    const { t } = await getServerTFromNextRequestAsync(request)
++
++    if (![UserRole.ADMIN].includes(authResult.payload.role)) {
++      return NextResponse.json({ message: t('errors.insufficientPermissions') }, { status: 403 })
++    }
++
++    const params = request.nextUrl.searchParams
++    const filter: OAuthAttemptFilter = {
++      limit: params.get('limit') ? Number(params.get('limit')) : undefined,
++      offset: params.get('offset') ? Number(params.get('offset')) : undefined,
++      provider: params.get('provider') ?? undefined,
++      flow: params.get('flow') ?? undefined,
++      outcome: params.get('outcome') ?? undefined,
++      collisionUserId: params.get('collisionUserId') ?? undefined,
++      actorUserId: params.get('actorUserId') ?? undefined,
++      userId: params.get('userId') ?? undefined,
++      providerEmail: params.get('providerEmail') ?? undefined,
++      startOfDateIso: params.get('startOfDateIso') ?? undefined,
++      endOfDateIso: params.get('endOfDateIso') ?? undefined,
++    }
++
++    const data = await listOAuthAttempts(filter)
++
++    return response.json(data)
++  })
++
++export const GET = withGlobalRateLimit(withAuthMiddleware(handler))
+diff --git a/src/app/api/v1/auth/oauth/[provider]/callback/route.ts b/src/app/api/v1/auth/oauth/[provider]/callback/route.ts
+new file mode 100644
+index 0000000..d71b15e
+--- /dev/null
++++ b/src/app/api/v1/auth/oauth/[provider]/callback/route.ts
+@@ -0,0 +1,41 @@
++import type { OAuthProviderId } from '@config/auth-oauth'
++import { ValidationError } from '@lib/error/custom-errors'
++import { apiErrorHandlerContainer, RouteHandlerContext, withGlobalRateLimit } from '@lib/middleware'
++import { processOAuthCallback } from '@lib/oauth/oauth-callback.service'
++import { isKnownOAuthProvider } from '@lib/oauth/registry'
++import { getClientKey } from '@lib/security/rate-limit'
++import { getRequestClientMeta } from '@lib/utils/request-client-meta'
++import { NextRequest } from 'next/server'
++
++import { getPreferredLanguageCodeFromAcceptLanguage } from '~/lib/i18n/detectLocale'
++import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
++
++const handler = (request: NextRequest, context: RouteHandlerContext) =>
++  apiErrorHandlerContainer(request)(async () => {
++    const paramsData = await context.params
++    const providerRaw = typeof paramsData.provider === 'string' ? paramsData.provider : undefined
++    const { t } = await getServerTFromNextRequestAsync(request)
++
++    if (!providerRaw || !isKnownOAuthProvider(providerRaw)) {
++      throw new ValidationError(t('auth.oauth.errors.unknownProvider'))
++    }
++
++    const provider = providerRaw.toLowerCase() as OAuthProviderId
++    const sp = request.nextUrl.searchParams
++
++    return processOAuthCallback({
++      provider,
++      code: sp.get('code'),
++      state: sp.get('state'),
++      deviceId: sp.get('device_id'),
++      error: sp.get('error'),
++      intent: 'auth',
++      clientMeta: getRequestClientMeta(request),
++      languageCode: getPreferredLanguageCodeFromAcceptLanguage(request.headers.get('accept-language')),
++      t,
++      ip: getClientKey(request),
++      userAgent: request.headers.get('user-agent'),
++    })
++  })
++
++export const GET = withGlobalRateLimit(handler)
+diff --git a/src/app/api/v1/auth/oauth/[provider]/link/callback/route.ts b/src/app/api/v1/auth/oauth/[provider]/link/callback/route.ts
+new file mode 100644
+index 0000000..3360400
+--- /dev/null
++++ b/src/app/api/v1/auth/oauth/[provider]/link/callback/route.ts
+@@ -0,0 +1,39 @@
++import type { OAuthProviderId } from '@config/auth-oauth'
++import { ValidationError } from '@lib/error/custom-errors'
++import { apiErrorHandlerContainer, RouteHandlerContext, withGlobalRateLimit } from '@lib/middleware'
++import { processOAuthCallback } from '@lib/oauth/oauth-callback.service'
++import { isKnownOAuthProvider } from '@lib/oauth/registry'
++import { getClientKey } from '@lib/security/rate-limit'
++import { getRequestClientMeta } from '@lib/utils/request-client-meta'
++import { NextRequest } from 'next/server'
++
++import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
++
++const handler = (request: NextRequest, context: RouteHandlerContext) =>
++  apiErrorHandlerContainer(request)(async () => {
++    const paramsData = await context.params
++    const providerRaw = typeof paramsData.provider === 'string' ? paramsData.provider : undefined
++    const { t } = await getServerTFromNextRequestAsync(request)
++
++    if (!providerRaw || !isKnownOAuthProvider(providerRaw)) {
++      throw new ValidationError(t('auth.oauth.errors.unknownProvider'))
++    }
++
++    const provider = providerRaw.toLowerCase() as OAuthProviderId
++    const sp = request.nextUrl.searchParams
++
++    return processOAuthCallback({
++      provider,
++      code: sp.get('code'),
++      state: sp.get('state'),
++      deviceId: sp.get('device_id'),
++      error: sp.get('error'),
++      intent: 'link',
++      clientMeta: getRequestClientMeta(request),
++      t,
++      ip: getClientKey(request),
++      userAgent: request.headers.get('user-agent'),
++    })
++  })
++
++export const GET = withGlobalRateLimit(handler)
+diff --git a/src/app/api/v1/auth/oauth/[provider]/link/start/route.ts b/src/app/api/v1/auth/oauth/[provider]/link/start/route.ts
+new file mode 100644
+index 0000000..8d0832e
+--- /dev/null
++++ b/src/app/api/v1/auth/oauth/[provider]/link/start/route.ts
+@@ -0,0 +1,28 @@
++import type { OAuthProviderId } from '@config/auth-oauth'
++import { ValidationError } from '@lib/error/custom-errors'
++import { apiErrorHandlerContainer, RouteHandlerContext, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
++import { buildOAuthStartRedirect } from '@lib/oauth/oauth-start.service'
++import { isKnownOAuthProvider } from '@lib/oauth/registry'
++import type { AuthSuccessResult } from '@lib/security/auth'
++import { NextRequest, NextResponse } from 'next/server'
++
++const handlerGet = (request: NextRequest, authResult: AuthSuccessResult, context?: RouteHandlerContext) =>
++  apiErrorHandlerContainer(request)(async () => {
++    const paramsData = context ? await context.params : undefined
++    const providerRaw = typeof paramsData?.provider === 'string' ? paramsData.provider : undefined
++
++    if (!providerRaw || !isKnownOAuthProvider(providerRaw)) {
++      throw new ValidationError('Unknown OAuth provider')
++    }
++
++    const provider = providerRaw.toLowerCase() as OAuthProviderId
++    const url = await buildOAuthStartRedirect({
++      provider,
++      flow: 'link',
++      actorUserId: authResult.payload.sub,
++    })
++
++    return NextResponse.redirect(url)
++  })
++
++export const GET = withGlobalRateLimit(withAuthMiddleware(handlerGet))
+diff --git a/src/app/api/v1/auth/oauth/[provider]/route.ts b/src/app/api/v1/auth/oauth/[provider]/route.ts
+new file mode 100644
+index 0000000..1521168
+--- /dev/null
++++ b/src/app/api/v1/auth/oauth/[provider]/route.ts
+@@ -0,0 +1,38 @@
++import type { OAuthProviderId } from '@config/auth-oauth'
++import { ValidationError } from '@lib/error/custom-errors'
++import { apiErrorHandlerContainer, RouteHandlerContext, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
++import { countOAuthAccountsForUser, deleteOAuthAccountForUser, userHasPassword } from '@lib/oauth/oauth-account.service'
++import { isKnownOAuthProvider } from '@lib/oauth/registry'
++import type { AuthSuccessResult } from '@lib/security/auth'
++import { NextRequest, NextResponse } from 'next/server'
++
++import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
++
++const handlerDelete = (request: NextRequest, authResult: AuthSuccessResult, context?: RouteHandlerContext) =>
++  apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
++    const { t } = await getServerTFromNextRequestAsync(request)
++    const paramsData = context ? await context.params : undefined
++    const providerRaw = typeof paramsData?.provider === 'string' ? paramsData.provider : undefined
++
++    if (!providerRaw || !isKnownOAuthProvider(providerRaw)) {
++      throw new ValidationError(t('auth.oauth.errors.unknownProvider'))
++    }
++
++    const provider = providerRaw.toLowerCase() as OAuthProviderId
++    const userId = authResult.payload.sub
++    const [hasPassword, oauthCount] = await Promise.all([userHasPassword(userId), countOAuthAccountsForUser(userId)])
++
++    if (!hasPassword && oauthCount <= 1) {
++      throw new ValidationError(t('auth.oauth.errors.cannotUnlinkLastMethod'))
++    }
++
++    const removed = await deleteOAuthAccountForUser(userId, provider)
++
++    if (!removed) {
++      throw new ValidationError(t('auth.oauth.errors.accountNotLinked'))
++    }
++
++    return response.json({ success: true })
++  })
++
++export const DELETE = withGlobalRateLimit(withAuthMiddleware(handlerDelete))
+diff --git a/src/app/api/v1/auth/oauth/[provider]/start/route.ts b/src/app/api/v1/auth/oauth/[provider]/start/route.ts
+new file mode 100644
+index 0000000..6b30c17
+--- /dev/null
++++ b/src/app/api/v1/auth/oauth/[provider]/start/route.ts
+@@ -0,0 +1,31 @@
++import type { OAuthProviderId } from '@config/auth-oauth'
++import { ValidationError } from '@lib/error/custom-errors'
++import { apiErrorHandlerContainer, RouteHandlerContext, withGlobalRateLimit } from '@lib/middleware'
++import { assertOAuthFlow } from '@lib/oauth/oauth-flow.service'
++import { buildOAuthStartRedirect } from '@lib/oauth/oauth-start.service'
++import { isKnownOAuthProvider } from '@lib/oauth/registry'
++import { NextRequest, NextResponse } from 'next/server'
++
++const handler = (request: NextRequest, context: RouteHandlerContext) =>
++  apiErrorHandlerContainer(request)(async () => {
++    const paramsData = await context.params
++    const providerRaw = typeof paramsData.provider === 'string' ? paramsData.provider : undefined
++
++    if (!providerRaw || !isKnownOAuthProvider(providerRaw)) {
++      throw new ValidationError('Unknown OAuth provider')
++    }
++
++    const provider = providerRaw.toLowerCase() as OAuthProviderId
++    const flow = assertOAuthFlow(request.nextUrl.searchParams.get('flow'))
++    const nextPath = request.nextUrl.searchParams.get('nextPath')
++
++    const url = await buildOAuthStartRedirect({
++      provider,
++      flow,
++      nextPath,
++    })
++
++    return NextResponse.redirect(url)
++  })
++
++export const GET = withGlobalRateLimit(handler)
+diff --git a/src/app/api/v1/auth/oauth/accounts/route.ts b/src/app/api/v1/auth/oauth/accounts/route.ts
+new file mode 100644
+index 0000000..2e05ba5
+--- /dev/null
++++ b/src/app/api/v1/auth/oauth/accounts/route.ts
+@@ -0,0 +1,25 @@
++import { OAUTH_CONFIG } from '@config/auth-oauth'
++import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
++import { countOAuthAccountsForUser, listOAuthAccountsForUser, userHasPassword } from '@lib/oauth/oauth-account.service'
++import type { AuthSuccessResult } from '@lib/security/auth'
++import { NextRequest, NextResponse } from 'next/server'
++
++const handlerGet = (request: NextRequest, authResult: AuthSuccessResult) =>
++  apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
++    const userId = authResult.payload.sub
++    const [accounts, hasPassword, oauthCount] = await Promise.all([
++      listOAuthAccountsForUser(userId),
++      userHasPassword(userId),
++      countOAuthAccountsForUser(userId),
++    ])
++
++    return response.json({
++      accounts,
++      hasPassword,
++      oauthCount,
++      linkProviders: OAUTH_CONFIG.getPublicProvidersForContext('link'),
++      uiMode: OAUTH_CONFIG.publicUiMode,
++    })
++  })
++
++export const GET = withGlobalRateLimit(withAuthMiddleware(handlerGet))
+diff --git a/src/app/api/v1/auth/password/set/route.ts b/src/app/api/v1/auth/password/set/route.ts
+new file mode 100644
+index 0000000..313ed8e
+--- /dev/null
++++ b/src/app/api/v1/auth/password/set/route.ts
+@@ -0,0 +1,64 @@
++import connectDB from '@lib/db/client'
++import User from '@lib/db/models/User'
++import UserSettings from '@lib/db/models/UserSettings'
++import { ValidationError } from '@lib/error/custom-errors'
++import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
++import { userHasPassword } from '@lib/oauth/oauth-account.service'
++import type { AuthSuccessResult } from '@lib/security/auth'
++import { decryptSecret, verifyTotpCode } from '@lib/security/totp'
++import { assertPasswordPolicy } from '@lib/validation/password-policy'
++import { NextRequest, NextResponse } from 'next/server'
++
++import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
++
++type SetPasswordDto = {
++  newPassword: string
++  totpCode?: string
++}
++
++const handlerPost = (request: NextRequest, authResult: AuthSuccessResult) =>
++  apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
++    const { t } = await getServerTFromNextRequestAsync(request)
++    const body = (await request.json()) as SetPasswordDto
++    const userId = authResult.payload.sub
++
++    if (await userHasPassword(userId)) {
++      throw new ValidationError(t('auth.oauth.errors.passwordAlreadySet'))
++    }
++
++    if (!body.newPassword?.trim()) {
++      throw new ValidationError(t('auth.errors.enterPassword'))
++    }
++
++    assertPasswordPolicy(body.newPassword, t)
++
++    await connectDB()
++
++    const settings = await UserSettings.findOne({ userId })
++
++    if (settings?.mfaEnabled && settings.mfaSecret) {
++      if (!body.totpCode?.trim()) {
++        throw new ValidationError(t('totp.errors.challengeIdAndCodeAreRequired'))
++      }
++
++      const secret = decryptSecret(settings.mfaSecret)
++      const totpValid = await verifyTotpCode(secret, body.totpCode.trim(), t)
++
++      if (!totpValid.valid) {
++        throw new ValidationError(t('totp.errors.invalidRemainingBackupCode'))
++      }
++    }
++
++    const user = await User.findById(userId).select('+password')
++
++    if (!user) {
++      throw new ValidationError(t('user.errors.notFound'))
++    }
++
++    user.password = body.newPassword
++    await user.save()
++
++    return response.json({ success: true })
++  })
++
++export const POST = withGlobalRateLimit(withAuthMiddleware(handlerPost))
+diff --git a/src/app/forgot-password/page.tsx b/src/app/forgot-password/page.tsx
+index 01fd809..4869906 100644
+--- a/src/app/forgot-password/page.tsx
++++ b/src/app/forgot-password/page.tsx
+@@ -8,9 +8,11 @@ export default function ForgotPasswordPage() {
+   const t = useT()
+ 
+   return (
+-    <div className="min-h-screen w-full flex items-center justify-center bg-white dark:bg-transparent rounded-xl z-1">
++    <div className="min-h-screen w-full flex items-center justify-center bg-white dark:bg-transparent rounded-xl z-1 px-4">
+       <div className="w-full max-w-sm bg-gradient-to-b from-sky-50/50 to-background dark:from-sky-900/50 rounded-3xl shadow-xl shadow-opacity-10 dark:shadow-sky-900/50 p-8 flex flex-col items-center justify-center gap-6 p-4 border border-blue-100 dark:border-background text-foreground">
+-        <Typography variant="heading-2">{t('auth.password.forgotLink')}</Typography>
++        <Typography variant="Body/L/Semibold" asTag="h2" className="mb-2 text-center">
++          {t('auth.password.forgotLink')}
++        </Typography>
+         <ForgotPasswordBlock />
+       </div>
+     </div>
+diff --git a/src/app/globals.css b/src/app/globals.css
+index ed0bc73..6759087 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -411,7 +411,7 @@
+ 
+   /* ── Success (used by badge "success" variant) ───── */
+   --success: oklch(0.696 0.17 162.48);
+-  --success-foreground: oklch(1 0 0);
++  --success-foreground: oklch(0.696 1 162.48);
+ 
+   /* ── Brand alias (useful for explicit brand references) */
+   --brand: #6c63ff;
+diff --git a/src/app/login/page.tsx b/src/app/login/page.tsx
+index cbd5211..9b4d56a 100644
+--- a/src/app/login/page.tsx
++++ b/src/app/login/page.tsx
+@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
+ import React, { Suspense, useCallback, useEffect, useState } from 'react'
+ 
+ import { SpinnerScreen } from '~/components/Loaders'
++import type { AppMessageKey } from '~/lib/i18n/types'
+ import { useAuth, useT } from '~/providers'
+ import { useNotify } from '~/providers/notify'
+ import { useLoginMfaMutation, useLoginMutation, useLogoutQuery, useSignUpMutation } from '~/query/auth'
+@@ -28,6 +29,8 @@ const LoginWithParams = () => {
+   const searchParams = useSearchParams()
+   const nextPath = searchParams.get('nextPath')
+   const searchVariant = searchParams.get('variant')
++  const oauthError = searchParams.get('oauthError')
++  const oauthMfaChallenge = searchParams.get('oauthMfaChallenge')
+   const [variant, setVariant] = useState<'sign-in' | 'sign-up'>(searchVariant === 'sign-up' ? 'sign-up' : 'sign-in')
+   const [signUpStep, setSignUpStep] = useState<'credentials' | 'verify'>('credentials')
+   const [signUpEmail, setSignUpEmail] = useState('')
+@@ -51,6 +54,29 @@ const LoginWithParams = () => {
+     }
+   }, [refetchLogout, isClient])
+ 
++  useEffect(() => {
++    if (oauthMfaChallenge) {
++      queueMicrotask(() => {
++        setMfaChallengeId(oauthMfaChallenge)
++        setLoginStep('mfa')
++        setVariant('sign-in')
++      })
++    }
++  }, [oauthMfaChallenge])
++
++  useEffect(() => {
++    if (!oauthError) return
++
++    const map: Record<string, AppMessageKey> = {
++      oauth_account_not_found: 'auth.oauth.errors.accountNotFound',
++      oauth_email_collision: 'auth.oauth.errors.emailCollision',
++      oauth_account_exists: 'auth.oauth.errors.accountExists',
++      oauth_provider_error: 'auth.oauth.errors.providerError',
++    }
++
++    notify(t(map[oauthError] ?? 'auth.oauth.errors.unknown'), 'destructive')
++  }, [oauthError, notify, t])
++
+   const { loginMutation } = useLoginMutation()
+   const { loginMfaMutation } = useLoginMfaMutation()
+   const { signUpRequestMutation, signUpCompleteMutation } = useSignUpMutation()
+@@ -250,7 +276,7 @@ const LoginWithParams = () => {
+ 
+       {variant === 'sign-in' && loginStep === 'credentials' && (
+         <Suspense fallback={<SpinnerScreen />}>
+-          <SignInBlock isLoading={loginMutation.isLoading || isLoading} onSubmit={handleSignIn} onChange={handleChange('sign-up')} />
++          <SignInBlock isLoading={loginMutation.isLoading || isLoading} onSubmit={handleSignIn} onChange={handleChange('sign-up')} nextPath={nextPath} />
+         </Suspense>
+       )}
+ 
+@@ -260,6 +286,7 @@ const LoginWithParams = () => {
+             isLoading={signUpRequestMutation.isLoading || loginMutation.isLoading || isLoading}
+             onSubmit={handleSignUpRequest}
+             onChange={handleChange('sign-in')}
++            nextPath={nextPath}
+           />
+         </Suspense>
+       )}
+diff --git a/src/app/profile/page.tsx b/src/app/profile/page.tsx
+index 391d875..04e80dc 100644
+--- a/src/app/profile/page.tsx
++++ b/src/app/profile/page.tsx
+@@ -6,8 +6,10 @@ import { ThemeModeSelect } from '~/components/theme/ThemeModeSelect'
+ import { Typography } from '~/components/ui'
+ import { NotificationBlock } from '~/components/Views/Notification'
+ import { OnboardingCard } from '~/components/Views/Onboarding/OnboardingCard'
++import { ConnectedAccountsSection } from '~/components/Views/Profile/ConnectedAccountsSection'
+ import { ProfileChangePasswordPanel } from '~/components/Views/Profile/ProfileChangePasswordPanel'
+ import { ProfileMfaBlock } from '~/components/Views/Profile/ProfileMfaBlock'
++import { ProfileSetPasswordPanel } from '~/components/Views/Profile/ProfileSetPasswordPanel'
+ import { UserPushSubscriptionsSelfPanel } from '~/components/Views/User/Blocks/UserPushSubscriptionsSelfPanel'
+ import { UserSessionsPanel } from '~/components/Views/User/Blocks/UserSessionsPanel'
+ import { getServerT } from '~/lib/i18n/server'
+@@ -59,6 +61,14 @@ const ProfileRoot = async (props: PageProps) => {
+ 
+       <UserSessionsPanel />
+ 
++      <Suspense fallback={null}>
++        <ConnectedAccountsSection />
++      </Suspense>
++
++      <Suspense fallback={null}>
++        <ProfileSetPasswordPanel />
++      </Suspense>
++
+       <ProfileChangePasswordPanel />
+ 
+       <div id="profile-mfa">
+diff --git a/src/components/Fields/Input/InputField.tsx b/src/components/Fields/Input/InputField.tsx
+index d15abd3..90cac54 100644
+--- a/src/components/Fields/Input/InputField.tsx
++++ b/src/components/Fields/Input/InputField.tsx
+@@ -58,7 +58,7 @@ export const InputField = forwardRef<HTMLInputElement, InputFieldProps>((props,
+   const id = useId()
+ 
+   return (
+-    <div className={cn('min-w-[300px] flex flex-col gap-1', classNames?.root)}>
++    <div className={cn('min-w-[120px] w-full flex flex-col gap-1', classNames?.root)}>
+       <Label htmlFor={id} className={classNames?.label}>
+         {label} {required && <span className="text-destructive">*</span>}
+       </Label>
+diff --git a/src/components/Fields/Input/TextAreaField.tsx b/src/components/Fields/Input/TextAreaField.tsx
+index 4113cbd..ac6a3a2 100644
+--- a/src/components/Fields/Input/TextAreaField.tsx
++++ b/src/components/Fields/Input/TextAreaField.tsx
+@@ -35,7 +35,7 @@ export const TextAreaField = forwardRef<HTMLTextAreaElement, TextAreaFieldProps>
+   const id = useId()
+ 
+   return (
+-    <div className={cn('min-w-[300px] flex flex-col gap-1', classNames?.root)}>
++    <div className={cn('min-w-[120px] w-full flex flex-col gap-1', classNames?.root)}>
+       <Label htmlFor={id} className={classNames?.label}>
+         {label} {required && <span className="text-destructive">*</span>}
+       </Label>
+diff --git a/src/components/Layouts/PlatformLayout.tsx b/src/components/Layouts/PlatformLayout.tsx
+index c7c7259..d415dcc 100644
+--- a/src/components/Layouts/PlatformLayout.tsx
++++ b/src/components/Layouts/PlatformLayout.tsx
+@@ -7,6 +7,7 @@ import {
+   BotIcon,
+   EyeIcon,
+   HomeIcon,
++  KeyRoundIcon,
+   LanguagesIcon,
+   ShieldCheckIcon,
+   TextQuoteIcon,
+@@ -111,6 +112,12 @@ export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
+                   disabled: authUser?.role !== UserRole.ADMIN,
+                   href: routes.adminSecurityAudit.path,
+                 },
++                {
++                  label: t(routes.adminOAuthAttempts.tKey),
++                  icon: <KeyRoundIcon width={16} height={16} />,
++                  disabled: authUser?.role !== UserRole.ADMIN,
++                  href: routes.adminOAuthAttempts.path,
++                },
+               ],
+             },
+           ]
+diff --git a/src/components/Views/Article/Public/ArticleReadingShell.tsx b/src/components/Views/Article/Public/ArticleReadingShell.tsx
+index 592f364..9d2fc24 100644
+--- a/src/components/Views/Article/Public/ArticleReadingShell.tsx
++++ b/src/components/Views/Article/Public/ArticleReadingShell.tsx
+@@ -29,7 +29,7 @@ type Props = {
+  * Shared reading layout for public, private-article, and preview article pages.
+  * Drop-in replacement for the old PreviewUniversalLayout article shell.
+  */
+-export const ArticleReadingShell = ({ breadcrumbs, title, thumbnailUrl, articleLanguage, bodyHtml, meta, banners, backLink, badge, className }: Props) => {
++export const ArticleReadingShell = ({ breadcrumbs, title, articleLanguage, bodyHtml, meta, banners, backLink, badge, className }: Props) => {
+   return (
+     <div className={cn('mx-auto max-w-3xl px-4 sm:px-6 py-10', className)}>
+       {/* Breadcrumb */}
+diff --git a/src/components/Views/Auth/Blocks/SignInBlock.tsx b/src/components/Views/Auth/Blocks/SignInBlock.tsx
+index 45a6131..390d921 100644
+--- a/src/components/Views/Auth/Blocks/SignInBlock.tsx
++++ b/src/components/Views/Auth/Blocks/SignInBlock.tsx
+@@ -7,17 +7,24 @@ import { useState } from 'react'
+ 
+ import { InputField } from '~/components/Fields'
+ import { Button, Typography } from '~/components/ui'
++import { OAuthDivider, OAuthProviderButtons } from '~/components/Views/Auth/OAuthProviderButtons'
+ import { useSwitch } from '~/hooks/useSwitch'
++import { getPublicOAuthConfig } from '~/lib/auth/oauth-public-config'
+ import { useT } from '~/providers'
+ 
+ type Props = {
+   onSubmit: (email: string, password: string) => void
+   isLoading: boolean
+   onChange?: () => void
++  nextPath?: string | null
+ }
+ 
+ const SignInBlock = (props: Props) => {
+   const t = useT()
++  const oauthConfig = getPublicOAuthConfig()
++  const oauthFirst = oauthConfig.uiMode === 'oauth_first'
++  const credentialsOnly = oauthConfig.uiMode === 'credentials_only'
++  const oauthOnly = oauthConfig.uiMode === 'oauth_only'
+   const [isPasswordVisible, { toggle: togglePasswordVisibility }] = useSwitch(false)
+   const [email, setEmail] = useState('')
+   const [password, setPassword] = useState('')
+@@ -61,66 +68,81 @@ const SignInBlock = (props: Props) => {
+         <Typography variant="Body/M/Regular" asTag="p" className="text-sm mb-6 text-center text-muted-foreground">
+           {t('auth.ui.signInToContinueWorking')}
+         </Typography>
+-        <div className="w-full flex flex-col gap-3 mb-2">
+-          <div className="relative">
+-            <InputField
+-              placeholder={t('auth.ui.email')}
+-              type="email"
+-              name="email"
+-              value={email}
+-              disabled={props.isLoading}
+-              additionalLeftComponent={
+-                <span className="ml-3 text-gray-400">
+-                  <Mail className="w-4 h-4" />
+-                </span>
+-              }
+-              classNames={{
+-                input: 'w-full pl-10 pr-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm',
+-              }}
+-              onChange={(e) => setEmail(e.target.value)}
+-            />
+-          </div>
+-          <div className="relative">
+-            <InputField
+-              placeholder={t('auth.ui.password')}
+-              type={isPasswordVisible ? 'text' : 'password'}
+-              name="password"
+-              value={password}
+-              additionalLeftComponent={
+-                <span className="ml-3 text-gray-400">
+-                  <Lock className="w-4 h-4" />
+-                </span>
+-              }
+-              additionalRightComponent={
+-                <Button type="button" size="input-icon" variant="ghost" className="text-gray-400 mr-3 cursor-pointer" onClick={togglePasswordVisibility}>
+-                  {isPasswordVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+-                </Button>
+-              }
+-              disabled={props.isLoading}
+-              classNames={{
+-                input: 'w-full pl-10 pr-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm',
+-              }}
+-              onChange={(e) => setPassword(e.target.value)}
+-            />
+-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer text-xs select-none"></span>
+-          </div>
+-          <div className="w-full flex justify-end">{error && <div className="text-sm text-red-500 text-left">{error}</div>}</div>
+-          <div className="w-full flex justify-end">
+-            <Link href="/forgot-password" className="text-xs text-primary underline">
+-              {t('auth.password.forgotLink')}
+-            </Link>
++
++        {oauthFirst && !credentialsOnly ? <OAuthProviderButtons flow="signIn" nextPath={props.nextPath} disabled={props.isLoading} /> : null}
++        {oauthFirst && !credentialsOnly ? <OAuthDivider flow="signIn" /> : null}
++
++        {!oauthOnly ? (
++          <div className="w-full flex flex-col gap-3 mb-2">
++            <div className="relative">
++              <InputField
++                placeholder={t('auth.ui.email')}
++                type="email"
++                name="email"
++                value={email}
++                disabled={props.isLoading}
++                additionalLeftComponent={
++                  <span className="ml-3 text-gray-400">
++                    <Mail className="w-4 h-4" />
++                  </span>
++                }
++                classNames={{
++                  input: 'w-full pl-10 pr-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm',
++                }}
++                onChange={(e) => setEmail(e.target.value)}
++              />
++            </div>
++            <div className="relative">
++              <InputField
++                placeholder={t('auth.ui.password')}
++                type={isPasswordVisible ? 'text' : 'password'}
++                name="password"
++                value={password}
++                additionalLeftComponent={
++                  <span className="ml-3 text-gray-400">
++                    <Lock className="w-4 h-4" />
++                  </span>
++                }
++                additionalRightComponent={
++                  <Button type="button" size="input-icon" variant="ghost" className="text-gray-400 mr-3 cursor-pointer" onClick={togglePasswordVisibility}>
++                    {isPasswordVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
++                  </Button>
++                }
++                disabled={props.isLoading}
++                classNames={{
++                  input: 'w-full pl-10 pr-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm',
++                }}
++                onChange={(e) => setPassword(e.target.value)}
++              />
++              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer text-xs select-none"></span>
++            </div>
++            <div className="w-full flex justify-end">{error && <div className="text-sm text-red-500 text-left">{error}</div>}</div>
++            <div className="w-full flex justify-end">
++              <Link href="/forgot-password" className="text-xs text-primary underline">
++                {t('auth.password.forgotLink')}
++              </Link>
++            </div>
+           </div>
+-        </div>
+-        <button
+-          type="submit"
+-          disabled={props.isLoading}
+-          className="w-full bg-gradient-to-b from-gray-700 to-gray-900 text-white dark:from-gray-700 dark:to-gray-900 dark:text-foreground dark:hover:text-foreground font-medium py-2 rounded-xl shadow hover:brightness-105 cursor-pointer transition mb-4 mt-2"
+-        >
+-          {t('auth.ui.signIn')}
+-        </button>
+-        <Button variant="ghost" className="w-full" onClick={props.onChange}>
+-          {t('auth.ui.signUp')}
+-        </Button>
++        ) : null}
++
++        {!oauthOnly ? (
++          <button
++            type="submit"
++            disabled={props.isLoading}
++            className="w-full bg-gradient-to-b from-gray-700 to-gray-900 text-white dark:from-gray-700 dark:to-gray-900 dark:text-foreground dark:hover:text-foreground font-medium py-2 rounded-xl shadow hover:brightness-105 cursor-pointer transition mb-4 mt-2"
++          >
++            {t('auth.ui.signIn')}
++          </button>
++        ) : null}
++
++        {!oauthFirst && !credentialsOnly ? <OAuthDivider flow="signIn" /> : null}
++        {!oauthFirst && !credentialsOnly ? <OAuthProviderButtons flow="signIn" nextPath={props.nextPath} disabled={props.isLoading} /> : null}
++
++        {props.onChange ? (
++          <Button variant="ghost" className="w-full mt-2" onClick={props.onChange}>
++            {t('auth.ui.signUp')}
++          </Button>
++        ) : null}
+       </form>
+     </div>
+   )
+diff --git a/src/components/Views/Auth/Blocks/SignUpBlock.tsx b/src/components/Views/Auth/Blocks/SignUpBlock.tsx
+index 0b75226..9303a88 100644
+--- a/src/components/Views/Auth/Blocks/SignUpBlock.tsx
++++ b/src/components/Views/Auth/Blocks/SignUpBlock.tsx
+@@ -7,16 +7,23 @@ import { useState } from 'react'
+ 
+ import { InputField, PasswordField } from '~/components/Fields'
+ import { Button, Typography } from '~/components/ui'
++import { OAuthDivider, OAuthProviderButtons } from '~/components/Views/Auth/OAuthProviderButtons'
++import { getPublicOAuthConfig } from '~/lib/auth/oauth-public-config'
+ import { useT } from '~/providers'
+ 
+ type Props = {
+   onSubmit: (email: string, password: string) => void
+   isLoading: boolean
+   onChange: () => void
++  nextPath?: string | null
+ }
+ 
+ const SignUpBlock = (props: Props) => {
+   const t = useT()
++  const oauthConfig = getPublicOAuthConfig()
++  const oauthFirst = oauthConfig.uiMode === 'oauth_first'
++  const credentialsOnly = oauthConfig.uiMode === 'credentials_only'
++  const oauthOnly = oauthConfig.uiMode === 'oauth_only'
+   const [email, setEmail] = useState('')
+   const [password, setPassword] = useState('')
+   const [error, setError] = useState('')
+@@ -67,46 +74,59 @@ const SignUpBlock = (props: Props) => {
+         <Typography variant="Body/M/Regular" asTag="p" className="text-sm mb-6 text-center text-muted-foreground">
+           {t('auth.ui.pleaseEnterYourEmailAndPasswordToCreateAnAccountYouWillBeAbleToSignInUsingTheseCredentialsInTheFuture')}
+         </Typography>
+-        <div className="w-full flex flex-col gap-3 mb-2">
+-          <div className="relative">
+-            <InputField
+-              placeholder={t('auth.ui.email')}
+-              type="email"
+-              name="email"
+-              value={email}
++
++        {oauthFirst && !credentialsOnly ? <OAuthProviderButtons flow="signUp" nextPath={props.nextPath} disabled={props.isLoading} /> : null}
++        {oauthFirst && !credentialsOnly ? <OAuthDivider flow="signUp" /> : null}
++
++        {!oauthOnly ? (
++          <div className="w-full flex flex-col gap-3 mb-2">
++            <div className="relative">
++              <InputField
++                placeholder={t('auth.ui.email')}
++                type="email"
++                name="email"
++                value={email}
++                disabled={props.isLoading}
++                additionalLeftComponent={
++                  <span className="ml-3 text-gray-400">
++                    <Mail className="w-4 h-4" />
++                  </span>
++                }
++                classNames={{
++                  input: 'w-full pl-10 pr-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm',
++                }}
++                onChange={(e) => setEmail(e.target.value)}
++              />
++            </div>
++            <PasswordField
++              name="password"
++              placeholder={t('auth.ui.password')}
++              value={password}
++              onChange={setPassword}
+               disabled={props.isLoading}
+-              additionalLeftComponent={
+-                <span className="ml-3 text-gray-400">
+-                  <Mail className="w-4 h-4" />
+-                </span>
+-              }
+               classNames={{
+-                input: 'w-full pl-10 pr-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm',
++                input: 'w-full rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm',
+               }}
+-              onChange={(e) => setEmail(e.target.value)}
+             />
++
++            <div className="w-full flex justify-end">{error && <div className="text-sm text-red-500 text-left">{error}</div>}</div>
+           </div>
+-          <PasswordField
+-            name="password"
+-            placeholder={t('auth.ui.password')}
+-            value={password}
+-            onChange={setPassword}
++        ) : null}
++
++        {!oauthOnly ? (
++          <button
++            type="submit"
+             disabled={props.isLoading}
+-            classNames={{
+-              input: 'w-full rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm',
+-            }}
+-          />
++            className="w-full bg-gradient-to-b from-gray-700 to-gray-900 text-white dark:from-gray-700 dark:to-gray-900 dark:text-foreground dark:hover:text-foreground font-medium py-2 rounded-xl shadow hover:brightness-105 cursor-pointer transition mb-4 mt-2"
++          >
++            {t('auth.ui.createAccount')}
++          </button>
++        ) : null}
+ 
+-          <div className="w-full flex justify-end">{error && <div className="text-sm text-red-500 text-left">{error}</div>}</div>
+-        </div>
+-        <button
+-          type="submit"
+-          disabled={props.isLoading}
+-          className="w-full bg-gradient-to-b from-gray-700 to-gray-900 text-white dark:from-gray-700 dark:to-gray-900 dark:text-foreground dark:hover:text-foreground font-medium py-2 rounded-xl shadow hover:brightness-105 cursor-pointer transition mb-4 mt-2"
+-        >
+-          {t('auth.ui.createAccount')}
+-        </button>
+-        <Button variant="ghost" className="w-full" onClick={props.onChange}>
++        {!oauthFirst && !credentialsOnly ? <OAuthDivider flow="signUp" /> : null}
++        {!oauthFirst && !credentialsOnly ? <OAuthProviderButtons flow="signUp" nextPath={props.nextPath} disabled={props.isLoading} /> : null}
++
++        <Button variant="ghost" className="w-full mt-2" onClick={props.onChange}>
+           {t('auth.ui.signIn')}
+         </Button>
+       </form>
+diff --git a/src/components/Views/Auth/OAuthProviderButtons.tsx b/src/components/Views/Auth/OAuthProviderButtons.tsx
+new file mode 100644
+index 0000000..d0539c0
+--- /dev/null
++++ b/src/components/Views/Auth/OAuthProviderButtons.tsx
+@@ -0,0 +1,69 @@
++'use client'
++
++import type { OAuthFlow, OAuthProviderId } from '~/api/oauth'
++import { OAuthProviderCircleButton } from '~/components/Views/Auth/OAuthProviderIcon'
++import { getPublicOAuthConfig, OAUTH_PROVIDER_LABELS } from '~/lib/auth/oauth-public-config'
++import { useT } from '~/providers'
++
++type Props = {
++  flow: Exclude<OAuthFlow, 'link'>
++  nextPath?: string | null
++  disabled?: boolean
++}
++
++export function OAuthProviderButtons({ flow, nextPath, disabled }: Props) {
++  const t = useT()
++  const config = getPublicOAuthConfig()
++  const providers = flow === 'signIn' ? config.signInProviders : config.signUpProviders
++
++  if (config.uiMode === 'credentials_only' || !providers.length) {
++    return null
++  }
++
++  const startUrl = (provider: OAuthProviderId) => {
++    const params = new URLSearchParams({ flow })
++
++    if (nextPath?.startsWith('/')) {
++      params.set('nextPath', nextPath)
++    }
++
++    return `/api/v1/auth/oauth/${provider}/start?${params.toString()}`
++  }
++
++  return (
++    <div className="flex w-full flex-wrap items-center justify-center gap-3">
++      {providers.map((provider) => (
++        <OAuthProviderCircleButton
++          key={provider}
++          provider={provider}
++          label={t('auth.oauth.continueWith', { provider: OAUTH_PROVIDER_LABELS[provider] })}
++          disabled={disabled}
++          onClick={() => {
++            window.location.href = startUrl(provider)
++          }}
++        />
++      ))}
++    </div>
++  )
++}
++
++export function OAuthDivider({ flow }: { flow: 'signIn' | 'signUp' }) {
++  const t = useT()
++  const config = getPublicOAuthConfig()
++  const providers = flow === 'signIn' ? config.signInProviders : config.signUpProviders
++
++  if (config.uiMode === 'credentials_only' || config.uiMode === 'oauth_only' || !providers.length) {
++    return null
++  }
++
++  return (
++    <div className="relative my-2 w-full">
++      <div className="absolute inset-0 flex items-center">
++        <span className="w-full border-t border-border" />
++      </div>
++      <div className="relative flex justify-center text-xs uppercase">
++        <span className="bg-background px-2 text-muted-foreground">{t('auth.oauth.orContinueWithEmail')}</span>
++      </div>
++    </div>
++  )
++}
+diff --git a/src/components/Views/Auth/OAuthProviderIcon.tsx b/src/components/Views/Auth/OAuthProviderIcon.tsx
+new file mode 100644
+index 0000000..b39aace
+--- /dev/null
++++ b/src/components/Views/Auth/OAuthProviderIcon.tsx
+@@ -0,0 +1,56 @@
++'use client'
++
++import type { OAuthProviderId } from '@config/auth-oauth'
++
++import { getOAuthProviderIconSrc } from '~/lib/auth/oauth-provider-icons'
++import { cn } from '~/utils/cn'
++
++type IconProps = {
++  provider: OAuthProviderId
++  size?: number
++  className?: string
++}
++
++export function OAuthProviderIcon({ provider, size = 20, className }: IconProps) {
++  const src = getOAuthProviderIconSrc(provider)
++
++  if (!src) {
++    return null
++  }
++
++  return (
++    // eslint-disable-next-line @next/next/no-img-element -- small static brand SVG from /public
++    <img src={src} alt="" width={size} height={size} className={cn('shrink-0 object-contain', provider === 'github' && 'dark:invert', className)} aria-hidden />
++  )
++}
++
++type CircleButtonProps = {
++  provider: OAuthProviderId
++  label: string
++  disabled?: boolean
++  onClick: () => void
++  size?: 'md' | 'lg'
++}
++
++export function OAuthProviderCircleButton({ provider, label, disabled, onClick, size = 'lg' }: CircleButtonProps) {
++  const dimension = size === 'lg' ? 'h-12 w-12' : 'h-10 w-10'
++  const iconSize = size === 'lg' ? 24 : 20
++
++  return (
++    <button
++      type="button"
++      title={label}
++      aria-label={label}
++      disabled={disabled}
++      onClick={onClick}
++      className={cn(
++        'inline-flex items-center justify-center rounded-full border border-border bg-background shadow-sm transition-colors',
++        'hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
++        'disabled:pointer-events-none disabled:opacity-50',
++        dimension,
++      )}
++    >
++      <OAuthProviderIcon provider={provider} size={iconSize} />
++    </button>
++  )
++}
+diff --git a/src/components/Views/OAuthAttempts/List/OAuthAttemptsOutcomeFilter.tsx b/src/components/Views/OAuthAttempts/List/OAuthAttemptsOutcomeFilter.tsx
+new file mode 100644
+index 0000000..305c8c0
+--- /dev/null
++++ b/src/components/Views/OAuthAttempts/List/OAuthAttemptsOutcomeFilter.tsx
+@@ -0,0 +1,62 @@
++'use client'
++
++import type { OAuthAttemptOutcome } from '~/api/oauth'
++import { Badge, Button } from '~/components/ui'
++import type { AppMessageKey } from '~/lib/i18n'
++import { useT } from '~/providers'
++import { cn } from '~/utils/cn'
++
++type Props = {
++  value?: OAuthAttemptOutcome | ''
++  onChange: (value: OAuthAttemptOutcome | '') => void
++  disabled?: boolean
++}
++
++const OUTCOME_OPTIONS: Array<{ value: OAuthAttemptOutcome | ''; labelKey: AppMessageKey }> = [
++  { value: '', labelKey: 'oauthAttempts.filters.all' },
++  { value: 'email_collision', labelKey: 'oauthAttempts.filters.emailCollision' },
++  { value: 'provider_taken', labelKey: 'oauthAttempts.filters.providerTaken' },
++  { value: 'not_found', labelKey: 'oauthAttempts.filters.notFound' },
++  { value: 'error', labelKey: 'oauthAttempts.filters.error' },
++  { value: 'success', labelKey: 'oauthAttempts.filters.success' },
++]
++
++export function OAuthAttemptsOutcomeFilter({ value = '', onChange, disabled }: Props) {
++  const t = useT()
++
++  return (
++    <div className="flex flex-wrap gap-2">
++      {OUTCOME_OPTIONS.map((option) => (
++        <Button
++          key={option.value || 'all'}
++          type="button"
++          size="sm-md"
++          variant={value === option.value ? 'default' : 'outline'}
++          disabled={disabled}
++          onClick={() => onChange(option.value)}
++        >
++          {t(option.labelKey)}
++        </Button>
++      ))}
++    </div>
++  )
++}
++
++export function OAuthAttemptOutcomeBadge({ outcome }: { outcome: OAuthAttemptOutcome }) {
++  const t = useT()
++
++  return (
++    <Badge
++      className={cn(
++        'whitespace-nowrap',
++        outcome === 'email_collision' && 'bg-amber-500 text-white',
++        outcome === 'provider_taken' && 'bg-orange-500 text-white',
++        outcome === 'not_found' && 'bg-slate-500 text-white',
++        outcome === 'error' && 'bg-red-500 text-white',
++        outcome === 'success' && 'bg-green-600 text-white',
++      )}
++    >
++      {t(`oauthAttempts.outcomes.${outcome}` as AppMessageKey)}
++    </Badge>
++  )
++}
+diff --git a/src/components/Views/OAuthAttempts/List/OAuthAttemptsTable.tsx b/src/components/Views/OAuthAttempts/List/OAuthAttemptsTable.tsx
+new file mode 100644
+index 0000000..b9a96fe
+--- /dev/null
++++ b/src/components/Views/OAuthAttempts/List/OAuthAttemptsTable.tsx
+@@ -0,0 +1,87 @@
++'use client'
++
++import Link from 'next/link'
++
++import type { OAuthAttemptItemModel } from '~/api/oauth/types'
++import { Button, Typography } from '~/components/ui'
++import { OAUTH_PROVIDER_LABELS } from '~/lib/auth/oauth-public-config'
++import type { AppMessageKey } from '~/lib/i18n'
++import { useT } from '~/providers'
++import { time } from '~/utils/time'
++
++import { OAuthAttemptOutcomeBadge } from './OAuthAttemptsOutcomeFilter'
++
++type Props = {
++  items?: OAuthAttemptItemModel[]
++  isLoading?: boolean
++}
++
++export const OAuthAttemptsTable = ({ items = [], isLoading }: Props) => {
++  const t = useT()
++
++  if (isLoading) {
++    return <Typography variant="Body/S/Regular">{t('common.loading')}</Typography>
++  }
++
++  if (!items.length) {
++    return <Typography variant="Body/S/Regular">{t('oauthAttempts.empty')}</Typography>
++  }
++
++  return (
++    <div className="flex flex-col gap-3">
++      {items.map((item) => (
++        <div key={item.id} className="rounded-xl border p-4 flex flex-col gap-2">
++          <div className="flex flex-wrap items-center gap-2">
++            <Typography variant="Body/S/Semibold">{OAUTH_PROVIDER_LABELS[item.provider] ?? item.provider}</Typography>
++            <OAuthAttemptOutcomeBadge outcome={item.outcome} />
++            <Typography variant="Body/XS/Regular" className="text-muted-foreground">
++              {t(`oauthAttempts.flows.${item.flow}` as AppMessageKey)}
++            </Typography>
++          </div>
++
++          {item.providerEmail ? (
++            <Typography variant="Body/XS/Regular" className="text-muted-foreground">
++              {t('oauthAttempts.providerEmail')}: {item.providerEmail}
++            </Typography>
++          ) : null}
++
++          <Typography variant="Body/XS/Regular" className="text-muted-foreground">
++            {t('oauthAttempts.providerUserId')}: {item.providerUserId}
++          </Typography>
++
++          {item.collisionUserId ? (
++            <div className="flex flex-col gap-1">
++              <Typography variant="Body/XS/Regular" className="text-muted-foreground">
++                {t('oauthAttempts.collisionUser')}: {item.collisionUserId}
++              </Typography>
++              <Button variant="outline" size="sm-md" asChild>
++                <Link href={`/admin/users/${item.collisionUserId}`}>{t('user.adminProfile.title')}</Link>
++              </Button>
++            </div>
++          ) : null}
++
++          {item.actorUserId ? (
++            <div className="flex flex-col gap-1">
++              <Typography variant="Body/XS/Regular" className="text-muted-foreground">
++                {t('oauthAttempts.actorUser')}: {item.actorUserId}
++              </Typography>
++              <Button variant="outline" size="sm-md" asChild>
++                <Link href={`/admin/users/${item.actorUserId}`}>{t('user.adminProfile.title')}</Link>
++              </Button>
++            </div>
++          ) : null}
++
++          {item.ip ? (
++            <Typography variant="Body/XS/Regular" className="text-muted-foreground">
++              IP: {item.ip}
++            </Typography>
++          ) : null}
++
++          <Typography variant="Body/XS/Regular" className="text-muted-foreground">
++            {item.createdAt ? time(item.createdAt).format('DD/MM/YYYY HH:mm:ss') : '-'}
++          </Typography>
++        </div>
++      ))}
++    </div>
++  )
++}
+diff --git a/src/components/Views/OAuthAttempts/Screen/OAuthAttemptsListScreen.tsx b/src/components/Views/OAuthAttempts/Screen/OAuthAttemptsListScreen.tsx
+new file mode 100644
+index 0000000..2e3dd0a
+--- /dev/null
++++ b/src/components/Views/OAuthAttempts/Screen/OAuthAttemptsListScreen.tsx
+@@ -0,0 +1,69 @@
++'use client'
++
++import { lazy, Suspense, useRef, useState } from 'react'
++
++import type { OAuthAttemptOutcome } from '~/api/oauth'
++import { TitleWithBadge } from '~/components/Blocks/TitleWithBadge'
++import { StickyContainer } from '~/components/Containers'
++import { PaginationSkeleton } from '~/components/List'
++import { usePagination } from '~/components/List/usePagination'
++import { Typography } from '~/components/ui'
++import { useStickyContainer } from '~/hooks/useStickyContainer'
++import { useT } from '~/providers'
++import { useOAuthAttemptsQuery } from '~/query/oauth'
++
++import { OAuthAttemptsOutcomeFilter } from '../List/OAuthAttemptsOutcomeFilter'
++import { OAuthAttemptsTable } from '../List/OAuthAttemptsTable'
++
++const PaginationLazy = lazy(() => import('~/components/List').then((mod) => ({ default: mod.Pagination })))
++
++type Props = {
++  forcedUserId?: string
++  titleKey?: 'oauthAttempts.title' | 'oauthAttempts.userTitle'
++}
++
++export const OAuthAttemptsListScreen = ({ forcedUserId, titleKey = 'oauthAttempts.title' }: Props) => {
++  const t = useT()
++  const headerRef = useRef<HTMLDivElement>(null)
++  const containerRef = useRef<HTMLDivElement>(null)
++  const paginationRef = useRef<HTMLDivElement>(null)
++  const [outcome, setOutcome] = useState<OAuthAttemptOutcome | ''>('')
++
++  useStickyContainer({ isEnabled: true, elementRef: headerRef, rootRef: containerRef })
++  useStickyContainer({ isEnabled: true, elementRef: paginationRef, rootRef: containerRef, direction: 'bottom' })
++
++  const { page, setPage, offset } = usePagination({ limit: 25 })
++
++  const { data, isLoading } = useOAuthAttemptsQuery({
++    limit: 25,
++    offset,
++    ...(forcedUserId ? { userId: forcedUserId } : {}),
++    ...(outcome ? { outcome } : {}),
++  })
++
++  return (
++    <div className="flex flex-col gap-4" ref={containerRef}>
++      {!forcedUserId && (
++        <StickyContainer ref={headerRef} className="flex flex-col gap-4 md:px-8 md:py-4 py-2 px-1">
++          <TitleWithBadge title={t(titleKey)} badgeContent={<Typography variant="Body/XS/Regular">{data?.count ?? 0}</Typography>} />
++          <OAuthAttemptsOutcomeFilter value={outcome} onChange={setOutcome} disabled={isLoading} />
++        </StickyContainer>
++      )}
++
++      {forcedUserId && (
++        <div className="flex flex-col gap-3">
++          <Typography variant="heading-3">{t(titleKey)}</Typography>
++          <OAuthAttemptsOutcomeFilter value={outcome} onChange={setOutcome} disabled={isLoading} />
++        </div>
++      )}
++
++      <OAuthAttemptsTable items={data?.list} isLoading={isLoading} />
++
++      <StickyContainer ref={paginationRef} className="md:px-8 md:py-4 py-2 px-1">
++        <Suspense fallback={<PaginationSkeleton />}>
++          <PaginationLazy currentPage={page} pages={data?.pages ?? 0} onChange={setPage} />
++        </Suspense>
++      </StickyContainer>
++    </div>
++  )
++}
+diff --git a/src/components/Views/Profile/ConnectedAccountsSection.tsx b/src/components/Views/Profile/ConnectedAccountsSection.tsx
+new file mode 100644
+index 0000000..a8638fa
+--- /dev/null
++++ b/src/components/Views/Profile/ConnectedAccountsSection.tsx
+@@ -0,0 +1,135 @@
++'use client'
++
++import type { OAuthProviderId } from '@config/auth-oauth'
++import { AxiosError } from 'axios'
++import { Link2, Unlink } from 'lucide-react'
++import { useSearchParams } from 'next/navigation'
++import { useEffect, useMemo, useState } from 'react'
++
++import { Button, Typography } from '~/components/ui'
++import { OAuthProviderIcon } from '~/components/Views/Auth/OAuthProviderIcon'
++import { OAUTH_PROVIDER_LABELS } from '~/lib/auth/oauth-public-config'
++import type { AppMessageKey } from '~/lib/i18n/types'
++import { useT } from '~/providers'
++import { useNotify } from '~/providers/notify'
++import { useOAuthUnlinkMutation } from '~/query/auth/mutation/useOAuthUnlinkMutation'
++import { useOAuthAccountsQuery } from '~/query/auth/query/useOAuthAccountsQuery'
++
++const OAUTH_ERROR_KEYS: Record<string, AppMessageKey> = {
++  oauth_provider_taken: 'auth.oauth.errors.providerTaken',
++  oauth_provider_error: 'auth.oauth.errors.providerError',
++}
++
++export function ConnectedAccountsSection() {
++  const t = useT()
++  const { notify } = useNotify()
++  const searchParams = useSearchParams()
++  const [hydrated, setHydrated] = useState(false)
++  const { data, isLoading, refetch } = useOAuthAccountsQuery(hydrated)
++  const { unlinkMutation } = useOAuthUnlinkMutation()
++
++  useEffect(() => {
++    queueMicrotask(() => {
++      setHydrated(true)
++    })
++  }, [])
++
++  const linkedSet = useMemo(() => new Set((data?.accounts ?? []).map((a) => a.provider)), [data?.accounts])
++
++  useEffect(() => {
++    const linked = searchParams.get('oauthLinked')
++
++    if (linked) {
++      notify(t('auth.oauth.messages.linked', { provider: OAUTH_PROVIDER_LABELS[linked as OAuthProviderId] ?? linked }), 'success')
++      void refetch()
++    }
++
++    const err = searchParams.get('oauthError')
++
++    if (err) {
++      notify(t(OAUTH_ERROR_KEYS[err] ?? 'auth.oauth.errors.unknown'), 'destructive')
++    }
++  }, [searchParams, notify, t, refetch])
++
++  if (!hydrated || isLoading) {
++    return (
++      <div id="connected-accounts" className="flex flex-col rounded-lg border bg-card p-4 space-y-4">
++        <Typography variant="Body/S/Regular" className="text-muted-foreground">
++          {t('common.loading')}
++        </Typography>
++      </div>
++    )
++  }
++
++  const linkProviders = data?.linkProviders ?? []
++
++  if (!linkProviders.length && !(data?.accounts?.length ?? 0)) {
++    return null
++  }
++
++  const handleUnlink = async (provider: OAuthProviderId) => {
++    try {
++      await unlinkMutation.mutateAsync(provider)
++      notify(t('auth.oauth.messages.unlinked', { provider: OAUTH_PROVIDER_LABELS[provider] }), 'success')
++      void refetch()
++    } catch (error) {
++      const message =
++        error instanceof AxiosError && error.response?.data && typeof error.response.data === 'object' && 'message' in error.response.data
++          ? String((error.response.data as { message?: unknown }).message ?? '')
++          : t('errors.unknown')
++
++      notify(message, 'destructive')
++    }
++  }
++
++  return (
++    <div id="connected-accounts" className="flex flex-col rounded-lg border bg-card p-4 space-y-4">
++      <div className="flex items-center gap-2">
++        <Link2 className="h-4 w-4 text-muted-foreground" aria-hidden />
++        <Typography variant="heading-3">{t('auth.oauth.connectedAccountsTitle')}</Typography>
++      </div>
++
++      <Typography variant="Body/S/Regular" className="text-muted-foreground">
++        {t('auth.oauth.connectedAccountsDescription')}
++      </Typography>
++
++      <div className="flex flex-col gap-2">
++        {linkProviders.map((provider) => {
++          const linked = linkedSet.has(provider)
++          const account = data?.accounts.find((a) => a.provider === provider)
++
++          return (
++            <div key={provider} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/60 px-3 py-2">
++              <div className="flex items-center gap-3">
++                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/60 bg-background">
++                  <OAuthProviderIcon provider={provider} size={20} />
++                </div>
++                <div className="flex flex-col">
++                  <span className="text-sm font-medium">{OAUTH_PROVIDER_LABELS[provider]}</span>
++                  {linked && account?.providerLogin ? <span className="text-xs text-muted-foreground">{account.providerLogin}</span> : null}
++                </div>
++              </div>
++              {linked ? (
++                <Button type="button" variant="outline" size="sm-md" disabled={unlinkMutation.isLoading} onClick={() => void handleUnlink(provider)}>
++                  <Unlink className="mr-1 h-3.5 w-3.5" aria-hidden />
++                  {t('auth.oauth.unlink')}
++                </Button>
++              ) : (
++                <Button
++                  type="button"
++                  variant="secondary"
++                  size="sm-md"
++                  onClick={() => {
++                    window.location.href = `/api/v1/auth/oauth/${provider}/link/start`
++                  }}
++                >
++                  {t('auth.oauth.link')}
++                </Button>
++              )}
++            </div>
++          )
++        })}
++      </div>
++    </div>
++  )
++}
+diff --git a/src/components/Views/Profile/ProfileChangePasswordPanel.tsx b/src/components/Views/Profile/ProfileChangePasswordPanel.tsx
+index 2f56ba8..bc866e7 100644
+--- a/src/components/Views/Profile/ProfileChangePasswordPanel.tsx
++++ b/src/components/Views/Profile/ProfileChangePasswordPanel.tsx
+@@ -4,13 +4,14 @@ import { getPasswordPolicyErrorMessage } from '@lib/validation/password-policy'
+ import { AxiosError } from 'axios'
+ import { ChevronDown, KeyRound } from 'lucide-react'
+ import { useRouter } from 'next/navigation'
+-import { useState } from 'react'
++import { useEffect, useState } from 'react'
+ 
+ import { InputField, PasswordField } from '~/components/Fields'
+ import { Button, Typography } from '~/components/ui'
+ import { useT } from '~/providers'
+ import { useNotify } from '~/providers/notify'
+ import { usePasswordChangeMutation } from '~/query/auth/mutation/usePasswordChangeMutation'
++import { useOAuthAccountsQuery } from '~/query/auth/query/useOAuthAccountsQuery'
+ import { useRecoveryCapabilitiesQuery } from '~/query/auth/query/useRecoveryCapabilitiesQuery'
+ import { cn } from '~/utils/cn'
+ 
+@@ -18,9 +19,17 @@ export function ProfileChangePasswordPanel() {
+   const t = useT()
+   const router = useRouter()
+   const { notify } = useNotify()
+-  const { data: capabilities } = useRecoveryCapabilitiesQuery(true)
++  const [hydrated, setHydrated] = useState(false)
++  const { data: capabilities } = useRecoveryCapabilitiesQuery(hydrated)
++  const { data: oauthAccounts } = useOAuthAccountsQuery(hydrated)
+   const { requestMutation, confirmMutation } = usePasswordChangeMutation()
+ 
++  useEffect(() => {
++    queueMicrotask(() => {
++      setHydrated(true)
++    })
++  }, [])
++
+   const [expanded, setExpanded] = useState(false)
+   const [step, setStep] = useState<'form' | 'confirm'>('form')
+   const [pendingId, setPendingId] = useState<string | null>(null)
+@@ -32,10 +41,18 @@ export function ProfileChangePasswordPanel() {
+   const [emailCode, setEmailCode] = useState('')
+   const [totp, setTotp] = useState('')
+ 
++  if (!hydrated) {
++    return null
++  }
++
+   if (capabilities && !capabilities.passwordChangeEnabled) {
+     return null
+   }
+ 
++  if (oauthAccounts && !oauthAccounts.hasPassword) {
++    return null
++  }
++
+   if (capabilities && capabilities.selfServicePossible === false) {
+     return (
+       <div className="flex flex-col rounded-lg border bg-card p-4 space-y-2">
+diff --git a/src/components/Views/Profile/ProfileSetPasswordPanel.tsx b/src/components/Views/Profile/ProfileSetPasswordPanel.tsx
+new file mode 100644
+index 0000000..9de8dda
+--- /dev/null
++++ b/src/components/Views/Profile/ProfileSetPasswordPanel.tsx
+@@ -0,0 +1,91 @@
++'use client'
++
++import { getPasswordPolicyErrorMessage } from '@lib/validation/password-policy'
++import { AxiosError } from 'axios'
++import { KeyRound } from 'lucide-react'
++import { useEffect, useState } from 'react'
++
++import { PasswordField } from '~/components/Fields'
++import { Button, Typography } from '~/components/ui'
++import { useT } from '~/providers'
++import { useNotify } from '~/providers/notify'
++import { useSetPasswordMutation } from '~/query/auth/mutation/useSetPasswordMutation'
++import { useOAuthAccountsQuery } from '~/query/auth/query/useOAuthAccountsQuery'
++
++export function ProfileSetPasswordPanel() {
++  const t = useT()
++  const { notify } = useNotify()
++  const [hydrated, setHydrated] = useState(false)
++  const { data, refetch } = useOAuthAccountsQuery(hydrated)
++  const { setPasswordMutation } = useSetPasswordMutation()
++  const [newPassword, setNewPassword] = useState('')
++  const [confirmPassword, setConfirmPassword] = useState('')
++  const [totp, setTotp] = useState('')
++
++  useEffect(() => {
++    queueMicrotask(() => {
++      setHydrated(true)
++    })
++  }, [])
++
++  if (!hydrated || !data) {
++    return null
++  }
++
++  if (data.hasPassword) {
++    return null
++  }
++
++  const handleSubmit = async () => {
++    if (newPassword !== confirmPassword) {
++      notify(t('auth.password.errors.passwordsMismatch'), 'destructive')
++
++      return
++    }
++
++    const policyError = getPasswordPolicyErrorMessage(newPassword, t)
++
++    if (policyError) {
++      notify(policyError, 'destructive')
++
++      return
++    }
++
++    try {
++      await setPasswordMutation.mutateAsync({
++        newPassword,
++        ...(totp.trim() ? { totpCode: totp.trim() } : {}),
++      })
++      notify(t('auth.oauth.messages.passwordSet'), 'success')
++      setNewPassword('')
++      setConfirmPassword('')
++      setTotp('')
++      void refetch()
++    } catch (error) {
++      const message =
++        error instanceof AxiosError && error.response?.data && typeof error.response.data === 'object' && 'message' in error.response.data
++          ? String((error.response.data as { message?: unknown }).message ?? '')
++          : t('errors.unknown')
++
++      notify(message, 'destructive')
++    }
++  }
++
++  return (
++    <div className="flex flex-col rounded-lg border bg-card p-4 space-y-4">
++      <div className="flex items-center gap-2">
++        <KeyRound className="h-4 w-4 text-muted-foreground" aria-hidden />
++        <Typography variant="heading-3">{t('auth.oauth.setPasswordTitle')}</Typography>
++      </div>
++      <Typography variant="Body/S/Regular" className="text-muted-foreground">
++        {t('auth.oauth.setPasswordDescription')}
++      </Typography>
++      <PasswordField name="newPassword" label={t('auth.password.newPassword')} value={newPassword} onChange={setNewPassword} />
++      <PasswordField name="confirmPassword" label={t('auth.password.confirmPassword')} value={confirmPassword} onChange={setConfirmPassword} />
++      <PasswordField name="totp" label={t('auth.oauth.totpOptional')} value={totp} onChange={setTotp} />
++      <Button type="button" size="sm-md" disabled={setPasswordMutation.isLoading} onClick={() => void handleSubmit()}>
++        {t('auth.oauth.setPasswordAction')}
++      </Button>
++    </div>
++  )
++}
+diff --git a/src/components/Views/User/Blocks/AdminUserOAuthAttemptsPanel.tsx b/src/components/Views/User/Blocks/AdminUserOAuthAttemptsPanel.tsx
+new file mode 100644
+index 0000000..47b6d66
+--- /dev/null
++++ b/src/components/Views/User/Blocks/AdminUserOAuthAttemptsPanel.tsx
+@@ -0,0 +1,11 @@
++'use client'
++
++import { OAuthAttemptsListScreen } from '~/components/Views/OAuthAttempts/Screen/OAuthAttemptsListScreen'
++
++type Props = {
++  userId: string
++}
++
++export const AdminUserOAuthAttemptsPanel = ({ userId }: Props) => {
++  return <OAuthAttemptsListScreen forcedUserId={userId} titleKey="oauthAttempts.userTitle" />
++}
+diff --git a/src/components/Views/User/List/UserListTable.tsx b/src/components/Views/User/List/UserListTable.tsx
+index 851263e..da98592 100644
+--- a/src/components/Views/User/List/UserListTable.tsx
++++ b/src/components/Views/User/List/UserListTable.tsx
+@@ -100,6 +100,11 @@ export const UserListTable = ({ isLoading, data, onSelect }: Props) => {
+                 </div>
+               </TableCell>
+             )}
++            {columnKeys?.includes('emailOrigin') && (
++              <TableCell className="whitespace-nowrap">
++                <Badge className="whitespace-nowrap bg-muted text-foreground">{item.emailOrigin ? t(`user.emailOrigins.${item.emailOrigin}`) : '-'}</Badge>
++              </TableCell>
++            )}
+             {columnKeys?.includes('time') && (
+               <TableCell className="whitespace-nowrap">
+                 <div className="flex flex-col gap-1">
+diff --git a/src/components/Views/User/List/constants.ts b/src/components/Views/User/List/constants.ts
+index 433891f..93cff51 100644
+--- a/src/components/Views/User/List/constants.ts
++++ b/src/components/Views/User/List/constants.ts
+@@ -19,6 +19,10 @@ export const columns: Column[] = [
+     header: 'Status',
+     accessorKey: 'status',
+   },
++  {
++    header: 'Email origin',
++    accessorKey: 'emailOrigin',
++  },
+   {
+     header: 'Dates',
+     accessorKey: 'time',
+diff --git a/src/components/Views/User/Screen/UserAdminProfileScreen.tsx b/src/components/Views/User/Screen/UserAdminProfileScreen.tsx
+index f3e4180..d39a87e 100644
+--- a/src/components/Views/User/Screen/UserAdminProfileScreen.tsx
++++ b/src/components/Views/User/Screen/UserAdminProfileScreen.tsx
+@@ -8,6 +8,7 @@ import { useT } from '~/providers'
+ import { useUserQuery } from '~/query/user/query'
+ import { time } from '~/utils/time'
+ 
++import { AdminUserOAuthAttemptsPanel } from '../Blocks/AdminUserOAuthAttemptsPanel'
+ import { AdminUserRecoveryPanel } from '../Blocks/AdminUserRecoveryPanel'
+ import { AdminUserSecurityAuditPanel } from '../Blocks/AdminUserSecurityAuditPanel'
+ import { AdminUserSessionsPanel } from '../Blocks/AdminUserSessionsPanel'
+@@ -34,6 +35,9 @@ export const UserAdminProfileScreen = ({ userId }: Props) => {
+             <Typography variant="Body/XS/Regular">Email: {user?.email ?? '-'}</Typography>
+             <Typography variant="Body/XS/Regular">Role: {user?.role ?? '-'}</Typography>
+             <Typography variant="Body/XS/Regular">Status: {user?.status ?? '-'}</Typography>
++            <Typography variant="Body/XS/Regular">
++              {t('user.fields.emailOrigin')}: {user?.emailOrigin ? t(`user.emailOrigins.${user.emailOrigin}`) : '-'}
++            </Typography>
+             <Typography variant="Body/XS/Regular">
+               {t('common.createdAt')}: {user?.createdAt ? time(user.createdAt).format('DD/MM/YYYY HH:mm') : '-'}
+             </Typography>
+@@ -68,6 +72,11 @@ export const UserAdminProfileScreen = ({ userId }: Props) => {
+         label: t('user.adminProfile.tabs.securityAudit'),
+         children: <AdminUserSecurityAuditPanel userId={userId} />,
+       },
++      {
++        value: 'oauth-attempts',
++        label: t('user.adminProfile.tabs.oauthAttempts'),
++        children: <AdminUserOAuthAttemptsPanel userId={userId} />,
++      },
+     ],
+     [t, user, userId],
+   )
+diff --git a/src/constants/routes.ts b/src/constants/routes.ts
+index c474e45..ea98ae1 100644
+--- a/src/constants/routes.ts
++++ b/src/constants/routes.ts
+@@ -67,6 +67,12 @@ export const routes = {
+     tKey: 'navigation.adminSecurityAudit' as const,
+     needAuth: true,
+   },
++  adminOAuthAttempts: {
++    path: '/admin/oauth-attempts',
++    name: 'OAuth attempts',
++    tKey: 'navigation.adminOAuthAttempts' as const,
++    needAuth: true,
++  },
+   login: {
+     path: '/login',
+     name: 'Login',
+diff --git a/src/lib/auth/oauth-provider-icons.ts b/src/lib/auth/oauth-provider-icons.ts
+new file mode 100644
+index 0000000..6f3cdd8
+--- /dev/null
++++ b/src/lib/auth/oauth-provider-icons.ts
+@@ -0,0 +1,14 @@
++import type { OAuthProviderId } from '@config/auth-oauth'
++
++/** Local brand icons in /public/oauth (Simple Icons–based SVGs). */
++export const OAUTH_PROVIDER_ICON_SRC: Partial<Record<OAuthProviderId, string>> = {
++  yandex: '/oauth/yandex.svg',
++  google: '/oauth/google.svg',
++  github: '/oauth/github.svg',
++  discord: '/oauth/discord.svg',
++  vk: '/oauth/vk.svg',
++}
++
++export function getOAuthProviderIconSrc(provider: OAuthProviderId): string | null {
++  return OAUTH_PROVIDER_ICON_SRC[provider] ?? null
++}
+diff --git a/src/lib/auth/oauth-public-config.ts b/src/lib/auth/oauth-public-config.ts
+new file mode 100644
+index 0000000..721b52e
+--- /dev/null
++++ b/src/lib/auth/oauth-public-config.ts
+@@ -0,0 +1,38 @@
++import type { AuthUiMode, OAuthProviderId } from '@config/auth-oauth'
++import { OAUTH_PROVIDER_IDS } from '@config/auth-oauth'
++
++function parseProviderList(raw: string | undefined): OAuthProviderId[] {
++  if (!raw?.trim()) return []
++
++  return raw
++    .split(',')
++    .map((s) => s.trim().toLowerCase())
++    .filter((id): id is OAuthProviderId => (OAUTH_PROVIDER_IDS as readonly string[]).includes(id))
++}
++
++export type PublicOAuthConfig = {
++  uiMode: AuthUiMode
++  signInProviders: OAuthProviderId[]
++  signUpProviders: OAuthProviderId[]
++  linkProviders: OAuthProviderId[]
++}
++
++export function getPublicOAuthConfig(): PublicOAuthConfig {
++  return {
++    uiMode: (process.env.NEXT_PUBLIC_AUTH_UI_MODE?.trim() as AuthUiMode) || 'credentials_first',
++    signInProviders: parseProviderList(process.env.NEXT_PUBLIC_AUTH_OAUTH_SIGN_IN_PROVIDERS),
++    signUpProviders: parseProviderList(process.env.NEXT_PUBLIC_AUTH_OAUTH_SIGN_UP_PROVIDERS),
++    linkProviders: parseProviderList(process.env.NEXT_PUBLIC_AUTH_OAUTH_LINK_PROVIDERS),
++  }
++}
++
++export const OAUTH_PROVIDER_LABELS: Record<OAuthProviderId, string> = {
++  yandex: 'Yandex',
++  google: 'Google',
++  github: 'GitHub',
++  apple: 'Apple',
++  vk: 'VK',
++  telegram: 'Telegram',
++  microsoft: 'Microsoft',
++  discord: 'Discord',
++}
+diff --git a/src/lib/i18n/messages/en.ts b/src/lib/i18n/messages/en.ts
+index a0fbc0a..e4ba6cc 100644
+--- a/src/lib/i18n/messages/en.ts
++++ b/src/lib/i18n/messages/en.ts
+@@ -101,6 +101,7 @@ export const en = {
+     articles: 'Articles',
+     adminNotifications: 'Notifications',
+     adminSecurityAudit: 'Security audit',
++    adminOAuthAttempts: 'OAuth attempts',
+     articlesCreate: 'Create Article',
+     articlePublic: 'Article Public',
+     articlesPublic: 'Articles Public',
+@@ -282,7 +283,7 @@ export const en = {
+         q8: {
+           question: 'How do I add OAuth providers (Google, GitHub, etc.)?',
+           answer:
+-            'OAuth is in the roadmap for v0.3. Right now the boilerplate ships credential-based auth with MFA and session management. You can layer in NextAuth or Lucia on top of the existing session infrastructure — the auth service is isolated enough to swap.',
++            'OAuth is built in (v0.2.2): enable providers in .env (AUTH_OAUTH_*_ENABLED, client id/secret), list them in AUTH_OAUTH_SIGN_IN_PROVIDERS, and run pnpm doctor. Yandex, Google, and GitHub ship out of the box. See docs/AUTH_OAUTH.md for link/unlink, MFA after OAuth sign-in, and AUTH_UI_MODE.',
+         },
+         q9: {
+           question: 'Is it good for vibe coding — building with AI assistance?',
+@@ -447,6 +448,35 @@ export const en = {
+       admin_mfa_reset: 'Admin reset MFA',
+     },
+   },
++  oauthAttempts: {
++    title: 'OAuth attempts log',
++    userTitle: 'OAuth events',
++    empty: 'No OAuth attempts recorded',
++    providerEmail: 'Provider email',
++    providerUserId: 'Provider user ID',
++    collisionUser: 'Existing account (collision)',
++    actorUser: 'Actor user',
++    filters: {
++      all: 'All',
++      emailCollision: 'Email collision',
++      providerTaken: 'Provider taken',
++      notFound: 'Not found',
++      error: 'Error',
++      success: 'Success',
++    },
++    flows: {
++      signIn: 'Sign in',
++      signUp: 'Sign up',
++      link: 'Link',
++    },
++    outcomes: {
++      success: 'Success',
++      email_collision: 'Email collision',
++      provider_taken: 'Provider taken',
++      not_found: 'Not found',
++      error: 'Error',
++    },
++  },
+   notification: {
+     ui: {
+       unsubscribe: 'Unsubscribe',
+@@ -588,6 +618,38 @@ export const en = {
+       invalidEmailOrPassword: 'Invalid email or password',
+       userAccountIsBlocked: 'User account is blocked',
+     },
++    oauth: {
++      continueWith: 'Continue with {provider}',
++      orContinueWithEmail: 'Or continue with email',
++      connectedAccountsTitle: 'Connected accounts',
++      connectedAccountsDescription: 'Link external providers to sign in without a password, or add extra sign-in methods.',
++      link: 'Connect',
++      unlink: 'Disconnect',
++      setPasswordTitle: 'Set a password',
++      setPasswordDescription: 'Optional: enable email and password sign-in for this account.',
++      setPasswordAction: 'Set password',
++      totpOptional: '2FA code (if enabled)',
++      messages: {
++        linked: '{provider} connected successfully.',
++        unlinked: '{provider} disconnected.',
++        passwordSet: 'Password set. You can now sign in with email and password.',
++      },
++      errors: {
++        unknownProvider: 'Unknown OAuth provider.',
++        invalidCallback: 'Invalid OAuth callback.',
++        stateExpired: 'OAuth session expired. Please try again.',
++        linkSessionExpired: 'Link session expired. Sign in and try again.',
++        accountNotFound: 'No account linked to this provider. Sign up first or connect it in your profile.',
++        accountExists: 'This provider is already linked to an account. Sign in instead.',
++        emailCollision: 'An account with this email already exists. Sign in with password and connect the provider in your profile.',
++        providerTaken: 'This external account is already linked to another user.',
++        providerError: 'The provider rejected the sign-in request.',
++        cannotUnlinkLastMethod: 'You cannot disconnect the last sign-in method without setting a password first.',
++        accountNotLinked: 'This provider is not connected.',
++        passwordAlreadySet: 'Password is already set. Use change password instead.',
++        unknown: 'OAuth sign-in failed. Please try again.',
++      },
++    },
+     email: {
+       signUp: {
+         subject: 'Registration code',
+@@ -702,6 +764,7 @@ export const en = {
+         notifications: 'Notifications',
+         sessions: 'Sessions',
+         securityAudit: 'Security',
++        oauthAttempts: 'OAuth',
+       },
+       pushSubscriptions: {
+         title: 'Push subscriptions',
+@@ -779,11 +842,17 @@ export const en = {
+       active: 'Active',
+       blocked: 'Blocked',
+     },
++    emailOrigins: {
++      credentials: 'Credentials',
++      oauth: 'OAuth',
++      admin: 'Admin',
++    },
+     fields: {
+       id: 'ID',
+       role: 'Role',
+       email: 'Email',
+       status: 'Status',
++      emailOrigin: 'Email origin',
+       createdAt: 'Created At',
+       updatedAt: 'Updated At',
+       sortBy: 'Sort By',
+diff --git a/src/lib/i18n/messages/ru.ts b/src/lib/i18n/messages/ru.ts
+index de8d7f9..dc88ed0 100644
+--- a/src/lib/i18n/messages/ru.ts
++++ b/src/lib/i18n/messages/ru.ts
+@@ -101,6 +101,7 @@ export const ru = {
+     articles: 'Статьи',
+     adminNotifications: 'Уведомления',
+     adminSecurityAudit: 'Аудит безопасности',
++    adminOAuthAttempts: 'OAuth-попытки',
+     articlesCreate: 'Создать статью',
+     articlePublic: 'Публичная статья',
+     articlesPublic: 'Публичные статьи',
+@@ -278,7 +279,7 @@ export const ru = {
+         q8: {
+           question: 'Как добавить OAuth (Google, GitHub и т.д.)?',
+           answer:
+-            'OAuth запланирован в v0.3. Сейчас в бойлерплейте — auth по логин/паролю с MFA и управлением сессиями. Поверх можно подключить NextAuth или Lucia — auth-сервис достаточно изолирован для замены.',
++            'OAuth уже встроен (v0.2.2): включите провайдеры в .env (AUTH_OAUTH_*_ENABLED, client id/secret), пропишите их в AUTH_OAUTH_SIGN_IN_PROVIDERS и запустите pnpm doctor. Yandex, Google и GitHub работают из коробки. Подробности — docs/AUTH_OAUTH.md: link/unlink, MFA после OAuth, AUTH_UI_MODE.',
+         },
+         q9: {
+           question: 'Подходит ли для вайбкодинга — разработки с ИИ-ассистентом?',
+@@ -443,6 +444,35 @@ export const ru = {
+       admin_mfa_reset: 'Админ сбросил MFA',
+     },
+   },
++  oauthAttempts: {
++    title: 'Журнал OAuth-попыток',
++    userTitle: 'OAuth-события',
++    empty: 'OAuth-попытки не зафиксированы',
++    providerEmail: 'Email провайдера',
++    providerUserId: 'ID у провайдера',
++    collisionUser: 'Существующий аккаунт (коллизия)',
++    actorUser: 'Пользователь (актор)',
++    filters: {
++      all: 'Все',
++      emailCollision: 'Коллизия email',
++      providerTaken: 'Провайдер занят',
++      notFound: 'Не найден',
++      error: 'Ошибка',
++      success: 'Успех',
++    },
++    flows: {
++      signIn: 'Вход',
++      signUp: 'Регистрация',
++      link: 'Привязка',
++    },
++    outcomes: {
++      success: 'Успех',
++      email_collision: 'Коллизия email',
++      provider_taken: 'Провайдер занят',
++      not_found: 'Не найден',
++      error: 'Ошибка',
++    },
++  },
+   notification: {
+     ui: {
+       unsubscribe: 'Отписаться',
+@@ -584,6 +614,38 @@ export const ru = {
+       invalidEmailOrPassword: 'Неверный email или пароль',
+       userAccountIsBlocked: 'Аккаунт пользователя заблокирован',
+     },
++    oauth: {
++      continueWith: 'Продолжить через {provider}',
++      orContinueWithEmail: 'Или войти по email',
++      connectedAccountsTitle: 'Подключённые аккаунты',
++      connectedAccountsDescription: 'Привяжите внешние сервисы для входа без пароля или добавьте дополнительные способы входа.',
++      link: 'Подключить',
++      unlink: 'Отключить',
++      setPasswordTitle: 'Установить пароль',
++      setPasswordDescription: 'Опционально: включите вход по email и паролю для этого аккаунта.',
++      setPasswordAction: 'Установить пароль',
++      totpOptional: 'Код 2FA (если включён)',
++      messages: {
++        linked: '{provider} успешно подключён.',
++        unlinked: '{provider} отключён.',
++        passwordSet: 'Пароль установлен. Теперь можно входить по email и паролю.',
++      },
++      errors: {
++        unknownProvider: 'Неизвестный OAuth-провайдер.',
++        invalidCallback: 'Некорректный OAuth callback.',
++        stateExpired: 'Сессия OAuth истекла. Попробуйте снова.',
++        linkSessionExpired: 'Сессия привязки истекла. Войдите и попробуйте снова.',
++        accountNotFound: 'Аккаунт с этим провайдером не найден. Зарегистрируйтесь или подключите его в профиле.',
++        accountExists: 'Этот провайдер уже привязан. Войдите в аккаунт.',
++        emailCollision: 'Аккаунт с таким email уже есть. Войдите по паролю и подключите провайдер в профиле.',
++        providerTaken: 'Этот внешний аккаунт уже привязан к другому пользователю.',
++        providerError: 'Провайдер отклонил запрос на вход.',
++        cannotUnlinkLastMethod: 'Нельзя отключить последний способ входа без установки пароля.',
++        accountNotLinked: 'Провайдер не подключён.',
++        passwordAlreadySet: 'Пароль уже установлен. Используйте смену пароля.',
++        unknown: 'OAuth вход не удался. Попробуйте снова.',
++      },
++    },
+     email: {
+       signUp: {
+         subject: 'Код регистрации',
+@@ -698,6 +760,7 @@ export const ru = {
+         notifications: 'Уведомления',
+         sessions: 'Сессии',
+         securityAudit: 'Безопасность',
++        oauthAttempts: 'OAuth',
+       },
+       pushSubscriptions: {
+         title: 'Push-подписки',
+@@ -775,10 +838,16 @@ export const ru = {
+       active: 'Активный',
+       blocked: 'Заблокирован',
+     },
++    emailOrigins: {
++      credentials: 'Пароль',
++      oauth: 'OAuth',
++      admin: 'Админ',
++    },
+     fields: {
+       id: 'ID',
+       role: 'Роль',
+       status: 'Статус',
++      emailOrigin: 'Источник email',
+       createdAt: 'Создано',
+       updatedAt: 'Обновлено',
+       sortBy: 'Сортировка по',
+diff --git a/src/query/auth/mutation/useOAuthUnlinkMutation.ts b/src/query/auth/mutation/useOAuthUnlinkMutation.ts
+new file mode 100644
+index 0000000..c8bf95e
+--- /dev/null
++++ b/src/query/auth/mutation/useOAuthUnlinkMutation.ts
+@@ -0,0 +1,14 @@
++import { useMutation } from 'react-query'
++
++import { ClientAuthApi } from '~/api/auth/client'
++import type { OAuthProviderId } from '~/api/oauth'
++
++export const useOAuthUnlinkMutation = () => {
++  const unlinkMutation = useMutation(async (provider: OAuthProviderId) => {
++    const api = new ClientAuthApi()
++
++    return api.unlinkOAuthProvider(provider)
++  })
++
++  return { unlinkMutation }
++}
+diff --git a/src/query/auth/mutation/useSetPasswordMutation.ts b/src/query/auth/mutation/useSetPasswordMutation.ts
+new file mode 100644
+index 0000000..7b81030
+--- /dev/null
++++ b/src/query/auth/mutation/useSetPasswordMutation.ts
+@@ -0,0 +1,13 @@
++import { useMutation } from 'react-query'
++
++import { ClientAuthApi } from '~/api/auth/client'
++
++export const useSetPasswordMutation = () => {
++  const setPasswordMutation = useMutation(async (body: { newPassword: string; totpCode?: string }) => {
++    const api = new ClientAuthApi()
++
++    return api.setPassword(body)
++  })
++
++  return { setPasswordMutation }
++}
+diff --git a/src/query/auth/query/useOAuthAccountsQuery.ts b/src/query/auth/query/useOAuthAccountsQuery.ts
+new file mode 100644
+index 0000000..de87de9
+--- /dev/null
++++ b/src/query/auth/query/useOAuthAccountsQuery.ts
+@@ -0,0 +1,27 @@
++import { ClientAuthApi } from '~/api/auth/client'
++import type { OAuthProviderId, OAuthPublicAccountModel } from '~/api/oauth'
++import { useQueryBuilder } from '~/hooks/useQueryBuilder'
++
++export const OAUTH_ACCOUNTS_QUERY_KEY = 'oauth-accounts'
++
++export type OAuthAccountsResponse = {
++  accounts: OAuthPublicAccountModel[]
++  hasPassword: boolean
++  oauthCount: number
++  linkProviders: OAuthProviderId[]
++  uiMode: string
++}
++
++export const fetchOAuthAccounts = () => async (): Promise<OAuthAccountsResponse> => {
++  const api = new ClientAuthApi()
++
++  return api.getOAuthAccounts()
++}
++
++export const useOAuthAccountsQuery = (enabled = true) => {
++  return useQueryBuilder({
++    key: OAUTH_ACCOUNTS_QUERY_KEY,
++    enabled,
++    method: fetchOAuthAccounts(),
++  })
++}
+diff --git a/src/query/oauth/index.ts b/src/query/oauth/index.ts
+new file mode 100644
+index 0000000..3998211
+--- /dev/null
++++ b/src/query/oauth/index.ts
+@@ -0,0 +1,23 @@
++import { useQuery } from 'react-query'
++
++import { ClientOAuthAdminApi } from '~/api/oauth/client'
++import type { OAuthAttemptFilter } from '~/api/oauth/types'
++
++import { timeouts } from '../constants'
++
++export const oauthAttemptsQueryKey = (filter: OAuthAttemptFilter) => ['admin', 'oauth-attempts', filter] as const
++
++export const useOAuthAttemptsQuery = (filter: OAuthAttemptFilter, enabled = true) =>
++  useQuery(
++    oauthAttemptsQueryKey(filter),
++    async () => {
++      const api = new ClientOAuthAdminApi()
++
++      return api.listAttempts(filter)
++    },
++    {
++      enabled,
++      staleTime: timeouts.xs,
++      keepPreviousData: true,
++    },
++  )

@@ -35,7 +35,7 @@ export const TextAreaField = forwardRef<HTMLTextAreaElement, TextAreaFieldProps>
   const id = useId()
 
   return (
-    <div className={cn('min-w-[300px] flex flex-col gap-1', classNames?.root)}>
+    <div className={cn('min-w-[120px] w-full flex flex-col gap-1', classNames?.root)}>
       <Label htmlFor={id} className={classNames?.label}>
         {label} {required && <span className="text-destructive">*</span>}
       </Label>

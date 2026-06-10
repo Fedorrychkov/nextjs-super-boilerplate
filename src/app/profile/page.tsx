@@ -6,8 +6,10 @@ import { ThemeModeSelect } from '~/components/theme/ThemeModeSelect'
 import { Typography } from '~/components/ui'
 import { NotificationBlock } from '~/components/Views/Notification'
 import { OnboardingCard } from '~/components/Views/Onboarding/OnboardingCard'
+import { ConnectedAccountsSection } from '~/components/Views/Profile/ConnectedAccountsSection'
 import { ProfileChangePasswordPanel } from '~/components/Views/Profile/ProfileChangePasswordPanel'
 import { ProfileMfaBlock } from '~/components/Views/Profile/ProfileMfaBlock'
+import { ProfileSetPasswordPanel } from '~/components/Views/Profile/ProfileSetPasswordPanel'
 import { UserPushSubscriptionsSelfPanel } from '~/components/Views/User/Blocks/UserPushSubscriptionsSelfPanel'
 import { UserSessionsPanel } from '~/components/Views/User/Blocks/UserSessionsPanel'
 import { getServerT } from '~/lib/i18n/server'
@@ -58,6 +60,14 @@ const ProfileRoot = async (props: PageProps) => {
       <UserPushSubscriptionsSelfPanel />
 
       <UserSessionsPanel />
+
+      <Suspense fallback={null}>
+        <ConnectedAccountsSection />
+      </Suspense>
+
+      <Suspense fallback={null}>
+        <ProfileSetPasswordPanel />
+      </Suspense>
 
       <ProfileChangePasswordPanel />
 

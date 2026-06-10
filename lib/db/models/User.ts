@@ -1,4 +1,3 @@
-import { ValidationError } from '@lib/error/custom-errors'
 import bcrypt from 'bcryptjs'
 import mongoose, { type Document, type HydratedDocument, type Model, type QueryFilter, Schema } from 'mongoose'
 
@@ -58,8 +57,20 @@ const UserSchema: Schema<IUser> = new Schema<IUser>(
     },
     password: {
       type: String,
-      required: true,
-      select: false, // Do not return password by default
+      required: false,
+      default: null,
+      select: false,
+    },
+    emailOrigin: {
+      type: String,
+      enum: ['credentials', 'oauth', 'admin'],
+      default: 'credentials',
+      index: true,
+    },
+    emailTrust: {
+      type: String,
+      enum: ['native', 'external', 'disputed', null],
+      default: null,
     },
     role: {
       type: String,
@@ -95,7 +106,7 @@ UserSchema.pre('save', async function () {
   if (!this.isModified('password')) return
 
   if (!this.password) {
-    throw new ValidationError('Password is required')
+    return
   }
 
   const doc = this as HydratedDocument<IUser>
@@ -112,6 +123,10 @@ UserSchema.pre('save', async function () {
 
 // Compare password with candidate
 UserSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {
+  if (!this.password) {
+    return false
+  }
+
   return bcrypt.compare(candidatePassword, this.password)
 }
 ;(UserSchema.statics as Record<string, unknown>).findListPaginated = async function findListPaginated(

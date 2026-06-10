@@ -101,6 +101,7 @@ export const ru = {
     articles: 'Статьи',
     adminNotifications: 'Уведомления',
     adminSecurityAudit: 'Аудит безопасности',
+    adminOAuthAttempts: 'OAuth-попытки',
     articlesCreate: 'Создать статью',
     articlePublic: 'Публичная статья',
     articlesPublic: 'Публичные статьи',
@@ -278,7 +279,7 @@ export const ru = {
         q8: {
           question: 'Как добавить OAuth (Google, GitHub и т.д.)?',
           answer:
-            'OAuth запланирован в v0.3. Сейчас в бойлерплейте — auth по логин/паролю с MFA и управлением сессиями. Поверх можно подключить NextAuth или Lucia — auth-сервис достаточно изолирован для замены.',
+            'OAuth уже встроен (v0.2.2): включите провайдеры в .env (AUTH_OAUTH_*_ENABLED, client id/secret), пропишите их в AUTH_OAUTH_SIGN_IN_PROVIDERS и запустите pnpm doctor. Yandex, Google и GitHub работают из коробки. Подробности — docs/AUTH_OAUTH.md: link/unlink, MFA после OAuth, AUTH_UI_MODE.',
         },
         q9: {
           question: 'Подходит ли для вайбкодинга — разработки с ИИ-ассистентом?',
@@ -443,6 +444,35 @@ export const ru = {
       admin_mfa_reset: 'Админ сбросил MFA',
     },
   },
+  oauthAttempts: {
+    title: 'Журнал OAuth-попыток',
+    userTitle: 'OAuth-события',
+    empty: 'OAuth-попытки не зафиксированы',
+    providerEmail: 'Email провайдера',
+    providerUserId: 'ID у провайдера',
+    collisionUser: 'Существующий аккаунт (коллизия)',
+    actorUser: 'Пользователь (актор)',
+    filters: {
+      all: 'Все',
+      emailCollision: 'Коллизия email',
+      providerTaken: 'Провайдер занят',
+      notFound: 'Не найден',
+      error: 'Ошибка',
+      success: 'Успех',
+    },
+    flows: {
+      signIn: 'Вход',
+      signUp: 'Регистрация',
+      link: 'Привязка',
+    },
+    outcomes: {
+      success: 'Успех',
+      email_collision: 'Коллизия email',
+      provider_taken: 'Провайдер занят',
+      not_found: 'Не найден',
+      error: 'Ошибка',
+    },
+  },
   notification: {
     ui: {
       unsubscribe: 'Отписаться',
@@ -584,6 +614,38 @@ export const ru = {
       invalidEmailOrPassword: 'Неверный email или пароль',
       userAccountIsBlocked: 'Аккаунт пользователя заблокирован',
     },
+    oauth: {
+      continueWith: 'Продолжить через {provider}',
+      orContinueWithEmail: 'Или войти по email',
+      connectedAccountsTitle: 'Подключённые аккаунты',
+      connectedAccountsDescription: 'Привяжите внешние сервисы для входа без пароля или добавьте дополнительные способы входа.',
+      link: 'Подключить',
+      unlink: 'Отключить',
+      setPasswordTitle: 'Установить пароль',
+      setPasswordDescription: 'Опционально: включите вход по email и паролю для этого аккаунта.',
+      setPasswordAction: 'Установить пароль',
+      totpOptional: 'Код 2FA (если включён)',
+      messages: {
+        linked: '{provider} успешно подключён.',
+        unlinked: '{provider} отключён.',
+        passwordSet: 'Пароль установлен. Теперь можно входить по email и паролю.',
+      },
+      errors: {
+        unknownProvider: 'Неизвестный OAuth-провайдер.',
+        invalidCallback: 'Некорректный OAuth callback.',
+        stateExpired: 'Сессия OAuth истекла. Попробуйте снова.',
+        linkSessionExpired: 'Сессия привязки истекла. Войдите и попробуйте снова.',
+        accountNotFound: 'Аккаунт с этим провайдером не найден. Зарегистрируйтесь или подключите его в профиле.',
+        accountExists: 'Этот провайдер уже привязан. Войдите в аккаунт.',
+        emailCollision: 'Аккаунт с таким email уже есть. Войдите по паролю и подключите провайдер в профиле.',
+        providerTaken: 'Этот внешний аккаунт уже привязан к другому пользователю.',
+        providerError: 'Провайдер отклонил запрос на вход.',
+        cannotUnlinkLastMethod: 'Нельзя отключить последний способ входа без установки пароля.',
+        accountNotLinked: 'Провайдер не подключён.',
+        passwordAlreadySet: 'Пароль уже установлен. Используйте смену пароля.',
+        unknown: 'OAuth вход не удался. Попробуйте снова.',
+      },
+    },
     email: {
       signUp: {
         subject: 'Код регистрации',
@@ -698,6 +760,7 @@ export const ru = {
         notifications: 'Уведомления',
         sessions: 'Сессии',
         securityAudit: 'Безопасность',
+        oauthAttempts: 'OAuth',
       },
       pushSubscriptions: {
         title: 'Push-подписки',
@@ -775,10 +838,16 @@ export const ru = {
       active: 'Активный',
       blocked: 'Заблокирован',
     },
+    emailOrigins: {
+      credentials: 'Пароль',
+      oauth: 'OAuth',
+      admin: 'Админ',
+    },
     fields: {
       id: 'ID',
       role: 'Роль',
       status: 'Статус',
+      emailOrigin: 'Источник email',
       createdAt: 'Создано',
       updatedAt: 'Обновлено',
       sortBy: 'Сортировка по',

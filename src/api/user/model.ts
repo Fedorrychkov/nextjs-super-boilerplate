@@ -1,3 +1,7 @@
+export type UserEmailOrigin = 'credentials' | 'oauth' | 'admin'
+
+export type UserEmailTrust = 'native' | 'external' | 'disputed' | null
+
 export type UserModel = {
   id: string
   role: UserRole
@@ -5,6 +9,8 @@ export type UserModel = {
   email: string
   status: UserStatus
   languageCode?: string | null
+  emailOrigin?: UserEmailOrigin | null
+  emailTrust?: UserEmailTrust
   createdAt?: string | null
   updatedAt?: string | null
 }

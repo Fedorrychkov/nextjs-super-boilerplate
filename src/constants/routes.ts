@@ -67,6 +67,12 @@ export const routes = {
     tKey: 'navigation.adminSecurityAudit' as const,
     needAuth: true,
   },
+  adminOAuthAttempts: {
+    path: '/admin/oauth-attempts',
+    name: 'OAuth attempts',
+    tKey: 'navigation.adminOAuthAttempts' as const,
+    needAuth: true,
+  },
   login: {
     path: '/login',
     name: 'Login',

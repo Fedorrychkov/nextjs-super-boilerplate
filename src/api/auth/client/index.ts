@@ -165,4 +165,22 @@ export class ClientAuthApi {
 
     return response.data
   }
+
+  async getOAuthAccounts() {
+    const response = await this.client.get('/api/v1/auth/oauth/accounts')
+
+    return response.data
+  }
+
+  async unlinkOAuthProvider(provider: string) {
+    const response = await this.client.delete(`/api/v1/auth/oauth/${provider}`)
+
+    return response.data
+  }
+
+  async setPassword(body: { newPassword: string; totpCode?: string }) {
+    const response = await this.client.post('/api/v1/auth/password/set', body)
+
+    return response.data
+  }
 }

@@ -8,6 +8,7 @@ import { useT } from '~/providers'
 import { useUserQuery } from '~/query/user/query'
 import { time } from '~/utils/time'
 
+import { AdminUserOAuthAttemptsPanel } from '../Blocks/AdminUserOAuthAttemptsPanel'
 import { AdminUserRecoveryPanel } from '../Blocks/AdminUserRecoveryPanel'
 import { AdminUserSecurityAuditPanel } from '../Blocks/AdminUserSecurityAuditPanel'
 import { AdminUserSessionsPanel } from '../Blocks/AdminUserSessionsPanel'
@@ -34,6 +35,9 @@ export const UserAdminProfileScreen = ({ userId }: Props) => {
             <Typography variant="Body/XS/Regular">Email: {user?.email ?? '-'}</Typography>
             <Typography variant="Body/XS/Regular">Role: {user?.role ?? '-'}</Typography>
             <Typography variant="Body/XS/Regular">Status: {user?.status ?? '-'}</Typography>
+            <Typography variant="Body/XS/Regular">
+              {t('user.fields.emailOrigin')}: {user?.emailOrigin ? t(`user.emailOrigins.${user.emailOrigin}`) : '-'}
+            </Typography>
             <Typography variant="Body/XS/Regular">
               {t('common.createdAt')}: {user?.createdAt ? time(user.createdAt).format('DD/MM/YYYY HH:mm') : '-'}
             </Typography>
@@ -67,6 +71,11 @@ export const UserAdminProfileScreen = ({ userId }: Props) => {
         value: 'security-audit',
         label: t('user.adminProfile.tabs.securityAudit'),
         children: <AdminUserSecurityAuditPanel userId={userId} />,
+      },
+      {
+        value: 'oauth-attempts',
+        label: t('user.adminProfile.tabs.oauthAttempts'),
+        children: <AdminUserOAuthAttemptsPanel userId={userId} />,
       },
     ],
     [t, user, userId],

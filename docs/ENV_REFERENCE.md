@@ -90,6 +90,22 @@
 | `NEXT_PUBLIC_ONBOARDING_PUSH_PROMPT_ENABLED` | 0 | |
 | `NEXT_PUBLIC_PUSH_IOS_PWA_HINT_ENABLED` | 0 | iOS PWA hint |
 
+## OAuth (`OAUTH_CONFIG`)
+
+See [`AUTH_OAUTH.md`](./AUTH_OAUTH.md). `pnpm doctor` validates provider lists vs credentials.
+
+| Variable | Default | Notes |
+|----------|---------|-------|
+| `AUTH_UI_MODE` | credentials_first | `credentials_first` \| `oauth_first` \| `credentials_only` \| `oauth_only` |
+| `NEXT_PUBLIC_AUTH_UI_MODE` | — | Client mirror of `AUTH_UI_MODE` |
+| `AUTH_OAUTH_SIGN_IN_PROVIDERS` | — | Comma-separated: yandex, google, github, … |
+| `AUTH_OAUTH_SIGN_UP_PROVIDERS` | — | |
+| `AUTH_OAUTH_LINK_PROVIDERS` | — | Profile link/unlink |
+| `NEXT_PUBLIC_AUTH_OAUTH_*_PROVIDERS` | — | Public lists for UI |
+| `AUTH_OAUTH_{PROVIDER}_ENABLED` | 0 | Per provider |
+| `{PROVIDER}_OAUTH_CLIENT_ID` | — | Yandex / Google / GitHub |
+| `{PROVIDER}_OAUTH_CLIENT_SECRET` | — | C — server only |
+
 ## Push (VAPID)
 
 | Variable | Default | Notes |

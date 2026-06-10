@@ -20,6 +20,10 @@ export const columns: Column[] = [
     accessorKey: 'status',
   },
   {
+    header: 'Email origin',
+    accessorKey: 'emailOrigin',
+  },
+  {
     header: 'Dates',
     accessorKey: 'time',
   },
