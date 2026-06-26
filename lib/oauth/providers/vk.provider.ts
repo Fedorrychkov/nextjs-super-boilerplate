@@ -1,6 +1,6 @@
 import { OAUTH_CONFIG } from '@config/auth-oauth'
 
-import { getJson, postForm } from '../oauth-http'
+import { postForm } from '../oauth-http'
 import type { OAuthProviderAdapter, OAuthTokenSet } from '../types'
 
 type VkTokenResponse = {
