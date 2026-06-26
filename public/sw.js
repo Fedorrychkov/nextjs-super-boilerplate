@@ -24,7 +24,7 @@ function isIOS() {
 }
 
 // Shell-pages, for precache (can be expanded to your project)
-const PRECACHE_URLS = ['/', APP_ICON, '/images/site.webmanifest']
+const PRECACHE_URLS = ['/', APP_ICON, '/manifest.webmanifest']
 
 self.addEventListener('push', (event) => {
 	let payload

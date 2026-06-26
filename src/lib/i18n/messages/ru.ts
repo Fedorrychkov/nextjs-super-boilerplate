@@ -645,6 +645,17 @@ export const ru = {
         passwordAlreadySet: 'Пароль уже установлен. Используйте смену пароля.',
         unknown: 'OAuth вход не удался. Попробуйте снова.',
       },
+      errorPage: {
+        title: 'Не удалось завершить вход',
+        linkTitle: 'Не удалось привязать аккаунт',
+        backToLogin: 'На страницу входа',
+        backToProfile: 'В профиль',
+        userInactive: 'Аккаунт не найден или деактивирован.',
+        rateLimited: 'Слишком много попыток. Попробуйте позже.',
+        rateLimitedWithRetry: 'Слишком много попыток. Повторите через {seconds} сек.',
+        providerNotConfigured: 'Этот провайдер не настроен на сервере.',
+        phoneTaken: 'Этот номер уже привязан к другому аккаунту.',
+      },
     },
     email: {
       signUp: {

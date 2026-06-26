@@ -649,6 +649,17 @@ export const en = {
         passwordAlreadySet: 'Password is already set. Use change password instead.',
         unknown: 'OAuth sign-in failed. Please try again.',
       },
+      errorPage: {
+        title: 'Sign-in could not be completed',
+        linkTitle: 'Account linking failed',
+        backToLogin: 'Back to sign in',
+        backToProfile: 'Back to profile',
+        userInactive: 'Your account is inactive or was not found.',
+        rateLimited: 'Too many attempts. Please try again later.',
+        rateLimitedWithRetry: 'Too many attempts. Try again in {seconds} seconds.',
+        providerNotConfigured: 'This sign-in provider is not configured on the server.',
+        phoneTaken: 'This phone number is already linked to another account.',
+      },
     },
     email: {
       signUp: {

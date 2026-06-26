@@ -1,8 +1,9 @@
 import type { OAuthProviderId } from '@config/auth-oauth'
 import { ValidationError } from '@lib/error/custom-errors'
-import { apiErrorHandlerContainer, RouteHandlerContext, withGlobalRateLimit } from '@lib/middleware'
+import { RouteHandlerContext, withGlobalRateLimit } from '@lib/middleware'
 import { processOAuthCallback } from '@lib/oauth/oauth-callback.service'
 import { isKnownOAuthProvider } from '@lib/oauth/registry'
+import { withOAuthBrowserHandler } from '@lib/oauth/with-oauth-browser-handler'
 import { getClientKey } from '@lib/security/rate-limit'
 import { getRequestClientMeta } from '@lib/utils/request-client-meta'
 import { NextRequest } from 'next/server'
@@ -11,7 +12,7 @@ import { getPreferredLanguageCodeFromAcceptLanguage } from '~/lib/i18n/detectLoc
 import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 
 const handler = (request: NextRequest, context: RouteHandlerContext) =>
-  apiErrorHandlerContainer(request)(async () => {
+  withOAuthBrowserHandler(request, 'auth', async () => {
     const paramsData = await context.params
     const providerRaw = typeof paramsData.provider === 'string' ? paramsData.provider : undefined
     const { t } = await getServerTFromNextRequestAsync(request)
