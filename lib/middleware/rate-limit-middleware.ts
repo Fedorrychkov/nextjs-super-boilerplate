@@ -14,7 +14,7 @@ export const withGlobalRateLimit = <T extends RouteHandler>(handler: T): T =>
     const key = getClientKey(request)
     const logger = new Logger(['withGlobalRateLimit', '[lib/rate-limit.ts]', `consumed key: ${key}`])
 
-    logger.warn('start')
+    logger.debug('start')
 
     if (!key) {
       return handler(request, context)
@@ -23,7 +23,7 @@ export const withGlobalRateLimit = <T extends RouteHandler>(handler: T): T =>
     try {
       const consumed = await rateLimit.consume(key)
 
-      logger.warn({ consumed })
+      logger.debug({ consumed })
     } catch {
       return NextResponse.json(
         {

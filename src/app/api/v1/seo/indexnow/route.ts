@@ -1,28 +1,40 @@
-import type { NextRequest } from 'next/server'
+import { withGlobalRateLimit } from '@lib/middleware'
+import { assertSeoNotifyAuthorized, filterUrlsToSiteHost } from '@lib/security/seo-notify-guard'
+import { type NextRequest, NextResponse } from 'next/server'
 
 import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 import { pingIndexNow } from '~/lib/seo/indexing'
-import { jsonStringifySafety } from '~/utils/jsonSafe'
 
 /**
  * Manual IndexNow ping. Unlike `notifySearchEngines`, this is **not** gated on `isProd` (still needs `INDEXNOW_API_KEY`).
+ *
+ * Auth: requires the `x-seo-notify-secret` header to match `SEO_NOTIFY_SECRET`.
+ * URLs are filtered to this site's host before being submitted.
  */
-export const POST = async (request: NextRequest) => {
+const handler = async (request: NextRequest) => {
   const { t } = await getServerTFromNextRequestAsync(request)
+
+  const unauthorized = assertSeoNotifyAuthorized(request)
+
+  if (unauthorized) {
+    return unauthorized
+  }
 
   const { urls } = (await request.json()) as { urls?: string[] }
 
   if (!urls || !Array.isArray(urls) || urls.length === 0) {
-    return new Response(jsonStringifySafety({ error: t('errors.urlsArrayRequired') }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json; charset=utf-8' },
-    })
+    return NextResponse.json({ error: t('errors.urlsArrayRequired') }, { status: 400 })
   }
 
-  await pingIndexNow(urls)
+  const allowedUrls = filterUrlsToSiteHost(urls)
 
-  return new Response(jsonStringifySafety({ ok: true }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json; charset=utf-8' },
-  })
+  if (allowedUrls.length === 0) {
+    return NextResponse.json({ error: t('errors.urlsArrayRequired') }, { status: 400 })
+  }
+
+  await pingIndexNow(allowedUrls)
+
+  return NextResponse.json({ ok: true })
 }
+
+export const POST = withGlobalRateLimit(handler)

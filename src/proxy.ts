@@ -43,12 +43,13 @@ export async function proxy(request: NextRequest) {
     try {
       const key = getClientKey(request)
 
-      logger.warn('[proxy] consumed key', key)
+      // debug-level: avoid logging client IP on every request in production
+      logger.debug('[proxy] consumed key', key)
 
       if (key) {
         const consumed = await rateLimit.consume(key)
 
-        logger.warn('[proxy] consumed', consumed)
+        logger.debug('[proxy] consumed', consumed)
       }
     } catch {
       return NextResponse.redirect(new URL('/429-too-many-requests', request.url))

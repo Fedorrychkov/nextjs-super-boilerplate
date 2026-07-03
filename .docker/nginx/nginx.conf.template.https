@@ -31,9 +31,10 @@ http {
       font/woff2
       font/woff;
 
-    upstream backend {
-        server api-service:3000;  # Fixed container name
-    }
+    # Docker embedded DNS: re-resolve api-service periodically instead of caching
+    # the container IP at startup (a recreated api container would otherwise leave
+    # nginx proxying to a dead IP -> 502 until nginx restart).
+    resolver 127.0.0.11 valid=10s ipv6=off;
 
     # METRICS_GRAFANA_UPSTREAM_START
     upstream grafana {
@@ -118,8 +119,14 @@ http {
         # NGINX metrics location
         location /nginx_status {
             stub_status on;
-            allow 0.0.0.0/0;  # Allow all IPs (check security)
-            deny all;         # Deny by default
+            access_log off;
+            # Internal-only: nginx metrics must not be publicly reachable.
+            # `allow 0.0.0.0/0` matched first and effectively exposed this to everyone.
+            allow 127.0.0.1;
+            allow ::1;
+            allow 172.16.0.0/12;   # Docker/private network (e.g. Prometheus scrape) — tighten to your monitoring subnet
+            allow 10.0.0.0/8;
+            deny all;
         }
 
         location ^~ /.well-known/acme-challenge/ {
@@ -133,7 +140,8 @@ http {
 
         # Cache Next.js static assets (safe: filenames contain content hash)
         location ~* ^/_next/static/ {
-            proxy_pass http://backend;
+            set $backend_upstream http://api-service:3000;
+            proxy_pass $backend_upstream;
             proxy_http_version 1.1;
             proxy_set_header Host $host;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -161,16 +169,9 @@ http {
         # METRICS_GRAFANA_LOCATION_END
 
         location / {
-            set $original_client_ip $http_x_forwarded_for;
-            if ($http_x_forwarded_for ~ "^(.+),") {
-                set $original_client_ip $1;
-            }
+            set $backend_upstream http://api-service:3000;
+            proxy_pass $backend_upstream;
 
-            proxy_pass http://backend;
-
-            # Update headers
-            proxy_set_header X-Client-IP $original_client_ip;
-            proxy_set_header X-Real-IP $original_client_ip;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 
             # WebSocket specific settings
@@ -190,6 +191,10 @@ http {
 
 
             # Header variables
+            # Trusted client IP = direct TCP peer ($realip_remote_addr), NOT the client-supplied
+            # X-Forwarded-For (which is spoofable and would let clients forge their rate-limit key).
+            # If you run behind a CDN/LB (e.g. Cloudflare), enable the realip module instead:
+            #   set_real_ip_from <trusted-proxy-cidr>;  real_ip_header X-Forwarded-For;  real_ip_recursive on;
             set $client_ip $realip_remote_addr;
             set $request_source "api";
             set $processed_by "api-nginx";

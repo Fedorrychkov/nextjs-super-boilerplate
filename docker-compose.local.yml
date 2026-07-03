@@ -9,7 +9,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: ${PROMETHEUS_MEM_LIMIT:-512M}
     volumes:
       - ./grafana/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - ./grafana/prometheus/data:/prometheus
@@ -34,7 +34,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: ${EXPORTER_MEM_LIMIT:-512M}
     command:
       - -nginx.scrape-uri=https://nginx-container/nginx_status
     expose: 
@@ -59,7 +59,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: ${EXPORTER_MEM_LIMIT:-512M}
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
@@ -92,7 +92,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: ${CADVISOR_MEM_LIMIT:-256M}
     depends_on:
       - prometheus
       - nginx
@@ -120,7 +120,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: ${PROMTAIL_MEM_LIMIT:-512M}
     volumes:
       - /var/lib/docker/containers:/var/lib/docker/containers
       - ./grafana/promtail-config.yml:/etc/promtail/promtail-config.yml
@@ -143,7 +143,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: ${LOKI_MEM_LIMIT:-512M}
     volumes:
       - ./grafana/loki-config.yml:/etc/loki/local-config.yaml
     command: -config.file=/etc/loki/local-config.yaml
@@ -168,7 +168,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: ${TELEGRAF_MEM_LIMIT:-512M}
     environment:
       - MONGO_METRICS_USER=${MONGO_USER:-admin}
       - MONGO_METRICS_PASSWORD=${MONGO_PASSWORD:-password}
@@ -196,7 +196,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 300M
+          memory: ${GRAFANA_MEM_LIMIT:-300M}
     volumes:
       - ./grafana/datasource:/etc/grafana/provisioning/datasources/
       - ./grafana/dashboard:/etc/grafana/provisioning/dashboards/
@@ -232,15 +232,17 @@ services:
     volumes:
       - ${ENV_FILE:-.env}:/usr/src/api/${ENV_FILE:-.env}:ro
       - ./db-certificate.${API_ENV:-prod}.crt:/usr/src/api/db-certificate.${API_ENV:-prod}.crt:ro
-      - /usr/src/api/node_modules
     environment:
       - API_ENV=${API_ENV:-prod}
+      # Set via scripts/lib/memory-limits.sh (SERVER_MEMORY_MB) or explicit override; empty = Node defaults.
+      - NODE_OPTIONS=${API_NODE_OPTIONS:-}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/v1/healthcheck"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    restart: unless-stopped
     logging:
       driver: "json-file"
       options:
@@ -250,9 +252,10 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2g
+          # Configure via SERVER_MEMORY_MB / API_MEM_LIMIT (see scripts/lib/memory-limits.sh)
+          memory: ${API_MEM_LIMIT:-2g}
         reservations:
-          memory: 512M
+          memory: ${API_MEM_RESERVATION:-512M}
     networks:
       - api_network
 
@@ -305,6 +308,7 @@ services:
       - "443:443"
     networks:
       - api_network
+    restart: unless-stopped
     logging:
       driver: "json-file"
       options:
@@ -380,12 +384,28 @@ services:
   redis:
     container_name: redis${SUFFIX}
     image: redis:7.2-alpine
+    # maxmemory 0 = unlimited (redis default); set via SERVER_MEMORY_MB / REDIS_MAXMEMORY.
+    # This redis backs rate-limiting + caching. `noeviction` makes writes fail when full instead
+    # of silently dropping keys; if you use it mainly as an evictable cache with a hard limit,
+    # set REDIS_MAXMEMORY_POLICY=allkeys-lru.
+    command: ["redis-server", "--maxmemory", "${REDIS_MAXMEMORY:-0}", "--maxmemory-policy", "${REDIS_MAXMEMORY_POLICY:-noeviction}"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - api_network
     expose:
       - 6379
     volumes:
       - redis_data:/data
+    deploy:
+      resources:
+        limits:
+          # 0 = unlimited (historical default); set via SERVER_MEMORY_MB / REDIS_MEM_LIMIT
+          memory: ${REDIS_MEM_LIMIT:-0}
     logging:
       driver: "json-file"
       options:
@@ -396,7 +416,16 @@ services:
   mongo:
     container_name: mongo${SUFFIX}
     image: mongo:7
+    # WiredTiger cache: mongod's own default is ~50% of host RAM, which starves everything
+    # else on a small box. 0.5GB default ~= mongod's auto value on a 2GB host.
+    # Set via SERVER_MEMORY_MB / MONGO_CACHE_GB (see scripts/lib/memory-limits.sh).
+    command: ["mongod", "--wiredTigerCacheSizeGB", "${MONGO_CACHE_GB:-0.5}"]
     restart: always
+    deploy:
+      resources:
+        limits:
+          # 0 = unlimited (historical default); set via SERVER_MEMORY_MB / MONGO_MEM_LIMIT
+          memory: ${MONGO_MEM_LIMIT:-0}
     # MONGO_INITDB_* are substituted on the host; ensure MONGO_USER/MONGO_PASSWORD are in shell (load_env_into_shell / workflow source)
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}

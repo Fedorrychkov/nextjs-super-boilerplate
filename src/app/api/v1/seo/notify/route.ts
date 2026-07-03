@@ -1,16 +1,26 @@
-import type { NextRequest } from 'next/server'
+import { withGlobalRateLimit } from '@lib/middleware'
+import { assertSeoNotifyAuthorized, filterUrlsToSiteHost } from '@lib/security/seo-notify-guard'
+import { type NextRequest, NextResponse } from 'next/server'
 
 import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 import { notifySearchEngines } from '~/lib/seo/indexing'
-import { jsonStringifySafety } from '~/utils/jsonSafe'
 
 /**
  * Single point of notification of search engines when publishing.
  * POST body: { urls: string[], indexNow?: boolean, google?: boolean }
  * Call from backend when publishing/updating articles (or from your own API publishing).
+ *
+ * Auth: requires the `x-seo-notify-secret` header to match `SEO_NOTIFY_SECRET`.
+ * URLs are filtered to this site's host before being submitted.
  */
-export const POST = async (request: NextRequest) => {
+const handler = async (request: NextRequest) => {
   const { t } = await getServerTFromNextRequestAsync(request)
+
+  const unauthorized = assertSeoNotifyAuthorized(request)
+
+  if (unauthorized) {
+    return unauthorized
+  }
 
   const body = (await request.json()) as {
     urls?: string[]
@@ -21,22 +31,21 @@ export const POST = async (request: NextRequest) => {
   const { urls, indexNow = true, google = true } = body
 
   if (!urls || !Array.isArray(urls) || urls.length === 0) {
-    return new Response(jsonStringifySafety({ error: t('errors.urlsArrayRequired') }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json; charset=utf-8' },
-    })
+    return NextResponse.json({ error: t('errors.urlsArrayRequired') }, { status: 400 })
   }
 
-  await notifySearchEngines(urls, { indexNow, google })
+  const allowedUrls = filterUrlsToSiteHost(urls)
 
-  return new Response(
-    jsonStringifySafety({
-      ok: true,
-      message: t('errors.indexNowBingYandexChatGPTAndGoogleIndexingApiNotified'),
-    }),
-    {
-      status: 200,
-      headers: { 'Content-Type': 'application/json; charset=utf-8' },
-    },
-  )
+  if (allowedUrls.length === 0) {
+    return NextResponse.json({ error: t('errors.urlsArrayRequired') }, { status: 400 })
+  }
+
+  await notifySearchEngines(allowedUrls, { indexNow, google })
+
+  return NextResponse.json({
+    ok: true,
+    message: t('errors.indexNowBingYandexChatGPTAndGoogleIndexingApiNotified'),
+  })
 }
+
+export const POST = withGlobalRateLimit(handler)

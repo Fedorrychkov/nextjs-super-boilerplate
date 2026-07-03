@@ -80,6 +80,27 @@ on:
         default: false
         type: boolean
 
+      server_memory_mb:
+        description: 'Total server RAM in MB (e.g. 2048). Derives per-container memory limits via scripts/lib/memory-limits.sh. 0 = keep compose defaults (api 2g, redis/mongo unlimited).'
+        required: false
+        default: 0
+        type: number
+      api_mem_limit:
+        description: 'Override core-api memory limit (e.g. 768M). Wins over server_memory_mb.'
+        required: false
+        default: ''
+        type: string
+      redis_mem_limit:
+        description: 'Override redis memory limit (e.g. 192M). Wins over server_memory_mb.'
+        required: false
+        default: ''
+        type: string
+      mongo_mem_limit:
+        description: 'Override mongo memory limit (e.g. 640M). Wins over server_memory_mb.'
+        required: false
+        default: ''
+        type: string
+
       certbot_email:
         description: Certbot email
         required: false
@@ -138,9 +159,11 @@ permissions:
   packages: write
   id-token: write
 
+# cancel-in-progress must stay false: cancelling a deploy mid-flight can kill the server
+# in a half-torn-down state (old containers removed, new ones not started yet).
 concurrency:
   group: reusable-deploy-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -196,11 +219,12 @@ jobs:
       - name: 📥 Install dependencies
         if: inputs.deploy_mode != 'registry'
         run: |
-          npm install --legacy-peer-deps
+          npm install -g pnpm@10
+          pnpm install --frozen-lockfile
 
       - name: 🧪 Unit tests (sanitize)
         if: inputs.deploy_mode != 'registry'
-        run: npm run test
+        run: pnpm run test
 
       - name: Create env and service-account.json files
         run: |
@@ -246,7 +270,7 @@ jobs:
       - name: 🚀 Build project
         if: inputs.deploy_mode != 'registry'
         run: |
-          if [ "${{ inputs.api_env }}" = "stage" ]; then npm run build:stage; else npm run build:prod; fi
+          if [ "${{ inputs.api_env }}" = "stage" ]; then pnpm run build:stage; else pnpm run build:prod; fi
 
       - name: 🗑️ Remove node_modules and .git
         run: |
@@ -282,7 +306,9 @@ jobs:
       - name: 🚀 Prepare and run on server (Blue/Green or Cold)
         id: deploy_run
         uses: appleboy/ssh-action@master
-        timeout-minutes: 15
+        # Must be >= command_timeout below, otherwise GitHub kills the step mid-deploy
+        # and leaves the server half-torn-down (old containers removed, new not started).
+        timeout-minutes: 30
         env:
           GH_USERNAME: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -298,12 +324,16 @@ jobs:
           REDIS_ENABLED: ${{ inputs.redis_enabled }}
           METRICS_ENABLED: ${{ inputs.metrics_enabled }}
           MONGO_ENABLED: ${{ inputs.mongo_enabled }}
+          SERVER_MEMORY_MB: ${{ inputs.server_memory_mb }}
+          API_MEM_LIMIT: ${{ inputs.api_mem_limit }}
+          REDIS_MEM_LIMIT: ${{ inputs.redis_mem_limit }}
+          MONGO_MEM_LIMIT: ${{ inputs.mongo_mem_limit }}
         with:
           host: ${{ secrets.server_host }}
           username: ${{ secrets.server_username }}
           password: ${{ secrets.server_password }}
           port: 22
-          envs: GH_USERNAME, GITHUB_TOKEN, DEPLOY_MODE, CORE_API_IMAGE, GHCR_USERNAME, GHCR_TOKEN, GRAFANA_ADMIN_USER, GRAFANA_ADMIN_PASSWORD, REDIS_ENABLED, METRICS_ENABLED, MONGO_ENABLED
+          envs: GH_USERNAME, GITHUB_TOKEN, DEPLOY_MODE, CORE_API_IMAGE, GHCR_USERNAME, GHCR_TOKEN, GRAFANA_ADMIN_USER, GRAFANA_ADMIN_PASSWORD, REDIS_ENABLED, METRICS_ENABLED, MONGO_ENABLED, SERVER_MEMORY_MB, API_MEM_LIMIT, REDIS_MEM_LIMIT, MONGO_MEM_LIMIT
           command_timeout: 25m
           script: |
             set -e
@@ -323,7 +353,10 @@ jobs:
             CORE_UP="core-api"; [ "$REDIS_ENABLED" = "true" ] && CORE_UP="$CORE_UP redis"; [ "$MONGO_ENABLED" = "true" ] && CORE_UP="$CORE_UP mongo"
             METRICS_SERVICES="prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana"
             EXTRA_UP="certbot"; [ "$METRICS_ENABLED" = "true" ] && EXTRA_UP="$EXTRA_UP $METRICS_SERVICES"; [ "$REDIS_ENABLED" = "true" ] && EXTRA_UP="$EXTRA_UP redis"; [ "$MONGO_ENABLED" = "true" ] && EXTRA_UP="$EXTRA_UP mongo"
-            EXTRA_STOP="certbot"; [ "$METRICS_ENABLED" = "true" ] && EXTRA_STOP="$EXTRA_STOP $METRICS_SERVICES"; [ "$REDIS_ENABLED" = "true" ] && EXTRA_STOP="$EXTRA_STOP redis"; [ "$MONGO_ENABLED" = "true" ] && EXTRA_STOP="$EXTRA_STOP mongo"
+            # Only stateless helpers get force-recreated after deploy. Never stop/rm redis or mongo
+            # under a live API: it turns every deploy into a short DB outage (429s/500s).
+            # `up -d` below is a no-op for already-running services with unchanged config.
+            EXTRA_STOP="certbot"; [ "$METRICS_ENABLED" = "true" ] && EXTRA_STOP="$EXTRA_STOP $METRICS_SERVICES"
 
             docker volume create letsencrypt_certs || true
             docker volume create certbot_logs || true
@@ -366,11 +399,17 @@ jobs:
                   mv "$HOME/app_new" "$HOME/app"
                   cd "$HOME/app"
                   chmod +x scripts/local-containers-run.sh || true
+                  # Same memory-limit env as inside the script — otherwise the inline
+                  # `up -d` calls below would see a different config and recreate redis/mongo.
+                  . scripts/lib/memory-limits.sh && compute_memory_limits
                   set -a; [ -f "${{ inputs.env_file }}" ] && . "./${{ inputs.env_file }}"; set +a; export ENV_FILE="${{ inputs.env_file }}"
+                  # Only the app container gets force-recreated: redis/mongo keep running
+                  # (compose `up -d` below recreates them automatically if their config changed).
+                  BG_STOP="core-api"
                   API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }} \
-                    docker-compose -f docker-compose.local.yml stop $CORE_UP || true
+                    docker-compose -f docker-compose.local.yml stop $BG_STOP || true
                   API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }} \
-                    docker-compose -f docker-compose.local.yml rm -f $CORE_UP || true
+                    docker-compose -f docker-compose.local.yml rm -f $BG_STOP || true
                   if [ "$DEPLOY_MODE" = "registry" ] && [ -n "$CORE_API_IMAGE" ]; then
                     docker pull "$CORE_API_IMAGE"
                   else
@@ -378,8 +417,24 @@ jobs:
                       docker-compose -f docker-compose.local.yml build --no-cache core-api
                   fi
                   ( set -a; [ -f "${{ inputs.env_file }}" ] && . "./${{ inputs.env_file }}"; set +a; export ENV_FILE="${{ inputs.env_file }}" API_ENV=${{ inputs.api_env }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }} CORE_API_IMAGE="$CORE_API_IMAGE"; docker-compose -f docker-compose.local.yml up -d $CORE_UP )
-                  # Restart nginx container so it picks up new upstream
-                  ( set -a; [ -f "${{ inputs.env_file }}" ] && . "./${{ inputs.env_file }}"; set +a; export ENV_FILE="${{ inputs.env_file }}" API_ENV=${{ inputs.api_env }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }}; docker-compose -f docker-compose.local.yml stop nginx || true; docker-compose -f docker-compose.local.yml rm -f nginx || true; docker-compose -f docker-compose.local.yml up -d nginx )
+                  # Wait for the new api to become healthy before declaring the swap done
+                  echo "Waiting for new api-service to become healthy..."
+                  attempts=0; max_attempts=150
+                  while true; do
+                    # exact name (docker ps name filter would also match api-service-green)
+                    status=$(docker inspect api-service --format '{{.State.Health.Status}}' 2>/dev/null || true)
+                    if [ "$status" = "healthy" ]; then echo "api-service is healthy"; break; fi
+                    attempts=$((attempts+1))
+                    if [ $attempts -ge $max_attempts ]; then
+                      echo "Error: api-service failed to become healthy after swap"
+                      docker logs --tail=200 api-service 2>&1 || true
+                      exit 1
+                    fi
+                    sleep 2
+                  done
+                  # Restart nginx so it picks up the new upstream immediately
+                  # (the resolver in nginx.conf re-resolves within 10s anyway; this is belt-and-braces)
+                  ( set -a; [ -f "${{ inputs.env_file }}" ] && . "./${{ inputs.env_file }}"; set +a; export ENV_FILE="${{ inputs.env_file }}" API_ENV=${{ inputs.api_env }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }}; docker-compose -f docker-compose.local.yml restart nginx || true )
                   MIGRATIONS_RUN=${{ inputs.migrations_run }} ./scripts/local-containers-run.sh bg-down ${{ inputs.api_env }} || true
                   API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} \
                     docker-compose -f docker-compose.local.yml stop $EXTRA_STOP || true
@@ -411,12 +466,15 @@ jobs:
               fi
               cd "$HOME/app"
               chmod +x scripts/local-containers-run.sh
+              # Same memory-limit env as inside the script — needed by the inline compose calls below.
+              . scripts/lib/memory-limits.sh && compute_memory_limits
               MIGRATIONS_RUN=${{ inputs.migrations_run }} CERTBOT_TEST_MODE=${{ inputs.certbot_test_mode }} CERTBOT_EMAIL=${{ secrets.certbot_email || inputs.certbot_email }} REDIS_ENABLED=$REDIS_ENABLED METRICS_ENABLED=$METRICS_ENABLED MONGO_ENABLED=$MONGO_ENABLED ./scripts/local-containers-run.sh https ${{ inputs.api_env }} -d ${{ inputs.domain }}
-              COLD_STOP="$EXTRA_STOP"; [ "$REDIS_ENABLED" = "true" ] && COLD_STOP="$COLD_STOP redis"; [ "$MONGO_ENABLED" = "true" ] && COLD_STOP="$COLD_STOP mongo"
+              # The https script above already (re)created core-api/redis/mongo.
+              # Only refresh stateless helpers here; redis/mongo stay untouched (no outage window).
               API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} \
-                docker-compose -f docker-compose.local.yml stop $COLD_STOP || true
+                docker-compose -f docker-compose.local.yml stop $EXTRA_STOP || true
               API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} \
-                docker-compose -f docker-compose.local.yml rm -f $COLD_STOP || true
+                docker-compose -f docker-compose.local.yml rm -f $EXTRA_STOP || true
               ( set -a; [ -f "${{ inputs.env_file }}" ] && . "./${{ inputs.env_file }}"; set +a; export ENV_FILE="${{ inputs.env_file }}" API_ENV=${{ inputs.api_env }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }}; docker-compose -f docker-compose.local.yml up -d $EXTRA_UP )
             fi
 
@@ -484,9 +542,10 @@ jobs:
             docker images --filter "dangling=true" --format "table {{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.Size}}" || true
             docker image prune -f || true
             docker container prune -f || true
-            docker network prune -f || true
             docker builder prune -f || true
-            docker volume prune -f || true
+            # NO `docker volume prune` here: this step runs even when the deploy failed,
+            # and with containers torn down it would delete mongo_data / redis_data /
+            # letsencrypt_certs (i.e. the database and certificates).
 
             echo "✅ Docker cleanup completed"
 

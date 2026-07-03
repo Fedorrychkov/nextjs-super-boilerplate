@@ -27,6 +27,14 @@ else
     exit 1
 fi
 
+# Memory limits: derive from SERVER_MEMORY_MB and/or explicit *_MEM_LIMIT overrides.
+# Without any of them, docker-compose.local.yml inline defaults apply.
+if [ -f "${PROJECT_ROOT}/scripts/lib/memory-limits.sh" ]; then
+    # shellcheck source=/dev/null
+    . "${PROJECT_ROOT}/scripts/lib/memory-limits.sh"
+    compute_memory_limits
+fi
+
 function rollback_mode() {
     local env=${1:-stage}
     local env_file=$(get_env_file $env)
@@ -39,8 +47,9 @@ function rollback_mode() {
     echo "Waiting for core-api to be ready for rollback..."
     attempts=0; max_attempts=20
     while true; do
-        status=$(docker ps --filter name=api-service --format "{{.Status}}")
-        if [[ "$status" == *"(healthy)"* || -n "$status" ]]; then
+        # exact container name (a `name=` filter is a substring match and would also hit api-service-green)
+        status=$(docker inspect api-service --format '{{.State.Health.Status}}' 2>/dev/null || true)
+        if [ "$status" = "healthy" ]; then
             break
         fi
         ((attempts++)); [ $attempts -ge $max_attempts ] && break
@@ -70,12 +79,16 @@ function rollback_mode() {
 }
 
 # Blue/Green: validate green stack (api+redis) in app_new without nginx
+# Blue/Green: validate GREEN core-api only. It attaches to the shared network and talks to
+# the LIVE blue redis/mongo — exactly what it will see after the swap. Never start
+# redis-green/mongo-green: a green mongo would get a fresh empty volume, and duplicate DNS
+# aliases ("redis"/"mongo") on the same network make resolution nondeterministic.
 function bg_validate_green() {
     local env=${1:-stage}
     local env_file=$(get_env_file $env)
-    echo "Starting blue/green validation for GREEN stack..."
+    echo "Starting blue/green validation for GREEN api..."
 
-    # Clean up any existing green containers to avoid ContainerConfig errors
+    # Clean up any existing green containers (incl. legacy green redis/mongo)
     echo "Cleaning up any existing green containers..."
     docker stop api-service-green redis-green mongo-green 2>/dev/null || true
     docker rm -f api-service-green redis-green mongo-green 2>/dev/null || true
@@ -90,7 +103,7 @@ function bg_validate_green() {
     export SUFFIX=-green
     API_ENV=${env} \
     ENV_FILE=${env_file} \
-    docker-compose -f ${COMPOSE_FILE} up -d $CORE_SERVICES
+    docker-compose -f ${COMPOSE_FILE} up -d --no-deps core-api
 
     echo "Waiting for GREEN core-api to become healthy..."
     attempts=0; max_attempts=30
@@ -310,8 +323,9 @@ function start_https() {
     echo "Waiting for core-api to become healthy..."
     attempts=0; max_attempts=30
     while true; do
-        status=$(docker ps --filter name=api-service --format "{{.Status}}")
-        if [[ "$status" == *"(healthy)"* ]]; then
+        # exact container name (a `name=` filter is a substring match and would also hit api-service-green)
+        status=$(docker inspect api-service --format '{{.State.Health.Status}}' 2>/dev/null || true)
+        if [ "$status" = "healthy" ]; then
             echo "core-api is healthy"
             break
         fi
@@ -659,6 +673,8 @@ case "$1" in
         echo "  REDIS_ENABLED=true|false   - Start Redis container (default: false)"
         echo "  METRICS_ENABLED=true|false  - Start metrics stack (prometheus, grafana, loki, etc.) (default: false)"
         echo "  MONGO_ENABLED=true|false   - Start MongoDB container (default: false). If false, use MONGO_URI to external cluster."
+        echo "  SERVER_MEMORY_MB=<mb>       - Total RAM budget; derives per-container memory limits (see scripts/lib/memory-limits.sh)"
+        echo "  API_MEM_LIMIT/REDIS_MEM_LIMIT/MONGO_MEM_LIMIT - explicit per-service overrides (e.g. 768M)"
         echo "  DEPLOY_MODE=default|registry - default: build on server; registry: use CORE_API_IMAGE (pull only)"
         echo "  CORE_API_IMAGE=<image>     - When DEPLOY_MODE=registry, image to pull (e.g. ghcr.io/owner/sapian-web-core-api:sha)"
         echo "Commands:"

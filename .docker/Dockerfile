@@ -13,18 +13,15 @@ ENV API_ENV=$API_ENV
 RUN echo "API_ENV: $API_ENV"
 RUN echo "PUBLIC_ENV: $PUBLIC_ENV"
 
+# Pin the package manager: the repo lockfile is pnpm-lock.yaml (lockfileVersion 9)
+RUN npm install -g pnpm@10
+
 # Copy only necessary files for installing dependencies
-COPY package*.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY tsconfig*.json ./
 
-# Check for package-lock.json and install dependencies
-RUN if [ -f "package-lock.json" ]; then \
-        echo 'package-lock.json found, using npm ci...' && \
-        HUSKY=0 npm ci --prefer-offline --no-audit --legacy-peer-deps; \
-    else \
-        echo 'package-lock.json not found, falling back to npm install...' && \
-        HUSKY=0 npm install --prefer-offline --no-audit --legacy-peer-deps; \
-    fi
+# Reproducible install strictly from the lockfile — fail the build if it is out of sync
+RUN HUSKY=0 pnpm install --frozen-lockfile
 
 # Copy source files and build the application
 COPY . .
@@ -43,15 +40,15 @@ RUN if [ "$API_ENV" = "stage" ]; then \
     fi
 
 # Defense-in-depth HTML sanitizer tests (also run in CI when deploy_mode != registry)
-RUN npm run test
+RUN pnpm run test
 
-RUN npm run build:${API_ENV}
+RUN pnpm run build:${API_ENV}
 
-# Clean up dev dependencies with --legacy-peer-deps flag
-RUN npm prune --production --legacy-peer-deps
+# Drop dev dependencies from node_modules (runtime deps like env-cmd/tsx stay: they are in "dependencies")
+RUN pnpm prune --prod
 
 HEALTHCHECK --interval=30s --timeout=3s \
     CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/v1/healthcheck || exit 1
 
 # Run the application according to the environment
-CMD ["sh", "-c", "npm run start:${API_ENV}"]
+CMD ["sh", "-c", "pnpm run start:${API_ENV}"]

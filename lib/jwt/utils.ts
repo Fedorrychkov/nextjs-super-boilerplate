@@ -3,11 +3,15 @@ import jwt from 'jsonwebtoken'
 
 import { JwtPayload } from '~/api/auth/model'
 
+/** Pin the signing/verification algorithm to prevent algorithm-confusion attacks (e.g. `alg: none` or HS/RS confusion). */
+const JWT_ALGORITHM = 'HS256' as const
+
 /**
  * Generation of an access token
  */
 export function generateAccessToken(payload: Omit<JwtPayload, 'exp'>): string {
   return jwt.sign(payload, JWT_CONFIG.secret, {
+    algorithm: JWT_ALGORITHM,
     expiresIn: Number(JWT_CONFIG.accessExpiresIn),
   })
 }
@@ -17,6 +21,7 @@ export function generateAccessToken(payload: Omit<JwtPayload, 'exp'>): string {
  */
 export function generateRefreshToken(payload: Omit<JwtPayload, 'exp'>): string {
   return jwt.sign(payload, JWT_CONFIG.secret, {
+    algorithm: JWT_ALGORITHM,
     expiresIn: Number(JWT_CONFIG.refreshExpiresIn),
   })
 }
@@ -26,7 +31,7 @@ export function generateRefreshToken(payload: Omit<JwtPayload, 'exp'>): string {
  */
 export function verifyAccessToken(token: string): JwtPayload {
   try {
-    return jwt.verify(token, JWT_CONFIG.secret) as JwtPayload
+    return jwt.verify(token, JWT_CONFIG.secret, { algorithms: [JWT_ALGORITHM] }) as JwtPayload
   } catch (error: unknown) {
     if (error instanceof Error) {
       throw new Error(error.message)
@@ -41,7 +46,7 @@ export function verifyAccessToken(token: string): JwtPayload {
  */
 export function verifyRefreshToken(token: string): JwtPayload {
   try {
-    return jwt.verify(token, JWT_CONFIG.secret) as JwtPayload
+    return jwt.verify(token, JWT_CONFIG.secret, { algorithms: [JWT_ALGORITHM] }) as JwtPayload
   } catch (error: unknown) {
     if (error instanceof Error) {
       throw new Error(error.message)
