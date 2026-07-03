@@ -53,7 +53,8 @@ export function setAuthCookies(response: NextResponse, accessToken: string, refr
  */
 export function clearAuthCookies(response: NextResponse): void {
   const secure = !isDevelop
-  const sameSite = isDevelop ? 'lax' : 'none'
+  // Match setAuthCookies: 'lax' (avoid unnecessary SameSite=None cross-site cookies).
+  const sameSite = 'lax'
 
   response.cookies.set('accessToken', '', {
     httpOnly: true,

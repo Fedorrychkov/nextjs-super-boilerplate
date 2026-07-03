@@ -21,6 +21,10 @@ const {
   INDEXNOW_KEY_LOCATION = process.env.INDEXNOW_KEY_LOCATION,
   GOOGLE_INDEXING_CLIENT_EMAIL = process.env.GOOGLE_INDEXING_CLIENT_EMAIL,
   GOOGLE_INDEXING_PRIVATE_KEY = process.env.GOOGLE_INDEXING_PRIVATE_KEY,
+  /** Shared secret guarding the public SEO indexing endpoints (/api/v1/seo/*). Used only when SEO_NOTIFY_AUTH_ENABLED=true. */
+  SEO_NOTIFY_SECRET = process.env.SEO_NOTIFY_SECRET || '',
+  /** Hard on/off for SEO endpoint auth. false (default) → endpoints open as before (gradual rollout); true → require secret header. */
+  SEO_NOTIFY_AUTH_ENABLED = process.env.SEO_NOTIFY_AUTH_ENABLED === 'true',
   MFA_ENCRYPTION_KEY = process.env.MFA_ENCRYPTION_KEY || '',
   FIRST_ADMIN_LOGIN = process.env.FIRST_ADMIN_LOGIN || '',
   FIRST_ADMIN_PASSWORD = process.env.FIRST_ADMIN_PASSWORD || '',
@@ -261,5 +265,7 @@ export {
   REDIS_URL,
   REGISTRATION_CONFIG,
   RUM_CONFIG,
+  SEO_NOTIFY_AUTH_ENABLED,
+  SEO_NOTIFY_SECRET,
   THEME_CONFIG,
 }

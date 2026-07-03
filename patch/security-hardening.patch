@@ -1,0 +1,650 @@
+diff --git a/.docker/nginx/nginx.conf.local.template.https b/.docker/nginx/nginx.conf.local.template.https
+index 8798287..771d734 100644
+--- a/.docker/nginx/nginx.conf.local.template.https
++++ b/.docker/nginx/nginx.conf.local.template.https
+@@ -118,8 +118,13 @@ http {
+         # NGINX metrics location
+         location /nginx_status {
+             stub_status on;
+-            allow 0.0.0.0/0;  # Allow all IPs (check security)
+-            deny all;         # Deny by default
++            access_log off;
++            # Internal-only: nginx metrics must not be publicly reachable.
++            allow 127.0.0.1;
++            allow ::1;
++            allow 172.16.0.0/12;   # Docker/private network (e.g. Prometheus scrape)
++            allow 10.0.0.0/8;
++            deny all;
+         }
+ 
+         location ^~ /.well-known/acme-challenge/ {
+@@ -143,16 +148,8 @@ http {
+ 
+ 
+         location / {
+-            set $original_client_ip $http_x_forwarded_for;
+-            if ($http_x_forwarded_for ~ "^(.+),") {
+-                set $original_client_ip $1;
+-            }
+-
+             proxy_pass http://backend;
+ 
+-            # Update headers
+-            proxy_set_header X-Client-IP $original_client_ip;
+-            proxy_set_header X-Real-IP $original_client_ip;
+             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+ 
+             # WebSocket specific settings
+diff --git a/.docker/nginx/nginx.conf.template.http b/.docker/nginx/nginx.conf.template.http
+index 6c67b6e..e1d814e 100644
+--- a/.docker/nginx/nginx.conf.template.http
++++ b/.docker/nginx/nginx.conf.template.http
+@@ -78,8 +78,14 @@ http {
+         # NGINX metrics location
+         location /nginx_status {
+             stub_status on;
+-            allow 0.0.0.0/0;  # Allow all IPs (check security)
+-            deny all;         # Deny by default
++            access_log off;
++            # Internal-only: nginx metrics must not be publicly reachable.
++            # `allow 0.0.0.0/0` matched first and effectively exposed this to everyone.
++            allow 127.0.0.1;
++            allow ::1;
++            allow 172.16.0.0/12;   # Docker/private network (e.g. Prometheus scrape) — tighten to your monitoring subnet
++            allow 10.0.0.0/8;
++            deny all;
+         }
+ 
+         # Cache Next.js static assets (safe: filenames contain content hash)
+@@ -123,14 +129,6 @@ http {
+ 
+         # Proxy to API
+         location / {
+-            set $original_client_ip $http_x_forwarded_for;
+-            if ($http_x_forwarded_for ~ "^(.+),") {
+-                set $original_client_ip $1;
+-            }
+-
+-            # Update headers
+-            proxy_set_header X-Client-IP $original_client_ip;
+-            proxy_set_header X-Real-IP $original_client_ip;
+             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+ 
+             # WebSocket specific settings
+@@ -151,6 +149,9 @@ http {
+             proxy_pass http://backend;
+ 
+             # Header variables
++            # Trusted client IP = direct TCP peer ($realip_remote_addr), NOT the spoofable
++            # client-supplied X-Forwarded-For. Behind a CDN/LB, enable the realip module:
++            #   set_real_ip_from <trusted-proxy-cidr>;  real_ip_header X-Forwarded-For;  real_ip_recursive on;
+             set $client_ip $realip_remote_addr;
+             set $request_source "api";
+             set $processed_by "api-nginx";
+diff --git a/.docker/nginx/nginx.conf.template.https b/.docker/nginx/nginx.conf.template.https
+index 40b7594..c259293 100644
+--- a/.docker/nginx/nginx.conf.template.https
++++ b/.docker/nginx/nginx.conf.template.https
+@@ -118,8 +118,14 @@ http {
+         # NGINX metrics location
+         location /nginx_status {
+             stub_status on;
+-            allow 0.0.0.0/0;  # Allow all IPs (check security)
+-            deny all;         # Deny by default
++            access_log off;
++            # Internal-only: nginx metrics must not be publicly reachable.
++            # `allow 0.0.0.0/0` matched first and effectively exposed this to everyone.
++            allow 127.0.0.1;
++            allow ::1;
++            allow 172.16.0.0/12;   # Docker/private network (e.g. Prometheus scrape) — tighten to your monitoring subnet
++            allow 10.0.0.0/8;
++            deny all;
+         }
+ 
+         location ^~ /.well-known/acme-challenge/ {
+@@ -161,16 +167,8 @@ http {
+         # METRICS_GRAFANA_LOCATION_END
+ 
+         location / {
+-            set $original_client_ip $http_x_forwarded_for;
+-            if ($http_x_forwarded_for ~ "^(.+),") {
+-                set $original_client_ip $1;
+-            }
+-
+             proxy_pass http://backend;
+ 
+-            # Update headers
+-            proxy_set_header X-Client-IP $original_client_ip;
+-            proxy_set_header X-Real-IP $original_client_ip;
+             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+ 
+             # WebSocket specific settings
+@@ -190,6 +188,10 @@ http {
+ 
+ 
+             # Header variables
++            # Trusted client IP = direct TCP peer ($realip_remote_addr), NOT the client-supplied
++            # X-Forwarded-For (which is spoofable and would let clients forge their rate-limit key).
++            # If you run behind a CDN/LB (e.g. Cloudflare), enable the realip module instead:
++            #   set_real_ip_from <trusted-proxy-cidr>;  real_ip_header X-Forwarded-For;  real_ip_recursive on;
+             set $client_ip $realip_remote_addr;
+             set $request_source "api";
+             set $processed_by "api-nginx";
+diff --git a/.env.example b/.env.example
+index b86f883..5ab469f 100644
+--- a/.env.example
++++ b/.env.example
+@@ -50,6 +50,14 @@ INDEXNOW_KEY_LOCATION=
+ GOOGLE_INDEXING_CLIENT_EMAIL=
+ GOOGLE_INDEXING_PRIVATE_KEY=
+ 
++# Auth for the public SEO indexing endpoints (/api/v1/seo/notify|indexnow|google-indexing).
++# Gradual rollout:
++#   1) Deploy with SEO_NOTIFY_AUTH_ENABLED=false (default) — endpoints stay open, nothing breaks.
++#   2) Set SEO_NOTIFY_SECRET and update your callers to send header `x-seo-notify-secret: <value>`.
++#   3) Flip SEO_NOTIFY_AUTH_ENABLED=true to enforce. (enabled + empty secret → 503)
++SEO_NOTIFY_AUTH_ENABLED=false
++SEO_NOTIFY_SECRET=
++
+ # MFA (TOTP)
+ # Use a strong random string; it's used to derive an encryption key for TOTP secrets.
+ MFA_ENCRYPTION_KEY=
+diff --git a/config/env.ts b/config/env.ts
+index 8b2f490..73e9b0d 100644
+--- a/config/env.ts
++++ b/config/env.ts
+@@ -21,6 +21,10 @@ const {
+   INDEXNOW_KEY_LOCATION = process.env.INDEXNOW_KEY_LOCATION,
+   GOOGLE_INDEXING_CLIENT_EMAIL = process.env.GOOGLE_INDEXING_CLIENT_EMAIL,
+   GOOGLE_INDEXING_PRIVATE_KEY = process.env.GOOGLE_INDEXING_PRIVATE_KEY,
++  /** Shared secret guarding the public SEO indexing endpoints (/api/v1/seo/*). Used only when SEO_NOTIFY_AUTH_ENABLED=true. */
++  SEO_NOTIFY_SECRET = process.env.SEO_NOTIFY_SECRET || '',
++  /** Hard on/off for SEO endpoint auth. false (default) → endpoints open as before (gradual rollout); true → require secret header. */
++  SEO_NOTIFY_AUTH_ENABLED = process.env.SEO_NOTIFY_AUTH_ENABLED === 'true',
+   MFA_ENCRYPTION_KEY = process.env.MFA_ENCRYPTION_KEY || '',
+   FIRST_ADMIN_LOGIN = process.env.FIRST_ADMIN_LOGIN || '',
+   FIRST_ADMIN_PASSWORD = process.env.FIRST_ADMIN_PASSWORD || '',
+@@ -261,5 +265,7 @@ export {
+   REDIS_URL,
+   REGISTRATION_CONFIG,
+   RUM_CONFIG,
++  SEO_NOTIFY_AUTH_ENABLED,
++  SEO_NOTIFY_SECRET,
+   THEME_CONFIG,
+ }
+diff --git a/lib/cookies.ts b/lib/cookies.ts
+index 5389454..a771e78 100644
+--- a/lib/cookies.ts
++++ b/lib/cookies.ts
+@@ -53,7 +53,8 @@ export function setAuthCookies(response: NextResponse, accessToken: string, refr
+  */
+ export function clearAuthCookies(response: NextResponse): void {
+   const secure = !isDevelop
+-  const sameSite = isDevelop ? 'lax' : 'none'
++  // Match setAuthCookies: 'lax' (avoid unnecessary SameSite=None cross-site cookies).
++  const sameSite = 'lax'
+ 
+   response.cookies.set('accessToken', '', {
+     httpOnly: true,
+diff --git a/lib/jwt/utils.ts b/lib/jwt/utils.ts
+index 970dfe3..9c33ada 100644
+--- a/lib/jwt/utils.ts
++++ b/lib/jwt/utils.ts
+@@ -3,11 +3,15 @@ import jwt from 'jsonwebtoken'
+ 
+ import { JwtPayload } from '~/api/auth/model'
+ 
++/** Pin the signing/verification algorithm to prevent algorithm-confusion attacks (e.g. `alg: none` or HS/RS confusion). */
++const JWT_ALGORITHM = 'HS256' as const
++
+ /**
+  * Generation of an access token
+  */
+ export function generateAccessToken(payload: Omit<JwtPayload, 'exp'>): string {
+   return jwt.sign(payload, JWT_CONFIG.secret, {
++    algorithm: JWT_ALGORITHM,
+     expiresIn: Number(JWT_CONFIG.accessExpiresIn),
+   })
+ }
+@@ -17,6 +21,7 @@ export function generateAccessToken(payload: Omit<JwtPayload, 'exp'>): string {
+  */
+ export function generateRefreshToken(payload: Omit<JwtPayload, 'exp'>): string {
+   return jwt.sign(payload, JWT_CONFIG.secret, {
++    algorithm: JWT_ALGORITHM,
+     expiresIn: Number(JWT_CONFIG.refreshExpiresIn),
+   })
+ }
+@@ -26,7 +31,7 @@ export function generateRefreshToken(payload: Omit<JwtPayload, 'exp'>): string {
+  */
+ export function verifyAccessToken(token: string): JwtPayload {
+   try {
+-    return jwt.verify(token, JWT_CONFIG.secret) as JwtPayload
++    return jwt.verify(token, JWT_CONFIG.secret, { algorithms: [JWT_ALGORITHM] }) as JwtPayload
+   } catch (error: unknown) {
+     if (error instanceof Error) {
+       throw new Error(error.message)
+@@ -41,7 +46,7 @@ export function verifyAccessToken(token: string): JwtPayload {
+  */
+ export function verifyRefreshToken(token: string): JwtPayload {
+   try {
+-    return jwt.verify(token, JWT_CONFIG.secret) as JwtPayload
++    return jwt.verify(token, JWT_CONFIG.secret, { algorithms: [JWT_ALGORITHM] }) as JwtPayload
+   } catch (error: unknown) {
+     if (error instanceof Error) {
+       throw new Error(error.message)
+diff --git a/lib/middleware/rate-limit-middleware.ts b/lib/middleware/rate-limit-middleware.ts
+index 72d8d04..323f65c 100644
+--- a/lib/middleware/rate-limit-middleware.ts
++++ b/lib/middleware/rate-limit-middleware.ts
+@@ -14,7 +14,7 @@ export const withGlobalRateLimit = <T extends RouteHandler>(handler: T): T =>
+     const key = getClientKey(request)
+     const logger = new Logger(['withGlobalRateLimit', '[lib/rate-limit.ts]', `consumed key: ${key}`])
+ 
+-    logger.warn('start')
++    logger.debug('start')
+ 
+     if (!key) {
+       return handler(request, context)
+@@ -23,7 +23,7 @@ export const withGlobalRateLimit = <T extends RouteHandler>(handler: T): T =>
+     try {
+       const consumed = await rateLimit.consume(key)
+ 
+-      logger.warn({ consumed })
++      logger.debug({ consumed })
+     } catch {
+       return NextResponse.json(
+         {
+diff --git a/lib/security/seo-notify-guard.ts b/lib/security/seo-notify-guard.ts
+new file mode 100644
+index 0000000..c4c385f
+--- /dev/null
++++ b/lib/security/seo-notify-guard.ts
+@@ -0,0 +1,89 @@
++import { NEXT_PUBLIC_SITE_URL, SEO_NOTIFY_AUTH_ENABLED, SEO_NOTIFY_SECRET } from '@config/env'
++import { timingSafeEqual } from 'crypto'
++import { NextRequest, NextResponse } from 'next/server'
++
++/**
++ * Guard for the public SEO indexing endpoints (`/api/v1/seo/*`).
++ *
++ * These endpoints trigger IndexNow / Google Indexing API calls that consume your API quota,
++ * so they should not be callable anonymously. They are meant to be called server-to-server
++ * (from your own backend on publish), therefore we gate them on a shared secret header
++ * instead of a user session.
++ *
++ * Rollout is controlled by `SEO_NOTIFY_AUTH_ENABLED`:
++ *   - false / unset (default): auth is OFF — endpoints behave as before (no breakage while you migrate callers).
++ *   - true: the `x-seo-notify-secret` header must match `SEO_NOTIFY_SECRET`.
++ */
++export const SEO_NOTIFY_SECRET_HEADER = 'x-seo-notify-secret'
++
++function safeEqual(a: string, b: string): boolean {
++  const ab = Buffer.from(a)
++  const bb = Buffer.from(b)
++
++  // timingSafeEqual throws on length mismatch — compare lengths first (already non-secret info).
++  if (ab.length !== bb.length) {
++    return false
++  }
++
++  return timingSafeEqual(ab, bb)
++}
++
++/**
++ * Returns a NextResponse to short-circuit the handler when the request is not authorized,
++ * or `null` when the caller may proceed.
++ */
++export function assertSeoNotifyAuthorized(request: NextRequest): NextResponse | null {
++  // Gradual rollout: when the flag is off, skip the check entirely (endpoints stay open).
++  if (!SEO_NOTIFY_AUTH_ENABLED) {
++    return null
++  }
++
++  if (!SEO_NOTIFY_SECRET) {
++    // Enforcement is on but no secret configured — fail closed to avoid a silently-open endpoint.
++    return NextResponse.json({ error: 'SEO indexing auth is enabled but SEO_NOTIFY_SECRET is not set.' }, { status: 503 })
++  }
++
++  const provided = request.headers.get(SEO_NOTIFY_SECRET_HEADER) ?? ''
++
++  if (!provided || !safeEqual(provided, SEO_NOTIFY_SECRET)) {
++    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
++  }
++
++  return null
++}
++
++let cachedSiteHost: string | null = null
++
++function getSiteHost(): string {
++  if (cachedSiteHost !== null) {
++    return cachedSiteHost
++  }
++
++  try {
++    cachedSiteHost = new URL(NEXT_PUBLIC_SITE_URL).host
++  } catch {
++    cachedSiteHost = ''
++  }
++
++  return cachedSiteHost
++}
++
++/**
++ * Keep only well-formed URLs that belong to this site's host — prevents the endpoint from being
++ * abused to submit arbitrary third-party URLs to search engines under your credentials.
++ */
++export function filterUrlsToSiteHost(urls: string[]): string[] {
++  const host = getSiteHost()
++
++  if (!host) {
++    return []
++  }
++
++  return urls.filter((url) => {
++    try {
++      return new URL(url).host === host
++    } catch {
++      return false
++    }
++  })
++}
+diff --git a/package.json b/package.json
+index dd8af60..f4eddcd 100644
+--- a/package.json
++++ b/package.json
+@@ -37,7 +37,7 @@
+     ]
+   },
+   "dependencies": {
+-    "@next/bundle-analyzer": "^16.1.6",
++    "@next/bundle-analyzer": "^16.2.10",
+     "@radix-ui/react-checkbox": "^1.3.2",
+     "@radix-ui/react-dialog": "^1.1.14",
+     "@radix-ui/react-slot": "^1.2.3",
+@@ -77,7 +77,7 @@
+     "@tiptap/starter-kit": "^3.20.4",
+     "@tiptap/static-renderer": "^3.20.4",
+     "@tiptap/y-tiptap": "^3.0.2",
+-    "axios": "^1.10.0",
++    "axios": "^1.18.1",
+     "bcryptjs": "^3.0.3",
+     "class-variance-authority": "^0.7.1",
+     "clipboard": "^2.0.11",
+@@ -91,17 +91,18 @@
+     "framer-motion": "^12.23.9",
+     "globals": "^16.4.0",
+     "gpt-tokenizer": "^3.4.0",
++    "happy-dom": "^20.10.6",
+     "highlight.js": "^11.11.1",
+     "husky": "^9.1.7",
+     "ioredis": "^5.10.0",
+     "isomorphic-dompurify": "^3.7.1",
+     "jsonwebtoken": "^9.0.3",
+-    "lodash": "^4.17.21",
++    "lodash": "^4.18.1",
+     "lowlight": "^3.3.0",
+     "lucide-react": "^0.544.0",
+     "marked": "^17.0.5",
+     "mongoose": "^9.2.3",
+-    "next": "16.1.6",
++    "next": "16.2.10",
+     "openai": "^6.33.0",
+     "otplib": "^13.3.0",
+     "radix-ui": "^1.4.2",
+@@ -116,8 +117,8 @@
+     "slugify": "^1.6.8",
+     "tailwind-merge": "^3.3.1",
+     "typescript": "^5.9.3",
+-    "undici": "^7.24.5",
+-    "uuid": "^13.0.0",
++    "undici": "^7.28.0",
++    "uuid": "^13.0.1",
+     "web-push": "^3.6.7",
+     "web-vitals": "^4.2.4",
+     "y-protocols": "^1.0.7",
+@@ -134,7 +135,7 @@
+     "@types/web-push": "^3.6.4",
+     "@typescript-eslint/eslint-plugin": "^8.37.0",
+     "eslint": "^9",
+-    "eslint-config-next": "16.1.6",
++    "eslint-config-next": "16.2.10",
+     "eslint-config-prettier": "^10.1.5",
+     "eslint-plugin-import": "^2.32.0",
+     "eslint-plugin-jsdoc": "^51.3.4",
+diff --git a/pnpm-workspace.yaml b/pnpm-workspace.yaml
+new file mode 100644
+index 0000000..14aa03a
+--- /dev/null
++++ b/pnpm-workspace.yaml
+@@ -0,0 +1,15 @@
++# pnpm 10.16+/11 читает настройки отсюда (в package.json поле "pnpm" в новых версиях игнорируется).
++# overrides форсят безопасные версии транзитивных зависимостей (см. SECURITY_SEO_AUDIT.md).
++# Версионно-скоупленные селекторы (picomatch/ws/brace-expansion) правят только уязвимые ветки,
++# не трогая места, где в дереве нужна другая мажорная версия.
++overrides:
++  dompurify: '>=3.4.11'
++  happy-dom: '>=20.8.9'
++  markdown-it: '>=14.2.0'
++  linkify-it: '>=5.0.1'
++  postcss: '>=8.5.10'
++  '@babel/core': '>=7.29.6'
++  'picomatch@>=4.0.0 <4.0.4': '>=4.0.4'
++  'ws@>=7.0.0 <7.5.11': '>=7.5.11'
++  'brace-expansion@>=1.0.0 <1.1.13': 1.1.13
++  'brace-expansion@>=4.0.0 <5.0.6': 5.0.6
+diff --git a/src/app/api/v1/seo/google-indexing/route.ts b/src/app/api/v1/seo/google-indexing/route.ts
+index a2244c1..1a3c9be 100644
+--- a/src/app/api/v1/seo/google-indexing/route.ts
++++ b/src/app/api/v1/seo/google-indexing/route.ts
+@@ -1,30 +1,41 @@
+-import type { NextRequest } from 'next/server'
++import { withGlobalRateLimit } from '@lib/middleware'
++import { assertSeoNotifyAuthorized, filterUrlsToSiteHost } from '@lib/security/seo-notify-guard'
++import { type NextRequest, NextResponse } from 'next/server'
+ 
+ import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
+ import { notifyGoogleIndexing } from '~/lib/seo/indexing'
+-import { jsonStringifySafety } from '~/utils/jsonSafe'
+ 
+-export const POST = async (request: NextRequest) => {
++/**
++ * Auth: requires the `x-seo-notify-secret` header to match `SEO_NOTIFY_SECRET`.
++ * URLs are filtered to this site's host before being submitted.
++ */
++const handler = async (request: NextRequest) => {
+   const { t } = await getServerTFromNextRequestAsync(request)
++
++  const unauthorized = assertSeoNotifyAuthorized(request)
++
++  if (unauthorized) {
++    return unauthorized
++  }
++
+   const { urls } = (await request.json()) as { urls?: string[] }
+ 
+   if (!urls || !Array.isArray(urls) || urls.length === 0) {
+-    return new Response(jsonStringifySafety({ error: 'urls array is required' }), {
+-      status: 400,
+-      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+-    })
++    return NextResponse.json({ error: t('errors.urlsArrayRequired') }, { status: 400 })
+   }
+ 
+-  await notifyGoogleIndexing(urls)
+-
+-  return new Response(
+-    jsonStringifySafety({
+-      ok: true,
+-      message: t('seo.googleIndexing.messages.googleIndexingApiAcceptsOnlyJobPostingBroadcastEvent'),
+-    }),
+-    {
+-      status: 200,
+-      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+-    },
+-  )
++  const allowedUrls = filterUrlsToSiteHost(urls)
++
++  if (allowedUrls.length === 0) {
++    return NextResponse.json({ error: t('errors.urlsArrayRequired') }, { status: 400 })
++  }
++
++  await notifyGoogleIndexing(allowedUrls)
++
++  return NextResponse.json({
++    ok: true,
++    message: t('seo.googleIndexing.messages.googleIndexingApiAcceptsOnlyJobPostingBroadcastEvent'),
++  })
+ }
++
++export const POST = withGlobalRateLimit(handler)
+diff --git a/src/app/api/v1/seo/indexnow/route.ts b/src/app/api/v1/seo/indexnow/route.ts
+index a56e4e4..011c686 100644
+--- a/src/app/api/v1/seo/indexnow/route.ts
++++ b/src/app/api/v1/seo/indexnow/route.ts
+@@ -1,28 +1,40 @@
+-import type { NextRequest } from 'next/server'
++import { withGlobalRateLimit } from '@lib/middleware'
++import { assertSeoNotifyAuthorized, filterUrlsToSiteHost } from '@lib/security/seo-notify-guard'
++import { type NextRequest, NextResponse } from 'next/server'
+ 
+ import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
+ import { pingIndexNow } from '~/lib/seo/indexing'
+-import { jsonStringifySafety } from '~/utils/jsonSafe'
+ 
+ /**
+  * Manual IndexNow ping. Unlike `notifySearchEngines`, this is **not** gated on `isProd` (still needs `INDEXNOW_API_KEY`).
++ *
++ * Auth: requires the `x-seo-notify-secret` header to match `SEO_NOTIFY_SECRET`.
++ * URLs are filtered to this site's host before being submitted.
+  */
+-export const POST = async (request: NextRequest) => {
++const handler = async (request: NextRequest) => {
+   const { t } = await getServerTFromNextRequestAsync(request)
+ 
++  const unauthorized = assertSeoNotifyAuthorized(request)
++
++  if (unauthorized) {
++    return unauthorized
++  }
++
+   const { urls } = (await request.json()) as { urls?: string[] }
+ 
+   if (!urls || !Array.isArray(urls) || urls.length === 0) {
+-    return new Response(jsonStringifySafety({ error: t('errors.urlsArrayRequired') }), {
+-      status: 400,
+-      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+-    })
++    return NextResponse.json({ error: t('errors.urlsArrayRequired') }, { status: 400 })
+   }
+ 
+-  await pingIndexNow(urls)
++  const allowedUrls = filterUrlsToSiteHost(urls)
+ 
+-  return new Response(jsonStringifySafety({ ok: true }), {
+-    status: 200,
+-    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+-  })
++  if (allowedUrls.length === 0) {
++    return NextResponse.json({ error: t('errors.urlsArrayRequired') }, { status: 400 })
++  }
++
++  await pingIndexNow(allowedUrls)
++
++  return NextResponse.json({ ok: true })
+ }
++
++export const POST = withGlobalRateLimit(handler)
+diff --git a/src/app/api/v1/seo/notify/route.ts b/src/app/api/v1/seo/notify/route.ts
+index e9a50aa..ffdd241 100644
+--- a/src/app/api/v1/seo/notify/route.ts
++++ b/src/app/api/v1/seo/notify/route.ts
+@@ -1,17 +1,27 @@
+-import type { NextRequest } from 'next/server'
++import { withGlobalRateLimit } from '@lib/middleware'
++import { assertSeoNotifyAuthorized, filterUrlsToSiteHost } from '@lib/security/seo-notify-guard'
++import { type NextRequest, NextResponse } from 'next/server'
+ 
+ import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
+ import { notifySearchEngines } from '~/lib/seo/indexing'
+-import { jsonStringifySafety } from '~/utils/jsonSafe'
+ 
+ /**
+  * Single point of notification of search engines when publishing.
+  * POST body: { urls: string[], indexNow?: boolean, google?: boolean }
+  * Call from backend when publishing/updating articles (or from your own API publishing).
++ *
++ * Auth: requires the `x-seo-notify-secret` header to match `SEO_NOTIFY_SECRET`.
++ * URLs are filtered to this site's host before being submitted.
+  */
+-export const POST = async (request: NextRequest) => {
++const handler = async (request: NextRequest) => {
+   const { t } = await getServerTFromNextRequestAsync(request)
+ 
++  const unauthorized = assertSeoNotifyAuthorized(request)
++
++  if (unauthorized) {
++    return unauthorized
++  }
++
+   const body = (await request.json()) as {
+     urls?: string[]
+     indexNow?: boolean
+@@ -21,22 +31,21 @@ export const POST = async (request: NextRequest) => {
+   const { urls, indexNow = true, google = true } = body
+ 
+   if (!urls || !Array.isArray(urls) || urls.length === 0) {
+-    return new Response(jsonStringifySafety({ error: t('errors.urlsArrayRequired') }), {
+-      status: 400,
+-      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+-    })
++    return NextResponse.json({ error: t('errors.urlsArrayRequired') }, { status: 400 })
++  }
++
++  const allowedUrls = filterUrlsToSiteHost(urls)
++
++  if (allowedUrls.length === 0) {
++    return NextResponse.json({ error: t('errors.urlsArrayRequired') }, { status: 400 })
+   }
+ 
+-  await notifySearchEngines(urls, { indexNow, google })
+-
+-  return new Response(
+-    jsonStringifySafety({
+-      ok: true,
+-      message: t('errors.indexNowBingYandexChatGPTAndGoogleIndexingApiNotified'),
+-    }),
+-    {
+-      status: 200,
+-      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+-    },
+-  )
++  await notifySearchEngines(allowedUrls, { indexNow, google })
++
++  return NextResponse.json({
++    ok: true,
++    message: t('errors.indexNowBingYandexChatGPTAndGoogleIndexingApiNotified'),
++  })
+ }
++
++export const POST = withGlobalRateLimit(handler)
+diff --git a/src/proxy.ts b/src/proxy.ts
+index b834872..8443f30 100644
+--- a/src/proxy.ts
++++ b/src/proxy.ts
+@@ -43,12 +43,13 @@ export async function proxy(request: NextRequest) {
+     try {
+       const key = getClientKey(request)
+ 
+-      logger.warn('[proxy] consumed key', key)
++      // debug-level: avoid logging client IP on every request in production
++      logger.debug('[proxy] consumed key', key)
+ 
+       if (key) {
+         const consumed = await rateLimit.consume(key)
+ 
+-        logger.warn('[proxy] consumed', consumed)
++        logger.debug('[proxy] consumed', consumed)
+       }
+     } catch {
+       return NextResponse.redirect(new URL('/429-too-many-requests', request.url))

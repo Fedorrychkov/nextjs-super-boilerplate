@@ -118,8 +118,13 @@ http {
         # NGINX metrics location
         location /nginx_status {
             stub_status on;
-            allow 0.0.0.0/0;  # Allow all IPs (check security)
-            deny all;         # Deny by default
+            access_log off;
+            # Internal-only: nginx metrics must not be publicly reachable.
+            allow 127.0.0.1;
+            allow ::1;
+            allow 172.16.0.0/12;   # Docker/private network (e.g. Prometheus scrape)
+            allow 10.0.0.0/8;
+            deny all;
         }
 
         location ^~ /.well-known/acme-challenge/ {
@@ -143,16 +148,8 @@ http {
 
 
         location / {
-            set $original_client_ip $http_x_forwarded_for;
-            if ($http_x_forwarded_for ~ "^(.+),") {
-                set $original_client_ip $1;
-            }
-
             proxy_pass http://backend;
 
-            # Update headers
-            proxy_set_header X-Client-IP $original_client_ip;
-            proxy_set_header X-Real-IP $original_client_ip;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 
             # WebSocket specific settings
