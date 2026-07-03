@@ -1,0 +1,696 @@
+diff --git a/.docker/Dockerfile b/.docker/Dockerfile
+index d927419..060cbb3 100644
+--- a/.docker/Dockerfile
++++ b/.docker/Dockerfile
+@@ -13,18 +13,15 @@ ENV API_ENV=$API_ENV
+ RUN echo "API_ENV: $API_ENV"
+ RUN echo "PUBLIC_ENV: $PUBLIC_ENV"
+ 
++# Pin the package manager: the repo lockfile is pnpm-lock.yaml (lockfileVersion 9)
++RUN npm install -g pnpm@10
++
+ # Copy only necessary files for installing dependencies
+-COPY package*.json ./
++COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+ COPY tsconfig*.json ./
+ 
+-# Check for package-lock.json and install dependencies
+-RUN if [ -f "package-lock.json" ]; then \
+-        echo 'package-lock.json found, using npm ci...' && \
+-        HUSKY=0 npm ci --prefer-offline --no-audit --legacy-peer-deps; \
+-    else \
+-        echo 'package-lock.json not found, falling back to npm install...' && \
+-        HUSKY=0 npm install --prefer-offline --no-audit --legacy-peer-deps; \
+-    fi
++# Reproducible install strictly from the lockfile — fail the build if it is out of sync
++RUN HUSKY=0 pnpm install --frozen-lockfile
+ 
+ # Copy source files and build the application
+ COPY . .
+@@ -43,15 +40,15 @@ RUN if [ "$API_ENV" = "stage" ]; then \
+     fi
+ 
+ # Defense-in-depth HTML sanitizer tests (also run in CI when deploy_mode != registry)
+-RUN npm run test
++RUN pnpm run test
+ 
+-RUN npm run build:${API_ENV}
++RUN pnpm run build:${API_ENV}
+ 
+-# Clean up dev dependencies with --legacy-peer-deps flag
+-RUN npm prune --production --legacy-peer-deps
++# Drop dev dependencies from node_modules (runtime deps like env-cmd/tsx stay: they are in "dependencies")
++RUN pnpm prune --prod
+ 
+ HEALTHCHECK --interval=30s --timeout=3s \
+     CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/v1/healthcheck || exit 1
+ 
+ # Run the application according to the environment
+-CMD ["sh", "-c", "npm run start:${API_ENV}"]
++CMD ["sh", "-c", "pnpm run start:${API_ENV}"]
+diff --git a/.docker/nginx/nginx.conf.template.http b/.docker/nginx/nginx.conf.template.http
+index e1d814e..5bfdba0 100644
+--- a/.docker/nginx/nginx.conf.template.http
++++ b/.docker/nginx/nginx.conf.template.http
+@@ -31,9 +31,10 @@ http {
+       font/woff2
+       font/woff;
+ 
+-    upstream backend {
+-        server api-service:3000;  # Fixed container name
+-    }
++    # Docker embedded DNS: re-resolve api-service periodically instead of caching
++    # the container IP at startup (a recreated api container would otherwise leave
++    # nginx proxying to a dead IP -> 502 until nginx restart).
++    resolver 127.0.0.11 valid=10s ipv6=off;
+ 
+     # METRICS_GRAFANA_UPSTREAM_START
+     upstream grafana {
+@@ -90,7 +91,8 @@ http {
+ 
+         # Cache Next.js static assets (safe: filenames contain content hash)
+         location ~* ^/_next/static/ {
+-            proxy_pass http://backend;
++            set $backend_upstream http://api-service:3000;
++            proxy_pass $backend_upstream;
+             proxy_http_version 1.1;
+             proxy_set_header Host $host;
+             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+@@ -146,7 +148,8 @@ http {
+             proxy_set_header X-Request-Time $request_time;        # Request processing time
+             proxy_set_header X-Response-Time $upstream_response_time;  # Upstream response time
+ 
+-            proxy_pass http://backend;
++            set $backend_upstream http://api-service:3000;
++            proxy_pass $backend_upstream;
+ 
+             # Header variables
+             # Trusted client IP = direct TCP peer ($realip_remote_addr), NOT the spoofable
+diff --git a/.docker/nginx/nginx.conf.template.https b/.docker/nginx/nginx.conf.template.https
+index c259293..0082cb5 100644
+--- a/.docker/nginx/nginx.conf.template.https
++++ b/.docker/nginx/nginx.conf.template.https
+@@ -31,9 +31,10 @@ http {
+       font/woff2
+       font/woff;
+ 
+-    upstream backend {
+-        server api-service:3000;  # Fixed container name
+-    }
++    # Docker embedded DNS: re-resolve api-service periodically instead of caching
++    # the container IP at startup (a recreated api container would otherwise leave
++    # nginx proxying to a dead IP -> 502 until nginx restart).
++    resolver 127.0.0.11 valid=10s ipv6=off;
+ 
+     # METRICS_GRAFANA_UPSTREAM_START
+     upstream grafana {
+@@ -139,7 +140,8 @@ http {
+ 
+         # Cache Next.js static assets (safe: filenames contain content hash)
+         location ~* ^/_next/static/ {
+-            proxy_pass http://backend;
++            set $backend_upstream http://api-service:3000;
++            proxy_pass $backend_upstream;
+             proxy_http_version 1.1;
+             proxy_set_header Host $host;
+             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+@@ -167,7 +169,8 @@ http {
+         # METRICS_GRAFANA_LOCATION_END
+ 
+         location / {
+-            proxy_pass http://backend;
++            set $backend_upstream http://api-service:3000;
++            proxy_pass $backend_upstream;
+ 
+             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+ 
+diff --git a/.github/workflows/prod-deploy.yml b/.github/workflows/prod-deploy.yml
+index a07c133..b7be3eb 100644
+--- a/.github/workflows/prod-deploy.yml
++++ b/.github/workflows/prod-deploy.yml
+@@ -9,9 +9,11 @@ on:
+ 
+ permissions: write-all
+ 
++# cancel-in-progress: false — a second push to main queues instead of cancelling the
++# running deploy. Cancelling mid-deploy leaves the server with containers torn down.
+ concurrency:
+   group: prod-deploy
+-  cancel-in-progress: true
++  cancel-in-progress: false
+ 
+ jobs:
+   call-reusable:
+@@ -32,6 +34,10 @@ jobs:
+       redis_enabled: true
+       metrics_enabled: true
+       mongo_enabled: true
++      # Total server RAM: container limits are derived from this single number
++      # (scripts/lib/memory-limits.sh). Fine-tune with api_mem_limit / redis_mem_limit /
++      # mongo_mem_limit if needed.
++      server_memory_mb: 2048
+ 
+     secrets:
+       server_host: ${{ secrets.PROD_WEB_HOST }}
+diff --git a/.github/workflows/reusable-deploy-config.yml b/.github/workflows/reusable-deploy-config.yml
+index 0870465..45059d2 100644
+--- a/.github/workflows/reusable-deploy-config.yml
++++ b/.github/workflows/reusable-deploy-config.yml
+@@ -80,6 +80,27 @@ on:
+         default: false
+         type: boolean
+ 
++      server_memory_mb:
++        description: 'Total server RAM in MB (e.g. 2048). Derives per-container memory limits via scripts/lib/memory-limits.sh. 0 = keep compose defaults (api 2g, redis/mongo unlimited).'
++        required: false
++        default: 0
++        type: number
++      api_mem_limit:
++        description: 'Override core-api memory limit (e.g. 768M). Wins over server_memory_mb.'
++        required: false
++        default: ''
++        type: string
++      redis_mem_limit:
++        description: 'Override redis memory limit (e.g. 192M). Wins over server_memory_mb.'
++        required: false
++        default: ''
++        type: string
++      mongo_mem_limit:
++        description: 'Override mongo memory limit (e.g. 640M). Wins over server_memory_mb.'
++        required: false
++        default: ''
++        type: string
++
+       certbot_email:
+         description: Certbot email
+         required: false
+@@ -138,9 +159,11 @@ permissions:
+   packages: write
+   id-token: write
+ 
++# cancel-in-progress must stay false: cancelling a deploy mid-flight can kill the server
++# in a half-torn-down state (old containers removed, new ones not started yet).
+ concurrency:
+   group: reusable-deploy-${{ github.workflow }}-${{ github.ref }}
+-  cancel-in-progress: true
++  cancel-in-progress: false
+ 
+ jobs:
+   deploy:
+@@ -196,11 +219,12 @@ jobs:
+       - name: 📥 Install dependencies
+         if: inputs.deploy_mode != 'registry'
+         run: |
+-          npm install --legacy-peer-deps
++          npm install -g pnpm@10
++          pnpm install --frozen-lockfile
+ 
+       - name: 🧪 Unit tests (sanitize)
+         if: inputs.deploy_mode != 'registry'
+-        run: npm run test
++        run: pnpm run test
+ 
+       - name: Create env and service-account.json files
+         run: |
+@@ -246,7 +270,7 @@ jobs:
+       - name: 🚀 Build project
+         if: inputs.deploy_mode != 'registry'
+         run: |
+-          if [ "${{ inputs.api_env }}" = "stage" ]; then npm run build:stage; else npm run build:prod; fi
++          if [ "${{ inputs.api_env }}" = "stage" ]; then pnpm run build:stage; else pnpm run build:prod; fi
+ 
+       - name: 🗑️ Remove node_modules and .git
+         run: |
+@@ -282,7 +306,9 @@ jobs:
+       - name: 🚀 Prepare and run on server (Blue/Green or Cold)
+         id: deploy_run
+         uses: appleboy/ssh-action@master
+-        timeout-minutes: 15
++        # Must be >= command_timeout below, otherwise GitHub kills the step mid-deploy
++        # and leaves the server half-torn-down (old containers removed, new not started).
++        timeout-minutes: 30
+         env:
+           GH_USERNAME: ${{ github.actor }}
+           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+@@ -298,12 +324,16 @@ jobs:
+           REDIS_ENABLED: ${{ inputs.redis_enabled }}
+           METRICS_ENABLED: ${{ inputs.metrics_enabled }}
+           MONGO_ENABLED: ${{ inputs.mongo_enabled }}
++          SERVER_MEMORY_MB: ${{ inputs.server_memory_mb }}
++          API_MEM_LIMIT: ${{ inputs.api_mem_limit }}
++          REDIS_MEM_LIMIT: ${{ inputs.redis_mem_limit }}
++          MONGO_MEM_LIMIT: ${{ inputs.mongo_mem_limit }}
+         with:
+           host: ${{ secrets.server_host }}
+           username: ${{ secrets.server_username }}
+           password: ${{ secrets.server_password }}
+           port: 22
+-          envs: GH_USERNAME, GITHUB_TOKEN, DEPLOY_MODE, CORE_API_IMAGE, GHCR_USERNAME, GHCR_TOKEN, GRAFANA_ADMIN_USER, GRAFANA_ADMIN_PASSWORD, REDIS_ENABLED, METRICS_ENABLED, MONGO_ENABLED
++          envs: GH_USERNAME, GITHUB_TOKEN, DEPLOY_MODE, CORE_API_IMAGE, GHCR_USERNAME, GHCR_TOKEN, GRAFANA_ADMIN_USER, GRAFANA_ADMIN_PASSWORD, REDIS_ENABLED, METRICS_ENABLED, MONGO_ENABLED, SERVER_MEMORY_MB, API_MEM_LIMIT, REDIS_MEM_LIMIT, MONGO_MEM_LIMIT
+           command_timeout: 25m
+           script: |
+             set -e
+@@ -323,7 +353,10 @@ jobs:
+             CORE_UP="core-api"; [ "$REDIS_ENABLED" = "true" ] && CORE_UP="$CORE_UP redis"; [ "$MONGO_ENABLED" = "true" ] && CORE_UP="$CORE_UP mongo"
+             METRICS_SERVICES="prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana"
+             EXTRA_UP="certbot"; [ "$METRICS_ENABLED" = "true" ] && EXTRA_UP="$EXTRA_UP $METRICS_SERVICES"; [ "$REDIS_ENABLED" = "true" ] && EXTRA_UP="$EXTRA_UP redis"; [ "$MONGO_ENABLED" = "true" ] && EXTRA_UP="$EXTRA_UP mongo"
+-            EXTRA_STOP="certbot"; [ "$METRICS_ENABLED" = "true" ] && EXTRA_STOP="$EXTRA_STOP $METRICS_SERVICES"; [ "$REDIS_ENABLED" = "true" ] && EXTRA_STOP="$EXTRA_STOP redis"; [ "$MONGO_ENABLED" = "true" ] && EXTRA_STOP="$EXTRA_STOP mongo"
++            # Only stateless helpers get force-recreated after deploy. Never stop/rm redis or mongo
++            # under a live API: it turns every deploy into a short DB outage (429s/500s).
++            # `up -d` below is a no-op for already-running services with unchanged config.
++            EXTRA_STOP="certbot"; [ "$METRICS_ENABLED" = "true" ] && EXTRA_STOP="$EXTRA_STOP $METRICS_SERVICES"
+ 
+             docker volume create letsencrypt_certs || true
+             docker volume create certbot_logs || true
+@@ -366,11 +399,17 @@ jobs:
+                   mv "$HOME/app_new" "$HOME/app"
+                   cd "$HOME/app"
+                   chmod +x scripts/local-containers-run.sh || true
++                  # Same memory-limit env as inside the script — otherwise the inline
++                  # `up -d` calls below would see a different config and recreate redis/mongo.
++                  . scripts/lib/memory-limits.sh && compute_memory_limits
+                   set -a; [ -f "${{ inputs.env_file }}" ] && . "./${{ inputs.env_file }}"; set +a; export ENV_FILE="${{ inputs.env_file }}"
++                  # Only the app container gets force-recreated: redis/mongo keep running
++                  # (compose `up -d` below recreates them automatically if their config changed).
++                  BG_STOP="core-api"
+                   API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }} \
+-                    docker-compose -f docker-compose.local.yml stop $CORE_UP || true
++                    docker-compose -f docker-compose.local.yml stop $BG_STOP || true
+                   API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }} \
+-                    docker-compose -f docker-compose.local.yml rm -f $CORE_UP || true
++                    docker-compose -f docker-compose.local.yml rm -f $BG_STOP || true
+                   if [ "$DEPLOY_MODE" = "registry" ] && [ -n "$CORE_API_IMAGE" ]; then
+                     docker pull "$CORE_API_IMAGE"
+                   else
+@@ -378,8 +417,24 @@ jobs:
+                       docker-compose -f docker-compose.local.yml build --no-cache core-api
+                   fi
+                   ( set -a; [ -f "${{ inputs.env_file }}" ] && . "./${{ inputs.env_file }}"; set +a; export ENV_FILE="${{ inputs.env_file }}" API_ENV=${{ inputs.api_env }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }} CORE_API_IMAGE="$CORE_API_IMAGE"; docker-compose -f docker-compose.local.yml up -d $CORE_UP )
+-                  # Restart nginx container so it picks up new upstream
+-                  ( set -a; [ -f "${{ inputs.env_file }}" ] && . "./${{ inputs.env_file }}"; set +a; export ENV_FILE="${{ inputs.env_file }}" API_ENV=${{ inputs.api_env }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }}; docker-compose -f docker-compose.local.yml stop nginx || true; docker-compose -f docker-compose.local.yml rm -f nginx || true; docker-compose -f docker-compose.local.yml up -d nginx )
++                  # Wait for the new api to become healthy before declaring the swap done
++                  echo "Waiting for new api-service to become healthy..."
++                  attempts=0; max_attempts=150
++                  while true; do
++                    # exact name (docker ps name filter would also match api-service-green)
++                    status=$(docker inspect api-service --format '{{.State.Health.Status}}' 2>/dev/null || true)
++                    if [ "$status" = "healthy" ]; then echo "api-service is healthy"; break; fi
++                    attempts=$((attempts+1))
++                    if [ $attempts -ge $max_attempts ]; then
++                      echo "Error: api-service failed to become healthy after swap"
++                      docker logs --tail=200 api-service 2>&1 || true
++                      exit 1
++                    fi
++                    sleep 2
++                  done
++                  # Restart nginx so it picks up the new upstream immediately
++                  # (the resolver in nginx.conf re-resolves within 10s anyway; this is belt-and-braces)
++                  ( set -a; [ -f "${{ inputs.env_file }}" ] && . "./${{ inputs.env_file }}"; set +a; export ENV_FILE="${{ inputs.env_file }}" API_ENV=${{ inputs.api_env }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }}; docker-compose -f docker-compose.local.yml restart nginx || true )
+                   MIGRATIONS_RUN=${{ inputs.migrations_run }} ./scripts/local-containers-run.sh bg-down ${{ inputs.api_env }} || true
+                   API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} \
+                     docker-compose -f docker-compose.local.yml stop $EXTRA_STOP || true
+@@ -411,12 +466,15 @@ jobs:
+               fi
+               cd "$HOME/app"
+               chmod +x scripts/local-containers-run.sh
++              # Same memory-limit env as inside the script — needed by the inline compose calls below.
++              . scripts/lib/memory-limits.sh && compute_memory_limits
+               MIGRATIONS_RUN=${{ inputs.migrations_run }} CERTBOT_TEST_MODE=${{ inputs.certbot_test_mode }} CERTBOT_EMAIL=${{ secrets.certbot_email || inputs.certbot_email }} REDIS_ENABLED=$REDIS_ENABLED METRICS_ENABLED=$METRICS_ENABLED MONGO_ENABLED=$MONGO_ENABLED ./scripts/local-containers-run.sh https ${{ inputs.api_env }} -d ${{ inputs.domain }}
+-              COLD_STOP="$EXTRA_STOP"; [ "$REDIS_ENABLED" = "true" ] && COLD_STOP="$COLD_STOP redis"; [ "$MONGO_ENABLED" = "true" ] && COLD_STOP="$COLD_STOP mongo"
++              # The https script above already (re)created core-api/redis/mongo.
++              # Only refresh stateless helpers here; redis/mongo stay untouched (no outage window).
+               API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} \
+-                docker-compose -f docker-compose.local.yml stop $COLD_STOP || true
++                docker-compose -f docker-compose.local.yml stop $EXTRA_STOP || true
+               API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} \
+-                docker-compose -f docker-compose.local.yml rm -f $COLD_STOP || true
++                docker-compose -f docker-compose.local.yml rm -f $EXTRA_STOP || true
+               ( set -a; [ -f "${{ inputs.env_file }}" ] && . "./${{ inputs.env_file }}"; set +a; export ENV_FILE="${{ inputs.env_file }}" API_ENV=${{ inputs.api_env }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }}; docker-compose -f docker-compose.local.yml up -d $EXTRA_UP )
+             fi
+ 
+@@ -484,9 +542,10 @@ jobs:
+             docker images --filter "dangling=true" --format "table {{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.Size}}" || true
+             docker image prune -f || true
+             docker container prune -f || true
+-            docker network prune -f || true
+             docker builder prune -f || true
+-            docker volume prune -f || true
++            # NO `docker volume prune` here: this step runs even when the deploy failed,
++            # and with containers torn down it would delete mongo_data / redis_data /
++            # letsencrypt_certs (i.e. the database and certificates).
+ 
+             echo "✅ Docker cleanup completed"
+ 
+diff --git a/.github/workflows/stage-deploy.yml b/.github/workflows/stage-deploy.yml
+index 2ed0b69..df79ac0 100644
+--- a/.github/workflows/stage-deploy.yml
++++ b/.github/workflows/stage-deploy.yml
+@@ -23,10 +23,11 @@ jobs:
+ 
+       - name: 📥 Install dependencies
+         run: |
+-          npm install --legacy-peer-deps
++          npm install -g pnpm@10
++          pnpm install --frozen-lockfile
+ 
+       - name: 🧪 Unit tests (sanitize)
+-        run: npm run test
++        run: pnpm run test
+ 
+ # name: Stage Deploy
+ # on:
+diff --git a/docker-compose.local.yml b/docker-compose.local.yml
+index 826e7dc..99d073a 100644
+--- a/docker-compose.local.yml
++++ b/docker-compose.local.yml
+@@ -9,7 +9,7 @@ services:
+     deploy:
+       resources:
+         limits:
+-          memory: 512M
++          memory: ${PROMETHEUS_MEM_LIMIT:-512M}
+     volumes:
+       - ./grafana/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+       - ./grafana/prometheus/data:/prometheus
+@@ -34,7 +34,7 @@ services:
+     deploy:
+       resources:
+         limits:
+-          memory: 512M
++          memory: ${EXPORTER_MEM_LIMIT:-512M}
+     command:
+       - -nginx.scrape-uri=https://nginx-container/nginx_status
+     expose: 
+@@ -59,7 +59,7 @@ services:
+     deploy:
+       resources:
+         limits:
+-          memory: 512M
++          memory: ${EXPORTER_MEM_LIMIT:-512M}
+     volumes:
+       - /proc:/host/proc:ro
+       - /sys:/host/sys:ro
+@@ -92,7 +92,7 @@ services:
+     deploy:
+       resources:
+         limits:
+-          memory: 256M
++          memory: ${CADVISOR_MEM_LIMIT:-256M}
+     depends_on:
+       - prometheus
+       - nginx
+@@ -120,7 +120,7 @@ services:
+     deploy:
+       resources:
+         limits:
+-          memory: 512M
++          memory: ${PROMTAIL_MEM_LIMIT:-512M}
+     volumes:
+       - /var/lib/docker/containers:/var/lib/docker/containers
+       - ./grafana/promtail-config.yml:/etc/promtail/promtail-config.yml
+@@ -143,7 +143,7 @@ services:
+     deploy:
+       resources:
+         limits:
+-          memory: 512M
++          memory: ${LOKI_MEM_LIMIT:-512M}
+     volumes:
+       - ./grafana/loki-config.yml:/etc/loki/local-config.yaml
+     command: -config.file=/etc/loki/local-config.yaml
+@@ -168,7 +168,7 @@ services:
+     deploy:
+       resources:
+         limits:
+-          memory: 512M
++          memory: ${TELEGRAF_MEM_LIMIT:-512M}
+     environment:
+       - MONGO_METRICS_USER=${MONGO_USER:-admin}
+       - MONGO_METRICS_PASSWORD=${MONGO_PASSWORD:-password}
+@@ -196,7 +196,7 @@ services:
+     deploy:
+       resources:
+         limits:
+-          memory: 300M
++          memory: ${GRAFANA_MEM_LIMIT:-300M}
+     volumes:
+       - ./grafana/datasource:/etc/grafana/provisioning/datasources/
+       - ./grafana/dashboard:/etc/grafana/provisioning/dashboards/
+@@ -232,15 +232,17 @@ services:
+     volumes:
+       - ${ENV_FILE:-.env}:/usr/src/api/${ENV_FILE:-.env}:ro
+       - ./db-certificate.${API_ENV:-prod}.crt:/usr/src/api/db-certificate.${API_ENV:-prod}.crt:ro
+-      - /usr/src/api/node_modules
+     environment:
+       - API_ENV=${API_ENV:-prod}
++      # Set via scripts/lib/memory-limits.sh (SERVER_MEMORY_MB) or explicit override; empty = Node defaults.
++      - NODE_OPTIONS=${API_NODE_OPTIONS:-}
+     healthcheck:
+       test: ["CMD", "curl", "-f", "http://localhost:3000/api/v1/healthcheck"]
+       interval: 30s
+       timeout: 10s
+       retries: 3
+       start_period: 40s
++    restart: unless-stopped
+     logging:
+       driver: "json-file"
+       options:
+@@ -250,9 +252,10 @@ services:
+     deploy:
+       resources:
+         limits:
+-          memory: 2g
++          # Configure via SERVER_MEMORY_MB / API_MEM_LIMIT (see scripts/lib/memory-limits.sh)
++          memory: ${API_MEM_LIMIT:-2g}
+         reservations:
+-          memory: 512M
++          memory: ${API_MEM_RESERVATION:-512M}
+     networks:
+       - api_network
+ 
+@@ -305,6 +308,7 @@ services:
+       - "443:443"
+     networks:
+       - api_network
++    restart: unless-stopped
+     logging:
+       driver: "json-file"
+       options:
+@@ -380,12 +384,28 @@ services:
+   redis:
+     container_name: redis${SUFFIX}
+     image: redis:7.2-alpine
++    # maxmemory 0 = unlimited (redis default); set via SERVER_MEMORY_MB / REDIS_MAXMEMORY.
++    # This redis backs rate-limiting + caching. `noeviction` makes writes fail when full instead
++    # of silently dropping keys; if you use it mainly as an evictable cache with a hard limit,
++    # set REDIS_MAXMEMORY_POLICY=allkeys-lru.
++    command: ["redis-server", "--maxmemory", "${REDIS_MAXMEMORY:-0}", "--maxmemory-policy", "${REDIS_MAXMEMORY_POLICY:-noeviction}"]
++    restart: unless-stopped
++    healthcheck:
++      test: ["CMD", "redis-cli", "ping"]
++      interval: 10s
++      timeout: 5s
++      retries: 5
+     networks:
+       - api_network
+     expose:
+       - 6379
+     volumes:
+       - redis_data:/data
++    deploy:
++      resources:
++        limits:
++          # 0 = unlimited (historical default); set via SERVER_MEMORY_MB / REDIS_MEM_LIMIT
++          memory: ${REDIS_MEM_LIMIT:-0}
+     logging:
+       driver: "json-file"
+       options:
+@@ -396,7 +416,16 @@ services:
+   mongo:
+     container_name: mongo${SUFFIX}
+     image: mongo:7
++    # WiredTiger cache: mongod's own default is ~50% of host RAM, which starves everything
++    # else on a small box. 0.5GB default ~= mongod's auto value on a 2GB host.
++    # Set via SERVER_MEMORY_MB / MONGO_CACHE_GB (see scripts/lib/memory-limits.sh).
++    command: ["mongod", "--wiredTigerCacheSizeGB", "${MONGO_CACHE_GB:-0.5}"]
+     restart: always
++    deploy:
++      resources:
++        limits:
++          # 0 = unlimited (historical default); set via SERVER_MEMORY_MB / MONGO_MEM_LIMIT
++          memory: ${MONGO_MEM_LIMIT:-0}
+     # MONGO_INITDB_* are substituted on the host; ensure MONGO_USER/MONGO_PASSWORD are in shell (load_env_into_shell / workflow source)
+     environment:
+       MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
+diff --git a/lib/security/rate-limit.ts b/lib/security/rate-limit.ts
+index ef71054..126b4f9 100644
+--- a/lib/security/rate-limit.ts
++++ b/lib/security/rate-limit.ts
+@@ -20,6 +20,12 @@ class RateLimit {
+         storeClient: redis,
+         points: RATE_LIMIT_CONFIG.points, // max requests
+         duration: RATE_LIMIT_CONFIG.duration, // per 60 seconds
++        // Fail-open on Redis outages: fall back to an in-memory limiter instead of
++        // rejecting every request (the middleware turns any rejection into HTTP 429).
++        insuranceLimiter: new RateLimiterMemory({
++          points: RATE_LIMIT_CONFIG.points,
++          duration: RATE_LIMIT_CONFIG.duration,
++        }),
+       })
+     }
+   }
+diff --git a/scripts/lib/memory-limits.sh b/scripts/lib/memory-limits.sh
+new file mode 100644
+index 0000000..163f3c9
+--- /dev/null
++++ b/scripts/lib/memory-limits.sh
+@@ -0,0 +1,70 @@
++#!/bin/bash
++# Memory budgeting for docker-compose.local.yml.
++#
++# Two ways to configure (both optional):
++#   1. SERVER_MEMORY_MB=<total RAM in MB> — derives every limit below from a single number.
++#   2. Explicit per-service overrides — always win over derived values:
++#        API_MEM_LIMIT API_MEM_RESERVATION API_NODE_OPTIONS
++#        REDIS_MEM_LIMIT REDIS_MAXMEMORY
++#        MONGO_MEM_LIMIT MONGO_CACHE_GB
++#
++# When nothing is set, docker-compose.local.yml falls back to its own inline
++# defaults (api 2g, redis/mongo unlimited) — the historical behavior.
++#
++# NOTE: this boilerplate has no background worker. If you add one, give it its own
++# WORKER_* budget and reduce the api/mongo shares below accordingly.
++#
++# Budget split (rest is headroom for nginx/certbot/OS):
++#   METRICS_ENABLED != true:  api 48% | mongo 32% | redis 10%            (~10% headroom)
++#   METRICS_ENABLED == true:  api 34% | mongo 22% | redis 8% | metrics 29% (~7% headroom)
++# Node heap (--max-old-space-size) is set to ~2/3 of the container limit so V8
++# garbage-collects instead of getting OOM-killed by the cgroup.
++#
++# Metrics overrides (each also settable explicitly): PROMETHEUS_MEM_LIMIT LOKI_MEM_LIMIT
++# GRAFANA_MEM_LIMIT TELEGRAF_MEM_LIMIT PROMTAIL_MEM_LIMIT CADVISOR_MEM_LIMIT EXPORTER_MEM_LIMIT
++
++compute_memory_limits() {
++    local total="${SERVER_MEMORY_MB:-0}"
++    # non-numeric / empty -> 0 (no derivation)
++    case "$total" in (''|*[!0-9]*) total=0 ;; esac
++
++    if [ "$total" -gt 0 ]; then
++        local api_pct=48 mongo_pct=32 redis_pct=10
++
++        if [ "${METRICS_ENABLED:-false}" = "true" ]; then
++            api_pct=34; mongo_pct=22; redis_pct=8
++
++            # Metrics stack gets ~29% of the host, split across its services
++            local metrics_mb=$(( total * 29 / 100 ))
++            export PROMETHEUS_MEM_LIMIT="${PROMETHEUS_MEM_LIMIT:-$(( metrics_mb * 30 / 100 ))M}"
++            export LOKI_MEM_LIMIT="${LOKI_MEM_LIMIT:-$(( metrics_mb * 20 / 100 ))M}"
++            export GRAFANA_MEM_LIMIT="${GRAFANA_MEM_LIMIT:-$(( metrics_mb * 15 / 100 ))M}"
++            export TELEGRAF_MEM_LIMIT="${TELEGRAF_MEM_LIMIT:-$(( metrics_mb * 10 / 100 ))M}"
++            export PROMTAIL_MEM_LIMIT="${PROMTAIL_MEM_LIMIT:-$(( metrics_mb * 10 / 100 ))M}"
++            export CADVISOR_MEM_LIMIT="${CADVISOR_MEM_LIMIT:-$(( metrics_mb * 8 / 100 ))M}"
++            # nginx-exporter + node-exporter, each
++            export EXPORTER_MEM_LIMIT="${EXPORTER_MEM_LIMIT:-$(( metrics_mb * 7 / 200 ))M}"
++            echo "Metrics budget: total=${metrics_mb}M prometheus=${PROMETHEUS_MEM_LIMIT} loki=${LOKI_MEM_LIMIT} grafana=${GRAFANA_MEM_LIMIT} telegraf=${TELEGRAF_MEM_LIMIT} promtail=${PROMTAIL_MEM_LIMIT} cadvisor=${CADVISOR_MEM_LIMIT} exporters=2x${EXPORTER_MEM_LIMIT}"
++        fi
++
++        local api_mb=$(( total * api_pct / 100 ))
++        local mongo_mb=$(( total * mongo_pct / 100 ))
++        local redis_mb=$(( total * redis_pct / 100 ))
++
++        export API_MEM_LIMIT="${API_MEM_LIMIT:-${api_mb}M}"
++        export API_MEM_RESERVATION="${API_MEM_RESERVATION:-$(( api_mb / 2 ))M}"
++        export API_NODE_OPTIONS="${API_NODE_OPTIONS:---max-old-space-size=$(( api_mb * 2 / 3 ))}"
++
++        export REDIS_MEM_LIMIT="${REDIS_MEM_LIMIT:-${redis_mb}M}"
++        export REDIS_MAXMEMORY="${REDIS_MAXMEMORY:-$(( redis_mb * 2 / 3 ))mb}"
++
++        export MONGO_MEM_LIMIT="${MONGO_MEM_LIMIT:-${mongo_mb}M}"
++        # WiredTiger cache ~40% of the mongo budget; mongod requires >= 0.25GB
++        # LC_ALL=C: keep the decimal point locale-independent (mongod can't parse "0,25")
++        export MONGO_CACHE_GB="${MONGO_CACHE_GB:-$(LC_ALL=C awk -v mb="$mongo_mb" 'BEGIN { c = mb * 0.4 / 1024; if (c < 0.25) c = 0.25; printf "%.2f", c }')}"
++
++        echo "Memory budget (SERVER_MEMORY_MB=${total}): api=${API_MEM_LIMIT} (heap ${API_NODE_OPTIONS#*=}M) mongo=${MONGO_MEM_LIMIT} (cache ${MONGO_CACHE_GB}GB) redis=${REDIS_MEM_LIMIT} (maxmemory ${REDIS_MAXMEMORY})"
++    fi
++    # total=0: nothing derived; explicit overrides (if any) are already in the
++    # environment and compose inline defaults cover the rest.
++}
+diff --git a/scripts/local-containers-run.sh b/scripts/local-containers-run.sh
+index 60c5317..0e45b32 100755
+--- a/scripts/local-containers-run.sh
++++ b/scripts/local-containers-run.sh
+@@ -27,6 +27,14 @@ else
+     exit 1
+ fi
+ 
++# Memory limits: derive from SERVER_MEMORY_MB and/or explicit *_MEM_LIMIT overrides.
++# Without any of them, docker-compose.local.yml inline defaults apply.
++if [ -f "${PROJECT_ROOT}/scripts/lib/memory-limits.sh" ]; then
++    # shellcheck source=/dev/null
++    . "${PROJECT_ROOT}/scripts/lib/memory-limits.sh"
++    compute_memory_limits
++fi
++
+ function rollback_mode() {
+     local env=${1:-stage}
+     local env_file=$(get_env_file $env)
+@@ -39,8 +47,9 @@ function rollback_mode() {
+     echo "Waiting for core-api to be ready for rollback..."
+     attempts=0; max_attempts=20
+     while true; do
+-        status=$(docker ps --filter name=api-service --format "{{.Status}}")
+-        if [[ "$status" == *"(healthy)"* || -n "$status" ]]; then
++        # exact container name (a `name=` filter is a substring match and would also hit api-service-green)
++        status=$(docker inspect api-service --format '{{.State.Health.Status}}' 2>/dev/null || true)
++        if [ "$status" = "healthy" ]; then
+             break
+         fi
+         ((attempts++)); [ $attempts -ge $max_attempts ] && break
+@@ -70,12 +79,16 @@ function rollback_mode() {
+ }
+ 
+ # Blue/Green: validate green stack (api+redis) in app_new without nginx
++# Blue/Green: validate GREEN core-api only. It attaches to the shared network and talks to
++# the LIVE blue redis/mongo — exactly what it will see after the swap. Never start
++# redis-green/mongo-green: a green mongo would get a fresh empty volume, and duplicate DNS
++# aliases ("redis"/"mongo") on the same network make resolution nondeterministic.
+ function bg_validate_green() {
+     local env=${1:-stage}
+     local env_file=$(get_env_file $env)
+-    echo "Starting blue/green validation for GREEN stack..."
++    echo "Starting blue/green validation for GREEN api..."
+ 
+-    # Clean up any existing green containers to avoid ContainerConfig errors
++    # Clean up any existing green containers (incl. legacy green redis/mongo)
+     echo "Cleaning up any existing green containers..."
+     docker stop api-service-green redis-green mongo-green 2>/dev/null || true
+     docker rm -f api-service-green redis-green mongo-green 2>/dev/null || true
+@@ -90,7 +103,7 @@ function bg_validate_green() {
+     export SUFFIX=-green
+     API_ENV=${env} \
+     ENV_FILE=${env_file} \
+-    docker-compose -f ${COMPOSE_FILE} up -d $CORE_SERVICES
++    docker-compose -f ${COMPOSE_FILE} up -d --no-deps core-api
+ 
+     echo "Waiting for GREEN core-api to become healthy..."
+     attempts=0; max_attempts=30
+@@ -310,8 +323,9 @@ function start_https() {
+     echo "Waiting for core-api to become healthy..."
+     attempts=0; max_attempts=30
+     while true; do
+-        status=$(docker ps --filter name=api-service --format "{{.Status}}")
+-        if [[ "$status" == *"(healthy)"* ]]; then
++        # exact container name (a `name=` filter is a substring match and would also hit api-service-green)
++        status=$(docker inspect api-service --format '{{.State.Health.Status}}' 2>/dev/null || true)
++        if [ "$status" = "healthy" ]; then
+             echo "core-api is healthy"
+             break
+         fi
+@@ -659,6 +673,8 @@ case "$1" in
+         echo "  REDIS_ENABLED=true|false   - Start Redis container (default: false)"
+         echo "  METRICS_ENABLED=true|false  - Start metrics stack (prometheus, grafana, loki, etc.) (default: false)"
+         echo "  MONGO_ENABLED=true|false   - Start MongoDB container (default: false). If false, use MONGO_URI to external cluster."
++        echo "  SERVER_MEMORY_MB=<mb>       - Total RAM budget; derives per-container memory limits (see scripts/lib/memory-limits.sh)"
++        echo "  API_MEM_LIMIT/REDIS_MEM_LIMIT/MONGO_MEM_LIMIT - explicit per-service overrides (e.g. 768M)"
+         echo "  DEPLOY_MODE=default|registry - default: build on server; registry: use CORE_API_IMAGE (pull only)"
+         echo "  CORE_API_IMAGE=<image>     - When DEPLOY_MODE=registry, image to pull (e.g. ghcr.io/owner/sapian-web-core-api:sha)"
+         echo "Commands:"

@@ -9,9 +9,11 @@ on:
 
 permissions: write-all
 
+# cancel-in-progress: false — a second push to main queues instead of cancelling the
+# running deploy. Cancelling mid-deploy leaves the server with containers torn down.
 concurrency:
   group: prod-deploy
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   call-reusable:
@@ -32,6 +34,10 @@ jobs:
       redis_enabled: true
       metrics_enabled: true
       mongo_enabled: true
+      # Total server RAM: container limits are derived from this single number
+      # (scripts/lib/memory-limits.sh). Fine-tune with api_mem_limit / redis_mem_limit /
+      # mongo_mem_limit if needed.
+      server_memory_mb: 2048
 
     secrets:
       server_host: ${{ secrets.PROD_WEB_HOST }}

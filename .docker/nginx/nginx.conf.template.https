@@ -31,9 +31,10 @@ http {
       font/woff2
       font/woff;
 
-    upstream backend {
-        server api-service:3000;  # Fixed container name
-    }
+    # Docker embedded DNS: re-resolve api-service periodically instead of caching
+    # the container IP at startup (a recreated api container would otherwise leave
+    # nginx proxying to a dead IP -> 502 until nginx restart).
+    resolver 127.0.0.11 valid=10s ipv6=off;
 
     # METRICS_GRAFANA_UPSTREAM_START
     upstream grafana {
@@ -139,7 +140,8 @@ http {
 
         # Cache Next.js static assets (safe: filenames contain content hash)
         location ~* ^/_next/static/ {
-            proxy_pass http://backend;
+            set $backend_upstream http://api-service:3000;
+            proxy_pass $backend_upstream;
             proxy_http_version 1.1;
             proxy_set_header Host $host;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -167,7 +169,8 @@ http {
         # METRICS_GRAFANA_LOCATION_END
 
         location / {
-            proxy_pass http://backend;
+            set $backend_upstream http://api-service:3000;
+            proxy_pass $backend_upstream;
 
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 

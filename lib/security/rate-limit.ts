@@ -20,6 +20,12 @@ class RateLimit {
         storeClient: redis,
         points: RATE_LIMIT_CONFIG.points, // max requests
         duration: RATE_LIMIT_CONFIG.duration, // per 60 seconds
+        // Fail-open on Redis outages: fall back to an in-memory limiter instead of
+        // rejecting every request (the middleware turns any rejection into HTTP 429).
+        insuranceLimiter: new RateLimiterMemory({
+          points: RATE_LIMIT_CONFIG.points,
+          duration: RATE_LIMIT_CONFIG.duration,
+        }),
       })
     }
   }
