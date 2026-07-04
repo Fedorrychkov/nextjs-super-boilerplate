@@ -10,6 +10,7 @@ import { ArticleVisibility } from '~/api/article'
 import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
 import { defaultExtensions } from '~/components/Blocks/Editor/extensions'
+import { Typography } from '~/components/ui'
 import { ArticlePublishedDate } from '~/components/Views/Article/Block/server/ArticlePublishedDate'
 import { ArticlePublicListenAudio } from '~/components/Views/Article/Public/ArticlePublicListenAudio'
 import { ArticleReadingShell } from '~/components/Views/Article/Public/ArticleReadingShell'
@@ -157,9 +158,12 @@ const PrivateArticleRoot = async (props: PageProps<{ slug: string[] }>) => {
         bodyHtml={generatedPageString}
         backLink={{ label: 'Home', href: '/' }}
         badge={
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-800 px-3 py-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+          <Typography
+            asTag="span"
+            className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-800 px-3 py-1 text-xs font-medium text-amber-700 dark:text-amber-400"
+          >
             🔒 Private
-          </span>
+          </Typography>
         }
         meta={
           <>

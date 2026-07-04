@@ -4,6 +4,7 @@ import { isPasswordPolicySatisfied } from '@lib/validation/password-policy'
 import { Eye, EyeOff } from 'lucide-react'
 import { forwardRef, useId, useState } from 'react'
 
+import { Typography } from '~/components/ui'
 import { Input } from '~/components/ui/fields/input'
 import { Label } from '~/components/ui/fields/label'
 import { useT } from '~/providers'
@@ -41,7 +42,12 @@ export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(fu
       {label && (
         <div className={cn('flex flex-col gap-2 mb-2', classNames?.label)}>
           <Label htmlFor={id}>
-            {label} {required && <span className="text-destructive">*</span>}
+            {label}{' '}
+            {required && (
+              <Typography asTag="span" className="text-destructive">
+                *
+              </Typography>
+            )}
           </Label>
         </div>
       )}
@@ -75,9 +81,9 @@ export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(fu
       </div>
 
       {error && (
-        <p className="mt-2 text-xs text-destructive" role="alert" aria-live="polite">
+        <Typography className="mt-2 text-xs text-destructive" role="alert" aria-live="polite">
           {error}
-        </p>
+        </Typography>
       )}
 
       {showStrength && <PasswordStrengthPanel password={value} fieldId={id} />}

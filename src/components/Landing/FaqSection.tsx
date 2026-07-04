@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 
+import { Typography } from '~/components/ui'
 import { useT } from '~/providers'
 import { cn } from '~/utils/cn'
 
@@ -20,12 +21,14 @@ const FaqRow = ({ question, answer }: FaqItem) => {
   return (
     <div className="border-b border-border/60 last:border-0">
       <button onClick={() => setOpen(!open)} className="flex w-full items-center justify-between gap-4 py-5 text-left" aria-expanded={open}>
-        <span className="font-medium text-foreground text-sm sm:text-base">{question}</span>
-        <span className={cn('shrink-0 text-muted-foreground transition-transform duration-200', open && 'rotate-45')} aria-hidden>
+        <Typography asTag="span" className="font-medium text-foreground text-sm sm:text-base">
+          {question}
+        </Typography>
+        <Typography asTag="span" className={cn('shrink-0 text-muted-foreground transition-transform duration-200', open && 'rotate-45')} aria-hidden>
           +
-        </span>
+        </Typography>
       </button>
-      {open && <p className="pb-5 text-sm sm:text-base text-muted-foreground leading-relaxed">{answer}</p>}
+      {open && <Typography className="pb-5 text-sm sm:text-base text-muted-foreground leading-relaxed">{answer}</Typography>}
     </div>
   )
 }
@@ -39,7 +42,9 @@ export const FaqSection = ({ items }: Props) => {
     <section className="border-b border-border/40 py-20">
       <div className="mx-auto max-w-3xl px-4 sm:px-6">
         <div className="text-center mb-10">
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">{t('nbs.faq.title')}</h2>
+          <Typography asTag="h2" variant="heading-2" className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+            {t('nbs.faq.title')}
+          </Typography>
         </div>
         <div className="rounded-2xl border border-border bg-card px-6">
           {items.map((item) => (

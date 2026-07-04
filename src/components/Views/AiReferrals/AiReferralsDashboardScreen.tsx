@@ -4,7 +4,7 @@ import { useSearchParams } from 'next/navigation'
 import { Fragment, useMemo, useState } from 'react'
 
 import { TitleWithBadge } from '~/components/Blocks/TitleWithBadge'
-import { Select } from '~/components/ui/select-1'
+import { MultiselectField } from '~/components/Fields'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '~/components/ui/table'
 import { Typography } from '~/components/ui/Typography/Typography'
 import { AiReferralPathnameDetailPanel, AiReferralPathnameDetailToggle } from '~/components/Views/AiReferrals/AiReferralPathnameDetailPanel'
@@ -42,7 +42,12 @@ export const AiReferralsDashboardScreen = () => {
           <Typography variant="Body/XS/Regular" className="text-muted-foreground">
             {t('aiReferrals.ui.window')}
           </Typography>
-          <Select size="small" value={daysStr} options={dayOptions} onChange={(e) => setDaysStr(e.target.value)} />
+          <MultiselectField
+            updateBySelected
+            value={dayOptions.find((o) => o.value === daysStr) ?? null}
+            onChange={(opts) => setDaysStr(opts[0]?.value ?? daysStr)}
+            options={dayOptions}
+          />
         </div>
       </div>
 

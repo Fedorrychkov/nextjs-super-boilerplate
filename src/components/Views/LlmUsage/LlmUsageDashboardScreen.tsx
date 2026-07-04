@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 
 import { TitleWithBadge } from '~/components/Blocks/TitleWithBadge'
-import { Select } from '~/components/ui/select-1'
+import { MultiselectField } from '~/components/Fields'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '~/components/ui/table'
 import { Typography } from '~/components/ui/Typography/Typography'
 import type { TFunction } from '~/lib/i18n'
@@ -37,7 +37,12 @@ export const LlmUsageDashboardScreen = () => {
           <Typography variant="Body/XS/Regular" className="text-muted-foreground">
             {t('llmUsage.ui.window')}
           </Typography>
-          <Select size="small" value={daysStr} options={dayOptions} onChange={(e) => setDaysStr(e.target.value)} />
+          <MultiselectField
+            updateBySelected
+            value={dayOptions.find((o) => o.value === daysStr) ?? null}
+            onChange={(opts) => setDaysStr(opts[0]?.value ?? daysStr)}
+            options={dayOptions}
+          />
         </div>
       </div>
 

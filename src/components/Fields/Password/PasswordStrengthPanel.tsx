@@ -4,6 +4,7 @@ import { evaluatePasswordPolicy, getPasswordStrengthScore } from '@lib/validatio
 import { Check, X } from 'lucide-react'
 import { useMemo } from 'react'
 
+import { Typography } from '~/components/ui'
 import type { AppMessageKey } from '~/lib/i18n'
 import { useT } from '~/providers'
 
@@ -55,9 +56,9 @@ export const PasswordStrengthPanel = ({ password, fieldId }: Props) => {
         />
       </div>
 
-      <p id={`${fieldId}-description`} className="mb-2 text-sm font-medium text-foreground">
+      <Typography id={`${fieldId}-description`} className="mb-2 text-sm font-medium text-foreground">
         {getStrengthText(strengthScore)}. {t('password.policy.mustContain')}:
-      </p>
+      </Typography>
 
       <ul className="space-y-1.5" aria-label="Password requirements">
         {rules.map((rule) => (
@@ -67,10 +68,12 @@ export const PasswordStrengthPanel = ({ password, fieldId }: Props) => {
             ) : (
               <X size={16} className="text-muted-foreground/80" aria-hidden="true" />
             )}
-            <span className={`text-xs ${rule.met ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+            <Typography asTag="span" className={`text-xs ${rule.met ? 'text-emerald-600' : 'text-muted-foreground'}`}>
               {t(rule.messageKey as AppMessageKey, rule.messageParams as Record<string, string | number>)}
-              <span className="sr-only">{rule.met ? t('password.policy.requirementMet') : t('password.policy.requirementNotMet')}</span>
-            </span>
+              <Typography asTag="span" className="sr-only">
+                {rule.met ? t('password.policy.requirementMet') : t('password.policy.requirementNotMet')}
+              </Typography>
+            </Typography>
           </li>
         ))}
       </ul>

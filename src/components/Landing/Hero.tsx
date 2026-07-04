@@ -1,5 +1,6 @@
 import Link from 'next/link'
 
+import { Typography } from '~/components/ui'
 import { getServerT } from '~/lib/i18n/server'
 
 import { LANDING_TECH_IDS } from './landing-i18n'
@@ -24,22 +25,28 @@ export const Hero = async ({ githubUrl, demoUrl }: Props) => {
 
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-20 md:py-32 text-center">
         <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground mb-8">
-          <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-500" />
+          <Typography asTag="span" className="inline-block h-1.5 w-1.5 rounded-full bg-green-500" />
           {t('nbs.hero.badge')}
         </div>
 
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-foreground leading-[1.1] max-w-3xl mx-auto">
+        <Typography
+          asTag="h1"
+          variant="heading-1"
+          className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-foreground leading-[1.1] max-w-3xl mx-auto"
+        >
           {t('nbs.hero.titleBefore')}{' '}
-          <span className="relative">
-            <span className="bg-gradient-to-r from-blue-500 to-violet-500 bg-clip-text text-transparent">{t('nbs.hero.titleHighlight')}</span>
-          </span>{' '}
+          <Typography asTag="span" className="relative">
+            <Typography asTag="span" className="bg-gradient-to-r from-blue-500 to-violet-500 bg-clip-text text-transparent">
+              {t('nbs.hero.titleHighlight')}
+            </Typography>
+          </Typography>{' '}
           {t('nbs.hero.titleAfter')}
-        </h1>
+        </Typography>
 
-        <p className="mt-6 text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+        <Typography className="mt-6 text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
           {t('nbs.hero.subtitle')} <code className="rounded bg-muted px-1.5 py-0.5 text-sm font-mono">{t('nbs.hero.subtitleConfigFile')}</code>
           {t('nbs.hero.subtitleAfter')}
-        </p>
+        </Typography>
 
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
           {githubUrl && (
@@ -73,9 +80,9 @@ export const Hero = async ({ githubUrl, demoUrl }: Props) => {
 
         <div className="mt-14 flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground">
           {LANDING_TECH_IDS.map((id) => (
-            <span key={id} className="rounded-full border border-border bg-card px-3 py-1 font-mono">
+            <Typography asTag="span" key={id} className="rounded-full border border-border bg-card px-3 py-1 font-mono">
               {t(`nbs.hero.tech.${id}`)}
-            </span>
+            </Typography>
           ))}
         </div>
       </div>

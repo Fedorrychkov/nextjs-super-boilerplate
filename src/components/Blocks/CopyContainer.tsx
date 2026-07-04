@@ -3,6 +3,7 @@
 import { CopyCheckIcon, CopyIcon } from 'lucide-react'
 import { ReactNode, useCallback, useState } from 'react'
 
+import { Typography } from '~/components/ui'
 import { useNotify } from '~/providers/notify'
 import { cn } from '~/utils/cn'
 import { cp } from '~/utils/cp'
@@ -38,7 +39,7 @@ export const CopyContainer = (props: Props) => {
   )
 
   return (
-    <span className={cn('flex gap-2 items-center', className)} onClick={handleCopy}>
+    <Typography asTag="span" className={cn('flex gap-2 items-center', className)} onClick={handleCopy}>
       {children}
       {withIcon && !!content && (
         <>
@@ -49,6 +50,6 @@ export const CopyContainer = (props: Props) => {
           )}
         </>
       )}
-    </span>
+    </Typography>
   )
 }

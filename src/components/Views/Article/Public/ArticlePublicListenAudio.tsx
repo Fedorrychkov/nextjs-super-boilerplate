@@ -3,7 +3,7 @@
 import { HeadphonesIcon } from 'lucide-react'
 import { useCallback, useState } from 'react'
 
-import { Button } from '~/components/ui'
+import { Button, Typography } from '~/components/ui'
 import { useT } from '~/providers'
 import { cn } from '~/utils/cn'
 
@@ -38,7 +38,7 @@ export const ArticlePublicListenAudio = (props: ArticlePublicListenAudioProps) =
       {open ? (
         <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/30 p-3">
           <audio className="w-full max-w-xl" controls preload="metadata" src={src} />
-          <p className="text-xs text-muted-foreground">{t('article.ui.listenAudioAiDisclosure')}</p>
+          <Typography className="text-xs text-muted-foreground">{t('article.ui.listenAudioAiDisclosure')}</Typography>
         </div>
       ) : null}
     </div>

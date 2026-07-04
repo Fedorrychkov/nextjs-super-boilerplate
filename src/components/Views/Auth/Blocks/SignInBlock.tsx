@@ -82,9 +82,9 @@ const SignInBlock = (props: Props) => {
                 value={email}
                 disabled={props.isLoading}
                 additionalLeftComponent={
-                  <span className="ml-3 text-gray-400">
+                  <Typography asTag="span" className="ml-3 text-gray-400">
                     <Mail className="w-4 h-4" />
-                  </span>
+                  </Typography>
                 }
                 classNames={{
                   input: 'w-full pl-10 pr-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm',
@@ -99,9 +99,9 @@ const SignInBlock = (props: Props) => {
                 name="password"
                 value={password}
                 additionalLeftComponent={
-                  <span className="ml-3 text-gray-400">
+                  <Typography asTag="span" className="ml-3 text-gray-400">
                     <Lock className="w-4 h-4" />
-                  </span>
+                  </Typography>
                 }
                 additionalRightComponent={
                   <Button type="button" size="input-icon" variant="ghost" className="text-gray-400 mr-3 cursor-pointer" onClick={togglePasswordVisibility}>
@@ -114,7 +114,7 @@ const SignInBlock = (props: Props) => {
                 }}
                 onChange={(e) => setPassword(e.target.value)}
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer text-xs select-none"></span>
+              <Typography asTag="span" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer text-xs select-none"></Typography>
             </div>
             <div className="w-full flex justify-end">{error && <div className="text-sm text-red-500 text-left">{error}</div>}</div>
             <div className="w-full flex justify-end">

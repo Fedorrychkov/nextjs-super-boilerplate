@@ -5,7 +5,7 @@ import { FormProvider, useForm } from 'react-hook-form'
 
 import { UpdateUserDto, type UserModel, UserRole, UserStatus } from '~/api/user'
 import { DefaultMultiselectField } from '~/components/Fields'
-import { Option } from '~/components/ui'
+import { Option, Typography } from '~/components/ui'
 import { Button } from '~/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '~/components/ui/dialog'
 import { useRegister } from '~/hooks/useRegister'
@@ -131,18 +131,26 @@ export const UpdateByAdminUserDialog = (props: Props) => {
             <div className="flex flex-col gap-4 py-4">
               <div className="grid grid-cols-1 gap-2 rounded-md border p-3 text-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">{t('user.messages.userUpdateDialog.pushStatus')}</span>
-                  <span>
+                  <Typography asTag="span" className="text-muted-foreground">
+                    {t('user.messages.userUpdateDialog.pushStatus')}
+                  </Typography>
+                  <Typography asTag="span">
                     {pushStatusQuery.isLoading ? t('common.loading') : pushStatusQuery.data?.hasPushSubscription ? t('common.enabled') : t('common.disabled')}
-                  </span>
+                  </Typography>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">{t('user.messages.userUpdateDialog.mfaStatus')}</span>
-                  <span>{mfaStatusQuery.isLoading ? t('common.loading') : mfaStatusQuery.data?.mfaEnabled ? t('common.enabled') : t('common.disabled')}</span>
+                  <Typography asTag="span" className="text-muted-foreground">
+                    {t('user.messages.userUpdateDialog.mfaStatus')}
+                  </Typography>
+                  <Typography asTag="span">
+                    {mfaStatusQuery.isLoading ? t('common.loading') : mfaStatusQuery.data?.mfaEnabled ? t('common.enabled') : t('common.disabled')}
+                  </Typography>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">{t('user.messages.userUpdateDialog.languageCode')}</span>
-                  <span>{props.user.languageCode ?? t('common.notSet')}</span>
+                  <Typography asTag="span" className="text-muted-foreground">
+                    {t('user.messages.userUpdateDialog.languageCode')}
+                  </Typography>
+                  <Typography asTag="span">{props.user.languageCode ?? t('common.notSet')}</Typography>
                 </div>
               </div>
               <DefaultMultiselectField

@@ -15,6 +15,7 @@ import { ArticleAiChatAssistantMessage } from '~/components/Views/Article/Screen
 import type { ArticleEditableContentHandle } from '~/components/Views/Article/Screen/Editable/ArticleEditableContent'
 import type { ArticleEditablePreviewHandle } from '~/components/Views/Article/Screen/Editable/ArticleEditablePreview'
 import type { ArticleEditableSeoHandle } from '~/components/Views/Article/Screen/Editable/ArticleEditableSeo'
+import { MultiselectField } from '~/components/Fields'
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, Textarea, Typography } from '~/components/ui'
 import {
   buildLlmArticleAuditsQueryKey,
@@ -448,24 +449,14 @@ export const ArticleAiChatModal = (props: Props) => {
         ) : (
           <>
             <div className="flex flex-col gap-2">
-              <label className="flex flex-col gap-1 text-sm text-muted-foreground">
-                {t('article.ui.aiModel')}
-                <select
-                  className={cn(
-                    'rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground',
-                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70',
-                  )}
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  disabled={streaming || auditLoading || structuredLoading}
-                >
-                  {models.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <MultiselectField
+                label={t('article.ui.aiModel')}
+                updateBySelected
+                disabled={streaming || auditLoading || structuredLoading}
+                value={models.map((m) => ({ value: m.id, label: m.label })).find((o) => o.value === model) ?? null}
+                onChange={(opts) => setModel(opts[0]?.value ?? model)}
+                options={models.map((m) => ({ value: m.id, label: m.label }))}
+              />
 
               <div className="flex flex-wrap gap-1 rounded-md border border-border bg-muted/30 p-1">
                 <button
@@ -507,7 +498,11 @@ export const ArticleAiChatModal = (props: Props) => {
                   onClick={() => setShellTab('audit')}
                 >
                   {t('article.ui.aiShellAudit')}
-                  {auditItems.length > 0 ? <span className="ml-1 tabular-nums text-muted-foreground">({auditItems.length})</span> : null}
+                  {auditItems.length > 0 ? (
+                    <Typography asTag="span" className="ml-1 tabular-nums text-muted-foreground">
+                      ({auditItems.length})
+                    </Typography>
+                  ) : null}
                 </button>
               </div>
             </div>
@@ -561,7 +556,9 @@ export const ArticleAiChatModal = (props: Props) => {
                           if (m.role === 'user') {
                             return (
                               <div key={`${i}-user`} className="mb-4 rounded-md border border-border/80 bg-muted/40 px-3 py-2 text-sm text-foreground">
-                                <span className="font-semibold">{t('article.ui.aiYou')}</span>
+                                <Typography asTag="span" className="font-semibold">
+                                  {t('article.ui.aiYou')}
+                                </Typography>
                                 <div className="mt-1 whitespace-pre-wrap">{m.content}</div>
                               </div>
                             )
@@ -570,7 +567,9 @@ export const ArticleAiChatModal = (props: Props) => {
                           if (!m.content.trim() && isAssistantStreaming) {
                             return (
                               <div key={`${i}-assistant`} className="mb-4 flex flex-col gap-2">
-                                <span className="text-sm font-semibold text-muted-foreground">{t('article.ui.aiAssistant')}</span>
+                                <Typography asTag="span" className="text-sm font-semibold text-muted-foreground">
+                                  {t('article.ui.aiAssistant')}
+                                </Typography>
                                 <div className="rounded-md border border-dashed border-border bg-muted/20 px-3 py-4 text-center">
                                   <Typography variant="Body/S/Regular" className="text-muted-foreground">
                                     …
@@ -582,7 +581,9 @@ export const ArticleAiChatModal = (props: Props) => {
 
                           return (
                             <div key={`${i}-assistant`} className="mb-4 flex flex-col gap-2">
-                              <span className="text-sm font-semibold text-muted-foreground">{t('article.ui.aiAssistant')}</span>
+                              <Typography asTag="span" className="text-sm font-semibold text-muted-foreground">
+                                {t('article.ui.aiAssistant')}
+                              </Typography>
                               <ArticleAiChatAssistantMessage content={m.content} />
                             </div>
                           )

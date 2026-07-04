@@ -3,7 +3,7 @@
 import { XIcon } from 'lucide-react'
 import { useLayoutEffect, useState } from 'react'
 
-import { Button } from '~/components/ui'
+import { Button, Typography } from '~/components/ui'
 
 type Phase = 'show' | 'hide'
 
@@ -74,7 +74,7 @@ export function ArticleTranslationAcceptBanner(props: Props) {
       aria-label={regionAriaLabel}
       className="mb-4 flex flex-col gap-3 rounded-lg border border-border bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between"
     >
-      <p className="text-sm text-foreground">{leadLabel}</p>
+      <Typography className="text-sm text-foreground">{leadLabel}</Typography>
       <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
         <Button type="button" variant="default" size="sm-md" asChild>
           <a href={suggestedUrl}>{openButtonLabel}</a>

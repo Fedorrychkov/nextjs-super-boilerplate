@@ -1,7 +1,7 @@
 import { forwardRef, useId } from 'react'
 
 import { NumberFormat } from '~/components/Format'
-import { Badge, Textarea } from '~/components/ui'
+import { Badge, Textarea, Typography } from '~/components/ui'
 import { Label } from '~/components/ui/fields/label'
 import { cn } from '~/utils/cn'
 
@@ -37,7 +37,12 @@ export const TextAreaField = forwardRef<HTMLTextAreaElement, TextAreaFieldProps>
   return (
     <div className={cn('min-w-[120px] w-full flex flex-col gap-1', classNames?.root)}>
       <Label htmlFor={id} className={classNames?.label}>
-        {label} {required && <span className="text-destructive">*</span>}
+        {label}{' '}
+        {required && (
+          <Typography asTag="span" className="text-destructive">
+            *
+          </Typography>
+        )}
       </Label>
       <div className="relative">
         <Textarea
@@ -71,14 +76,14 @@ export const TextAreaField = forwardRef<HTMLTextAreaElement, TextAreaFieldProps>
         )}
       </div>
       {error && (
-        <p className="mt-2 text-xs text-destructive" role="alert" aria-live="polite">
+        <Typography className="mt-2 text-xs text-destructive" role="alert" aria-live="polite">
           {error}
-        </p>
+        </Typography>
       )}
       {hintText && (
-        <p className="mt-2 text-xs text-muted-foreground" role="alert" aria-live="polite">
+        <Typography className="mt-2 text-xs text-muted-foreground" role="alert" aria-live="polite">
           {hintText}
-        </p>
+        </Typography>
       )}
     </div>
   )

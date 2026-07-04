@@ -95,6 +95,42 @@ const eslintConfig = defineConfig([
       ],
       'no-empty': ['error', { allowEmptyCatch: true }],
       'prefer-promise-reject-errors': 'off',
+      // Enforce reusable wrappers over raw HTML controls / text tags.
+      // Primitives live in src/components/ui/** (disabled there via override below).
+      'no-restricted-syntax': [
+        'warn',
+        {
+          selector: "JSXOpeningElement[name.name='input']",
+          message: 'Не используй сырой <input>. Возьми InputField / DefaultFieldContainer из ~/components/Fields (примитив Input — только внутри src/components/ui).',
+        },
+        {
+          selector: "JSXOpeningElement[name.name='textarea']",
+          message: 'Не используй сырой <textarea>. Возьми TextAreaField / DefaultTextAreaContainer из ~/components/Fields.',
+        },
+        {
+          selector: "JSXOpeningElement[name.name='select']",
+          message: 'Не используй сырой <select>. Возьми MultiselectField (single-режим) / DefaultMultiselectField из ~/components/Fields.',
+        },
+        {
+          selector: 'JSXOpeningElement[name.name=/^h[1-6]$/]',
+          message: 'Не используй сырые заголовки. Возьми <Typography asTag="h1|h2|h3" variant="heading-*"> из ~/components/ui.',
+        },
+        {
+          selector: "JSXOpeningElement[name.name='p']",
+          message: 'Не используй сырой <p>. Возьми <Typography> из ~/components/ui.',
+        },
+        {
+          selector: "JSXOpeningElement[name.name='span']",
+          message: 'Для самостоятельного текста используй <Typography asTag="span">. Чистые презентационные инлайны допустимы — при необходимости // eslint-disable-next-line с обоснованием.',
+        },
+      ],
+    },
+  },
+  {
+    // Primitive layer: raw HTML controls and text tags are legitimate here.
+    files: ['src/components/ui/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': 'off',
     },
   },
   {

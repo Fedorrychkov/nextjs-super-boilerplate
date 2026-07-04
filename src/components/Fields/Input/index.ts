@@ -1,3 +1,4 @@
+export * from './CheckboxField'
 export * from './InputField'
 export * from './media'
 export * from './MultiselectField'

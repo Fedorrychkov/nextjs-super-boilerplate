@@ -5,6 +5,8 @@ import { Property } from 'csstype'
 import React from 'react'
 import { twMerge } from 'tailwind-merge'
 
+import { Typography } from '~/components/ui'
+
 interface SkeletonProps {
   width?: Property.Width | number
   height?: Property.Height | number
@@ -31,7 +33,8 @@ export const Skeleton = ({
   className,
 }: SkeletonProps) => {
   return (
-    <span
+    <Typography
+      asTag="span"
       className={twMerge(
         clsx(
           'block rounded-[5px]',
@@ -56,6 +59,6 @@ export const Skeleton = ({
       }}
     >
       {children}
-    </span>
+    </Typography>
   )
 }

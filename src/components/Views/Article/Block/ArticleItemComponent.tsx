@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { ArticleModel, ArticleVisibility } from '~/api/article'
 import { ImageLoader } from '~/components/Containers/ImageLoader'
 import { Skeleton } from '~/components/Loaders'
+import { Typography } from '~/components/ui'
 import { routes } from '~/constants'
 import type { TFunction } from '~/lib/i18n'
 import { cn } from '~/utils/cn'
@@ -63,20 +64,24 @@ export const ArticleItemComponent = async (props: Props) => {
 
         {/* Title */}
         <Link href={href} className="group/title">
-          <h3 className="font-semibold text-foreground text-sm leading-snug group-hover/title:text-foreground/80 transition-colors line-clamp-2">
+          <Typography
+            asTag="h3"
+            variant="heading-3"
+            className="font-semibold text-foreground text-sm leading-snug group-hover/title:text-foreground/80 transition-colors line-clamp-2"
+          >
             {article.title}
-          </h3>
+          </Typography>
         </Link>
 
         {/* Description */}
-        {article.description && <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3 flex-1">{article.description}</p>}
+        {article.description && <Typography className="text-xs text-muted-foreground leading-relaxed line-clamp-3 flex-1">{article.description}</Typography>}
 
         {/* Read more */}
         <Link href={href} className="mt-auto inline-flex items-center gap-1 text-xs font-medium text-foreground/60 hover:text-foreground transition-colors">
           {t('article.ui.readMore')}
-          <span aria-hidden className="transition-transform group-hover:translate-x-0.5">
+          <Typography asTag="span" aria-hidden className="transition-transform group-hover:translate-x-0.5">
             →
-          </span>
+          </Typography>
         </Link>
       </div>
     </article>

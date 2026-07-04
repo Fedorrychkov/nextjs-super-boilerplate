@@ -60,9 +60,9 @@ export const ArticleAiChatAssistantMessage = (props: Props) => {
       editor.commands.setContent(md, { contentType: 'markdown' })
     } catch {
       try {
-        editor.commands.setContent(`<p>${escapeHtml(raw)}</p>`)
+        editor.commands.setContent(`<Typography>${escapeHtml(raw)}</Typography>`)
       } catch {
-        editor.commands.setContent('<p></p>')
+        editor.commands.setContent('<Typography></Typography>')
       }
     }
   }, [editor, content])

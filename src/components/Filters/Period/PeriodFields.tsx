@@ -2,9 +2,9 @@ import dayjs from 'dayjs'
 import capitalize from 'lodash/capitalize'
 import { useMemo } from 'react'
 
+import { MultiselectField } from '~/components/Fields'
 import { Button, Typography } from '~/components/ui'
 import { Input } from '~/components/ui/input'
-import { Select } from '~/components/ui/select-1'
 import type { TFunction } from '~/lib/i18n'
 import { cn } from '~/utils/cn'
 
@@ -144,12 +144,11 @@ export const PeriodFields = (props: Props) => {
 
   return (
     <div className={cn('flex flex-col gap-2', className)}>
-      <Select
-        size="medium"
-        variant="default"
-        options={periods.map((period) => ({ value: period.value, label: period.text }))}
-        value={period}
-        onChange={(event) => handleChangePeriod(event.target.value as Period)}
+      <MultiselectField
+        updateBySelected
+        options={periods.map((p) => ({ value: p.value, label: p.text }))}
+        value={periods.map((p) => ({ value: p.value, label: p.text })).find((o) => o.value === period) ?? null}
+        onChange={(opts) => opts[0] && handleChangePeriod(opts[0].value as Period)}
       />
 
       {!isCustom && fromDate && toDate && !isHideUnderText && (
@@ -199,12 +198,12 @@ export const PeriodFields = (props: Props) => {
             </Button>
           </div>
           {isCustomDatesError && (
-            <p className="mt-2 text-warning-500 font-golos">
+            <Typography className="mt-2 text-warning-500 font-golos">
               {t('common.dateFromCannotBeGreaterThanDateTo', {
                 fromDate: customFromDate ? customFromDate.format(dateFormat) : '',
                 toDate: customToDate ? customToDate.format(dateFormat) : '',
               })}{' '}
-            </p>
+            </Typography>
           )}
         </div>
       )}

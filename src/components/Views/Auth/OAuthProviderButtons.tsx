@@ -1,6 +1,7 @@
 'use client'
 
 import type { OAuthFlow, OAuthProviderId } from '~/api/oauth'
+import { Typography } from '~/components/ui'
 import { OAuthProviderCircleButton } from '~/components/Views/Auth/OAuthProviderIcon'
 import { getPublicOAuthConfig, OAUTH_PROVIDER_LABELS } from '~/lib/auth/oauth-public-config'
 import { useT } from '~/providers'
@@ -59,10 +60,12 @@ export function OAuthDivider({ flow }: { flow: 'signIn' | 'signUp' }) {
   return (
     <div className="relative my-2 w-full">
       <div className="absolute inset-0 flex items-center">
-        <span className="w-full border-t border-border" />
+        <Typography asTag="span" className="w-full border-t border-border" />
       </div>
       <div className="relative flex justify-center text-xs uppercase">
-        <span className="bg-background px-2 text-muted-foreground">{t('auth.oauth.orContinueWithEmail')}</span>
+        <Typography asTag="span" className="bg-background px-2 text-muted-foreground">
+          {t('auth.oauth.orContinueWithEmail')}
+        </Typography>
       </div>
     </div>
   )

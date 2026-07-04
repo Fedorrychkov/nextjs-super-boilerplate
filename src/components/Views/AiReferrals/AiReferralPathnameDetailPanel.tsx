@@ -83,9 +83,13 @@ export const AiReferralPathnameDetailPanel = ({ pathname, days, enabled }: Props
             return (
               <div key={row.id} className="rounded border border-border/60 bg-background/80 p-2 text-xs">
                 <div className="flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground">
-                  <span className="tabular-nums">{row.createdAt ? new Date(row.createdAt).toLocaleString() : '—'}</span>
-                  <span className="font-medium text-foreground">{row.source}</span>
-                  <span>{row.referrerHost}</span>
+                  <Typography asTag="span" className="tabular-nums">
+                    {row.createdAt ? new Date(row.createdAt).toLocaleString() : '—'}
+                  </Typography>
+                  <Typography asTag="span" className="font-medium text-foreground">
+                    {row.source}
+                  </Typography>
+                  <Typography asTag="span">{row.referrerHost}</Typography>
                 </div>
                 <Typography variant="Body/XS/Regular" className="mt-1 font-mono break-all text-[11px] leading-snug">
                   {row.referrer}
@@ -93,9 +97,12 @@ export const AiReferralPathnameDetailPanel = ({ pathname, days, enabled }: Props
                 {pairs.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">
                     {pairs.map(({ key, value }, idx) => (
-                      <span key={`${row.id}-p-${idx}`} className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">
-                        {key}=<span className="text-foreground">{safeDecodeURIComponent(value)}</span>
-                      </span>
+                      <Typography asTag="span" key={`${row.id}-p-${idx}`} className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">
+                        {key}=
+                        <Typography asTag="span" className="text-foreground">
+                          {safeDecodeURIComponent(value)}
+                        </Typography>
+                      </Typography>
                     ))}
                   </div>
                 )}
