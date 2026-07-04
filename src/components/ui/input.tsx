@@ -86,10 +86,10 @@ export const Input = ({
       {label && <div className="capitalize text-[13px] text-muted-foreground">{label}</div>}
       <div
         className={clsx(
-          'flex items-center duration-150 font-sans',
+          'flex items-center duration-150 font-sans border transition-shadow',
           error
-            ? 'shadow-error-input hover:shadow-error-input-hover'
-            : 'border border-gray-alpha-400 hover:border-gray-alpha-500 focus-within:border-transparent focus-within:shadow-focus-input',
+            ? 'border-destructive/80 focus-within:border-destructive/80 focus-within:ring-[3px] focus-within:ring-destructive/20'
+            : 'border-input hover:border-ring/60 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/20',
           sizes[size],
           disabled ? 'cursor-not-allowed bg-muted' : 'bg-background-100',
           wrapperClassName,
