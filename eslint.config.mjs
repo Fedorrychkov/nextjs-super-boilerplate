@@ -101,27 +101,27 @@ const eslintConfig = defineConfig([
         'warn',
         {
           selector: "JSXOpeningElement[name.name='input']",
-          message: 'Не используй сырой <input>. Возьми InputField / DefaultFieldContainer из ~/components/Fields (примитив Input — только внутри src/components/ui).',
+          message: 'Do not use a raw <input>. Use InputField / DefaultFieldContainer from ~/components/Fields (the Input primitive belongs only inside src/components/ui).',
         },
         {
           selector: "JSXOpeningElement[name.name='textarea']",
-          message: 'Не используй сырой <textarea>. Возьми TextAreaField / DefaultTextAreaContainer из ~/components/Fields.',
+          message: 'Do not use a raw <textarea>. Use TextAreaField / DefaultTextAreaContainer from ~/components/Fields.',
         },
         {
           selector: "JSXOpeningElement[name.name='select']",
-          message: 'Не используй сырой <select>. Возьми MultiselectField (single-режим) / DefaultMultiselectField из ~/components/Fields.',
+          message: 'Do not use a raw <select>. Use MultiselectField (single mode) / DefaultMultiselectField from ~/components/Fields.',
         },
         {
           selector: 'JSXOpeningElement[name.name=/^h[1-6]$/]',
-          message: 'Не используй сырые заголовки. Возьми <Typography asTag="h1|h2|h3" variant="heading-*"> из ~/components/ui.',
+          message: 'Do not use raw headings. Use <Typography asTag="h1|h2|h3" variant="heading-*"> from ~/components/ui.',
         },
         {
           selector: "JSXOpeningElement[name.name='p']",
-          message: 'Не используй сырой <p>. Возьми <Typography> из ~/components/ui.',
+          message: 'Do not use a raw <p>. Use <Typography> from ~/components/ui.',
         },
         {
           selector: "JSXOpeningElement[name.name='span']",
-          message: 'Для самостоятельного текста используй <Typography asTag="span">. Чистые презентационные инлайны допустимы — при необходимости // eslint-disable-next-line с обоснованием.',
+          message: 'For standalone text use <Typography asTag="span">. Purely presentational inline spans are allowed — add // eslint-disable-next-line with a reason where needed.',
         },
       ],
     },

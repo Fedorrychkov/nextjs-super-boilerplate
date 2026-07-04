@@ -5,9 +5,9 @@ import { seoConfig } from '~/lib/seo/config'
 import { trackAiReferralVisit } from './aiReferrals'
 
 /**
- * Вызывать из `app/layout.tsx` (Server Component): один `await trackAiReferralVisit` на запрос, только на сервере.
- * `x-pathname` / `x-search` пробрасывает `src/proxy.ts` (Next 16 proxy вместо middleware).
- * При клиентской навигации корневой layout обычно не выполняется повторно — событие только на полной загрузке / hard refresh.
+ * Call from `app/layout.tsx` (Server Component): one `await trackAiReferralVisit` per request, server-only.
+ * `x-pathname` / `x-search` are forwarded by `src/proxy.ts` (Next 16 proxy instead of middleware).
+ * On client navigation the root layout usually does not re-run — the event fires only on full load / hard refresh.
  */
 export async function trackAiReferralFromRequestHeaders(): Promise<void> {
   const h = await headers()
@@ -29,6 +29,6 @@ export async function trackAiReferralFromRequestHeaders(): Promise<void> {
       userAgent: h.get('user-agent'),
     })
   } catch {
-    // не ломаем отрисовку при сбое БД
+    // do not break rendering on a DB failure
   }
 }
