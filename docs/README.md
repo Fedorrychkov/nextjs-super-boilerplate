@@ -23,6 +23,8 @@ Planning, configuration, and FAQ. Root **[`README.md`](../README.md)** — local
 | [`INFRASTRUCTURE_PLAN.md`](./INFRASTRUCTURE_PLAN.md) | EN | Deploy vs Plan A/B |
 | [`INFRASTRUCTURE_PLAN_RU.md`](./INFRASTRUCTURE_PLAN_RU.md) | RU | Same (Russian) |
 | [`INFRASTRUCTURE_TODO_RU.md`](./INFRASTRUCTURE_TODO_RU.md) | RU | VPS / CI backlog |
+| [`CI_QUALITY_GATE_E2E_RU.md`](./CI_QUALITY_GATE_E2E_RU.md) | RU | CI quality gate + shared cache — **implemented** |
+| [`CI_PIPELINE_UPDATE_GUIDE_RU.md`](./CI_PIPELINE_UPDATE_GUIDE_RU.md) | RU | Portable CI update (patch [`../patch/ci-pipeline-update.patch`](../patch/ci-pipeline-update.patch)) for other repos |
 
 ## FAQ
 

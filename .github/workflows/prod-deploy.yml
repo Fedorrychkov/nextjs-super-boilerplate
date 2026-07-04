@@ -16,7 +16,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Gate: lint + typecheck + test must pass before the deploy job runs.
+  # Runs on both `push` to main and manual `workflow_dispatch`.
+  quality:
+    uses: ./.github/workflows/quality.yml
+
   call-reusable:
+    needs: [quality]
     uses: ./.github/workflows/reusable-deploy-config.yml
     with:
       domain: nextjs-super-boilerplate.visn-ai.io

@@ -1,0 +1,41 @@
+name: Quality
+
+# Reusable quality gate: lint + typecheck + test.
+# Called by ci.yml (on PR / push) and by prod-deploy.yml (before deploy) so the
+# checks are defined once and shared.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: ${{ matrix.task }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        task: [lint, typecheck, test]
+    steps:
+      - name: ⬇️ Checkout repo
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      # `cache: pnpm` reuses the repo-scoped pnpm store (keyed by pnpm-lock.yaml)
+      # across jobs, PRs, re-runs and other workflows (ci.yml, deploy).
+      - name: ⎔ Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: 📥 Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: ✅ Run ${{ matrix.task }}
+        run: pnpm run ${{ matrix.task }}
