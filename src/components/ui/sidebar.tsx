@@ -9,6 +9,7 @@ import { Fragment, useState } from 'react'
 import { useAuth, useT } from '~/providers'
 import { cn } from '~/utils/cn'
 import { matchesPathname } from '~/utils/matchPath'
+import { useSidebarSectionOverride } from '~/utils/sidebarSectionState'
 
 import { Skeleton } from '../Loaders'
 import { Logo } from './Logo'
@@ -61,12 +62,27 @@ const AnimatedMenuToggle = ({ toggle, isOpen }: { toggle: () => void; isOpen: bo
   </button>
 )
 
-const CollapsibleSection = ({ title, children, defaultOpen }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) => {
-  const [open, setOpen] = useState(defaultOpen || false)
+const CollapsibleSection = ({
+  sectionId,
+  title,
+  children,
+  defaultOpen,
+  isActiveByUrl,
+}: {
+  sectionId: string
+  title: string
+  children: React.ReactNode
+  defaultOpen?: boolean
+  isActiveByUrl?: boolean
+}) => {
+  const [override, setOverride] = useSidebarSectionOverride(sectionId)
+
+  // Resolved state: explicit user action wins; otherwise auto-open when the active URL is inside, or by defaultOpen.
+  const open = override ?? (Boolean(isActiveByUrl) || Boolean(defaultOpen))
 
   return (
     <>
-      <button className="w-full flex items-center justify-between py-2 px-4 rounded-xl hover:bg-muted" onClick={() => setOpen(!open)}>
+      <button className="w-full flex items-center justify-between py-2 px-4 rounded-xl hover:bg-muted" onClick={() => setOverride(!open)}>
         <span className="font-semibold text-md text-left">{title}</span>
         {open ? <XIcon /> : <MenuIcon />}
       </button>
@@ -162,12 +178,29 @@ export type NavigationItem = {
 }
 
 export type NavigationSection = {
+  /** Stable, locale-independent key used to persist the section's open/collapsed state. Falls back to `title`. */
+  id?: string
   title?: string
   items?: NavigationItem[]
   disabled?: boolean
   content?: React.ReactNode
   extra?: boolean
   defaultOpen?: boolean
+}
+
+/** True if any item in the section (recursively) matches the current pathname. */
+const sectionContainsActivePath = (items: NavigationItem[] | undefined, pathname: string): boolean => {
+  if (!items?.length) {
+    return false
+  }
+
+  return items.some((item) => {
+    if (item.href && matchesPathname(item.href, pathname)) {
+      return true
+    }
+
+    return sectionContainsActivePath(item.items, pathname)
+  })
 }
 
 const NavigationSection = ({ navigation, toggle }: { navigation: NavigationSection[]; toggle: () => void }) => {
@@ -197,9 +230,16 @@ const NavigationSection = ({ navigation, toggle }: { navigation: NavigationSecti
           ?.filter((nav) => !nav.disabled)
           .map((nav) => {
             if (nav.extra) {
+              const sectionId = nav.id ?? nav.title ?? ''
+
               return (
-                <li key={nav.title} className="flex flex-col gap-2">
-                  <CollapsibleSection defaultOpen={nav.defaultOpen} title={nav.title || ''}>
+                <li key={sectionId} className="flex flex-col gap-2">
+                  <CollapsibleSection
+                    sectionId={sectionId}
+                    defaultOpen={nav.defaultOpen}
+                    isActiveByUrl={sectionContainsActivePath(nav.items, pathname)}
+                    title={nav.title || ''}
+                  >
                     {nav.items ? (
                       <ul className="flex flex-col gap-2">
                         {nav.items

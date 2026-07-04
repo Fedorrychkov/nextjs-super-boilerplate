@@ -30,6 +30,7 @@ export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
   const navigation = useMemo(
     () => [
       {
+        id: 'welcome',
         title: t('navigation.welcomePanel'),
         extra: true,
         defaultOpen: true,
@@ -59,6 +60,7 @@ export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
       ...(authUser?.role && [UserRole.ADMIN, UserRole.EDITOR].includes(authUser?.role)
         ? [
             {
+              id: 'admin',
               extra: true,
               defaultOpen: true,
               title: t('navigation.adminPanel'),
