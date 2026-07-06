@@ -53,9 +53,9 @@ const SignUpVerifyBlock = (props: Props) => {
             type="text"
             name="code"
             additionalLeftComponent={
-              <span className="ml-3 text-gray-400">
+              <Typography asTag="span" className="ml-3 text-gray-400">
                 <KeyRound className="w-4 h-4" />
-              </span>
+              </Typography>
             }
             inputMode="numeric"
             autoComplete="one-time-code"

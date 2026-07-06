@@ -4,8 +4,8 @@ import type { Editor } from '@tiptap/react'
 import { useCallback, useEffect, useState } from 'react'
 
 import { MediaResourceType } from '~/api/media'
-import { MediaUrlUploadField } from '~/components/Fields'
-import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '~/components/ui'
+import { MediaUrlUploadField, MultiselectField } from '~/components/Fields'
+import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Typography } from '~/components/ui'
 import { Textarea } from '~/components/ui/fields/textarea'
 import { Input } from '~/components/ui/input'
 import { useT } from '~/providers'
@@ -67,6 +67,16 @@ export const ImageEditorDialog = (props: Props) => {
   const t = useT()
   const { editor, open, mode, onOpenChange, articleId, articleRevisionId } = props
   const [form, setForm] = useState<FormState>(emptyForm)
+
+  const objectFitOptions = [
+    { value: 'contain', label: t('media.ui.contain') },
+    { value: 'cover', label: t('media.ui.cover') },
+  ]
+  const alignOptions = [
+    { value: 'left', label: t('media.ui.left') },
+    { value: 'center', label: t('media.ui.center') },
+    { value: 'right', label: t('media.ui.right') },
+  ]
   /** In edit mode: for external URL you can change src; for data: — not allowed */
   const [srcEditable, setSrcEditable] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -223,10 +233,16 @@ export const ImageEditorDialog = (props: Props) => {
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3">
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          {error ? (
+            <Typography variant="Body/S/Regular" className="text-destructive">
+              {error}
+            </Typography>
+          ) : null}
 
           {mode === 'edit' && !srcEditable ? (
-            <p className="text-sm text-muted-foreground rounded-md border border-border bg-muted/40 px-3 py-2">{t('media.ui.embeddedImage')}</p>
+            <Typography variant="Body/S/Regular" tone="muted" className="rounded-md border border-border bg-muted/40 px-3 py-2">
+              {t('media.ui.embeddedImage')}
+            </Typography>
           ) : null}
 
           {showUrlField ? (
@@ -267,7 +283,9 @@ export const ImageEditorDialog = (props: Props) => {
 
           <Input label="Alt" value={form.alt} onChange={(v) => setForm((s) => ({ ...s, alt: v }))} placeholder="Description for accessibility" />
           <div className="flex flex-col gap-1">
-            <span className="text-[13px] text-muted-foreground capitalize">{t('media.ui.captionUnderTheImage')}</span>
+            <Typography asTag="span" variant="Body/S/Regular" tone="muted" className="text-[13px] capitalize">
+              {t('media.ui.captionUnderTheImage')}
+            </Typography>
             <Textarea
               value={form.caption}
               onChange={(e) => setForm((s) => ({ ...s, caption: e.target.value }))}
@@ -276,29 +294,20 @@ export const ImageEditorDialog = (props: Props) => {
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1">
-              <span className="text-[13px] text-muted-foreground">{t('media.ui.objectFit')}</span>
-              <select
-                className="h-10 rounded-md border border-border bg-background px-2 text-sm"
-                value={form.objectFit}
-                onChange={(e) => setForm((s) => ({ ...s, objectFit: e.target.value as ArticleImageObjectFit }))}
-              >
-                <option value="contain">{t('media.ui.contain')}</option>
-                <option value="cover">{t('media.ui.cover')}</option>
-              </select>
-            </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-[13px] text-muted-foreground">{t('media.ui.alignment')}</span>
-              <select
-                className="h-10 rounded-md border border-border bg-background px-2 text-sm"
-                value={form.align}
-                onChange={(e) => setForm((s) => ({ ...s, align: e.target.value as ArticleImageAlign }))}
-              >
-                <option value="left">{t('media.ui.left')}</option>
-                <option value="center">{t('media.ui.center')}</option>
-                <option value="right">{t('media.ui.right')}</option>
-              </select>
-            </div>
+            <MultiselectField
+              label={t('media.ui.objectFit')}
+              updateBySelected
+              value={objectFitOptions.find((o) => o.value === form.objectFit) ?? null}
+              onChange={(opts) => setForm((s) => ({ ...s, objectFit: (opts[0]?.value ?? s.objectFit) as ArticleImageObjectFit }))}
+              options={objectFitOptions}
+            />
+            <MultiselectField
+              label={t('media.ui.alignment')}
+              updateBySelected
+              value={alignOptions.find((o) => o.value === form.align) ?? null}
+              onChange={(opts) => setForm((s) => ({ ...s, align: (opts[0]?.value ?? s.align) as ArticleImageAlign }))}
+              options={alignOptions}
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Input

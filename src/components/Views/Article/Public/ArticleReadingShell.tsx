@@ -1,5 +1,6 @@
 import Link from 'next/link'
 
+import { Typography } from '~/components/ui'
 import { cn } from '~/utils/cn'
 
 type BreadcrumbItem = {
@@ -36,16 +37,22 @@ export const ArticleReadingShell = ({ breadcrumbs, title, articleLanguage, bodyH
       {breadcrumbs && breadcrumbs.length > 0 && (
         <nav className="flex items-center gap-2 text-xs text-muted-foreground mb-8 flex-wrap" aria-label="Breadcrumb">
           {breadcrumbs.map((crumb, i) => (
-            <span key={i} className="flex items-center gap-2">
-              {i > 0 && <span aria-hidden>/</span>}
+            <Typography asTag="span" key={i} className="flex items-center gap-2">
+              {i > 0 && (
+                <Typography asTag="span" aria-hidden>
+                  /
+                </Typography>
+              )}
               {crumb.href ? (
                 <Link href={crumb.href} className="hover:text-foreground transition-colors">
                   {crumb.label}
                 </Link>
               ) : (
-                <span className="text-foreground truncate max-w-[200px]">{crumb.label}</span>
+                <Typography asTag="span" className="text-foreground truncate max-w-[200px]">
+                  {crumb.label}
+                </Typography>
               )}
-            </span>
+            </Typography>
           ))}
         </nav>
       )}
@@ -59,7 +66,9 @@ export const ArticleReadingShell = ({ breadcrumbs, title, articleLanguage, bodyH
         {badge && <div className="mb-3">{badge}</div>}
 
         {/* Title */}
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground leading-tight mb-4">{title}</h1>
+        <Typography asTag="h1" variant="heading-1" className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground leading-tight mb-4">
+          {title}
+        </Typography>
 
         {/* Meta row: author + date + listen */}
         {meta && <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground border-b border-border/60 pb-5">{meta}</div>}
@@ -72,7 +81,10 @@ export const ArticleReadingShell = ({ breadcrumbs, title, articleLanguage, bodyH
       {backLink && (
         <div className="mt-12 pt-6 border-t border-border/60">
           <Link href={backLink.href} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            <span aria-hidden>←</span> {backLink.label}
+            <Typography asTag="span" aria-hidden>
+              ←
+            </Typography>{' '}
+            {backLink.label}
           </Link>
         </div>
       )}

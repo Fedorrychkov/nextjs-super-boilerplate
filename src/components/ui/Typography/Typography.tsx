@@ -17,17 +17,20 @@ type Variant =
   | 'Body/XS/Semibold'
 
 type Props = {
-  children: React.ReactNode
+  children?: React.ReactNode
   className?: string
   variant?: Variant
-  asTag?: 'p' | 'span' | 'h1' | 'h2' | 'h3' | 'a' | 'label'
+  asTag?: 'p' | 'span' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'a' | 'label'
+  /** Text color tone. `muted` maps to `text-muted-foreground` — captions, hints, secondary text. */
+  tone?: 'default' | 'muted'
   href?: string
   target?: '_blank' | '_self' | '_parent' | '_top'
   htmlFor?: string
   rel?: string
-}
+  // Passthrough for common HTML attributes (role, aria-*, id, style, onClick, dangerouslySetInnerHTML, data-*, ...).
+} & Omit<React.HTMLAttributes<HTMLElement>, 'color'>
 
-export const Typography: FC<Props> = ({ children, className, variant, asTag = 'p', rel, href, target, htmlFor }) => {
+export const Typography: FC<Props> = ({ children, className, variant, asTag = 'p', tone = 'default', rel, href, target, htmlFor, ...rest }) => {
   const variantClasses: Record<Variant, string> = {
     'heading-1': 'md:text-4xl tracking-[4%] font-[700] text-6xl',
     'heading-2': 'md:text-2xl md:tracking-[2%] tracking-[4%] font-[700] text-4xl',
@@ -54,14 +57,16 @@ export const Typography: FC<Props> = ({ children, className, variant, asTag = 'p
       data-font-size={variant}
       rel={rel}
       className={cn(
-        'font-[400] text-xl',
-        variantClasses[variant ?? 'Body/M/Regular'],
+        // No variant → no own text-style classes; className fully controls size/weight.
+        variant ? variantClasses[variant] : '',
         {
           'text-secondary-600': asTag === 'a',
-          'text-foreground': asTag !== 'a',
+          'text-muted-foreground': asTag !== 'a' && tone === 'muted',
+          'text-foreground': asTag !== 'a' && tone !== 'muted',
         },
         className,
       )}
+      {...rest}
     >
       {children}
     </SafetyTag>

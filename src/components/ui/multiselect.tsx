@@ -569,12 +569,21 @@ const MultipleSelector = React.forwardRef<MultipleSelectorRef, MultipleSelectorP
                                   e.stopPropagation()
                                 }}
                                 onSelect={() => {
+                                  // Single-select: picking any option closes the dropdown (native-select feel).
+                                  const closeIfSingle = () => {
+                                    if (maxSelected === 1) {
+                                      setOpen(false)
+                                      inputRef?.current?.blur()
+                                    }
+                                  }
+
                                   if (selected.length >= maxSelected) {
                                     if (updateBySelected && maxSelected === 1) {
                                       setInputValue('')
                                       const newOptions = [option]
                                       setSelected(newOptions)
                                       onChange?.(newOptions)
+                                      closeIfSingle()
 
                                       return
                                     }
@@ -587,6 +596,7 @@ const MultipleSelector = React.forwardRef<MultipleSelectorRef, MultipleSelectorP
                                   const newOptions = [...selected, option]
                                   setSelected(newOptions)
                                   onChange?.(newOptions)
+                                  closeIfSingle()
                                 }}
                                 className={cn('cursor-pointer', option.disable && 'cursor-not-allowed opacity-50')}
                               >

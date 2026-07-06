@@ -9,6 +9,7 @@ import { notFound } from 'next/navigation'
 import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
 import { defaultExtensions } from '~/components/Blocks/Editor/extensions'
+import { Typography } from '~/components/ui'
 import { ArticlePublishedDate } from '~/components/Views/Article/Block/server/ArticlePublishedDate'
 import { ArticlePublicListenAudio } from '~/components/Views/Article/Public/ArticlePublicListenAudio'
 import { ArticleReadingShell } from '~/components/Views/Article/Public/ArticleReadingShell'
@@ -147,9 +148,12 @@ const PreviewRoot = async (props: PageProps<{ slug: string[] }>) => {
         bodyHtml={generatedPageString}
         backLink={{ label: 'Back to admin', href: '/admin/articles' }}
         badge={
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-300 bg-violet-50 dark:bg-violet-950/40 dark:border-violet-800 px-3 py-1 text-xs font-medium text-violet-700 dark:text-violet-400">
+          <Typography
+            asTag="span"
+            className="inline-flex items-center gap-1.5 rounded-full border border-violet-300 bg-violet-50 dark:bg-violet-950/40 dark:border-violet-800 px-3 py-1 text-xs font-medium text-violet-700 dark:text-violet-400"
+          >
             👁 Preview mode
-          </span>
+          </Typography>
         }
         meta={
           <>

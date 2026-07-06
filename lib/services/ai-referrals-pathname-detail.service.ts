@@ -101,8 +101,8 @@ export async function listAiReferralVisitsForPathname(params: {
 }
 
 /**
- * Один проход по событиям: считает, в скольких визитах встречался каждый query-ключ,
- * и частоты значений по каждому ключу (как в URL referrer).
+ * Single pass over the events: counts how many visits contained each query key,
+ * and the value frequencies per key (as in the URL referrer).
  */
 export async function aggregateReferrerQueryParamsForPathname(params: { pathname: string; windowDays: number }): Promise<AiReferralPathnameQueryStatsPayload> {
   const { pathname, windowDays } = params

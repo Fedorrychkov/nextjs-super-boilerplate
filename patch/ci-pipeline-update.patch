@@ -1,0 +1,247 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+new file mode 100644
+index 0000000..fe7ead3
+--- /dev/null
++++ b/.github/workflows/ci.yml
+@@ -0,0 +1,19 @@
++name: CI
++
++on:
++  pull_request:
++    branches: [develop, main]
++  push:
++    branches: [develop, main]
++
++permissions:
++  contents: read
++
++# Cancel superseded runs for the same ref (a new push cancels the previous CI).
++concurrency:
++  group: ci-${{ github.workflow }}-${{ github.ref }}
++  cancel-in-progress: true
++
++jobs:
++  quality:
++    uses: ./.github/workflows/quality.yml
+diff --git a/.github/workflows/prod-deploy.yml b/.github/workflows/prod-deploy.yml
+index b7be3eb..9fbf4d3 100644
+--- a/.github/workflows/prod-deploy.yml
++++ b/.github/workflows/prod-deploy.yml
+@@ -16,7 +16,13 @@ concurrency:
+   cancel-in-progress: false
+ 
+ jobs:
++  # Gate: lint + typecheck + test must pass before the deploy job runs.
++  # Runs on both `push` to main and manual `workflow_dispatch`.
++  quality:
++    uses: ./.github/workflows/quality.yml
++
+   call-reusable:
++    needs: [quality]
+     uses: ./.github/workflows/reusable-deploy-config.yml
+     with:
+       domain: nextjs-super-boilerplate.visn-ai.io
+diff --git a/.github/workflows/quality.yml b/.github/workflows/quality.yml
+new file mode 100644
+index 0000000..d22fd88
+--- /dev/null
++++ b/.github/workflows/quality.yml
+@@ -0,0 +1,41 @@
++name: Quality
++
++# Reusable quality gate: lint + typecheck + test.
++# Called by ci.yml (on PR / push) and by prod-deploy.yml (before deploy) so the
++# checks are defined once and shared.
++on:
++  workflow_call:
++
++permissions:
++  contents: read
++
++jobs:
++  checks:
++    name: ${{ matrix.task }}
++    runs-on: ubuntu-latest
++    strategy:
++      fail-fast: false
++      matrix:
++        task: [lint, typecheck, test]
++    steps:
++      - name: ⬇️ Checkout repo
++        uses: actions/checkout@v4
++
++      - name: 📦 Setup pnpm
++        uses: pnpm/action-setup@v4
++        with:
++          version: 10
++
++      # `cache: pnpm` reuses the repo-scoped pnpm store (keyed by pnpm-lock.yaml)
++      # across jobs, PRs, re-runs and other workflows (ci.yml, deploy).
++      - name: ⎔ Setup Node
++        uses: actions/setup-node@v4
++        with:
++          node-version: 24
++          cache: pnpm
++
++      - name: 📥 Install dependencies
++        run: pnpm install --frozen-lockfile
++
++      - name: ✅ Run ${{ matrix.task }}
++        run: pnpm run ${{ matrix.task }}
+diff --git a/.github/workflows/reusable-deploy-config.yml b/.github/workflows/reusable-deploy-config.yml
+index 45059d2..3699a12 100644
+--- a/.github/workflows/reusable-deploy-config.yml
++++ b/.github/workflows/reusable-deploy-config.yml
+@@ -179,10 +179,18 @@ jobs:
+       - name: ⬇️ Checkout repo
+         uses: actions/checkout@v2
+ 
++      - name: 📦 Setup pnpm
++        uses: pnpm/action-setup@v4
++        with:
++          version: 10
++
++      # `cache: pnpm` reuses the repo-scoped pnpm store (keyed by pnpm-lock.yaml) across runs —
++      # shared with ci.yml, so the non-registry install below is a near-instant cache restore.
+       - name: ⎔ Setup node
+-        uses: actions/setup-node@v2
++        uses: actions/setup-node@v4
+         with:
+           node-version: ${{ inputs.node_version }}
++          cache: pnpm
+ 
+       - name: Log start params
+         run: |
+@@ -218,9 +226,7 @@ jobs:
+ 
+       - name: 📥 Install dependencies
+         if: inputs.deploy_mode != 'registry'
+-        run: |
+-          npm install -g pnpm@10
+-          pnpm install --frozen-lockfile
++        run: pnpm install --frozen-lockfile
+ 
+       - name: 🧪 Unit tests (sanitize)
+         if: inputs.deploy_mode != 'registry'
+@@ -246,12 +252,20 @@ jobs:
+           # Optional DB certificate
+           if [ -n "${{ secrets.database_certificate }}" ]; then echo '${{ secrets.database_certificate }}' >> "db-certificate.${{ inputs.api_env }}.crt"; fi
+ 
++      - name: 🐳 Set up Docker Buildx (registry mode)
++        if: inputs.deploy_mode == 'registry'
++        uses: docker/setup-buildx-action@v3
++
+       - name: 🔐 Login to GHCR and build core-api image (registry mode)
+         if: inputs.deploy_mode == 'registry'
+         run: |
+           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+           IMAGE="ghcr.io/${OWNER}/${{ inputs.registry_subname || 'service-image' }}:${{ github.sha }}"
++          # Shared build-layer cache stored as a single (overwritten) :buildcache tag in GHCR.
++          # Reused across runs and deploy restarts: the slow `pnpm install` / `next build` layers
++          # are not rebuilt when package.json / lockfile / sources are unchanged.
++          CACHE_REF="ghcr.io/${OWNER}/${{ inputs.registry_subname || 'service-image' }}:buildcache"
+ 
+           # Extract only public variables (NEXT_PUBLIC_*, VAPID_SUBJECT) from the corresponding env file in the repository
+           PUBLIC_ENV=$(grep -E '^(NEXT_PUBLIC_|VAPID_SUBJECT=)' "${{ inputs.env_file }}" || true)
+@@ -259,12 +273,14 @@ jobs:
+           echo "Public env for build:"
+           echo "$PUBLIC_ENV"
+ 
+-          docker build \
++          docker buildx build \
+             -f .docker/Dockerfile \
+             --build-arg API_ENV=${{ inputs.api_env }} \
+             --build-arg PUBLIC_ENV="$PUBLIC_ENV" \
+-            -t "$IMAGE" .
+-          docker push "$IMAGE"
++            --cache-from "type=registry,ref=$CACHE_REF" \
++            --cache-to "type=registry,ref=$CACHE_REF,mode=max" \
++            -t "$IMAGE" \
++            --push .
+           echo "CORE_API_IMAGE=$IMAGE" >> $GITHUB_ENV
+ 
+       - name: 🚀 Build project
+diff --git a/.github/workflows/stage-deploy.yml b/.github/workflows/stage-deploy.yml
+deleted file mode 100644
+index df79ac0..0000000
+--- a/.github/workflows/stage-deploy.yml
++++ /dev/null
+@@ -1,77 +0,0 @@
+-name: Stage Deploy
+-on:
+-  push:
+-    branches:
+-      - develop
+-
+-permissions: write-all
+-
+-concurrency:
+-  group: stage-deploy
+-  cancel-in-progress: true
+-jobs:
+-  ci-cd:
+-    runs-on: ubuntu-latest
+-    steps:
+-      - name: ⬇️ Checkout repo
+-        uses: actions/checkout@v2
+-
+-      - name: ⎔ Setup node
+-        uses: actions/setup-node@v2
+-        with:
+-          node-version: 24
+-
+-      - name: 📥 Install dependencies
+-        run: |
+-          npm install -g pnpm@10
+-          pnpm install --frozen-lockfile
+-
+-      - name: 🧪 Unit tests (sanitize)
+-        run: pnpm run test
+-
+-# name: Stage Deploy
+-# on:
+-#   push:
+-#     branches:
+-#       - develop
+-
+-# permissions: write-all
+-
+-# concurrency:
+-#   group: stage-deploy
+-#   cancel-in-progress: true
+-
+-# jobs:
+-#   call-reusable:
+-#     uses: ./.github/workflows/reusable-deploy-config.yml
+-#     with:
+-#       domain: app.example.com
+-#       api_env: stage
+-#       env_file: .env.stage
+-#       nginx_mode: https
+-#       certbot_test_mode: false
+-#       migrations_run: false
+-#       blue_green_enabled: false
+-#       deploy_mode: 'registry'
+-#       node_version: 24
+-#       registry_subname: 'registry.example'
+-#       notify_enabled: true
+-#       tag: 'tag.example'
+-#       redis_enabled: true
+-#       metrics_enabled: false
+-#       mongo_enabled: true
+-#       certbot_email: example@example.com
+-
+-#     secrets:
+-#       server_host: ${{ secrets.STAGE_WEB_HOST }}
+-#       server_username: ${{ secrets.STAGE_WEB_USERNAME }}
+-#       server_password: ${{ secrets.STAGE_WEB_PASSWORD }}
+-#       env: ${{ secrets.WEB_ENV_STAGE }}
+-#       ghcr_username: ${{ secrets.GHCR_USERNAME }}
+-#       ghcr_token: ${{ secrets.GHCR_TOKEN }}
+-#       tg_token: ${{ secrets.TG_TOKEN }}
+-#       tg_chat_id: ${{ secrets.TG_CHAT_ID }}
+-#       tg_thread_id: ${{ secrets.TG_THREAD_ID }}
+-#       grafana_admin_user: ${{ secrets.GRAFANA_ADMIN_USER }}
+-#       grafana_admin_password: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+-#       certbot_email: ${{ secrets.CERTBOT_EMAIL || 'example@example.com' }}

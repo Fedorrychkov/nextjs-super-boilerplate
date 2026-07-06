@@ -1,10 +1,10 @@
 'use client'
 
 import get from 'lodash/get'
-import { forwardRef, useId } from 'react'
+import { forwardRef } from 'react'
 import { Controller, useFormContext } from 'react-hook-form'
 
-import { Checkbox, Label } from '~/components/ui'
+import { CheckboxField } from '../Input'
 
 type Props = {
   label?: string
@@ -19,7 +19,6 @@ type Props = {
 }
 
 export const DefaultCheckbox = forwardRef<HTMLButtonElement, Props>((props, ref) => {
-  const id = useId()
   const { onChange, onClick, label, description, disabled, error: defaultError, subLabel, required, ...rest } = props
 
   const {
@@ -35,37 +34,22 @@ export const DefaultCheckbox = forwardRef<HTMLButtonElement, Props>((props, ref)
     <Controller
       name={rest.name}
       render={({ field: { onChange: defaultOnChange } }) => (
-        <div className="flex items-start gap-2">
-          <Checkbox
-            ref={ref}
-            onCheckedChange={(checked) => {
-              defaultOnChange(checked)
-            }}
-            disabled={disabled}
-            onClick={(e) => {
-              onClick?.(e)
-              onChange?.(e)
-              defaultOnChange(e)
-            }}
-            defaultChecked={value}
-            value={value}
-            id={id}
-            aria-describedby={`${id}-description`}
-            required={required}
-            {...rest}
-          />
-          <div className="grid grow gap-2">
-            <Label htmlFor={id}>
-              {label} {subLabel && <span className="text-xs font-normal leading-[inherit] text-muted-foreground">({subLabel})</span>}
-            </Label>
-            {description && (
-              <p id={`${id}-description`} className="text-xs text-muted-foreground">
-                {description}
-              </p>
-            )}
-            {error && <p className="text-xs text-red-500">{error}</p>}
-          </div>
-        </div>
+        <CheckboxField
+          ref={ref}
+          name={rest.name}
+          label={label}
+          subLabel={subLabel}
+          description={description}
+          disabled={disabled}
+          required={required}
+          error={error}
+          checked={Boolean(value)}
+          onCheckedChange={(checked) => {
+            defaultOnChange(checked)
+          }}
+          onClick={onClick}
+          onChange={onChange}
+        />
       )}
     />
   )

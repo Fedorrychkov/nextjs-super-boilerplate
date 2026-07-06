@@ -95,6 +95,42 @@ const eslintConfig = defineConfig([
       ],
       'no-empty': ['error', { allowEmptyCatch: true }],
       'prefer-promise-reject-errors': 'off',
+      // Enforce reusable wrappers over raw HTML controls / text tags.
+      // Primitives live in src/components/ui/** (disabled there via override below).
+      'no-restricted-syntax': [
+        'warn',
+        {
+          selector: "JSXOpeningElement[name.name='input']",
+          message: 'Do not use a raw <input>. Use InputField / DefaultFieldContainer from ~/components/Fields (the Input primitive belongs only inside src/components/ui).',
+        },
+        {
+          selector: "JSXOpeningElement[name.name='textarea']",
+          message: 'Do not use a raw <textarea>. Use TextAreaField / DefaultTextAreaContainer from ~/components/Fields.',
+        },
+        {
+          selector: "JSXOpeningElement[name.name='select']",
+          message: 'Do not use a raw <select>. Use MultiselectField (single mode) / DefaultMultiselectField from ~/components/Fields.',
+        },
+        {
+          selector: 'JSXOpeningElement[name.name=/^h[1-6]$/]',
+          message: 'Do not use raw headings. Use <Typography asTag="h1|h2|h3" variant="heading-*"> from ~/components/ui.',
+        },
+        {
+          selector: "JSXOpeningElement[name.name='p']",
+          message: 'Do not use a raw <p>. Use <Typography> from ~/components/ui.',
+        },
+        {
+          selector: "JSXOpeningElement[name.name='span']",
+          message: 'For standalone text use <Typography asTag="span">. Purely presentational inline spans are allowed — add // eslint-disable-next-line with a reason where needed.',
+        },
+      ],
+    },
+  },
+  {
+    // Primitive layer: raw HTML controls and text tags are legitimate here.
+    files: ['src/components/ui/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': 'off',
     },
   },
   {

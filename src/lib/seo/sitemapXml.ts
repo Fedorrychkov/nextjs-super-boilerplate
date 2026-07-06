@@ -46,7 +46,7 @@ function toIsoLastMod(value: string | Date | undefined): string | null {
   return date.toISOString()
 }
 
-/** BCP47 / x-default — без кавычек, угловых скобок, пробелов. */
+/** BCP47 / x-default — no quotes, angle brackets, or whitespace. */
 function isSafeHreflangToken(s: string): boolean {
   if (!s || s.length > 42) {
     return false
@@ -59,7 +59,7 @@ function isHttpUrl(s: string): boolean {
   return /^https?:\/\//i.test(s.trim())
 }
 
-/** Нормализует абсолютный URL (убирает лишнее, приводит к каноническому виду `URL.href`). */
+/** Normalizes an absolute URL (strips extras, produces the canonical `URL.href` form). */
 function normalizeHttpUrl(raw: string): string | null {
   const t = raw.trim()
 

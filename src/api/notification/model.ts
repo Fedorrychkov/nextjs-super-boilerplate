@@ -1,10 +1,10 @@
-/** Каналы доставки (расширяемый список). */
+/** Delivery channels (extensible list). */
 export enum NotificationChannel {
   WEB_PUSH = 'web_push',
   EMAIL = 'email',
 }
 
-/** Агрегированный и per-channel статус (совместим с courier-web). */
+/** Aggregated and per-channel status (compatible with courier-web). */
 export enum NotificationDeliveryStatus {
   PENDING = 'pending',
   DELIVERED = 'delivered',
@@ -44,11 +44,11 @@ export type PlatformNotificationModel = {
   body: string
   urlPath: string
   source: string | null
-  /** Какие каналы запрашивали при создании (web push, email, …). */
+  /** Which channels were requested at creation time (web push, email, …). */
   channelsRequested: NotificationChannel[]
-  /** Результат по каждому каналу. */
+  /** Result per channel. */
   channelDeliveries: NotificationChannelDeliveryModel[]
-  /** Сводный статус для списков и фильтров. */
+  /** Summary status for lists and filters. */
   deliveryStatus: NotificationDeliveryStatus
   createdAt?: string | null
 }

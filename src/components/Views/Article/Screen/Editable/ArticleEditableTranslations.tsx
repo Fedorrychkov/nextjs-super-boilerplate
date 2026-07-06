@@ -383,7 +383,9 @@ export function ArticleEditableTranslations(props: Props) {
             {siblings.map((row) => (
               <TableRow key={row.id} className={cn(row.id === articleId && 'bg-muted/60')}>
                 <TableCell>
-                  <span className="rounded bg-secondary px-2 py-0.5 text-xs font-medium uppercase">{row.locale ?? '—'}</span>
+                  <Typography asTag="span" className="rounded bg-secondary px-2 py-0.5 text-xs font-medium uppercase">
+                    {row.locale ?? '—'}
+                  </Typography>
                 </TableCell>
                 <TableCell className="max-w-[220px] truncate">{row.title ?? '—'}</TableCell>
                 <TableCell className="max-w-[160px] truncate font-mono text-xs">{row.slug || '—'}</TableCell>

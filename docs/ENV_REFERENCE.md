@@ -90,6 +90,23 @@
 | `NEXT_PUBLIC_ONBOARDING_PUSH_PROMPT_ENABLED` | 0 | |
 | `NEXT_PUBLIC_PUSH_IOS_PWA_HINT_ENABLED` | 0 | iOS PWA hint |
 
+## API tokens / MCP (`API_TOKENS_CONFIG`)
+
+Machine auth for AI agents and integrations. See [`../mcp/README.md`](../mcp/README.md) and [`MCP_ARTICLES_SERVER_RU.md`](./MCP_ARTICLES_SERVER_RU.md).
+
+| Variable | Default | Notes |
+|----------|---------|---------|
+| `API_TOKENS_ENABLED` | 0 | PAT auth + `/api/v1/api-token/*` + remote MCP endpoint `/api/mcp` + `/admin/api-tokens` and `/profile/api-tokens` pages |
+| `NEXT_PUBLIC_API_TOKENS_ENABLED` | 0 | Nav items: admin sidebar + "My API tokens" for roles allowed by role policies |
+| `MCP_SERVER_NAME` | `nsb-mcp` | Name the MCP server reports to hosts (`serverInfo.name`) — brand per project, e.g. `quickping-mcp` |
+| `NEXT_PUBLIC_API_TOKEN_BRAND` | `nsb` | Brand for machine identifiers: `<brand>_pat_`, `<brand>_oat_`, `<brand>_mcp_client_`. Set at bootstrap; changing it on a live instance breaks detection of already issued tokens |
+| `MCP_OAUTH_ENABLED` | 0 | OAuth 2.1 layer over `/api/mcp` for Claude.ai/Desktop custom connectors (discovery, DCR, consent, token, revoke). Requires `API_TOKENS_ENABLED=1` |
+| `MCP_OAUTH_ACCESS_TTL_MINUTES` | 60 | OAuth access token TTL (short-lived; hosts refresh via `refresh_token`) |
+| `MCP_OAUTH_CLIENT_RETENTION_DAYS` | 30 | Lazy cleanup of DCR clients with no grants and no activity |
+| `API_TOKEN_USAGE_RETENTION_DAYS` | 30 | TTL of the machine-access usage time series (`ApiTokenUsageEvent`); powers `/admin/machine-access` windows. Changing on a live instance requires dropping the collection's `createdAt` TTL index |
+
+MCP server env (host side, not the app): `NSB_API_BASE_URL`, `NSB_API_TOKEN`.
+
 ## OAuth (`OAUTH_CONFIG`)
 
 See [`AUTH_OAUTH.md`](./AUTH_OAUTH.md). `pnpm doctor` validates provider lists vs credentials.

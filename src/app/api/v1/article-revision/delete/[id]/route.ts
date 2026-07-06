@@ -1,6 +1,6 @@
 import connectDB from '@lib/db/client'
 import ArticleRevision from '@lib/db/models/ArticleRevision'
-import { apiErrorHandlerContainer, RouteHandlerContext, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
+import { apiErrorHandlerContainer, RouteHandlerContext, withApiTokenOrAuth, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -43,4 +43,4 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult, context?: 
     return response.json({ success: true })
   })
 
-export const DELETE = withGlobalRateLimit(withAuthMiddleware(handler))
+export const DELETE = withGlobalRateLimit(withApiTokenOrAuth('articles:write')(handler))

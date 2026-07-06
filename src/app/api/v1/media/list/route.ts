@@ -1,4 +1,4 @@
-import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
+import { apiErrorHandlerContainer, withApiTokenOrAuth, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
 import { listMediaAssets } from '@lib/services/media.service'
 import { NextRequest, NextResponse } from 'next/server'
@@ -39,4 +39,4 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     })
   })
 
-export const GET = withGlobalRateLimit(withAuthMiddleware(handler))
+export const GET = withGlobalRateLimit(withApiTokenOrAuth('media:read')(handler))

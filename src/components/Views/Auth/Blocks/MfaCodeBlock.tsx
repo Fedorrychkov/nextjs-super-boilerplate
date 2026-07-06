@@ -60,9 +60,9 @@ const MfaCodeBlock = (props: Props) => {
               input: 'w-full pl-10 pr-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm',
             }}
             additionalLeftComponent={
-              <span className="ml-3 text-gray-400">
+              <Typography asTag="span" className="ml-3 text-gray-400">
                 <KeyRound className="w-4 h-4" />
-              </span>
+              </Typography>
             }
             error={error}
             onChange={(e) => setCode(e.target.value)}

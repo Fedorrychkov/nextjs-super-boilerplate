@@ -1,6 +1,6 @@
 import connectDB from '@lib/db/client'
 import ArticleRevision from '@lib/db/models/ArticleRevision'
-import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
+import { apiErrorHandlerContainer, withApiTokenOrAuth, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -32,4 +32,4 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     })
   })
 
-export const GET = withGlobalRateLimit(withAuthMiddleware(handler))
+export const GET = withGlobalRateLimit(withApiTokenOrAuth('articles:read')(handler))

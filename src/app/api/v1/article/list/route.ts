@@ -1,30 +1,40 @@
 import connectDB from '@lib/db/client'
 import Article from '@lib/db/models/Article'
 import { articleDocumentToApiJson } from '@lib/db/utils/articleApiJson'
-import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
+import { apiErrorHandlerContainer, withApiTokenOrAuth, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
+import { getPublicArticlesListEnriched } from '@lib/services/public-articles-list.service'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { ArticleFilter } from '~/api/article'
 import { UserRole } from '~/api/user'
-import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 import { Logger } from '~/utils/logger'
 
 const logger = new Logger('ArticleListRoute')
 
+/**
+ * Role-scoped listing (data scoping instead of a hard 403):
+ * - ADMIN / EDITOR — full admin listing: any status, drafts, raw filters.
+ * - any other authenticated role (JWT or PAT) — reader view: the same published+public
+ *   feed as the public /articles page, enriched with revision title/description/thumbnail.
+ *   Lets user-role agents build digests without staff permissions.
+ */
 const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
   apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
-    const { t } = await getServerTFromNextRequestAsync(request)
-
-    if (![UserRole.ADMIN, UserRole.EDITOR].includes(authResult.payload.role)) {
-      return NextResponse.json({ message: t('errors.insufficientPermissions') }, { status: 403 })
-    }
-
     await connectDB()
 
     const filter: ArticleFilter = { ...Object.fromEntries(request.nextUrl.searchParams.entries()) }
 
-    logger.info('filter', filter)
+    const isStaff = [UserRole.ADMIN, UserRole.EDITOR].includes(authResult.payload.role)
+
+    logger.info('filter', { ...filter, isStaff })
+
+    if (!isStaff) {
+      // `status`/`visibility` are forced to published/public inside the service — reader filters cannot widen the scope.
+      const data = await getPublicArticlesListEnriched(filter)
+
+      return response.json(data)
+    }
 
     const data = await Article.findListPaginated(filter)
 
@@ -34,4 +44,4 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     })
   })
 
-export const GET = withGlobalRateLimit(withAuthMiddleware(handler))
+export const GET = withGlobalRateLimit(withApiTokenOrAuth('articles:read')(handler))

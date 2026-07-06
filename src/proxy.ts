@@ -10,7 +10,7 @@ import { time } from '~/utils/time'
 
 import { jsonStringifySafety } from './utils/jsonSafe'
 
-/** Для root layout / SEO (utm, AI referral): pathname и query недоступны из `headers()` без проброса. */
+/** For root layout / SEO (utm, AI referral): pathname and query are not available from `headers()` without forwarding. */
 function buildForwardedRequestHeaders(request: NextRequest): Headers {
   const h = new Headers(request.headers)
 

@@ -88,9 +88,9 @@ const SignUpBlock = (props: Props) => {
                 value={email}
                 disabled={props.isLoading}
                 additionalLeftComponent={
-                  <span className="ml-3 text-gray-400">
+                  <Typography asTag="span" className="ml-3 text-gray-400">
                     <Mail className="w-4 h-4" />
-                  </span>
+                  </Typography>
                 }
                 classNames={{
                   input: 'w-full pl-10 pr-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 text-sm',

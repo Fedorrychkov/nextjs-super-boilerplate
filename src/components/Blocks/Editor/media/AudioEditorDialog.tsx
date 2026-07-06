@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { MediaResourceType } from '~/api/media'
 import { MediaUrlUploadField } from '~/components/Fields'
-import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '~/components/ui'
+import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Typography } from '~/components/ui'
 import { useT } from '~/providers'
 
 import { resolveExternalImageSrc } from '../image/resolveImageSrc'
@@ -146,7 +146,7 @@ export const AudioEditorDialog = (props: Props) => {
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4">
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          {error ? <Typography className="text-sm text-destructive">{error}</Typography> : null}
           <MediaUrlUploadField
             label={t('media.ui.mediaUrl')}
             value={form.src}

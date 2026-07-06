@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react'
 
 import { TitleWithBadge } from '~/components/Blocks/TitleWithBadge'
 import { CustomTooltip } from '~/components/Blocks/Tooltip'
-import { Select } from '~/components/ui/select-1'
+import { MultiselectField } from '~/components/Fields'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '~/components/ui/table'
 import { Typography } from '~/components/ui/Typography/Typography'
 import type { TFunction } from '~/lib/i18n'
@@ -92,7 +92,12 @@ export const RumDashboardScreen = () => {
           <Typography variant="Body/XS/Regular" className="text-muted-foreground">
             {t('rum.ui.window')}
           </Typography>
-          <Select size="small" value={daysStr} options={dayOptions} onChange={(e) => setDaysStr(e.target.value)} />
+          <MultiselectField
+            updateBySelected
+            value={dayOptions.find((o) => o.value === daysStr) ?? null}
+            onChange={(opts) => setDaysStr(opts[0]?.value ?? daysStr)}
+            options={dayOptions}
+          />
         </div>
       </div>
 
@@ -135,7 +140,9 @@ export const RumDashboardScreen = () => {
                 <TableRow key={row.name}>
                   <TableCell className="font-medium">
                     <CustomTooltip enableInfoIcon content={<RumMetricTooltipContent metricKey={row.name as RumMetricTooltipKey} />}>
-                      <span className="cursor-help border-b border-dotted border-muted-foreground/50">{row.name}</span>
+                      <Typography asTag="span" className="cursor-help border-b border-dotted border-muted-foreground/50">
+                        {row.name}
+                      </Typography>
                     </CustomTooltip>
                   </TableCell>
                   <TableCell className="text-right tabular-nums whitespace-nowrap">{row.count}</TableCell>

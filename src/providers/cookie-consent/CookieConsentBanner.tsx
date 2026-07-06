@@ -8,7 +8,7 @@ import { Typography } from '~/components/ui/Typography/Typography'
 import { useT } from '../i18n'
 import { useCookieConsent } from './useCookieConsent'
 
-/** Не перекрывать первый экран/LCP: показ после первого жеста или по таймеру. */
+/** Avoid covering the first screen / LCP: show after the first gesture or on a timer. */
 const BANNER_FALLBACK_DELAY_MS = 10_000
 
 const INTERACTION_EVENTS = ['scroll', 'click', 'keydown', 'touchstart', 'pointerdown'] as const

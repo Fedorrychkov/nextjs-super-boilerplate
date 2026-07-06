@@ -9,6 +9,7 @@ import { ClientPublicArticleListApi } from '~/api/article/client/publicArticleLi
 import { PUBLIC_ARTICLES_PAGE_SIZE, type PublicArticleListItem, serializePublicListFilters } from '~/api/article/publicListQuery'
 import type { ArticleFilter } from '~/api/article/types'
 import { SortBy, SortOrder } from '~/api/article/types'
+import { Typography } from '~/components/ui'
 import { ArticleItemClient } from '~/components/Views/Article/Block/client/ArticleItemClient'
 import type { TFunction } from '~/lib/i18n'
 import { useT } from '~/providers'
@@ -42,7 +43,9 @@ type PillSelectProps = {
 
 const PillSelect = ({ label, options, value, onChange }: PillSelectProps) => (
   <div className="flex items-center gap-1.5 flex-wrap">
-    <span className="text-xs text-muted-foreground shrink-0">{label}:</span>
+    <Typography asTag="span" className="text-xs text-muted-foreground shrink-0">
+      {label}:
+    </Typography>
     {options.map((opt) => (
       <button
         key={opt.value}
@@ -127,8 +130,10 @@ export function ArticlesPublicFeed({ initial, listQuery, children }: Props) {
     <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12 flex flex-col gap-8">
       {/* Page header */}
       <div className="border-b border-border/60 pb-6">
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-2">{t('article.ui.articles')}</h1>
-        <p className="text-muted-foreground text-sm">
+        <Typography asTag="h1" variant="heading-1" className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-2">
+          {t('article.ui.articles')}
+        </Typography>
+        <Typography className="text-muted-foreground text-sm">
           {t('article.common.showing', { count: shownCount, total: totalCount })}
           {currentQs ? (
             <>
@@ -139,7 +144,7 @@ export function ArticlesPublicFeed({ initial, listQuery, children }: Props) {
               </Link>
             </>
           ) : null}
-        </p>
+        </Typography>
       </div>
 
       {/* Pill filters */}
@@ -166,7 +171,7 @@ export function ArticlesPublicFeed({ initial, listQuery, children }: Props) {
         ))}
       </div>
 
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {error ? <Typography className="text-sm text-destructive">{error}</Typography> : null}
 
       {hasMore ? (
         <div className="flex justify-center pt-2">

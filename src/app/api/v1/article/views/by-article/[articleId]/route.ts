@@ -1,5 +1,5 @@
 import connectDB from '@lib/db/client'
-import { apiErrorHandlerContainer, RouteHandlerContext, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
+import { apiErrorHandlerContainer, RouteHandlerContext, withApiTokenOrAuth, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
 import { getArticleViewsByArticleId } from '@lib/services/article-view.service'
 import { NextRequest, NextResponse } from 'next/server'
@@ -34,4 +34,4 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult, context?: 
     return response.json(data)
   })
 
-export const GET = withGlobalRateLimit(withAuthMiddleware(handler))
+export const GET = withGlobalRateLimit(withApiTokenOrAuth('articles:read')(handler))

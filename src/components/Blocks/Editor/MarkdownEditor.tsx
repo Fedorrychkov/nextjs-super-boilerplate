@@ -5,6 +5,8 @@ import './styles/editor.styles.scss'
 import { Editor } from '@tiptap/react'
 import { useCallback, useEffect, useRef } from 'react'
 
+import { Textarea } from '~/components/ui/fields/textarea'
+
 import { useDefaultEditor } from './hooks/useDefaultEditor'
 
 type Props = {
@@ -43,7 +45,7 @@ export const MarkdownEditor = (props: Props) => {
 
   return (
     <>
-      <textarea
+      <Textarea
         ref={textareaRef}
         className="w-full min-h-[8rem] overflow-hidden p-4 rounded-md resize-none border border-neutral-400 shadow-[0_0_10px_0_rgba(0,0,0,0.1)]"
         name="markdown"

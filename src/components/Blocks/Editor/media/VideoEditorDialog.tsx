@@ -4,8 +4,8 @@ import type { Editor } from '@tiptap/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { MediaResourceType } from '~/api/media'
-import { MediaUrlUploadField } from '~/components/Fields'
-import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '~/components/ui'
+import { MediaUrlUploadField, MultiselectField } from '~/components/Fields'
+import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Typography } from '~/components/ui'
 import { Textarea } from '~/components/ui/fields/textarea'
 import { VIDEO_POSTER_CAPTURE_RANGE_BYTES } from '~/constants/media-upload'
 import { useT } from '~/providers'
@@ -198,6 +198,12 @@ export const VideoEditorDialog = (props: Props) => {
   const { notify } = useNotify()
   const { editor, open, mode, onOpenChange, articleRevisionId } = props
   const [form, setForm] = useState<FormState>(emptyForm)
+
+  const videoAlignOptions = [
+    { value: 'left', label: t('common.alignLeft') },
+    { value: 'center', label: t('common.alignCenter') },
+    { value: 'right', label: t('common.alignRight') },
+  ]
   const [error, setError] = useState<string | null>(null)
   const [capturing, setCapturing] = useState(false)
   const videoPreviewRef = useRef<HTMLVideoElement>(null)
@@ -411,7 +417,7 @@ export const VideoEditorDialog = (props: Props) => {
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4">
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          {error ? <Typography className="text-sm text-destructive">{error}</Typography> : null}
           <MediaUrlUploadField
             label={t('media.ui.videoFile')}
             value={form.src}
@@ -430,7 +436,9 @@ export const VideoEditorDialog = (props: Props) => {
           />
           {previewSrc ? (
             <div className="flex flex-col gap-2">
-              <span className="text-[13px] text-gray-900 capitalize">{t('media.ui.videoPreviewForPoster')}</span>
+              <Typography asTag="span" className="text-[13px] text-gray-900 capitalize">
+                {t('media.ui.videoPreviewForPoster')}
+              </Typography>
               <video
                 ref={videoPreviewRef}
                 className="max-h-48 w-full rounded-md border border-border bg-black"
@@ -462,7 +470,9 @@ export const VideoEditorDialog = (props: Props) => {
             }}
           />
           <div>
-            <span className="text-[13px] text-gray-900 capitalize">{t('media.ui.captionUnderTheImage')}</span>
+            <Typography asTag="span" className="text-[13px] text-gray-900 capitalize">
+              {t('media.ui.captionUnderTheImage')}
+            </Typography>
             <Textarea
               className="mt-2 min-h-[72px]"
               value={form.caption}
@@ -470,18 +480,13 @@ export const VideoEditorDialog = (props: Props) => {
               placeholder={t('media.ui.videoCaptionPlaceholder')}
             />
           </div>
-          <div className="flex flex-col gap-2">
-            <span className="text-[13px] text-gray-900 capitalize">{t('media.ui.alignment')}</span>
-            <select
-              className="rounded-md border border-border bg-background px-3 py-2 text-sm"
-              value={form.align}
-              onChange={(e) => setForm((s) => ({ ...s, align: e.target.value as ArticleVideoAlign }))}
-            >
-              <option value="left">{t('common.alignLeft')}</option>
-              <option value="center">{t('common.alignCenter')}</option>
-              <option value="right">{t('common.alignRight')}</option>
-            </select>
-          </div>
+          <MultiselectField
+            label={t('media.ui.alignment')}
+            updateBySelected
+            value={videoAlignOptions.find((o) => o.value === form.align) ?? null}
+            onChange={(opts) => setForm((s) => ({ ...s, align: (opts[0]?.value ?? s.align) as ArticleVideoAlign }))}
+            options={videoAlignOptions}
+          />
         </div>
         <DialogFooter className="gap-2 sm:gap-0">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

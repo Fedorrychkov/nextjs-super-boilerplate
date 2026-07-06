@@ -7,6 +7,7 @@ import { notFound } from 'next/navigation'
 
 import { ArticleVisibility } from '~/api/article'
 import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
+import { Typography } from '~/components/ui'
 import { ArticlePublishedDate } from '~/components/Views/Article/Block/server/ArticlePublishedDate'
 import { ArticlePublicListenAudio } from '~/components/Views/Article/Public/ArticlePublicListenAudio'
 import { ArticleReadingShell } from '~/components/Views/Article/Public/ArticleReadingShell'
@@ -224,8 +225,10 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
         meta={
           <>
             {seoConfig.author ? (
-              <span>
-                <span className="mr-1">{t('article.ui.authorBylinePrefix')}</span>
+              <Typography asTag="span">
+                <Typography asTag="span" className="mr-1">
+                  {t('article.ui.authorBylinePrefix')}
+                </Typography>
                 <a
                   href={seoConfig.author.url}
                   rel="author noopener noreferrer"
@@ -233,7 +236,7 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
                 >
                   {seoConfig.author.name}
                 </a>
-              </span>
+              </Typography>
             ) : null}
             <ArticlePublishedDate publishedAt={publishedAt} />
             <ArticlePublicListenAudio assetId={response.article.listenAudioAssetId} />

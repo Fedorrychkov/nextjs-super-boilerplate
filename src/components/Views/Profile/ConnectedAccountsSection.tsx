@@ -105,8 +105,14 @@ export function ConnectedAccountsSection() {
                   <OAuthProviderIcon provider={provider} size={20} />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-sm font-medium">{OAUTH_PROVIDER_LABELS[provider]}</span>
-                  {linked && account?.providerLogin ? <span className="text-xs text-muted-foreground">{account.providerLogin}</span> : null}
+                  <Typography asTag="span" className="text-sm font-medium">
+                    {OAUTH_PROVIDER_LABELS[provider]}
+                  </Typography>
+                  {linked && account?.providerLogin ? (
+                    <Typography asTag="span" className="text-xs text-muted-foreground">
+                      {account.providerLogin}
+                    </Typography>
+                  ) : null}
                 </div>
               </div>
               {linked ? (

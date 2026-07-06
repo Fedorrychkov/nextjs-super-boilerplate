@@ -8,6 +8,7 @@ import { useQueryClient } from 'react-query'
 import { ClientLlmApi } from '~/api/llm'
 import { MediaAssetModel, MediaResourceType } from '~/api/media'
 import { ImageLoader } from '~/components/Containers'
+import { MultiselectField } from '~/components/Fields/Input/MultiselectField'
 import { Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Textarea, Typography } from '~/components/ui'
 import { Input } from '~/components/ui/input'
 import { formatDataSizeShort, formatMediaUploadMaxLabel, isMediaFileWithinUploadLimit } from '~/constants/media-upload'
@@ -476,6 +477,7 @@ export const MediaUrlUploadField = (props: Props) => {
           }
         }}
       >
+        {/* eslint-disable-next-line no-restricted-syntax -- hidden programmatic file trigger, not a text field */}
         <input
           id={mainFileInputId}
           type="file"
@@ -516,7 +518,7 @@ export const MediaUrlUploadField = (props: Props) => {
             </>
           )}
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">{helperText}</p>
+        <Typography className="mt-2 text-xs text-muted-foreground">{helperText}</Typography>
       </div>
       <Dialog open={isLibraryOpen} onOpenChange={setIsLibraryOpen}>
         <DialogContent className="sm:max-w-[900px]">
@@ -525,6 +527,7 @@ export const MediaUrlUploadField = (props: Props) => {
             <DialogDescription>{t('media.ui.mediaLibraryDescription')}</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-3">
+            {/* eslint-disable-next-line no-restricted-syntax -- hidden programmatic file trigger, not a text field */}
             <input
               ref={modalFileInputRef}
               type="file"
@@ -576,7 +579,7 @@ export const MediaUrlUploadField = (props: Props) => {
                   {t('common.upload')}
                 </Button>
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">{helperText}</p>
+              <Typography className="mt-2 text-xs text-muted-foreground">{helperText}</Typography>
             </div>
             {showAiImagePanel ? (
               <div className="rounded-md border border-dashed border-primary/30 bg-muted/20 p-3">
@@ -584,17 +587,19 @@ export const MediaUrlUploadField = (props: Props) => {
                   {t('media.ui.aiImageGenerateTitle')}
                 </Typography>
                 {llmModelsQuery.isLoading ? (
-                  <p className="text-xs text-muted-foreground">{t('common.loading')}</p>
+                  <Typography className="text-xs text-muted-foreground">{t('common.loading')}</Typography>
                 ) : llmModelsQuery.isError ? (
-                  <p className="text-xs text-destructive">{t('errors.unknown')}</p>
+                  <Typography className="text-xs text-destructive">{t('errors.unknown')}</Typography>
                 ) : !llmModelsQuery.data?.enabled ? (
-                  <p className="text-xs text-muted-foreground">{t('article.errors.llmNotConfigured')}</p>
+                  <Typography className="text-xs text-muted-foreground">{t('article.errors.llmNotConfigured')}</Typography>
                 ) : !imageModels.length ? (
-                  <p className="text-xs text-muted-foreground">{t('media.ui.aiImageNoModels')}</p>
+                  <Typography className="text-xs text-muted-foreground">{t('media.ui.aiImageNoModels')}</Typography>
                 ) : (
                   <div className="flex flex-col gap-3">
                     <div className="flex flex-col gap-1">
-                      <span className="text-xs font-medium text-foreground">{t('media.ui.aiImagePromptSource')}</span>
+                      <Typography asTag="span" className="text-xs font-medium text-foreground">
+                        {t('media.ui.aiImagePromptSource')}
+                      </Typography>
                       <div className="flex flex-row flex-wrap gap-2">
                         <Button
                           type="button"
@@ -617,45 +622,29 @@ export const MediaUrlUploadField = (props: Props) => {
                       </div>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="flex flex-col gap-1">
-                        <label className="text-xs font-medium" htmlFor={`${mainFileInputId}-ai-model`}>
-                          {t('media.ui.aiImageModel')}
-                        </label>
-                        <select
-                          id={`${mainFileInputId}-ai-model`}
-                          className="h-9 rounded-md border border-border bg-background px-2 text-sm"
-                          value={selectedImageModel?.id ?? ''}
-                          disabled={disabled || aiModalBusy}
-                          onChange={(e) => setAiImageModelId(e.target.value)}
-                        >
-                          {imageModels.map((m) => (
-                            <option key={m.id} value={m.id}>
-                              {m.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label className="text-xs font-medium" htmlFor={`${mainFileInputId}-ai-aspect`}>
-                          {t('media.ui.aiImageAspect')}
-                        </label>
-                        <select
-                          id={`${mainFileInputId}-ai-aspect`}
-                          className="h-9 rounded-md border border-border bg-background px-2 text-sm"
-                          value={aiAspectId}
-                          disabled={disabled || aiModalBusy || !selectedImageModel}
-                          onChange={(e) => setAiAspectId(e.target.value)}
-                        >
-                          {(selectedImageModel?.aspectRatios ?? []).map((a) => (
-                            <option key={a.id} value={a.id}>
-                              {a.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      <MultiselectField
+                        label={t('media.ui.aiImageModel')}
+                        updateBySelected
+                        disabled={disabled || aiModalBusy}
+                        value={imageModels.map((m) => ({ value: m.id, label: m.label })).find((o) => o.value === (selectedImageModel?.id ?? '')) ?? null}
+                        onChange={(opts) => setAiImageModelId(opts[0]?.value ?? '')}
+                        options={imageModels.map((m) => ({ value: m.id, label: m.label }))}
+                      />
+                      <MultiselectField
+                        label={t('media.ui.aiImageAspect')}
+                        updateBySelected
+                        disabled={disabled || aiModalBusy || !selectedImageModel}
+                        value={
+                          (selectedImageModel?.aspectRatios ?? []).map((a) => ({ value: a.id, label: a.label })).find((o) => o.value === aiAspectId) ?? null
+                        }
+                        onChange={(opts) => setAiAspectId(opts[0]?.value ?? '')}
+                        options={(selectedImageModel?.aspectRatios ?? []).map((a) => ({ value: a.id, label: a.label }))}
+                      />
                     </div>
                     <div className="flex flex-col gap-1">
-                      <span className="text-xs font-medium">{t('media.ui.aiImagePrompt')}</span>
+                      <Typography asTag="span" className="text-xs font-medium">
+                        {t('media.ui.aiImagePrompt')}
+                      </Typography>
                       <Textarea
                         value={aiPrompt}
                         onChange={(e) => setAiPrompt(e.target.value)}
@@ -664,31 +653,41 @@ export const MediaUrlUploadField = (props: Props) => {
                         placeholder={t('media.ui.aiImagePromptPlaceholder')}
                         className="text-sm"
                       />
-                      {aiPromptSource === 'fromArticle' ? <p className="text-xs text-muted-foreground">{t('media.ui.aiImageFromArticleFieldHint')}</p> : null}
+                      {aiPromptSource === 'fromArticle' ? (
+                        <Typography className="text-xs text-muted-foreground">{t('media.ui.aiImageFromArticleFieldHint')}</Typography>
+                      ) : null}
                       <div className="flex flex-row flex-wrap gap-2">
                         <Button type="button" variant="outline" size="sm-md" disabled={disabled || aiModalBusy} onClick={() => void handleAiSuggestPrompt()}>
                           {aiSuggestBusy ? t('media.ui.aiImageSuggestBusy') : t('media.ui.aiImageSuggestPrompt')}
                         </Button>
                       </div>
-                      <p className="text-xs text-muted-foreground">{t('media.ui.aiImageSuggestHint')}</p>
+                      <Typography className="text-xs text-muted-foreground">{t('media.ui.aiImageSuggestHint')}</Typography>
                     </div>
                     {aiStreamPreviewUrl || aiGenerateBusy ? (
                       <div className="rounded-md border bg-muted/30 p-2">
-                        <span className="text-xs font-medium text-muted-foreground">{t('media.ui.aiImageStreamPreview')}</span>
+                        <Typography asTag="span" className="text-xs font-medium text-muted-foreground">
+                          {t('media.ui.aiImageStreamPreview')}
+                        </Typography>
                         <div className="relative mt-1 flex min-h-[100px] max-h-56 items-center justify-center overflow-hidden rounded bg-background">
                           {aiStreamPreviewUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element -- data URL from OpenAI partial stream
                             <img src={aiStreamPreviewUrl} alt="" className="max-h-56 w-full object-contain" />
                           ) : null}
                           {aiGenerateBusy && !aiStreamPreviewUrl ? (
-                            <span className="absolute inset-0 flex items-center justify-center bg-background/60 px-2 text-center text-xs text-muted-foreground">
+                            <Typography
+                              asTag="span"
+                              className="absolute inset-0 flex items-center justify-center bg-background/60 px-2 text-center text-xs text-muted-foreground"
+                            >
                               {t('media.ui.aiImageStreamWaitingPartial')}
-                            </span>
+                            </Typography>
                           ) : null}
                           {aiGenerateBusy && aiStreamPreviewUrl ? (
-                            <span className="absolute bottom-1 right-1 rounded bg-background/85 px-1.5 py-0.5 text-[10px] text-muted-foreground shadow">
+                            <Typography
+                              asTag="span"
+                              className="absolute bottom-1 right-1 rounded bg-background/85 px-1.5 py-0.5 text-[10px] text-muted-foreground shadow"
+                            >
                               {t('media.ui.aiImageStreamRefining')}
-                            </span>
+                            </Typography>
                           ) : null}
                         </div>
                       </div>
@@ -701,10 +700,10 @@ export const MediaUrlUploadField = (props: Props) => {
               </div>
             ) : null}
             <div className="max-h-[420px] overflow-y-auto rounded-md border p-3">
-              {mediaAssetsQuery.isLoading && <p className="text-sm text-muted-foreground">{t('common.loading')}</p>}
-              {mediaAssetsQuery.isError && <p className="text-sm text-destructive">{t('media.errors.failedToLoadMediaList')}</p>}
+              {mediaAssetsQuery.isLoading && <Typography className="text-sm text-muted-foreground">{t('common.loading')}</Typography>}
+              {mediaAssetsQuery.isError && <Typography className="text-sm text-destructive">{t('media.errors.failedToLoadMediaList')}</Typography>}
               {!mediaAssetsQuery.isLoading && !mediaAssetsQuery.isError && !mediaAssetsQuery.data?.items?.length && (
-                <p className="text-sm text-muted-foreground">{t('media.errors.noMediaFoundYet')}</p>
+                <Typography className="text-sm text-muted-foreground">{t('media.errors.noMediaFoundYet')}</Typography>
               )}
               {!mediaAssetsQuery.isLoading && !mediaAssetsQuery.isError && !!mediaAssetsQuery.data?.items?.length && (
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
@@ -719,10 +718,14 @@ export const MediaUrlUploadField = (props: Props) => {
                         {asset.resourceType === MediaResourceType.IMAGE ? (
                           <ImageLoader src={getAssetPreviewUrl(asset)} className="w-full h-full object-contain" />
                         ) : (
-                          <span className="px-2 text-center text-xs text-muted-foreground">{asset.originalFilename ?? asset.id}</span>
+                          <Typography asTag="span" className="px-2 text-center text-xs text-muted-foreground">
+                            {asset.originalFilename ?? asset.id}
+                          </Typography>
                         )}
                       </div>
-                      <span className="line-clamp-2 text-xs text-muted-foreground">{asset.originalFilename ?? asset.id}</span>
+                      <Typography asTag="span" className="line-clamp-2 text-xs text-muted-foreground">
+                        {asset.originalFilename ?? asset.id}
+                      </Typography>
                     </button>
                   ))}
                 </div>

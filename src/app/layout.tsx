@@ -21,7 +21,7 @@ import { ThemeProvider, ThemeScript } from '~/providers/theme'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
-  /** RU-локаль без лишнего FOUT на кириллице (небольшой прирост веса шрифта). */
+  /** Cyrillic locale support without extra FOUT (slightly larger font payload). */
   subsets: ['latin', 'cyrillic'],
   display: 'swap',
   adjustFontFallback: true,

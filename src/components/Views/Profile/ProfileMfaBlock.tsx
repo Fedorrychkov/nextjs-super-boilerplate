@@ -7,6 +7,7 @@ import { CopyContainer } from '~/components/Blocks/CopyContainer'
 import { ImageLoader } from '~/components/Containers'
 import { Skeleton } from '~/components/Loaders'
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Typography } from '~/components/ui'
+import { Input } from '~/components/ui/fields/input'
 import { useT } from '~/providers'
 import { useNotify } from '~/providers/notify'
 import { useMfaConfirmMutation, useMfaDisableMutation, useMfaSetupMutation, useMfaStatusQuery } from '~/query/auth'
@@ -178,7 +179,7 @@ export function ProfileMfaBlock() {
         <div className="space-y-3">
           <Typography variant="Body/M/Regular">{t('auth.ui.enterThe6DigitCodeFromYourAuthenticatorAppToActivate2FA')}</Typography>
           <div className="flex gap-2">
-            <input
+            <Input
               type="text"
               inputMode="numeric"
               autoComplete="one-time-code"
@@ -191,7 +192,7 @@ export function ProfileMfaBlock() {
                 }
               }}
               onChange={(e) => setConfirmCode(e.target.value.replace(/\D/g, ''))}
-              className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex-1"
             />
             <Button onClick={handleConfirmMfa} disabled={confirmMutation.isLoading || confirmCode.length < 6}>
               {confirmMutation.isLoading ? t('auth.ui.checking') : t('auth.ui.confirm')}
@@ -220,8 +221,10 @@ export function ProfileMfaBlock() {
               <DialogHeader>
                 <DialogTitle>{t('auth.ui.disableTwoFactorAuthentication')}</DialogTitle>
               </DialogHeader>
-              <p className="text-sm text-muted-foreground">{t('auth.ui.enterYourPasswordYouCanAlsoEnterACurrent2FACodeForExtraVerification')}</p>
-              <input
+              <Typography className="text-sm text-muted-foreground">
+                {t('auth.ui.enterYourPasswordYouCanAlsoEnterACurrent2FACodeForExtraVerification')}
+              </Typography>
+              <Input
                 type="password"
                 placeholder="Password"
                 value={disablePassword}
@@ -231,9 +234,9 @@ export function ProfileMfaBlock() {
                   }
                 }}
                 onChange={(e) => setDisablePassword(e.target.value)}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="w-full"
               />
-              <input
+              <Input
                 type="text"
                 inputMode="numeric"
                 onKeyDown={(e) => {
@@ -244,7 +247,7 @@ export function ProfileMfaBlock() {
                 placeholder={t('auth.ui.twoFactorAuthenticationCodeOptional')}
                 value={disableCode}
                 onChange={(e) => setDisableCode(e.target.value.replace(/\D/g, ''))}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="w-full"
               />
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setDisableOpen(false)}>

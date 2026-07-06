@@ -1,5 +1,6 @@
 import Link from 'next/link'
 
+import { Typography } from '~/components/ui'
 import { ArticleItem } from '~/components/Views/Article/Block/server/ArticleItem'
 import { getServerT } from '~/lib/i18n/server'
 
@@ -22,14 +23,19 @@ export const ArticlesPreview = async ({ articles }: Props) => {
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="flex items-end justify-between mb-8">
           <div>
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">{t('nbs.articles.title')}</h2>
-            <p className="mt-2 text-muted-foreground text-sm">{t('nbs.articles.subtitle')}</p>
+            <Typography asTag="h2" variant="heading-2" className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+              {t('nbs.articles.title')}
+            </Typography>
+            <Typography className="mt-2 text-muted-foreground text-sm">{t('nbs.articles.subtitle')}</Typography>
           </div>
           <Link
             href="/articles"
             className="hidden sm:flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors shrink-0"
           >
-            {t('nbs.articles.viewAll')} <span aria-hidden>→</span>
+            {t('nbs.articles.viewAll')}{' '}
+            <Typography asTag="span" aria-hidden>
+              →
+            </Typography>
           </Link>
         </div>
 

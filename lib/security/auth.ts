@@ -14,6 +14,11 @@ export interface AuthSuccessResult {
   success: true
   payload: JwtPayload
   response: NextResponse
+  /** Present when the request was authorized via a Personal Access Token (machine auth) instead of a user JWT. */
+  apiToken?: {
+    id: string
+    scopes: string[]
+  }
 }
 
 export interface AuthFailureResult {

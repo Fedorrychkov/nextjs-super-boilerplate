@@ -96,7 +96,7 @@ function withGroupMaxTimestamps(rep: PublicSeoArticle, members: PublicSeoArticle
 }
 
 /**
- * Одна строка на группу переводов: hreflang‑альтернативы уже перечисляют все языки, отдельные `<url>` на каждый slug не нужны.
+ * One row per translation group: hreflang alternatives already list all languages, so separate `<url>` entries per slug are not needed.
  */
 export function dedupePublicSeoArticlesForSitemap(articles: PublicSeoArticle[], alternatesByGroupId: Map<string, Record<string, string>>): PublicSeoArticle[] {
   const membersByGroup = new Map<string, PublicSeoArticle[]>()

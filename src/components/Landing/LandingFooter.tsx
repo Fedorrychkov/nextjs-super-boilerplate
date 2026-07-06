@@ -1,5 +1,6 @@
 import Link from 'next/link'
 
+import { Typography } from '~/components/ui'
 import { Logo } from '~/components/ui/Logo'
 import { getServerT } from '~/lib/i18n/server'
 
@@ -19,7 +20,7 @@ export const LandingFooter = async ({ githubUrl, demoUrl, authorName, authorUrl 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex flex-col items-center sm:items-start gap-2">
             <Logo size={24} showText />
-            <p className="text-xs text-muted-foreground">{t('nbs.footer.tagline')}</p>
+            <Typography className="text-xs text-muted-foreground">{t('nbs.footer.tagline')}</Typography>
           </div>
 
           <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
@@ -46,17 +47,17 @@ export const LandingFooter = async ({ githubUrl, demoUrl, authorName, authorUrl 
         </div>
 
         <div className="mt-8 border-t border-border/40 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
-          <p>
+          <Typography>
             {t('nbs.footer.builtBy')}{' '}
             {authorUrl ? (
               <a href={authorUrl} target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors underline underline-offset-2">
                 {authorName ?? t('nbs.footer.authorFallback')}
               </a>
             ) : (
-              <span>{authorName ?? t('nbs.footer.authorFallback')}</span>
+              <Typography asTag="span">{authorName ?? t('nbs.footer.authorFallback')}</Typography>
             )}
-          </p>
-          <p>{t('nbs.footer.bottomLine')}</p>
+          </Typography>
+          <Typography>{t('nbs.footer.bottomLine')}</Typography>
         </div>
       </div>
     </footer>

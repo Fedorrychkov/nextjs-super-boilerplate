@@ -1,5 +1,6 @@
 import { forwardRef, useId } from 'react'
 
+import { Typography } from '~/components/ui'
 import { Input } from '~/components/ui/fields/input'
 import { Label } from '~/components/ui/fields/label'
 import { cn } from '~/utils/cn'
@@ -60,7 +61,12 @@ export const InputField = forwardRef<HTMLInputElement, InputFieldProps>((props, 
   return (
     <div className={cn('min-w-[120px] w-full flex flex-col gap-1', classNames?.root)}>
       <Label htmlFor={id} className={classNames?.label}>
-        {label} {required && <span className="text-destructive">*</span>}
+        {label}{' '}
+        {required && (
+          <Typography asTag="span" className="text-destructive">
+            *
+          </Typography>
+        )}
       </Label>
       <div
         className={cn('relative', {
@@ -111,14 +117,14 @@ export const InputField = forwardRef<HTMLInputElement, InputFieldProps>((props, 
         ) : null}
       </div>
       {error && (
-        <p className="mt-2 text-xs text-destructive" role="alert" aria-live="polite">
+        <Typography className="mt-2 text-xs text-destructive" role="alert" aria-live="polite">
           {error}
-        </p>
+        </Typography>
       )}
       {hintText && (
-        <p className="mt-2 text-xs text-muted-foreground" role="alert" aria-live="polite">
+        <Typography className="mt-2 text-xs text-muted-foreground" role="alert" aria-live="polite">
           {hintText}
-        </p>
+        </Typography>
       )}
     </div>
   )

@@ -4,7 +4,7 @@ import isArray from 'lodash/isArray'
 import isNil from 'lodash/isNil'
 import { forwardRef } from 'react'
 
-import { Label, Option } from '~/components/ui'
+import { Label, Option, Typography } from '~/components/ui'
 import MultipleSelector, { MultipleSelectorRef } from '~/components/ui/multiselect'
 import { Spinner } from '~/components/ui/spinner-1'
 import { cn } from '~/utils/cn'
@@ -30,9 +30,14 @@ export const MultiselectField = forwardRef<MultipleSelectorRef, MultiselectField
     return (
       <div className={cn('flex flex-col gap-2', className)}>
         <Label isError={!!error} className="flex flex-row items-start gap-2">
-          <span>
-            {label} {required && <span className="text-destructive">*</span>}
-          </span>
+          <Typography asTag="span">
+            {label}{' '}
+            {required && (
+              <Typography asTag="span" className="text-destructive">
+                *
+              </Typography>
+            )}
+          </Typography>
           {isLoading && <Spinner size={16} />}
         </Label>
         <MultipleSelector
@@ -50,13 +55,13 @@ export const MultiselectField = forwardRef<MultipleSelectorRef, MultiselectField
           placeholder={placeholder}
           hideClearAllButton
           hidePlaceholderWhenSelected
-          emptyIndicator={emptyIndicator ?? <p className="text-center text-sm">No available values</p>}
+          emptyIndicator={emptyIndicator ?? <Typography className="text-center text-sm">No available values</Typography>}
         />
 
         {error && (
-          <p className="mt-2 text-xs text-destructive" role="alert" aria-live="polite">
+          <Typography className="mt-2 text-xs text-destructive" role="alert" aria-live="polite">
             {error as string}
-          </p>
+          </Typography>
         )}
       </div>
     )

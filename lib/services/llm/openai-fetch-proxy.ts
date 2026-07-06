@@ -5,13 +5,13 @@ export type LLMConfigWithProxy = {
   proxyAccessesJson?: string
 }
 
-/** Сигнатура `fetch`, ожидаемая OpenAI SDK. */
+/** `fetch` signature expected by the OpenAI SDK. */
 export type OpenAiCompatibleFetch = (input: string | URL | Request, init?: RequestInit) => Promise<Response>
 
 /**
  * Builds `http://user:pass@host:port` from a line like `host:port:user:pass` or
- * `host:port:user:pass:country` (optional 5th segment — в URL не попадает).
- * Если в пароле есть `:`, сегментов больше пяти: последний считается geo, пароль — `parts.slice(3,-1).join(':')`.
+ * `host:port:user:pass:country` (optional 5th segment — not included in the URL).
+ * If the password contains `:`, there are more than five segments: the last is treated as geo, the password is `parts.slice(3,-1).join(':')`.
  */
 export function parseProxyAccessLineToHttpUrl(line: string): string | null {
   const trimmed = line.trim()
@@ -44,7 +44,7 @@ export function parseProxyAccessLineToHttpUrl(line: string): string | null {
 }
 
 /**
- * Парсит `PROXY_ACCESSES` (JSON-массив строк) в список URL прокси для undici.
+ * Parses `PROXY_ACCESSES` (JSON array of strings) into a list of proxy URLs for undici.
  */
 export function parseProxyAccessesJsonToHttpUrls(raw: string | undefined): string[] {
   const s = raw?.trim()
@@ -76,10 +76,10 @@ function pickRandomProxyUrl(urls: string[]): string {
 }
 
 /**
- * `fetch` из `undici` для OpenAI SDK и прямых вызовов к api.openai.com.
- * Если `proxyAccessesJson` пуст — обычный `undiciFetch`.
- * Если один прокси — один `ProxyAgent` на все запросы.
- * Если несколько — **на каждый выбор** случайный прокси из списка.
+ * `undici` `fetch` for the OpenAI SDK and direct calls to api.openai.com.
+ * If `proxyAccessesJson` is empty — plain `undiciFetch`.
+ * If there is a single proxy — one `ProxyAgent` for all requests.
+ * If there are several — a random proxy from the list is picked **per call**.
  */
 export function getOpenAiFetch(config: LLMConfigWithProxy): OpenAiCompatibleFetch {
   const urls = parseProxyAccessesJsonToHttpUrls(config.proxyAccessesJson)
