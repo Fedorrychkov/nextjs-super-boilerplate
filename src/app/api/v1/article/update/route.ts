@@ -2,7 +2,7 @@ import connectDB from '@lib/db/client'
 import Article from '@lib/db/models/Article'
 import ArticleRevision from '@lib/db/models/ArticleRevision'
 import { articleDocumentToApiJson } from '@lib/db/utils/articleApiJson'
-import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
+import { apiErrorHandlerContainer, hasApiTokenScope, withApiTokenOrAuth, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
 import { notifyArticlePublishedFromRevision, notifyArticleUpdated } from '@lib/services/article-notification.service'
 import { revalidatePath, revalidateTag } from 'next/cache'
@@ -35,6 +35,13 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
 
     if (!article) {
       return NextResponse.json({ message: t('article.errors.notFound') }, { status: 404 })
+    }
+
+    // PAT: publication state transitions require the explicit `articles:publish` scope (draft-only agents by default).
+    const isStatusTransition = body.status != null && body.status !== article.status
+
+    if (isStatusTransition && !hasApiTokenScope(authResult, 'articles:publish')) {
+      return NextResponse.json({ message: t('apiTokens.errors.missingScope', { scope: 'articles:publish' }) }, { status: 403 })
     }
 
     const previousSlug = article.slug ?? undefined
@@ -127,4 +134,4 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     return response.json(articleDocumentToApiJson(data))
   })
 
-export const PUT = withGlobalRateLimit(withAuthMiddleware(handler))
+export const PUT = withGlobalRateLimit(withApiTokenOrAuth('articles:write')(handler))

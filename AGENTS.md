@@ -67,6 +67,8 @@ src/
   constants/routes.ts   paths + seo.sitemap / seo.breadcrumb
   proxy.ts       Next.js proxy (Content-Signal etc.)
 
+mcp/             MCP stdio server for AI agents (server.ts, registry.ts, tools/*.mcp.ts) — see mcp/README.md
+
 .docker/         Dockerfiles (app, nginx, certbot), nginx configs, supervisor
 .github/workflows/  stage-deploy.yml, prod-deploy.yml (deploy to VPS)
 docs/            all documentation (see docs/README.md — index)
@@ -115,9 +117,16 @@ Secrets are never committed; server-side keys (OpenAI etc.) never reach the clie
 - `docs/SECURITY_HARDENING_PLAYBOOK_RU.md`, `docs/SECURITY_SEO_AUDIT.md` — hardening
 - Roadmaps: `PRODUCT_ROADMAP.md`, `AI_FEATURES_ROADMAP.md`, `IMPROVEMENTS_ROADMAP.md`
 
+## MCP server and machine auth (PAT)
+
+The repo ships an MCP stdio server (`mcp/`) exposing the articles + media domains as tools for MCP hosts (Claude Desktop, Cursor, Claude Code). Auth is a Personal Access Token (`nsb_pat_…`) issued at `/admin/api-tokens` (flag `API_TOKENS_ENABLED`), sent as `Authorization: Bearer` to the regular REST `/api/v1/*` — scopes (`articles:read|write|publish|seo`, `media:read|write`), per-token rate limit and `SecurityAuditLog` audit are enforced server-side by `withApiTokenOrAuth` (`lib/middleware/api-token-middleware.ts`).
+
+When adding a new domain that should be MCP-accessible: add scopes to `src/api/api-token/model.ts`, wrap the routes with `withApiTokenOrAuth('<scope>')` (fine-grained checks via `hasApiTokenScope`), create `mcp/tools/<domain>.mcp.ts` and register it in `mcp/tools/index.ts`. Tools must stay thin wrappers over REST — no business logic in `mcp/`. Details: `mcp/README.md`, design doc `docs/MCP_ARTICLES_SERVER_RU.md`.
+
 ## Rules for agents
 
 - When starting a new feature, follow an existing domain as a template (e.g. `article`): api → query → app/api/v1 → services → models
+- If a new domain should be usable by AI agents, expose it through the MCP registry (see "MCP server and machine auth" above)
 - Do not change `pnpm-workspace.yaml` overrides without reason — they are security fixes for transitive dependencies
 - When forking for a new product, edit `config/product.ts` and `.env.local` first, then run `pnpm doctor`
 - Before committing: `pnpm lint`, `pnpm typecheck`, `pnpm test`

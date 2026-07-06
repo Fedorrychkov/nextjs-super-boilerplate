@@ -6,7 +6,17 @@ import type { PaginationMeta } from '~/types/pagination'
 import { applyCreatedAtRange } from '../utils/applyCreatedAtRange'
 import { buildPaginationMeta, clampLimit } from '../utils/buildPaginationMeta'
 
-const SECURITY_AUDIT_ACTIONS: SecurityAuditAction[] = ['password_changed', 'password_reset', 'admin_password_set', 'admin_mfa_reset']
+const SECURITY_AUDIT_ACTIONS: SecurityAuditAction[] = [
+  'password_changed',
+  'password_reset',
+  'admin_password_set',
+  'admin_mfa_reset',
+  'api_token_created',
+  'api_token_revoked',
+  'api_token_request',
+  'api_token_denied',
+  'api_token_policy_updated',
+]
 
 export interface ISecurityAuditLog extends Document, Omit<SecurityAuditItemModel, 'id' | 'actorUserId' | 'targetUserId'> {
   actorUserId: mongoose.Types.ObjectId | null

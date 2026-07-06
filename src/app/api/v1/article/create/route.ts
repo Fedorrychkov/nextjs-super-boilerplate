@@ -1,7 +1,7 @@
 import connectDB from '@lib/db/client'
 import Article from '@lib/db/models/Article'
 import { articleDocumentToApiJson } from '@lib/db/utils/articleApiJson'
-import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
+import { apiErrorHandlerContainer, withApiTokenOrAuth, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -28,4 +28,4 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     return response.json(articleDocumentToApiJson(data))
   })
 
-export const POST = withGlobalRateLimit(withAuthMiddleware(handler))
+export const POST = withGlobalRateLimit(withApiTokenOrAuth('articles:write')(handler))

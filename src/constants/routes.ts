@@ -49,6 +49,12 @@ export const routes = {
     tKey: 'navigation.profile' as const,
     needAuth: true,
   },
+  profileApiTokens: {
+    path: '/profile/api-tokens',
+    name: 'My API tokens',
+    tKey: 'navigation.profileApiTokens' as const,
+    needAuth: true,
+  },
   notifications: {
     path: '/notifications',
     name: 'Notifications',
@@ -71,6 +77,18 @@ export const routes = {
     path: '/admin/oauth-attempts',
     name: 'OAuth attempts',
     tKey: 'navigation.adminOAuthAttempts' as const,
+    needAuth: true,
+  },
+  adminApiTokens: {
+    path: '/admin/api-tokens',
+    name: 'API tokens',
+    tKey: 'navigation.adminApiTokens' as const,
+    needAuth: true,
+  },
+  adminMachineAccess: {
+    path: '/admin/machine-access',
+    name: 'Machine access',
+    tKey: 'navigation.adminMachineAccess' as const,
     needAuth: true,
   },
   login: {

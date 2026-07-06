@@ -2,7 +2,7 @@ import { LLM_CONFIG } from '@config/env'
 import connectDB from '@lib/db/client'
 import Article from '@lib/db/models/Article'
 import ArticleRevision from '@lib/db/models/ArticleRevision'
-import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
+import { apiErrorHandlerContainer, withApiTokenOrAuth, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
 import { llmChatRateLimit } from '@lib/security/llm-rate-limit'
 import { buildSeoSuggestMessages } from '@lib/services/llm/build-seo-suggest-prompt'
@@ -164,4 +164,4 @@ const handlerPost = (request: NextRequest, authResult: AuthSuccessResult) =>
     }
   })
 
-export const POST = withGlobalRateLimit(withAuthMiddleware(handlerPost))
+export const POST = withGlobalRateLimit(withApiTokenOrAuth('articles:seo')(handlerPost))

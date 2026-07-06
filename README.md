@@ -10,6 +10,7 @@ Next.js 16 (App Router) app with production deploy (GitHub Actions), optional Do
 - **Data & ops:** MongoDB; deploy via GitHub Actions (stage/prod) with nginx, optional HTTPS (Let’s Encrypt), Redis, metrics (Prometheus, Grafana, Loki, etc.).
 - **Product:** Auth + roles, multi-step article editor, preview/publish, public article pages, RSS and sitemap, admin article views; optional OpenAI-backed chat/audit in the editor when `NEXT_PUBLIC_LLM_ENABLED=true` (see [`docs/AI_FEATURES_ROADMAP.md`](./docs/AI_FEATURES_ROADMAP.md)).
 - **SEO & agents:** Route metadata, JSON-LD, `public/llms.txt`, Markdown negotiation for public articles (`Accept: text/markdown`; see AI roadmap).
+- **MCP & machine API:** built-in MCP stdio server (`mcp/`) — AI agents (Claude Desktop, Cursor, Claude Code) draft, edit and optionally publish articles via Personal Access Tokens with scopes, per-token rate limit and audit; managed at `/admin/api-tokens` (`API_TOKENS_ENABLED=1`, see [`mcp/README.md`](./mcp/README.md)).
 - **All docs in one place:** **[`docs/README.md`](./docs/README.md)** — v0.2.0 start guide, env reference, roadmaps, FAQ.
 
 ## Scope

@@ -1,7 +1,7 @@
 import connectDB from '@lib/db/client'
 import Article from '@lib/db/models/Article'
 import ArticleRevision from '@lib/db/models/ArticleRevision'
-import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
+import { apiErrorHandlerContainer, hasApiTokenScope, withApiTokenOrAuth, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
@@ -38,6 +38,13 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     }
 
     const id = body.id
+
+    // PAT: revision status transitions (publish/unpublish) require the explicit `articles:publish` scope (draft-only agents by default).
+    const isStatusTransition = body.status != null && body.status !== articleRevision.status
+
+    if (isStatusTransition && !hasApiTokenScope(authResult, 'articles:publish')) {
+      return NextResponse.json({ message: t('apiTokens.errors.missingScope', { scope: 'articles:publish' }) }, { status: 403 })
+    }
 
     const updatedAt = time().toISOString()
     const isPublishing = body.status === ArticleRevisionStatus.CONFIRMED && !articleRevision.publishedAt
@@ -122,4 +129,4 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     })
   })
 
-export const PUT = withGlobalRateLimit(withAuthMiddleware(handler))
+export const PUT = withGlobalRateLimit(withApiTokenOrAuth('articles:write')(handler))

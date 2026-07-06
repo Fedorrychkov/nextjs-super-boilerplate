@@ -14,6 +14,9 @@ export interface IUser extends Document, Omit<UserModel, 'id'> {
   password?: string | null
   email: string
   status: UserStatus
+  /** When set, ALL machine access (PATs + OAuth/MCP connections) of this user is blocked instantly. */
+  machineAccessBlockedAt?: Date | null
+  machineAccessBlockedBy?: mongoose.Types.ObjectId | null
   createdAt?: string | null
   updatedAt?: string | null
   comparePassword(candidatePassword: string): Promise<boolean>
@@ -86,6 +89,16 @@ const UserSchema: Schema<IUser> = new Schema<IUser>(
       type: String,
       default: null,
       trim: true,
+    },
+    // Admin kill-switch for machine access (abuse / platform overload): checked on every PAT/OAuth request.
+    machineAccessBlockedAt: {
+      type: Date,
+      default: null,
+    },
+    machineAccessBlockedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
     },
     createdAt: {
       type: String,

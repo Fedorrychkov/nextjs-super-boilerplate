@@ -19,7 +19,8 @@
     "lint:src": "eslint src --fix",
     "lint-staged": "lint-staged --allow-empty",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test *.test.ts src/**/*.test.ts",
+    "mcp": "tsx mcp/server.ts",
+    "test": "node --import tsx --test *.test.ts src/**/*.test.ts lib/**/*.test.ts mcp/**/*.test.ts",
     "doctor": "env-cmd -f .env.local tsx scripts/doctor.ts -- .env.local",
     "doctor:prod": "env-cmd -f .env.prod tsx scripts/doctor.ts -- .env.prod",
     "prepare": "husky"
@@ -37,6 +38,7 @@
     ]
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
     "@next/bundle-analyzer": "^16.2.10",
     "@radix-ui/react-checkbox": "^1.3.2",
     "@radix-ui/react-dialog": "^1.1.14",

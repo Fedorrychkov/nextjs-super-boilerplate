@@ -55,6 +55,7 @@ NSB is a **production-grade monorepo boilerplate** for Next.js applications. It 
 - Server-side SEO metadata per article (canonical, OG image, Twitter card, noindex, hreflang)
 - Translation groups — link articles across languages with hreflang alternates
 - `Accept: text/markdown` negotiation on `/article/[slug]` — machine-readable Markdown + YAML front matter for AI agents
+- MCP server — remote endpoint `POST /api/mcp` (Streamable HTTP, URL + Personal Access Token) and stdio variant (`mcp/` in the repo); agents draft/edit/publish articles via PAT scopes and role policies (`API_TOKENS_ENABLED=1`, pages `/admin/api-tokens`, `/profile/api-tokens`)
 - Article view counters, RSS feed, IndexNow + Google Search Console indexing on publish
 - Listen audio: TTS generation stored via media pipeline, served from `/cdn/`
 

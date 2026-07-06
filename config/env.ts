@@ -100,6 +100,18 @@ const {
   NEXT_PUBLIC_ONBOARDING_PUSH_PROMPT_ENABLED = process.env.NEXT_PUBLIC_ONBOARDING_PUSH_PROMPT_ENABLED || '0',
   NEXT_PUBLIC_PUSH_IOS_PWA_HINT_ENABLED = process.env.NEXT_PUBLIC_PUSH_IOS_PWA_HINT_ENABLED || '0',
   ONBOARDING_VERSION = process.env.ONBOARDING_VERSION || '0',
+
+  /** Machine auth (Personal Access Tokens) + MCP contour (0=off by default). */
+  API_TOKENS_ENABLED = process.env.API_TOKENS_ENABLED || '0',
+  NEXT_PUBLIC_API_TOKENS_ENABLED = process.env.NEXT_PUBLIC_API_TOKENS_ENABLED || '0',
+  /** Name the MCP server reports to hosts (`serverInfo.name`) — brand per project, e.g. `quickping-mcp`. */
+  MCP_SERVER_NAME = process.env.MCP_SERVER_NAME || 'nsb-mcp',
+  /** OAuth layer for the remote MCP endpoint (Claude.ai/Desktop custom connectors). Requires API_TOKENS_ENABLED. */
+  MCP_OAUTH_ENABLED = process.env.MCP_OAUTH_ENABLED || '0',
+  /** OAuth access token TTL in minutes (short-lived by design; hosts refresh via refresh_token). */
+  MCP_OAUTH_ACCESS_TTL_MINUTES = process.env.MCP_OAUTH_ACCESS_TTL_MINUTES || '60',
+  /** Lazy cleanup: DCR clients with no grants and no activity for this many days are deleted. */
+  MCP_OAUTH_CLIENT_RETENTION_DAYS = process.env.MCP_OAUTH_CLIENT_RETENTION_DAYS || '30',
 } = process.env
 
 const isDevelop = [APP_ENV, NEXT_PUBLIC_APP_ENV].includes('development')
@@ -196,6 +208,20 @@ const NOTIFICATION_CONFIG = {
   passwordChannels: NOTIFY_PASSWORD_CHANNELS,
 }
 
+/** Personal Access Tokens (machine auth for MCP/API integrations). */
+const API_TOKENS_CONFIG = {
+  enabled: parseBoolEnv(API_TOKENS_ENABLED, false),
+  publicEnabled: parseBoolEnv(NEXT_PUBLIC_API_TOKENS_ENABLED, false),
+  mcpServerName: MCP_SERVER_NAME,
+}
+
+/** OAuth 2.1 authorization layer over the remote MCP endpoint. Only effective when API_TOKENS_CONFIG.enabled. */
+const MCP_OAUTH_CONFIG = {
+  enabled: parseBoolEnv(API_TOKENS_ENABLED, false) && parseBoolEnv(MCP_OAUTH_ENABLED, false),
+  accessTtlMinutes: Math.max(5, Number(MCP_OAUTH_ACCESS_TTL_MINUTES) || 60),
+  clientRetentionDays: Math.max(1, Number(MCP_OAUTH_CLIENT_RETENTION_DAYS) || 30),
+}
+
 const THEME_CONFIG = {
   defaultMode: DEFAULT_THEME_MODE,
   publicDefaultMode: NEXT_PUBLIC_DEFAULT_THEME_MODE,
@@ -239,6 +265,7 @@ function parseNumberEnv(value: string | undefined, defaultValue: number): number
 
 export {
   ACCOUNT_CONFIG,
+  API_TOKENS_CONFIG,
   APP_ENV,
   APP_INTERNAL_ORIGIN,
   CDN_CONFIG,
@@ -254,6 +281,7 @@ export {
   isStage,
   JWT_CONFIG,
   LLM_CONFIG,
+  MCP_OAUTH_CONFIG,
   MFA_CONFIG,
   MONGODB_CONFIG,
   NEXT_PUBLIC_ORGANIZATION_SAME_AS,

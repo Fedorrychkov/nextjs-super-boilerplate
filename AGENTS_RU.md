@@ -67,6 +67,8 @@ src/
   constants/routes.ts   пути + seo.sitemap / seo.breadcrumb
   proxy.ts       Next.js proxy (Content-Signal и др.)
 
+mcp/             MCP stdio-сервер для AI-агентов (server.ts, registry.ts, tools/*.mcp.ts) — см. mcp/README.md
+
 .docker/         Dockerfile'ы (app, nginx, certbot), конфиги nginx, supervisor
 .github/workflows/  stage-deploy.yml, prod-deploy.yml (деплой на VPS)
 docs/            вся документация (см. docs/README.md — индекс)
@@ -115,9 +117,16 @@ API-роуты живут в `src/app/api/v1/*` (auth, article, llm, media, noti
 - `docs/SECURITY_HARDENING_PLAYBOOK_RU.md`, `docs/SECURITY_SEO_AUDIT.md` — hardening
 - Роадмапы: `PRODUCT_ROADMAP.md`, `AI_FEATURES_ROADMAP.md`, `IMPROVEMENTS_ROADMAP.md`
 
+## MCP-сервер и машинная авторизация (PAT)
+
+В репозитории есть MCP stdio-сервер (`mcp/`), отдающий домены статей и медиа как tools для MCP-хостов (Claude Desktop, Cursor, Claude Code). Авторизация — Personal Access Token (`nsb_pat_…`), выдаётся в `/admin/api-tokens` (флаг `API_TOKENS_ENABLED`) и отправляется как `Authorization: Bearer` в обычный REST `/api/v1/*` — scopes (`articles:read|write|publish|seo`, `media:read|write`), per-token rate-limit и аудит в `SecurityAuditLog` применяются на сервере через `withApiTokenOrAuth` (`lib/middleware/api-token-middleware.ts`).
+
+Добавляя новый домен, доступный через MCP: добавь scopes в `src/api/api-token/model.ts`, оберни роуты `withApiTokenOrAuth('<scope>')` (точечные проверки — `hasApiTokenScope`), создай `mcp/tools/<домен>.mcp.ts` и зарегистрируй в `mcp/tools/index.ts`. Tools — тонкие обёртки над REST, без бизнес-логики в `mcp/`. Подробнее: `mcp/README.md`, дизайн-док `docs/MCP_ARTICLES_SERVER_RU.md`.
+
 ## Правила для агентов
 
 - Начиная новую фичу, смотри существующий домен-образец (например, `article`): api → query → app/api/v1 → services → models
+- Если новый домен должен быть доступен AI-агентам — выведи его через MCP-реестр (см. «MCP-сервер и машинная авторизация» выше)
 - Не менять `pnpm-workspace.yaml` overrides без причины — это security-фиксы транзитивных зависимостей
 - При форке под новый продукт первым делом правится `config/product.ts` и `.env.local`, затем `pnpm doctor`
 - Перед коммитом: `pnpm lint`, `pnpm typecheck`, `pnpm test`

@@ -8,6 +8,7 @@ import {
   EyeIcon,
   HomeIcon,
   KeyRoundIcon,
+  KeySquareIcon,
   LanguagesIcon,
   ShieldCheckIcon,
   TextQuoteIcon,
@@ -21,11 +22,18 @@ import { Sidebar } from '~/components/ui/sidebar'
 import { routes } from '~/constants'
 import { useAuth, useT } from '~/providers'
 import { ThemeShell } from '~/providers/theme'
+import { useApiTokenPermissionsQuery } from '~/query/api-token'
+
+const isApiTokensNavEnabled = process.env.NEXT_PUBLIC_API_TOKENS_ENABLED === '1' || process.env.NEXT_PUBLIC_API_TOKENS_ENABLED === 'true'
 
 export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
   const t = useT()
 
   const { isLoading, isFetched, authUser } = useAuth()
+
+  // Self-service PAT nav item for non-admin roles: visible only when the role policy allows it.
+  const { data: apiTokenPermissions } = useApiTokenPermissionsQuery(isApiTokensNavEnabled && Boolean(authUser) && authUser?.role !== UserRole.ADMIN)
+  const canUseApiTokens = Boolean(apiTokenPermissions?.allowed) && !apiTokenPermissions?.isAdmin
 
   const navigation = useMemo(
     () => [
@@ -55,6 +63,15 @@ export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
             icon: <BellIcon width={16} height={16} />,
             href: routes.notifications.path,
           },
+          ...(canUseApiTokens
+            ? [
+                {
+                  label: t(routes.profileApiTokens.tKey),
+                  icon: <KeySquareIcon width={16} height={16} />,
+                  href: routes.profileApiTokens.path,
+                },
+              ]
+            : []),
         ],
       },
       ...(authUser?.role && [UserRole.ADMIN, UserRole.EDITOR].includes(authUser?.role)
@@ -120,12 +137,28 @@ export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
                   disabled: authUser?.role !== UserRole.ADMIN,
                   href: routes.adminOAuthAttempts.path,
                 },
+                ...(process.env.NEXT_PUBLIC_API_TOKENS_ENABLED === '1' || process.env.NEXT_PUBLIC_API_TOKENS_ENABLED === 'true'
+                  ? [
+                      {
+                        label: t(routes.adminApiTokens.tKey),
+                        icon: <KeySquareIcon width={16} height={16} />,
+                        disabled: authUser?.role !== UserRole.ADMIN,
+                        href: routes.adminApiTokens.path,
+                      },
+                      {
+                        label: t(routes.adminMachineAccess.tKey),
+                        icon: <ActivityIcon width={16} height={16} />,
+                        disabled: authUser?.role !== UserRole.ADMIN,
+                        href: routes.adminMachineAccess.path,
+                      },
+                    ]
+                  : []),
               ],
             },
           ]
         : []),
     ],
-    [authUser?.role, t],
+    [authUser?.role, canUseApiTokens, t],
   )
 
   return (
