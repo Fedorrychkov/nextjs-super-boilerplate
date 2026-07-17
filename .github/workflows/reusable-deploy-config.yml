@@ -84,6 +84,21 @@ on:
         required: false
         default: false
         type: boolean
+      mongo_backup_enabled:
+        description: 'Nightly mongodump cron on the server (scripts/backup-mongo.sh). Effective ONLY with mongo_enabled: true — remote clusters use provider backups. Cron is auto-removed when mongo or this flag turns off.'
+        required: false
+        default: false
+        type: boolean
+      mongo_backup_cron:
+        description: 'Backup schedule (server-local time, crontab syntax). Pick an off-peak slot.'
+        required: false
+        default: '30 3 * * *'
+        type: string
+      mongo_backup_retention:
+        description: How many dumps to keep in ~/db-backups (older ones are deleted after a successful backup)
+        required: false
+        default: 14
+        type: number
 
       server_memory_mb:
         description: 'Total server RAM in MB (e.g. 2048). Derives per-container memory limits via scripts/lib/memory-limits.sh. 0 = keep compose defaults (api 2g, redis/mongo unlimited).'
@@ -351,6 +366,9 @@ jobs:
           METRICS_ENABLED: ${{ inputs.metrics_enabled }}
           MONGO_ENABLED: ${{ inputs.mongo_enabled }}
           WORKER_ENABLED: ${{ inputs.worker_enabled }}
+          MONGO_BACKUP_ENABLED: ${{ inputs.mongo_backup_enabled }}
+          MONGO_BACKUP_CRON: ${{ inputs.mongo_backup_cron }}
+          MONGO_BACKUP_RETENTION: ${{ inputs.mongo_backup_retention }}
           SERVER_MEMORY_MB: ${{ inputs.server_memory_mb }}
           API_MEM_LIMIT: ${{ inputs.api_mem_limit }}
           REDIS_MEM_LIMIT: ${{ inputs.redis_mem_limit }}
@@ -361,7 +379,7 @@ jobs:
           username: ${{ secrets.server_username }}
           password: ${{ secrets.server_password }}
           port: 22
-          envs: GH_USERNAME, GITHUB_TOKEN, DEPLOY_MODE, CORE_API_IMAGE, GHCR_USERNAME, GHCR_TOKEN, GRAFANA_ADMIN_USER, GRAFANA_ADMIN_PASSWORD, REDIS_ENABLED, METRICS_ENABLED, MONGO_ENABLED, WORKER_ENABLED, SERVER_MEMORY_MB, API_MEM_LIMIT, REDIS_MEM_LIMIT, MONGO_MEM_LIMIT, WORKER_MEM_LIMIT
+          envs: GH_USERNAME, GITHUB_TOKEN, DEPLOY_MODE, CORE_API_IMAGE, GHCR_USERNAME, GHCR_TOKEN, GRAFANA_ADMIN_USER, GRAFANA_ADMIN_PASSWORD, REDIS_ENABLED, METRICS_ENABLED, MONGO_ENABLED, WORKER_ENABLED, MONGO_BACKUP_ENABLED, MONGO_BACKUP_CRON, MONGO_BACKUP_RETENTION, SERVER_MEMORY_MB, API_MEM_LIMIT, REDIS_MEM_LIMIT, MONGO_MEM_LIMIT, WORKER_MEM_LIMIT
           command_timeout: 25m
           script: |
             set -e
@@ -527,6 +545,23 @@ jobs:
               API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} \
                 $DOCKER_COMPOSE -f docker-compose.local.yml rm -f $EXTRA_STOP || true
               ( set -a; [ -f "${{ inputs.env_file }}" ] && . "./${{ inputs.env_file }}"; set +a; export ENV_FILE="${{ inputs.env_file }}" API_ENV=${{ inputs.api_env }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }}; $DOCKER_COMPOSE -f docker-compose.local.yml up -d $EXTRA_UP )
+            fi
+
+            # Mongo backups (local mongo only): install/refresh the cron entry when both
+            # mongo and backups are enabled, remove it otherwise — flipping mongo_enabled
+            # to false on a redeploy cleanly disables backups (existing dumps are kept).
+            # Dumps live in ~/db-backups, OUTSIDE ~/app — blue/green swaps never touch them.
+            BACKUP_MARKER="# bp-mongo-backup"
+            MONGO_BACKUP_ENABLED=${MONGO_BACKUP_ENABLED:-true}
+            if [ "$MONGO_ENABLED" = "true" ] && [ "$MONGO_BACKUP_ENABLED" = "true" ]; then
+              mkdir -p "$HOME/db-backups"
+              chmod +x "$HOME/app/scripts/backup-mongo.sh" "$HOME/app/scripts/restore-mongo.sh" 2>/dev/null || true
+              CRON_LINE="${MONGO_BACKUP_CRON:-30 3 * * *} ENV_FILE=${{ inputs.env_file }} API_ENV=${{ inputs.api_env }} MONGO_BACKUP_RETENTION=${MONGO_BACKUP_RETENTION:-14} $HOME/app/scripts/backup-mongo.sh >> $HOME/db-backups/backup.log 2>&1 $BACKUP_MARKER"
+              ( crontab -l 2>/dev/null | grep -vF "$BACKUP_MARKER" || true; echo "$CRON_LINE" ) | crontab -
+              echo "Mongo backup cron installed: ${MONGO_BACKUP_CRON:-30 3 * * *} (retention ${MONGO_BACKUP_RETENTION:-14})"
+            else
+              ( crontab -l 2>/dev/null | grep -vF "$BACKUP_MARKER" || true ) | crontab - || true
+              echo "Mongo backup cron removed (mongo_enabled=$MONGO_ENABLED, mongo_backup_enabled=$MONGO_BACKUP_ENABLED)"
             fi
 
       - name: 🧹 Cleanup backup on success

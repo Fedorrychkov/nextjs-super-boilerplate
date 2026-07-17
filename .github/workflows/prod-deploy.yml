@@ -48,6 +48,9 @@ jobs:
       # mongo_mem_limit / worker_mem_limit if needed.
       server_memory_mb: 2048
       worker_enabled: false
+      mongo_backup_enabled: true
+      mongo_backup_cron: '30 3 * * *'
+      mongo_backup_retention: 2
 
     secrets:
       server_host: ${{ secrets.PROD_WEB_HOST }}
