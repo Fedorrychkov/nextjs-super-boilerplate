@@ -591,8 +591,8 @@ function clean() {
     # Try to stop containers through docker-compose
     ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} down --remove-orphans
 
-    docker stop service-api-certbot-init service-api-certbot core-nginx-service api-service api-service-green prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana redis redis-green mongo mongo-green 2>/dev/null || true
-    docker rm -f service-api-certbot-init service-api-certbot core-nginx-service api-service api-service-green prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana redis redis-green mongo mongo-green 2>/dev/null || true
+    docker stop service-api-certbot-init service-api-certbot core-nginx-service api-service api-service-green worker-service prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana redis redis-green mongo mongo-green 2>/dev/null || true
+    docker rm -f service-api-certbot-init service-api-certbot core-nginx-service api-service api-service-green worker-service prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana redis redis-green mongo mongo-green 2>/dev/null || true
 
     # Clean up old app_new images
     echo "Cleaning up old app_new images..."

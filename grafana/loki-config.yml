@@ -49,6 +49,19 @@ limits_config:
   max_global_streams_per_user: 5000
   max_query_length: 721h
   allow_structured_metadata: false
+  # Delete chunks older than 7 days (in tune with reject_old_samples_max_age).
+  # Without this, chunks accumulate for as long as the container lives.
+  retention_period: 168h
+
+# Retention is enforced by the compactor: it periodically marks chunks past
+# retention_period and deletes them after retention_delete_delay.
+compactor:
+  working_directory: /tmp/loki/compactor
+  compaction_interval: 10m
+  retention_enabled: true
+  retention_delete_delay: 2h
+  retention_delete_worker_count: 50
+  delete_request_store: filesystem
 
 ruler:
   alertmanager_url: http://localhost:9093
