@@ -319,6 +319,11 @@ export const en = {
     cookieConsentBannerAcceptAnalytics: 'Accept analytics',
   },
   profile: {
+    tabs: {
+      main: 'General',
+      devices: 'Notifications & devices',
+      security: 'Security',
+    },
     errors: {
       notFound: 'Profile not found',
     },
@@ -847,6 +852,7 @@ export const en = {
     done: 'Done',
     go: 'Open',
     setupBelow: 'Set up below',
+    openSection: 'Open section',
     dismiss: 'Do not show again',
     modal: {
       title: 'Welcome — finish setup',

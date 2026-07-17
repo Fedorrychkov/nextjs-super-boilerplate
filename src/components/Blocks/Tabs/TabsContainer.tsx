@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 
+import { HorizontalContainer } from '~/components/Containers'
 import { Button, Typography } from '~/components/ui'
 import { cn } from '~/utils/cn'
 
@@ -47,6 +48,19 @@ export const TabsContainer = (props: Props) => {
     })
   }, [currentTab, tabs])
 
+  // Uncontrolled mode (no `currentTab`): let the `activeTab` prop (e.g. driven by the
+  // URL `?activeTab=`) switch tabs externally — used for cross-section deep links.
+  useEffect(() => {
+    if (currentTab != null || !activeTabProp) {
+      return
+    }
+
+    queueMicrotask(() => {
+      setActiveTab(activeTabProp)
+      setActivatedTabs((state) => (state.includes(activeTabProp) ? state : [...state, activeTabProp]))
+    })
+  }, [activeTabProp, currentTab])
+
   const handleActivateTab = (tabValue: string) => {
     setActivatedTabs([...activatedTabs, tabValue])
     setActiveTab(tabValue)
@@ -66,7 +80,7 @@ export const TabsContainer = (props: Props) => {
 
   return (
     <div className={cn('flex flex-col gap-4', className)}>
-      <div className="flex flex-row gap-2 flex-wrap">
+      <HorizontalContainer className="flex flex-row gap-2 p-0 bg-transparent border-none shadow-none">
         {tabs.map(({ isEnabled = true, ...tab }) => (
           <Button
             key={tab.value}
@@ -99,7 +113,7 @@ export const TabsContainer = (props: Props) => {
             )}
           </Button>
         ))}
-      </div>
+      </HorizontalContainer>
       <div className="flex flex-col gap-2">
         {tabs.map((tab) => {
           const isActivated = mode === 'lazy' ? activatedTabs.includes(tab.value) : true

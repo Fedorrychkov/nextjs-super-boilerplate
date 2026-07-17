@@ -315,6 +315,11 @@ export const ru = {
     cookieConsentBannerAcceptAnalytics: 'Принять аналитику',
   },
   profile: {
+    tabs: {
+      main: 'Основное',
+      devices: 'Уведомления и устройства',
+      security: 'Безопасность',
+    },
     errors: {
       notFound: 'Профиль не найден',
     },
@@ -843,6 +848,7 @@ export const ru = {
     done: 'Готово',
     go: 'Открыть',
     setupBelow: 'Настроить ниже',
+    openSection: 'Открыть раздел',
     dismiss: 'Больше не показывать',
     modal: {
       title: 'Добро пожаловать — завершите настройку',
