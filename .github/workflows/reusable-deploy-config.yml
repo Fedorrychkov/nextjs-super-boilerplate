@@ -393,6 +393,22 @@ jobs:
             EXTRA_STOP="certbot"; [ "$METRICS_ENABLED" = "true" ] && EXTRA_STOP="$EXTRA_STOP $METRICS_SERVICES"
             [ "$WORKER_ENABLED" = "true" ] && EXTRA_STOP="$EXTRA_STOP worker"
 
+            # Toggled-off leftovers: `restart: always` keeps containers from a PREVIOUS deploy
+            # alive forever after their flag flips to false — the deploy neither starts nor stops
+            # them. Stop by explicit container_name (cwd-independent, works with compose v1/v2).
+            # Stateless services only: local redis/mongo are never auto-stopped — they may still
+            # be serving the API (e.g. mid-migration to an external cluster).
+            if [ "$METRICS_ENABLED" != "true" ]; then
+              METRICS_CONTAINERS="prometheus prometheus-nginx-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana"
+              docker stop $METRICS_CONTAINERS 2>/dev/null || true
+              docker rm -f $METRICS_CONTAINERS 2>/dev/null || true
+            fi
+            if [ "$WORKER_ENABLED" != "true" ]; then
+              # A stale worker would keep running crons on the OLD image — worse than downtime.
+              docker stop worker-service 2>/dev/null || true
+              docker rm -f worker-service 2>/dev/null || true
+            fi
+
             docker volume create letsencrypt_certs || true
             docker volume create certbot_logs || true
 

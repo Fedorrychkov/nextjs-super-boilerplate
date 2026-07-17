@@ -113,6 +113,7 @@ services:
         max-file: "3"
 
   promtail:
+    container_name: promtail
     image: grafana/promtail:latest
     restart: always
     deploy:
@@ -136,6 +137,7 @@ services:
         max-file: "3"
 
   loki:
+    container_name: loki
     image: grafana/loki:latest
     restart: always
     deploy:
@@ -189,6 +191,7 @@ services:
         max-file: "3"
 
   grafana:
+    container_name: grafana
     image: grafana/grafana:latest
     restart: always
     deploy:
