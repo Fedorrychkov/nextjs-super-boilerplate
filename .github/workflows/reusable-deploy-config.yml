@@ -79,6 +79,11 @@ on:
         required: false
         default: false
         type: boolean
+      worker_enabled:
+        description: Enable the background worker container (scripts/worker.ts, BullMQ crons). Needs Redis (REDIS_URL).
+        required: false
+        default: false
+        type: boolean
 
       server_memory_mb:
         description: 'Total server RAM in MB (e.g. 2048). Derives per-container memory limits via scripts/lib/memory-limits.sh. 0 = keep compose defaults (api 2g, redis/mongo unlimited).'
@@ -97,6 +102,11 @@ on:
         type: string
       mongo_mem_limit:
         description: 'Override mongo memory limit (e.g. 640M). Wins over server_memory_mb.'
+        required: false
+        default: ''
+        type: string
+      worker_mem_limit:
+        description: 'Override background worker memory limit (e.g. 512M). Wins over server_memory_mb.'
         required: false
         default: ''
         type: string
@@ -340,20 +350,24 @@ jobs:
           REDIS_ENABLED: ${{ inputs.redis_enabled }}
           METRICS_ENABLED: ${{ inputs.metrics_enabled }}
           MONGO_ENABLED: ${{ inputs.mongo_enabled }}
+          WORKER_ENABLED: ${{ inputs.worker_enabled }}
           SERVER_MEMORY_MB: ${{ inputs.server_memory_mb }}
           API_MEM_LIMIT: ${{ inputs.api_mem_limit }}
           REDIS_MEM_LIMIT: ${{ inputs.redis_mem_limit }}
           MONGO_MEM_LIMIT: ${{ inputs.mongo_mem_limit }}
+          WORKER_MEM_LIMIT: ${{ inputs.worker_mem_limit }}
         with:
           host: ${{ secrets.server_host }}
           username: ${{ secrets.server_username }}
           password: ${{ secrets.server_password }}
           port: 22
-          envs: GH_USERNAME, GITHUB_TOKEN, DEPLOY_MODE, CORE_API_IMAGE, GHCR_USERNAME, GHCR_TOKEN, GRAFANA_ADMIN_USER, GRAFANA_ADMIN_PASSWORD, REDIS_ENABLED, METRICS_ENABLED, MONGO_ENABLED, SERVER_MEMORY_MB, API_MEM_LIMIT, REDIS_MEM_LIMIT, MONGO_MEM_LIMIT
+          envs: GH_USERNAME, GITHUB_TOKEN, DEPLOY_MODE, CORE_API_IMAGE, GHCR_USERNAME, GHCR_TOKEN, GRAFANA_ADMIN_USER, GRAFANA_ADMIN_PASSWORD, REDIS_ENABLED, METRICS_ENABLED, MONGO_ENABLED, WORKER_ENABLED, SERVER_MEMORY_MB, API_MEM_LIMIT, REDIS_MEM_LIMIT, MONGO_MEM_LIMIT, WORKER_MEM_LIMIT
           command_timeout: 25m
           script: |
             set -e
             export COMPOSE_HTTP_TIMEOUT=300
+            # Compose v1/v2 compatibility: prefer the v2 plugin, fall back to the legacy binary.
+            if docker compose version >/dev/null 2>&1; then DOCKER_COMPOSE="docker compose"; else DOCKER_COMPOSE="docker-compose"; fi
             if [ "$DEPLOY_MODE" = "registry" ]; then
               if [ -z "$GHCR_USERNAME" ] || [ -z "$GHCR_TOKEN" ]; then
                 echo "Error: GHCR_USERNAME and GHCR_TOKEN secrets are required when deploy_mode=registry"
@@ -366,13 +380,18 @@ jobs:
             REDIS_ENABLED=${REDIS_ENABLED:-false}
             METRICS_ENABLED=${METRICS_ENABLED:-false}
             MONGO_ENABLED=${MONGO_ENABLED:-false}
+            WORKER_ENABLED=${WORKER_ENABLED:-false}
             CORE_UP="core-api"; [ "$REDIS_ENABLED" = "true" ] && CORE_UP="$CORE_UP redis"; [ "$MONGO_ENABLED" = "true" ] && CORE_UP="$CORE_UP mongo"
             METRICS_SERVICES="prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana"
             EXTRA_UP="certbot"; [ "$METRICS_ENABLED" = "true" ] && EXTRA_UP="$EXTRA_UP $METRICS_SERVICES"; [ "$REDIS_ENABLED" = "true" ] && EXTRA_UP="$EXTRA_UP redis"; [ "$MONGO_ENABLED" = "true" ] && EXTRA_UP="$EXTRA_UP mongo"
+            # Background worker (headless BullMQ crons): a stateless singleton, no blue/green.
+            # Force-recreated on each deploy so it picks up the new image; a brief restart is acceptable.
+            [ "$WORKER_ENABLED" = "true" ] && EXTRA_UP="$EXTRA_UP worker"
             # Only stateless helpers get force-recreated after deploy. Never stop/rm redis or mongo
             # under a live API: it turns every deploy into a short DB outage (429s/500s).
             # `up -d` below is a no-op for already-running services with unchanged config.
             EXTRA_STOP="certbot"; [ "$METRICS_ENABLED" = "true" ] && EXTRA_STOP="$EXTRA_STOP $METRICS_SERVICES"
+            [ "$WORKER_ENABLED" = "true" ] && EXTRA_STOP="$EXTRA_STOP worker"
 
             docker volume create letsencrypt_certs || true
             docker volume create certbot_logs || true
@@ -423,16 +442,16 @@ jobs:
                   # (compose `up -d` below recreates them automatically if their config changed).
                   BG_STOP="core-api"
                   API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }} \
-                    docker-compose -f docker-compose.local.yml stop $BG_STOP || true
+                    $DOCKER_COMPOSE -f docker-compose.local.yml stop $BG_STOP || true
                   API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }} \
-                    docker-compose -f docker-compose.local.yml rm -f $BG_STOP || true
+                    $DOCKER_COMPOSE -f docker-compose.local.yml rm -f $BG_STOP || true
                   if [ "$DEPLOY_MODE" = "registry" ] && [ -n "$CORE_API_IMAGE" ]; then
                     docker pull "$CORE_API_IMAGE"
                   else
                     API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }} \
-                      docker-compose -f docker-compose.local.yml build --no-cache core-api
+                      $DOCKER_COMPOSE -f docker-compose.local.yml build --no-cache core-api
                   fi
-                  ( set -a; [ -f "${{ inputs.env_file }}" ] && . "./${{ inputs.env_file }}"; set +a; export ENV_FILE="${{ inputs.env_file }}" API_ENV=${{ inputs.api_env }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }} CORE_API_IMAGE="$CORE_API_IMAGE"; docker-compose -f docker-compose.local.yml up -d $CORE_UP )
+                  ( set -a; [ -f "${{ inputs.env_file }}" ] && . "./${{ inputs.env_file }}"; set +a; export ENV_FILE="${{ inputs.env_file }}" API_ENV=${{ inputs.api_env }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }} CORE_API_IMAGE="$CORE_API_IMAGE"; $DOCKER_COMPOSE -f docker-compose.local.yml up -d $CORE_UP )
                   # Wait for the new api to become healthy before declaring the swap done
                   echo "Waiting for new api-service to become healthy..."
                   attempts=0; max_attempts=150
@@ -450,13 +469,13 @@ jobs:
                   done
                   # Restart nginx so it picks up the new upstream immediately
                   # (the resolver in nginx.conf re-resolves within 10s anyway; this is belt-and-braces)
-                  ( set -a; [ -f "${{ inputs.env_file }}" ] && . "./${{ inputs.env_file }}"; set +a; export ENV_FILE="${{ inputs.env_file }}" API_ENV=${{ inputs.api_env }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }}; docker-compose -f docker-compose.local.yml restart nginx || true )
+                  ( set -a; [ -f "${{ inputs.env_file }}" ] && . "./${{ inputs.env_file }}"; set +a; export ENV_FILE="${{ inputs.env_file }}" API_ENV=${{ inputs.api_env }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }}; $DOCKER_COMPOSE -f docker-compose.local.yml restart nginx || true )
                   MIGRATIONS_RUN=${{ inputs.migrations_run }} ./scripts/local-containers-run.sh bg-down ${{ inputs.api_env }} || true
                   API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} \
-                    docker-compose -f docker-compose.local.yml stop $EXTRA_STOP || true
+                    $DOCKER_COMPOSE -f docker-compose.local.yml stop $EXTRA_STOP || true
                   API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} \
-                    docker-compose -f docker-compose.local.yml rm -f $EXTRA_STOP || true
-                  ( set -a; [ -f "${{ inputs.env_file }}" ] && . "./${{ inputs.env_file }}"; set +a; export ENV_FILE="${{ inputs.env_file }}" API_ENV=${{ inputs.api_env }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }}; docker-compose -f docker-compose.local.yml up -d $EXTRA_UP )
+                    $DOCKER_COMPOSE -f docker-compose.local.yml rm -f $EXTRA_STOP || true
+                  ( set -a; [ -f "${{ inputs.env_file }}" ] && . "./${{ inputs.env_file }}"; set +a; export ENV_FILE="${{ inputs.env_file }}" API_ENV=${{ inputs.api_env }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }}; $DOCKER_COMPOSE -f docker-compose.local.yml up -d $EXTRA_UP )
                 fi
               else
                 echo "No app_new found. Falling back to cold deploy path."
@@ -488,10 +507,10 @@ jobs:
               # The https script above already (re)created core-api/redis/mongo.
               # Only refresh stateless helpers here; redis/mongo stay untouched (no outage window).
               API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} \
-                docker-compose -f docker-compose.local.yml stop $EXTRA_STOP || true
+                $DOCKER_COMPOSE -f docker-compose.local.yml stop $EXTRA_STOP || true
               API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} \
-                docker-compose -f docker-compose.local.yml rm -f $EXTRA_STOP || true
-              ( set -a; [ -f "${{ inputs.env_file }}" ] && . "./${{ inputs.env_file }}"; set +a; export ENV_FILE="${{ inputs.env_file }}" API_ENV=${{ inputs.api_env }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }}; docker-compose -f docker-compose.local.yml up -d $EXTRA_UP )
+                $DOCKER_COMPOSE -f docker-compose.local.yml rm -f $EXTRA_STOP || true
+              ( set -a; [ -f "${{ inputs.env_file }}" ] && . "./${{ inputs.env_file }}"; set +a; export ENV_FILE="${{ inputs.env_file }}" API_ENV=${{ inputs.api_env }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }}; $DOCKER_COMPOSE -f docker-compose.local.yml up -d $EXTRA_UP )
             fi
 
       - name: 🧹 Cleanup backup on success
@@ -504,6 +523,8 @@ jobs:
           port: 22
           script: |
             export COMPOSE_HTTP_TIMEOUT=300
+            # Compose v1/v2 compatibility: prefer the v2 plugin, fall back to the legacy binary.
+            if docker compose version >/dev/null 2>&1; then DOCKER_COMPOSE="docker compose"; else DOCKER_COMPOSE="docker-compose"; fi
             if [ -d "$HOME/app.bak" ]; then
               echo "Cleaning app.bak after successful deploy..."
               rm -rf "$HOME/app.bak"
@@ -512,7 +533,7 @@ jobs:
             echo "Logs certbot-init:"
 
             cd $HOME/app || true
-            docker-compose -f docker-compose.local.yml logs certbot-init || true
+            $DOCKER_COMPOSE -f docker-compose.local.yml logs certbot-init || true
 
       - name: 🧹 Cleanup app_new containers and images
         if: always()
@@ -524,9 +545,11 @@ jobs:
           port: 22
           script: |
             export COMPOSE_HTTP_TIMEOUT=300
+            # Compose v1/v2 compatibility: prefer the v2 plugin, fall back to the legacy binary.
+            if docker compose version >/dev/null 2>&1; then DOCKER_COMPOSE="docker compose"; else DOCKER_COMPOSE="docker-compose"; fi
             echo "Logs certbot-init:"
             cd $HOME/app || true
-            docker-compose -f docker-compose.local.yml logs certbot-init || true
+            $DOCKER_COMPOSE -f docker-compose.local.yml logs certbot-init || true
 
             echo "Restarting nginx with proper env context after deploy..."
             API_ENV=${{ inputs.api_env }} \
@@ -534,11 +557,11 @@ jobs:
             NGINX_MODE=${{ inputs.nginx_mode }} \
             DOMAINS=${{ inputs.domain }} \
             FIRST_DOMAIN=${{ inputs.domain }} \
-              docker-compose -f docker-compose.local.yml restart nginx || true
+              $DOCKER_COMPOSE -f docker-compose.local.yml restart nginx || true
 
             echo "🧹 Starting Docker cleanup..."
-            docker images --filter "reference=app_new_*" --format "table {{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.Size}}" || true
-            docker rmi $(docker images --filter "reference=app_new_*" --format "{{.ID}}") 2>/dev/null || true
+            docker images --filter "reference=app_new_*" --filter "reference=app_new-*" --format "table {{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.Size}}" || true
+            docker rmi $(docker images --filter "reference=app_new_*" --filter "reference=app_new-*" --format "{{.ID}}") 2>/dev/null || true
             echo "Removing app_new volumes (if exist)..."
             docker volume rm app_new_mongo_data app_new_redis_data 2>/dev/null || true
 

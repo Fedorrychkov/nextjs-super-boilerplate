@@ -11,8 +11,10 @@ import { useNotify } from '~/providers/notify'
 import { usePush } from '~/providers/push'
 import { useOnboardingMutation } from '~/query/account'
 
-const MFA_SECTION_ID = 'profile-mfa'
-const PUSH_SECTION_ID = 'profile-notifications'
+const MFA_TARGET = { tab: 'security', anchor: 'profile-mfa' }
+const PUSH_TARGET = { tab: 'devices', anchor: 'profile-push' }
+
+const profileSectionHref = (target: { tab: string; anchor: string }) => `/profile?activeTab=${target.tab}#${target.anchor}`
 
 type OnboardingModalProps = {
   open: boolean
@@ -56,12 +58,12 @@ export const OnboardingModal = ({ open, onClose, state }: OnboardingModalProps) 
 
   const handleMfaNavigate = () => {
     onClose()
-    router.push(`/profile#${MFA_SECTION_ID}`)
+    router.push(profileSectionHref(MFA_TARGET))
   }
 
   const handlePushNavigate = () => {
     onClose()
-    router.push(`/profile#${PUSH_SECTION_ID}`)
+    router.push(profileSectionHref(PUSH_TARGET))
   }
 
   const handleNext = () => {

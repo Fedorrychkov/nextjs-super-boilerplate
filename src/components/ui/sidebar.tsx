@@ -245,7 +245,7 @@ const NavigationSection = ({ navigation, toggle }: { navigation: NavigationSecti
                         {nav.items
                           ?.filter((item) => !item.disabled)
                           .map((item) => (
-                            <li key={item.label}>
+                            <li key={[sectionId, item.label].join('-')}>
                               <Link
                                 onClick={toggle}
                                 href={item.href || ''}
@@ -275,7 +275,7 @@ const NavigationSection = ({ navigation, toggle }: { navigation: NavigationSecti
                 {nav.items
                   ?.filter((item) => !item.disabled)
                   .map((item) => (
-                    <li key={item.label}>
+                    <li key={[nav.title, item.label].join('-')}>
                       <Link
                         onClick={toggle}
                         href={item.href || ''}

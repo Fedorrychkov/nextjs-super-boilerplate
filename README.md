@@ -443,3 +443,8 @@ Links:
 [Github Status](https://www.githubstatus.com/)
 
 [Firebase Status](https://status.firebase.google.com/)
+
+
+### Security Check
+- https://developer.mozilla.org/en-US/observatory/analyze?host=nextjs-super-boilerplate.visn-ai.io
+- https://www.ssllabs.com/ssltest/analyze.html?d=nextjs-super-boilerplate.visn-ai.io

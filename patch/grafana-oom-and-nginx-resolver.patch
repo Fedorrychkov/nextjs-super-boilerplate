@@ -1,0 +1,87 @@
+diff --git a/.docker/nginx/nginx.conf.template.http b/.docker/nginx/nginx.conf.template.http
+index 5bfdba0..185c37d 100644
+--- a/.docker/nginx/nginx.conf.template.http
++++ b/.docker/nginx/nginx.conf.template.http
+@@ -37,9 +37,8 @@ http {
+     resolver 127.0.0.11 valid=10s ipv6=off;
+ 
+     # METRICS_GRAFANA_UPSTREAM_START
+-    upstream grafana {
+-        server grafana:3000;
+-    }
++    # (markers kept for the METRICS_ENABLED sed; grafana proxied via resolver+variable
++    # below, so a recreated grafana container doesn't leave nginx on a stale IP)
+     # METRICS_GRAFANA_UPSTREAM_END
+ 
+     # real_ip settings
+@@ -104,7 +103,9 @@ http {
+         # Proxy Grafana (subpath /grafana/)
+         location /grafana/ {
+             access_log off;
+-            proxy_pass http://grafana/grafana/;
++            # variable -> nginx re-resolves via 127.0.0.11; URI passed through unchanged
++            set $grafana_upstream http://grafana:3000;
++            proxy_pass $grafana_upstream;
+             proxy_http_version 1.1;
+             proxy_set_header Host $host;
+             proxy_set_header X-Real-IP $remote_addr;
+diff --git a/.docker/nginx/nginx.conf.template.https b/.docker/nginx/nginx.conf.template.https
+index 0082cb5..b447d30 100644
+--- a/.docker/nginx/nginx.conf.template.https
++++ b/.docker/nginx/nginx.conf.template.https
+@@ -37,9 +37,8 @@ http {
+     resolver 127.0.0.11 valid=10s ipv6=off;
+ 
+     # METRICS_GRAFANA_UPSTREAM_START
+-    upstream grafana {
+-        server grafana:3000;
+-    }
++    # (markers kept for the METRICS_ENABLED sed; grafana proxied via resolver+variable
++    # below, so a recreated grafana container doesn't leave nginx on a stale IP)
+     # METRICS_GRAFANA_UPSTREAM_END
+ 
+     # real_ip settings
+@@ -153,7 +152,10 @@ http {
+         # Proxy Grafana (subpath /grafana/)
+         location /grafana/ {
+             access_log off;
+-            proxy_pass http://grafana/grafana/;
++            # variable -> nginx re-resolves via 127.0.0.11; URI passed through unchanged
++            # (/grafana/... == what grafana expects with GF_SERVER_SERVE_FROM_SUB_PATH)
++            set $grafana_upstream http://grafana:3000;
++            proxy_pass $grafana_upstream;
+             proxy_http_version 1.1;
+             proxy_set_header Host $host;
+             proxy_set_header X-Real-IP $remote_addr;
+diff --git a/scripts/lib/memory-limits.sh b/scripts/lib/memory-limits.sh
+index 163f3c9..ff99491 100644
+--- a/scripts/lib/memory-limits.sh
++++ b/scripts/lib/memory-limits.sh
+@@ -34,16 +34,19 @@ compute_memory_limits() {
+         if [ "${METRICS_ENABLED:-false}" = "true" ]; then
+             api_pct=34; mongo_pct=22; redis_pct=8
+ 
+-            # Metrics stack gets ~29% of the host, split across its services
++            # Metrics stack gets ~29% of the host, split across its services.
++            # Grafana is the heaviest by far (unified storage + apiserver: ~150M+ at
++            # start; at 15%/88M on a 2GB host it thrashed at 97% and got OOM-killed),
++            # so it is the biggest recipient here.
+             local metrics_mb=$(( total * 29 / 100 ))
+-            export PROMETHEUS_MEM_LIMIT="${PROMETHEUS_MEM_LIMIT:-$(( metrics_mb * 30 / 100 ))M}"
+-            export LOKI_MEM_LIMIT="${LOKI_MEM_LIMIT:-$(( metrics_mb * 20 / 100 ))M}"
+-            export GRAFANA_MEM_LIMIT="${GRAFANA_MEM_LIMIT:-$(( metrics_mb * 15 / 100 ))M}"
+-            export TELEGRAF_MEM_LIMIT="${TELEGRAF_MEM_LIMIT:-$(( metrics_mb * 10 / 100 ))M}"
+-            export PROMTAIL_MEM_LIMIT="${PROMTAIL_MEM_LIMIT:-$(( metrics_mb * 10 / 100 ))M}"
+-            export CADVISOR_MEM_LIMIT="${CADVISOR_MEM_LIMIT:-$(( metrics_mb * 8 / 100 ))M}"
++            export GRAFANA_MEM_LIMIT="${GRAFANA_MEM_LIMIT:-$(( metrics_mb * 29 / 100 ))M}"
++            export PROMETHEUS_MEM_LIMIT="${PROMETHEUS_MEM_LIMIT:-$(( metrics_mb * 21 / 100 ))M}"
++            export LOKI_MEM_LIMIT="${LOKI_MEM_LIMIT:-$(( metrics_mb * 16 / 100 ))M}"
++            export CADVISOR_MEM_LIMIT="${CADVISOR_MEM_LIMIT:-$(( metrics_mb * 10 / 100 ))M}"
++            export TELEGRAF_MEM_LIMIT="${TELEGRAF_MEM_LIMIT:-$(( metrics_mb * 9 / 100 ))M}"
++            export PROMTAIL_MEM_LIMIT="${PROMTAIL_MEM_LIMIT:-$(( metrics_mb * 9 / 100 ))M}"
+             # nginx-exporter + node-exporter, each
+-            export EXPORTER_MEM_LIMIT="${EXPORTER_MEM_LIMIT:-$(( metrics_mb * 7 / 200 ))M}"
++            export EXPORTER_MEM_LIMIT="${EXPORTER_MEM_LIMIT:-$(( metrics_mb * 3 / 100 ))M}"
+             echo "Metrics budget: total=${metrics_mb}M prometheus=${PROMETHEUS_MEM_LIMIT} loki=${LOKI_MEM_LIMIT} grafana=${GRAFANA_MEM_LIMIT} telegraf=${TELEGRAF_MEM_LIMIT} promtail=${PROMTAIL_MEM_LIMIT} cadvisor=${CADVISOR_MEM_LIMIT} exporters=2x${EXPORTER_MEM_LIMIT}"
+         fi
+ 

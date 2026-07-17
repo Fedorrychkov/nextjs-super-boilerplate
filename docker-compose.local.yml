@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   prometheus:
     image: prom/prometheus:v2.45.2
@@ -256,6 +254,53 @@ services:
           memory: ${API_MEM_LIMIT:-2g}
         reservations:
           memory: ${API_MEM_RESERVATION:-512M}
+    networks:
+      - api_network
+
+  # Background worker: periodic maintenance jobs (BullMQ — see scripts/worker.ts and
+  # docs/CRON_ARCHITECTURE_PORTABLE_RU.md). Same image as core-api but a HEADLESS
+  # command (`worker:<env>`) — no HTTP server, so the image's HTTP healthcheck is disabled
+  # (it would hang unhealthy). Run exactly ONE instance; scale core-api freely without
+  # duplicating cron ticks. Enabled per environment via WORKER_ENABLED (deploy workflow
+  # input `worker_enabled`). Logs → promtail and metrics → cadvisor are picked up
+  # automatically (same logging tag + network).
+  worker:
+    container_name: worker-service${SUFFIX}
+    image: ${CORE_API_IMAGE:-app_core-api:latest}
+    build:
+      context: .
+      dockerfile: ./.docker/Dockerfile
+      args:
+        - API_ENV=${API_ENV:-prod}
+    command: ["pnpm", "run", "worker:${API_ENV:-prod}"]
+    env_file:
+      - ${ENV_FILE:-.env}
+    volumes:
+      - ${ENV_FILE:-.env}:/usr/src/api/${ENV_FILE:-.env}:ro
+      - ./db-certificate.${API_ENV:-prod}.crt:/usr/src/api/db-certificate.${API_ENV:-prod}.crt:ro
+    environment:
+      - API_ENV=${API_ENV:-prod}
+      # Set via scripts/lib/memory-limits.sh (SERVER_MEMORY_MB) or explicit override; empty = Node defaults.
+      - NODE_OPTIONS=${WORKER_NODE_OPTIONS:-}
+    depends_on:
+      - core-api
+      - redis
+    # Headless (no HTTP) — disable the image's HTTP healthcheck so it isn't stuck "unhealthy".
+    healthcheck:
+      disable: true
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        tag: "{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}"
+        max-size: "1g"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          memory: ${WORKER_MEM_LIMIT:-1g}
+        reservations:
+          memory: ${WORKER_MEM_RESERVATION:-256M}
     networks:
       - api_network
 

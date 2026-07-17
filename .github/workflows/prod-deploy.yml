@@ -40,10 +40,14 @@ jobs:
       redis_enabled: true
       metrics_enabled: true
       mongo_enabled: true
+      # Background worker (scripts/worker.ts — BullMQ crons, headless singleton).
+      # Needs redis_enabled: true. See docs/CRON_ARCHITECTURE_PORTABLE_RU.md.
+      # worker_enabled: true
       # Total server RAM: container limits are derived from this single number
       # (scripts/lib/memory-limits.sh). Fine-tune with api_mem_limit / redis_mem_limit /
-      # mongo_mem_limit if needed.
+      # mongo_mem_limit / worker_mem_limit if needed.
       server_memory_mb: 2048
+      worker_enabled: false
 
     secrets:
       server_host: ${{ secrets.PROD_WEB_HOST }}

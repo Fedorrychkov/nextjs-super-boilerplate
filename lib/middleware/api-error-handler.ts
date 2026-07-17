@@ -66,15 +66,28 @@ export const apiErrorHandlerContainer =
       }
 
       if (error instanceof AxiosError) {
-        logger.error(`AxiosError traceId: ${traceId}`, error.response?.data, error.response?.status)
+        logger.error(`AxiosError traceId: ${traceId}`, error.response?.data, error.response?.status, error.code)
+
+        // No response = the upstream never answered (timeout, DNS, connection refused,
+        // blocked host). `status: undefined` used to fall back to 200 OK with an empty
+        // body — clients treated a hard failure as success. Report 502 instead.
+        if (!error.response) {
+          return res.json(
+            {
+              message: `Upstream request failed: ${error.code ?? error.message}`,
+              code: 'UPSTREAM_UNREACHABLE',
+            },
+            { status: 502 },
+          )
+        }
 
         return res.json(
           {
-            message: error.response?.data?.message,
-            error: error.response?.data?.error,
+            message: error.response.data?.message,
+            error: error.response.data?.error,
           },
           {
-            status: error.response?.status,
+            status: error.response.status || 502,
           },
         )
       }

@@ -42,7 +42,7 @@ function rollback_mode() {
     echo "Starting rollback mode..."
     API_ENV=${env} \
     ENV_FILE=${env_file} \
-    docker-compose -f ${COMPOSE_FILE} up -d $CORE_SERVICES
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} up -d $CORE_SERVICES
 
     echo "Waiting for core-api to be ready for rollback..."
     attempts=0; max_attempts=20
@@ -71,8 +71,8 @@ function rollback_mode() {
     fi
 
     echo "Stopping core services after rollback..."
-    docker-compose -f ${COMPOSE_FILE} stop $CORE_SERVICES
-    docker-compose -f ${COMPOSE_FILE} rm -f $CORE_SERVICES
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} stop $CORE_SERVICES
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} rm -f $CORE_SERVICES
 
     echo "Clearing migrations state files..."
     clear_migrations_state "$env"
@@ -103,7 +103,7 @@ function bg_validate_green() {
     export SUFFIX=-green
     API_ENV=${env} \
     ENV_FILE=${env_file} \
-    docker-compose -f ${COMPOSE_FILE} up -d --no-deps core-api
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} up -d --no-deps core-api
 
     echo "Waiting for GREEN core-api to become healthy..."
     attempts=0; max_attempts=30
@@ -156,7 +156,7 @@ function renew_certificates() {
         DOMAINS=${DOMAINS:-app.example.local} \
         FIRST_DOMAIN=${FIRST_DOMAIN:-app.example.local} \
         CERTBOT_TEST_MODE=${CERTBOT_TEST_MODE:-false} \
-        docker-compose -f ${COMPOSE_FILE} up -d certbot
+        ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} up -d certbot
         
         echo "⏳ Waiting for certbot to start..."
         sleep 10
@@ -252,7 +252,7 @@ function start_http() {
     # before nginx so upstream names are resolvable in nginx config.
     if [ "$METRICS_ENABLED" = "true" ]; then
         echo "HTTP mode: starting metrics stack (prometheus, grafana, loki, etc.) before nginx..."
-        docker-compose -f ${COMPOSE_FILE} up -d $METRICS_SERVICES
+        ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} up -d $METRICS_SERVICES
     fi
 
     DEPLOY_MODE=${DEPLOY_MODE:-default}
@@ -261,14 +261,14 @@ function start_http() {
         docker pull "$CORE_API_IMAGE"
         export CORE_API_IMAGE
         API_ENV=$env ENV_FILE=$env_file NGINX_MODE=http DOMAINS="$domains" FIRST_DOMAIN="$FIRST_DOMAIN" \
-            docker-compose -f ${COMPOSE_FILE} up ${DOCKER_OPTS} $CORE_SERVICES nginx
+            ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} up ${DOCKER_OPTS} $CORE_SERVICES nginx
     else
         API_ENV=$env \
         ENV_FILE=$env_file \
         NGINX_MODE=http \
         DOMAINS="$domains" \
         FIRST_DOMAIN="$FIRST_DOMAIN" \
-        docker-compose -f ${COMPOSE_FILE} up ${DOCKER_OPTS} --build $CORE_SERVICES nginx
+        ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} up ${DOCKER_OPTS} --build $CORE_SERVICES nginx
     fi
 }
 
@@ -317,7 +317,7 @@ function start_https() {
 
     load_env_into_shell "$env_file"
     echo "Stage 1: Starting API service..."
-    docker-compose -f ${COMPOSE_FILE} up -d $CORE_SERVICES
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} up -d $CORE_SERVICES
 
     # Wait for API health before migrations
     echo "Waiting for core-api to become healthy..."
@@ -351,14 +351,14 @@ function start_https() {
     # are resolvable and nginx -t does not fail.
     if [ "$METRICS_ENABLED" = "true" ]; then
         echo "Stage 1.2: Starting metrics stack (prometheus, grafana, loki, etc.) before nginx..."
-        docker-compose -f ${COMPOSE_FILE} up -d $METRICS_SERVICES
+        ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} up -d $METRICS_SERVICES
     fi
 
     echo "Stage 2: Starting nginx in HTTP mode..."
     # Avoid docker-compose recreate path that can trigger ContainerConfig bug on old compose
-    docker-compose -f ${COMPOSE_FILE} stop nginx || true
-    docker-compose -f ${COMPOSE_FILE} rm -f nginx || true
-    docker-compose -f ${COMPOSE_FILE} up -d nginx
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} stop nginx || true
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} rm -f nginx || true
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} up -d nginx
 
     echo "Waiting for nginx to be healthy..."
     local attempts=0
@@ -372,7 +372,7 @@ function start_https() {
         ((attempts++))
         if [ $attempts -ge $max_attempts ]; then
             echo "Error: Nginx failed to become healthy"
-            docker-compose -f ${COMPOSE_FILE} logs nginx
+            ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} logs nginx
             exit 1
         fi
         echo "Waiting for nginx... (attempt $attempts/$max_attempts)"
@@ -380,17 +380,17 @@ function start_https() {
     done
 
     echo "Stage 3: Running certbot initialization..."
-    docker-compose -f ${COMPOSE_FILE} stop certbot-init
-    docker-compose -f ${COMPOSE_FILE} rm -f certbot-init
-    docker-compose -f ${COMPOSE_FILE} build --no-cache certbot-init
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} stop certbot-init
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} rm -f certbot-init
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} build --no-cache certbot-init
     # Ensure persistent volumes exist for certificates and logs
     docker volume create letsencrypt_certs >/dev/null 2>&1 || true
     docker volume create certbot_logs >/dev/null 2>&1 || true
     
-    if ! docker-compose -f ${COMPOSE_FILE} up -d certbot-init; then
+    if ! ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} up -d certbot-init; then
         echo "Failed to start certbot-init container"
-        docker-compose -f ${COMPOSE_FILE} logs certbot-init
-        docker-compose -f ${COMPOSE_FILE} logs nginx
+        ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} logs certbot-init
+        ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} logs nginx
         exit 1
     fi
 
@@ -426,11 +426,11 @@ function start_https() {
 
     # Stop containers in the correct order
     echo "Debug: Stopping containers in order..."
-    docker-compose -f ${COMPOSE_FILE} stop $CORE_SERVICES
-    docker-compose -f ${COMPOSE_FILE} rm -f $CORE_SERVICES
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} stop $CORE_SERVICES
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} rm -f $CORE_SERVICES
     
-    docker-compose -f ${COMPOSE_FILE} stop nginx
-    docker-compose -f ${COMPOSE_FILE} rm -f nginx
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} stop nginx
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} rm -f nginx
 
     # Add pause
     sleep 5
@@ -442,7 +442,7 @@ function start_https() {
     NGINX_MODE=https \
     DOMAINS="$domains" \
     FIRST_DOMAIN="$FIRST_DOMAIN" \
-    docker-compose -f ${COMPOSE_FILE} up -d $CORE_SERVICES
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} up -d $CORE_SERVICES
 
     sleep 5
 
@@ -451,7 +451,7 @@ function start_https() {
     NGINX_MODE=https \
     DOMAINS="$domains" \
     FIRST_DOMAIN="$FIRST_DOMAIN" \
-    docker-compose -f ${COMPOSE_FILE} up -d nginx
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} up -d nginx
 
     # Check if containers have the correct names
     if ! docker ps --format '{{.Names}}' | grep -q "api-service"; then
@@ -478,11 +478,11 @@ function start_https() {
 
     # Check container status before stopping
     echo "Debug: Container status before stop:"
-    docker-compose -f ${COMPOSE_FILE} ps nginx
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} ps nginx
 
     # Recreate health check file before restarting nginx
     echo "Debug: Creating health check file..."
-    docker-compose -f ${COMPOSE_FILE} exec nginx sh -c "
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} exec nginx sh -c "
         echo 'Debug: Current directory structure:' &&
         ls -la /var/www/certbot/.well-known/acme-challenge/ &&
         echo 'Debug: Creating health file...' &&
@@ -492,12 +492,12 @@ function start_https() {
         cat /var/www/certbot/.well-known/acme-challenge/health"
 
     echo "Debug: Checking nginx configuration..."
-    docker-compose -f ${COMPOSE_FILE} exec nginx nginx -T
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} exec nginx nginx -T
 
     # Check container status after restart
     echo "Debug: Container status after restart:"
-    docker-compose -f ${COMPOSE_FILE} ps nginx
-    docker-compose -f ${COMPOSE_FILE} logs nginx
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} ps nginx
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} logs nginx
 
     # Add pause after creating containers
     echo "Waiting for containers to initialize..."
@@ -525,7 +525,7 @@ function start_https() {
                 rollback_new_migrations "$env" "$newly_applied_migs" || true
             fi
             echo "Debug: Full nginx logs:"
-            docker-compose -f ${COMPOSE_FILE} logs nginx
+            ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} logs nginx
             exit 1
         fi
         
@@ -541,7 +541,7 @@ function start_https() {
     DOMAINS="$domains" \
     FIRST_DOMAIN="$FIRST_DOMAIN" \
     CERTBOT_TEST_MODE=${CERTBOT_TEST_MODE:-false} \
-    docker-compose -f ${COMPOSE_FILE} up -d certbot
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} up -d certbot
     
     echo "HTTPS setup completed successfully!"
 
@@ -562,7 +562,7 @@ function start_https() {
         [ "$REDIS_ENABLED" = "true" ] && EXTRA_SERVICES="$EXTRA_SERVICES redis"
         [ "$MONGO_ENABLED" = "true" ] && EXTRA_SERVICES="$EXTRA_SERVICES mongo"
         EXTRA_SERVICES=$(echo "$EXTRA_SERVICES")
-        docker-compose -f ${COMPOSE_FILE} up -d $EXTRA_SERVICES
+        ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} up -d $EXTRA_SERVICES
         echo "Optional services started."
     fi
 }
@@ -574,13 +574,13 @@ function rebuild() {
     prepare_dirs
     local env_file=$(get_env_file "$env")
     load_env_into_shell "$env_file"
-    docker-compose -f ${COMPOSE_FILE} down
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} down
     docker system prune -f
     API_ENV=$env \
     ENV_FILE=$env_file \
     NGINX_MODE=http \
-    docker-compose -f ${COMPOSE_FILE} build --no-cache && \
-    docker-compose -f ${COMPOSE_FILE} up ${DOCKER_OPTS}
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} build --no-cache && \
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} up ${DOCKER_OPTS}
 }
 
 # Cleanup
@@ -589,15 +589,15 @@ function clean() {
     
     echo "🛑 Stopping containers..."
     # Try to stop containers through docker-compose
-    docker-compose -f ${COMPOSE_FILE} down --remove-orphans
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} down --remove-orphans
 
     docker stop service-api-certbot-init service-api-certbot core-nginx-service api-service api-service-green prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana redis redis-green mongo mongo-green 2>/dev/null || true
     docker rm -f service-api-certbot-init service-api-certbot core-nginx-service api-service api-service-green prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana redis redis-green mongo mongo-green 2>/dev/null || true
 
     # Clean up old app_new images
     echo "Cleaning up old app_new images..."
-    docker images --filter "reference=app_new_*" --format "table {{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.Size}}" || true
-    docker rmi $(docker images --filter "reference=app_new_*" --format "{{.ID}}") 2>/dev/null || true
+    docker images --filter "reference=app_new_*" --filter "reference=app_new-*" --format "table {{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.Size}}" || true
+    docker rmi $(docker images --filter "reference=app_new_*" --filter "reference=app_new-*" --format "{{.ID}}") 2>/dev/null || true
 
     # Remove old registry images (ghcr.io/...): keep only the image used by api-service
     CURRENT_IMAGE=$(docker inspect api-service --format '{{.Config.Image}}' 2>/dev/null || true)

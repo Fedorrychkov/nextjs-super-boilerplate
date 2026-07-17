@@ -4,6 +4,15 @@
 # Expects environment variables from caller:
 # - PROJECT_ROOT, COMPOSE_FILE, DEPLOY_STATE_DIR, MIGRATIONS_RUN
 
+# Compose v1/v2 compatibility: prefer the v2 plugin (`docker compose`), fall back to the
+# legacy v1 binary (`docker-compose`). All flags used here (up -d, stop, rm -f, exec -T,
+# logs, restart, -f) are 1:1 compatible. See docs/DOCKER_COMPOSE_V2_RU.md.
+if docker compose version >/dev/null 2>&1; then
+    DOCKER_COMPOSE="docker compose"
+else
+    DOCKER_COMPOSE="docker-compose"
+fi
+
 function parse_bool() {
     local val=$(echo "$1" | tr '[:upper:]' '[:lower:]')
     if [[ "$val" == "1" || "$val" == "true" || "$val" == "yes" ]]; then
@@ -57,13 +66,13 @@ function check_resources() {
 # Compose helpers
 function compose_up() {
     # usage: compose_up services...
-    docker-compose -f ${COMPOSE_FILE} up -d "$@"
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} up -d "$@"
 }
 
 function compose_stop_rm() {
     # usage: compose_stop_rm services...
-    docker-compose -f ${COMPOSE_FILE} stop "$@"
-    docker-compose -f ${COMPOSE_FILE} rm -f "$@"
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} stop "$@"
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} rm -f "$@"
 }
 
 function parse_domains() {
@@ -95,17 +104,17 @@ function parse_domains() {
 # TypeORM helpers (run inside core-api container)
 function migrations_show() {
     local env=$1
-    docker-compose -f ${COMPOSE_FILE} exec -T core-api sh -lc "npm run migration:show:${env} 2>/dev/null | cat"
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} exec -T core-api sh -lc "npm run migration:show:${env} 2>/dev/null | cat"
 }
 
 function migrations_run() {
     local env=$1
-    docker-compose -f ${COMPOSE_FILE} exec -T core-api sh -lc "npm run migration:run:${env} | cat"
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} exec -T core-api sh -lc "npm run migration:run:${env} | cat"
 }
 
 function migrations_revert() {
     local env=$1
-    docker-compose -f ${COMPOSE_FILE} exec -T core-api sh -lc "npm run migration:revert:${env} | cat"
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} exec -T core-api sh -lc "npm run migration:revert:${env} | cat"
 }
 
 function get_applied_count() {
