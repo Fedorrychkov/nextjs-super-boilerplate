@@ -49,3 +49,21 @@ class RedisClient {
 }
 
 export const redisClient = new RedisClient()
+
+/**
+ * Dedicated Redis connection for BullMQ (background worker only).
+ * BullMQ requires `maxRetriesPerRequest: null` — the shared client above uses `1`
+ * for fail-fast API caching, so queues get their own connection.
+ * Returns `null` when REDIS_URL is unset so callers can degrade gracefully.
+ */
+export const createBullMqConnection = (): Redis | null => {
+  if (!REDIS_URL) {
+    return null
+  }
+
+  return new Redis(REDIS_URL, {
+    maxRetriesPerRequest: null,
+    enableOfflineQueue: true,
+    lazyConnect: true,
+  })
+}

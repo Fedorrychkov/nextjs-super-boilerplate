@@ -79,6 +79,11 @@ on:
         required: false
         default: false
         type: boolean
+      worker_enabled:
+        description: Enable the background worker container (scripts/worker.ts, BullMQ crons). Needs Redis (REDIS_URL).
+        required: false
+        default: false
+        type: boolean
 
       server_memory_mb:
         description: 'Total server RAM in MB (e.g. 2048). Derives per-container memory limits via scripts/lib/memory-limits.sh. 0 = keep compose defaults (api 2g, redis/mongo unlimited).'
@@ -97,6 +102,11 @@ on:
         type: string
       mongo_mem_limit:
         description: 'Override mongo memory limit (e.g. 640M). Wins over server_memory_mb.'
+        required: false
+        default: ''
+        type: string
+      worker_mem_limit:
+        description: 'Override background worker memory limit (e.g. 512M). Wins over server_memory_mb.'
         required: false
         default: ''
         type: string
@@ -340,16 +350,18 @@ jobs:
           REDIS_ENABLED: ${{ inputs.redis_enabled }}
           METRICS_ENABLED: ${{ inputs.metrics_enabled }}
           MONGO_ENABLED: ${{ inputs.mongo_enabled }}
+          WORKER_ENABLED: ${{ inputs.worker_enabled }}
           SERVER_MEMORY_MB: ${{ inputs.server_memory_mb }}
           API_MEM_LIMIT: ${{ inputs.api_mem_limit }}
           REDIS_MEM_LIMIT: ${{ inputs.redis_mem_limit }}
           MONGO_MEM_LIMIT: ${{ inputs.mongo_mem_limit }}
+          WORKER_MEM_LIMIT: ${{ inputs.worker_mem_limit }}
         with:
           host: ${{ secrets.server_host }}
           username: ${{ secrets.server_username }}
           password: ${{ secrets.server_password }}
           port: 22
-          envs: GH_USERNAME, GITHUB_TOKEN, DEPLOY_MODE, CORE_API_IMAGE, GHCR_USERNAME, GHCR_TOKEN, GRAFANA_ADMIN_USER, GRAFANA_ADMIN_PASSWORD, REDIS_ENABLED, METRICS_ENABLED, MONGO_ENABLED, SERVER_MEMORY_MB, API_MEM_LIMIT, REDIS_MEM_LIMIT, MONGO_MEM_LIMIT
+          envs: GH_USERNAME, GITHUB_TOKEN, DEPLOY_MODE, CORE_API_IMAGE, GHCR_USERNAME, GHCR_TOKEN, GRAFANA_ADMIN_USER, GRAFANA_ADMIN_PASSWORD, REDIS_ENABLED, METRICS_ENABLED, MONGO_ENABLED, WORKER_ENABLED, SERVER_MEMORY_MB, API_MEM_LIMIT, REDIS_MEM_LIMIT, MONGO_MEM_LIMIT, WORKER_MEM_LIMIT
           command_timeout: 25m
           script: |
             set -e
@@ -366,13 +378,18 @@ jobs:
             REDIS_ENABLED=${REDIS_ENABLED:-false}
             METRICS_ENABLED=${METRICS_ENABLED:-false}
             MONGO_ENABLED=${MONGO_ENABLED:-false}
+            WORKER_ENABLED=${WORKER_ENABLED:-false}
             CORE_UP="core-api"; [ "$REDIS_ENABLED" = "true" ] && CORE_UP="$CORE_UP redis"; [ "$MONGO_ENABLED" = "true" ] && CORE_UP="$CORE_UP mongo"
             METRICS_SERVICES="prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana"
             EXTRA_UP="certbot"; [ "$METRICS_ENABLED" = "true" ] && EXTRA_UP="$EXTRA_UP $METRICS_SERVICES"; [ "$REDIS_ENABLED" = "true" ] && EXTRA_UP="$EXTRA_UP redis"; [ "$MONGO_ENABLED" = "true" ] && EXTRA_UP="$EXTRA_UP mongo"
+            # Background worker (headless BullMQ crons): a stateless singleton, no blue/green.
+            # Force-recreated on each deploy so it picks up the new image; a brief restart is acceptable.
+            [ "$WORKER_ENABLED" = "true" ] && EXTRA_UP="$EXTRA_UP worker"
             # Only stateless helpers get force-recreated after deploy. Never stop/rm redis or mongo
             # under a live API: it turns every deploy into a short DB outage (429s/500s).
             # `up -d` below is a no-op for already-running services with unchanged config.
             EXTRA_STOP="certbot"; [ "$METRICS_ENABLED" = "true" ] && EXTRA_STOP="$EXTRA_STOP $METRICS_SERVICES"
+            [ "$WORKER_ENABLED" = "true" ] && EXTRA_STOP="$EXTRA_STOP worker"
 
             docker volume create letsencrypt_certs || true
             docker volume create certbot_logs || true

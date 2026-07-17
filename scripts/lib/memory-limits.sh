@@ -50,6 +50,15 @@ compute_memory_limits() {
             echo "Metrics budget: total=${metrics_mb}M prometheus=${PROMETHEUS_MEM_LIMIT} loki=${LOKI_MEM_LIMIT} grafana=${GRAFANA_MEM_LIMIT} telegraf=${TELEGRAF_MEM_LIMIT} promtail=${PROMTAIL_MEM_LIMIT} cadvisor=${CADVISOR_MEM_LIMIT} exporters=2x${EXPORTER_MEM_LIMIT}"
         fi
 
+        # Background worker (scripts/worker.ts). Enabled with WORKER_ENABLED=true.
+        # Its slice is carved out of the api share so the total budget stays the same.
+        local worker_pct=0
+
+        if [ "${WORKER_ENABLED:-false}" = "true" ]; then
+            worker_pct=10
+            api_pct=$(( api_pct - worker_pct ))
+        fi
+
         local api_mb=$(( total * api_pct / 100 ))
         local mongo_mb=$(( total * mongo_pct / 100 ))
         local redis_mb=$(( total * redis_pct / 100 ))
@@ -57,6 +66,14 @@ compute_memory_limits() {
         export API_MEM_LIMIT="${API_MEM_LIMIT:-${api_mb}M}"
         export API_MEM_RESERVATION="${API_MEM_RESERVATION:-$(( api_mb / 2 ))M}"
         export API_NODE_OPTIONS="${API_NODE_OPTIONS:---max-old-space-size=$(( api_mb * 2 / 3 ))}"
+
+        if [ "$worker_pct" -gt 0 ]; then
+            local worker_mb=$(( total * worker_pct / 100 ))
+            export WORKER_MEM_LIMIT="${WORKER_MEM_LIMIT:-${worker_mb}M}"
+            export WORKER_MEM_RESERVATION="${WORKER_MEM_RESERVATION:-$(( worker_mb / 2 ))M}"
+            export WORKER_NODE_OPTIONS="${WORKER_NODE_OPTIONS:---max-old-space-size=$(( worker_mb * 2 / 3 ))}"
+            echo "Worker budget: worker=${WORKER_MEM_LIMIT} (heap ${WORKER_NODE_OPTIONS#*=}M)"
+        fi
 
         export REDIS_MEM_LIMIT="${REDIS_MEM_LIMIT:-${redis_mb}M}"
         export REDIS_MAXMEMORY="${REDIS_MAXMEMORY:-$(( redis_mb * 2 / 3 ))mb}"

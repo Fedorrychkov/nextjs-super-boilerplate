@@ -51,8 +51,18 @@
 
 | Variable | Default | Notes |
 |----------|---------|-------|
-| `REDIS_URL` | — | C — rate limit / LLM limit |
+| `REDIS_URL` | — | C — rate limit / LLM limit / BullMQ worker |
 | `RATE_LIMIT_POINTS` | 400 | Запросов в окно |
+
+## Background worker (опционально)
+
+Отдельный headless-контейнер с кронами (см. `docs/CRON_ARCHITECTURE_PORTABLE_RU.md`). Сам контейнер включается на деплое (`worker_enabled: true` в CI / `WORKER_ENABLED=true` в compose), джобы внутри — флагами:
+
+| Variable | Default | Notes |
+|----------|---------|-------|
+| `WORKER_HEARTBEAT` | false | Пример-джоба (liveness-лог), включается явно; замени своими в `scripts/worker.ts` |
+| `WORKER_HEARTBEAT_INTERVAL_MS` | 300000 | Интервал heartbeat |
+| `WORKER_NODE_OPTIONS` | — | Обычно выставляется `memory-limits.sh` |
 
 ## MFA
 
