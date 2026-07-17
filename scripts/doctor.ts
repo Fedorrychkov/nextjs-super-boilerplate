@@ -144,6 +144,28 @@ async function main() {
     }
   }
 
+  // Background worker (scripts/worker.ts). WORKER_ENABLED itself is a compose/CI-level
+  // flag, but it usually rides in the same env file — catch inconsistencies before deploy.
+  const workerEnabled = parseBool(process.env.WORKER_ENABLED)
+  const workerHeartbeat = parseBool(process.env.WORKER_HEARTBEAT)
+
+  if (workerEnabled && !process.env.REDIS_URL?.trim()) {
+    push(findings, 'warn', 'worker_no_redis', 'WORKER_ENABLED=true but REDIS_URL is empty — the worker will boot as a no-op (BullMQ scheduler disabled).')
+  }
+
+  if (workerHeartbeat && !workerEnabled) {
+    push(findings, 'info', 'worker_heartbeat_only', 'WORKER_HEARTBEAT=true but WORKER_ENABLED is off — the flag only matters inside the worker container.')
+  }
+
+  if (workerEnabled && !workerHeartbeat) {
+    push(
+      findings,
+      'info',
+      'worker_no_jobs_hint',
+      'WORKER_ENABLED=true with WORKER_HEARTBEAT off — make sure scripts/worker.ts has project jobs enabled, otherwise the worker idles ("no jobs registered").',
+    )
+  }
+
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? ''
 
   if (isProd && siteUrl.startsWith('http://')) {
