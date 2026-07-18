@@ -1,6 +1,6 @@
 {
   "name": "nextjs-super-boilerplate",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "private": true,
   "scripts": {
     "dev:local": "env-cmd -f .env.local next dev",
