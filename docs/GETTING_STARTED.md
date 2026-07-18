@@ -1,4 +1,4 @@
-# Старт проекта (v0.2.0)
+# Старт проекта (v0.2.4)
 
 Краткий чеклист после форка или первого развёртывания. Инфраструктура (Docker, CI, nginx) — в корневом [`README.md`](../README.md) и [`INFRASTRUCTURE_PLAN_RU.md`](./INFRASTRUCTURE_PLAN_RU.md).
 
@@ -106,4 +106,4 @@ pnpm run test
 - [`CONFIGURATION.md`](./CONFIGURATION.md) — auth, email, MFA, sessions, onboarding
 - [`ENV_REFERENCE.md`](./ENV_REFERENCE.md) — все переменные окружения
 - [`SECURITY_AND_ACCOUNT_ROADMAP.md`](./SECURITY_AND_ACCOUNT_ROADMAP.md) — что реализовано в security-блоке
-- [`CHANGELOG.md`](../CHANGELOG.md) — v0.2.0
+- [`CHANGELOG.md`](../CHANGELOG.md) — release notes
