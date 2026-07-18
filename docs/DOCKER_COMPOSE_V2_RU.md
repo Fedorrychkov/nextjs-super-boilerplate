@@ -26,6 +26,20 @@ Compose v1 (`docker-compose`, отдельный Python-бинарник) зам
 
 5. **`COMPOSE_HTTP_TIMEOUT` оставлен** в CI: v2 его игнорирует (безвредно), v1 — использует.
 
+## Установка Docker на сервере (с нуля)
+
+Если сервер чистый — поставить Docker Engine + плагин compose v2 официальным скриптом (Ubuntu/Debian):
+
+```sh
+curl -fsSL https://get.docker.com | sh          # ставит docker + docker compose v2
+sudo usermod -aG docker "$USER"                 # docker без sudo (перелогиниться после)
+docker version && docker compose version        # проверка: обе команды отвечают
+sudo systemctl enable --now docker              # автозапуск демона
+```
+
+На выходе доступна `docker compose` (v2, с пробелом). Бинарника `docker-compose` (v1, с дефисом)
+скрипт НЕ ставит — если чужие скрипты/cron его зовут, добавь шим (см. ниже).
+
 ## Что сделать на сервере (не в репо)
 
 **Шим вместо алиаса** — обязательно на каждом сервере, где остались чужие скрипты/cron с `docker-compose` (алиас не работает в скриптах, cron, CI, systemd):

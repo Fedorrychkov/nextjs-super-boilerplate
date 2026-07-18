@@ -43,6 +43,22 @@ Next.js 16 (App Router) app with production deploy (GitHub Actions), optional Do
 
 ## Local run
 
+### Fast path (fresh fork)
+
+```bash
+pnpm install
+./scripts/init-project.sh    # renames placeholders, generates secrets + VAPID into .env.local
+pnpm run dev:local
+```
+
+`init-project.sh` asks for slug / name / domain / author, rewrites the hardcoded placeholders
+(`package.json`, `config/product.ts`, `prod-deploy.yml`, GitHub OAuth User-Agent, Makefile),
+generates `JWT_SECRET` / `MFA_ENCRYPTION_KEY` / `SEO_NOTIFY_SECRET` / VAPID keys into `.env.local`,
+and records them in the gitignored `.project-initialized` (copy those into your CI secret store for prod).
+It runs once (guard file); manual values (Mongo, Redis, admin, Uploadcare, provider keys) are still yours to fill.
+
+### Manual path
+
 1. Install dependencies: `pnpm install` (or `npm install` / `yarn`).
 2. Copy env: `cp .env.example .env.local` and set values (JWT, MongoDB, etc.). Run `pnpm doctor` to validate.
 3. Customize product branding in `config/product.ts` (name, author, links) — see [`docs/GETTING_STARTED.md`](./docs/GETTING_STARTED.md).
@@ -50,6 +66,9 @@ Next.js 16 (App Router) app with production deploy (GitHub Actions), optional Do
 5. Start dev server: `pnpm run dev:local` (or `npm run dev:local`). App: http://localhost:3000.
 
 To use an external MongoDB instead of local, set `MONGO_URI` in `.env.local` and skip step 4.
+
+> **Docker / docker-compose setup** (server prerequisites, and making `docker-compose` v1 and
+> `docker compose` v2 interchangeable): see [`docs/DOCKER_COMPOSE_V2_RU.md`](./docs/DOCKER_COMPOSE_V2_RU.md).
 
 ---
 
@@ -429,6 +448,26 @@ Links:
 
 [MIT](./LICENSE).
 
+
+## Mongo backups
+
+Automatic nightly `mongodump` for the **local** mongo container (deploys with `mongo_enabled: true`).
+Full design, restore procedure and cron examples: [`docs/MONGO_BACKUPS_RU.md`](./docs/MONGO_BACKUPS_RU.md).
+
+```bash
+# on the server: manual backup / list / check the cron
+ENV_FILE=.env.prod API_ENV=prod ~/app/scripts/backup-mongo.sh
+ls -lh ~/db-backups/ && crontab -l | grep bp-mongo-backup
+
+# pull the latest dump to your machine
+scp "user@server:~/db-backups/$(ssh user@server 'ls -1t ~/db-backups/mongo_*.archive.gz | head -1 | xargs basename')" ~/Downloads/
+
+# restore (DESTRUCTIVE — mongorestore --drop, asks for confirmation)
+ENV_FILE=.env.prod ~/app/scripts/restore-mongo.sh ~/db-backups/mongo_prod_<stamp>.archive.gz
+```
+
+Backups turn on/off with the deploy flags `mongo_enabled` + `mongo_backup_enabled`; frequency and
+depth via `mongo_backup_cron` / `mongo_backup_retention`. Remote clusters use the provider's backups.
 
 ## Statuses
 
