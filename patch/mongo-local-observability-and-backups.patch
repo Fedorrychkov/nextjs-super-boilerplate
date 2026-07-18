@@ -1,0 +1,676 @@
+diff --git a/.github/workflows/prod-deploy.yml b/.github/workflows/prod-deploy.yml
+index 60e06b6..a947064 100644
+--- a/.github/workflows/prod-deploy.yml
++++ b/.github/workflows/prod-deploy.yml
+@@ -48,6 +48,9 @@ jobs:
+       # mongo_mem_limit / worker_mem_limit if needed.
+       server_memory_mb: 2048
+       worker_enabled: false
++      mongo_backup_enabled: true
++      mongo_backup_cron: '30 3 * * *'
++      mongo_backup_retention: 2
+ 
+     secrets:
+       server_host: ${{ secrets.PROD_WEB_HOST }}
+diff --git a/.github/workflows/reusable-deploy-config.yml b/.github/workflows/reusable-deploy-config.yml
+index aa129ab..25e7087 100644
+--- a/.github/workflows/reusable-deploy-config.yml
++++ b/.github/workflows/reusable-deploy-config.yml
+@@ -84,6 +84,21 @@ on:
+         required: false
+         default: false
+         type: boolean
++      mongo_backup_enabled:
++        description: 'Nightly mongodump cron on the server (scripts/backup-mongo.sh). Effective ONLY with mongo_enabled: true — remote clusters use provider backups. Cron is auto-removed when mongo or this flag turns off.'
++        required: false
++        default: false
++        type: boolean
++      mongo_backup_cron:
++        description: 'Backup schedule (server-local time, crontab syntax). Pick an off-peak slot.'
++        required: false
++        default: '30 3 * * *'
++        type: string
++      mongo_backup_retention:
++        description: How many dumps to keep in ~/db-backups (older ones are deleted after a successful backup)
++        required: false
++        default: 14
++        type: number
+ 
+       server_memory_mb:
+         description: 'Total server RAM in MB (e.g. 2048). Derives per-container memory limits via scripts/lib/memory-limits.sh. 0 = keep compose defaults (api 2g, redis/mongo unlimited).'
+@@ -351,6 +366,9 @@ jobs:
+           METRICS_ENABLED: ${{ inputs.metrics_enabled }}
+           MONGO_ENABLED: ${{ inputs.mongo_enabled }}
+           WORKER_ENABLED: ${{ inputs.worker_enabled }}
++          MONGO_BACKUP_ENABLED: ${{ inputs.mongo_backup_enabled }}
++          MONGO_BACKUP_CRON: ${{ inputs.mongo_backup_cron }}
++          MONGO_BACKUP_RETENTION: ${{ inputs.mongo_backup_retention }}
+           SERVER_MEMORY_MB: ${{ inputs.server_memory_mb }}
+           API_MEM_LIMIT: ${{ inputs.api_mem_limit }}
+           REDIS_MEM_LIMIT: ${{ inputs.redis_mem_limit }}
+@@ -361,7 +379,7 @@ jobs:
+           username: ${{ secrets.server_username }}
+           password: ${{ secrets.server_password }}
+           port: 22
+-          envs: GH_USERNAME, GITHUB_TOKEN, DEPLOY_MODE, CORE_API_IMAGE, GHCR_USERNAME, GHCR_TOKEN, GRAFANA_ADMIN_USER, GRAFANA_ADMIN_PASSWORD, REDIS_ENABLED, METRICS_ENABLED, MONGO_ENABLED, WORKER_ENABLED, SERVER_MEMORY_MB, API_MEM_LIMIT, REDIS_MEM_LIMIT, MONGO_MEM_LIMIT, WORKER_MEM_LIMIT
++          envs: GH_USERNAME, GITHUB_TOKEN, DEPLOY_MODE, CORE_API_IMAGE, GHCR_USERNAME, GHCR_TOKEN, GRAFANA_ADMIN_USER, GRAFANA_ADMIN_PASSWORD, REDIS_ENABLED, METRICS_ENABLED, MONGO_ENABLED, WORKER_ENABLED, MONGO_BACKUP_ENABLED, MONGO_BACKUP_CRON, MONGO_BACKUP_RETENTION, SERVER_MEMORY_MB, API_MEM_LIMIT, REDIS_MEM_LIMIT, MONGO_MEM_LIMIT, WORKER_MEM_LIMIT
+           command_timeout: 25m
+           script: |
+             set -e
+@@ -393,6 +411,22 @@ jobs:
+             EXTRA_STOP="certbot"; [ "$METRICS_ENABLED" = "true" ] && EXTRA_STOP="$EXTRA_STOP $METRICS_SERVICES"
+             [ "$WORKER_ENABLED" = "true" ] && EXTRA_STOP="$EXTRA_STOP worker"
+ 
++            # Toggled-off leftovers: `restart: always` keeps containers from a PREVIOUS deploy
++            # alive forever after their flag flips to false — the deploy neither starts nor stops
++            # them. Stop by explicit container_name (cwd-independent, works with compose v1/v2).
++            # Stateless services only: local redis/mongo are never auto-stopped — they may still
++            # be serving the API (e.g. mid-migration to an external cluster).
++            if [ "$METRICS_ENABLED" != "true" ]; then
++              METRICS_CONTAINERS="prometheus prometheus-nginx-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana"
++              docker stop $METRICS_CONTAINERS 2>/dev/null || true
++              docker rm -f $METRICS_CONTAINERS 2>/dev/null || true
++            fi
++            if [ "$WORKER_ENABLED" != "true" ]; then
++              # A stale worker would keep running crons on the OLD image — worse than downtime.
++              docker stop worker-service 2>/dev/null || true
++              docker rm -f worker-service 2>/dev/null || true
++            fi
++
+             docker volume create letsencrypt_certs || true
+             docker volume create certbot_logs || true
+ 
+@@ -513,6 +547,23 @@ jobs:
+               ( set -a; [ -f "${{ inputs.env_file }}" ] && . "./${{ inputs.env_file }}"; set +a; export ENV_FILE="${{ inputs.env_file }}" API_ENV=${{ inputs.api_env }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }}; $DOCKER_COMPOSE -f docker-compose.local.yml up -d $EXTRA_UP )
+             fi
+ 
++            # Mongo backups (local mongo only): install/refresh the cron entry when both
++            # mongo and backups are enabled, remove it otherwise — flipping mongo_enabled
++            # to false on a redeploy cleanly disables backups (existing dumps are kept).
++            # Dumps live in ~/db-backups, OUTSIDE ~/app — blue/green swaps never touch them.
++            BACKUP_MARKER="# bp-mongo-backup"
++            MONGO_BACKUP_ENABLED=${MONGO_BACKUP_ENABLED:-true}
++            if [ "$MONGO_ENABLED" = "true" ] && [ "$MONGO_BACKUP_ENABLED" = "true" ]; then
++              mkdir -p "$HOME/db-backups"
++              chmod +x "$HOME/app/scripts/backup-mongo.sh" "$HOME/app/scripts/restore-mongo.sh" 2>/dev/null || true
++              CRON_LINE="${MONGO_BACKUP_CRON:-30 3 * * *} ENV_FILE=${{ inputs.env_file }} API_ENV=${{ inputs.api_env }} MONGO_BACKUP_RETENTION=${MONGO_BACKUP_RETENTION:-14} $HOME/app/scripts/backup-mongo.sh >> $HOME/db-backups/backup.log 2>&1 $BACKUP_MARKER"
++              ( crontab -l 2>/dev/null | grep -vF "$BACKUP_MARKER" || true; echo "$CRON_LINE" ) | crontab -
++              echo "Mongo backup cron installed: ${MONGO_BACKUP_CRON:-30 3 * * *} (retention ${MONGO_BACKUP_RETENTION:-14})"
++            else
++              ( crontab -l 2>/dev/null | grep -vF "$BACKUP_MARKER" || true ) | crontab - || true
++              echo "Mongo backup cron removed (mongo_enabled=$MONGO_ENABLED, mongo_backup_enabled=$MONGO_BACKUP_ENABLED)"
++            fi
++
+       - name: 🧹 Cleanup backup on success
+         if: always() && steps.deploy_run.outcome == 'success'
+         uses: appleboy/ssh-action@master
+diff --git a/docker-compose.local.yml b/docker-compose.local.yml
+index a80a0e2..5b70742 100644
+--- a/docker-compose.local.yml
++++ b/docker-compose.local.yml
+@@ -113,6 +113,7 @@ services:
+         max-file: "3"
+ 
+   promtail:
++    container_name: promtail
+     image: grafana/promtail:latest
+     restart: always
+     deploy:
+@@ -136,6 +137,7 @@ services:
+         max-file: "3"
+ 
+   loki:
++    container_name: loki
+     image: grafana/loki:latest
+     restart: always
+     deploy:
+@@ -189,6 +191,7 @@ services:
+         max-file: "3"
+ 
+   grafana:
++    container_name: grafana
+     image: grafana/grafana:latest
+     restart: always
+     deploy:
+diff --git a/docs/MONGO_BACKUPS_RU.md b/docs/MONGO_BACKUPS_RU.md
+new file mode 100644
+index 0000000..94da4bb
+--- /dev/null
++++ b/docs/MONGO_BACKUPS_RU.md
+@@ -0,0 +1,93 @@
++# Бэкапы MongoDB (локальная база в контейнере)
++
++Реализация раздела 5 из `INFRASTRUCTURE_TODO_RU.md`. Работает **только для локальной Mongo** (`mongo_enabled: true` в деплое): если база ремоутная — контейнера нет, бэкапить нечего, используйте бэкапы провайдера кластера.
++
++## Как это работает
++
++- **`scripts/backup-mongo.sh`** — `mongodump --archive --gzip` в файл `~/db-backups/mongo_<env>_<дата>.archive.gz`.
++- Дампы лежат в **`~/db-backups`** — рядом с `~/app`, но снаружи: blue/green-свопы (`app` → `app.bak`, `app_new` → `app`) их не трогают.
++- **Расписание — системный cron** на сервере, ставится и снимается деплой-воркфлоу. Сознательно не воркер-джоба: бэкапы не должны зависеть от Redis/BullMQ — страховка обязана быть тупой и автономной.
++- **Ротация**: после успешного дампа хранится N последних (`mongo_backup_retention`, дефолт 14). Ошибочные/пустые дампы удаляются сразу (проверка `gzip -t` + размер).
++- Лок от наложения запусков, гард по свободному диску (дефолт 500MB), самообрезающийся `backup.log`.
++
++## Включение через деплой
++
++Автоматика: `mongo_enabled: true` → бэкапы включаются сами (`mongo_backup_enabled` по дефолту `true`). Выключил Mongo на редеплое → cron снимается, ничего не ломается, накопленные дампы остаются.
++
++```yaml
++with:
++  mongo_enabled: true
++  # опционально:
++  mongo_backup_enabled: true      # false — выключить бэкапы, не выключая mongo
++  mongo_backup_cron: '30 3 * * *' # серверное время; выбирай ночное окно
++  mongo_backup_retention: 14      # сколько дампов хранить
++```
++
++Крон-строка помечена маркером `# bp-mongo-backup` и обновляется идемпотентно — смена частоты/ретенции применяется следующим деплоем.
++
++### Формат расписания (crontab)
++
++Пять полей: `минута час день-месяца месяц день-недели`. Звёздочка — «любое значение». **Время серверное** — на типичном VPS это UTC (03:30 UTC = 06:30 МСК); проверить: `timedatectl` на сервере.
++
++| `mongo_backup_cron` | Когда запускается |
++|---|---|
++| `30 3 * * *` | каждый день в 03:30 (дефолт) |
++| `0 2 * * *` | каждый день в 02:00 |
++| `0 */6 * * *` | каждые 6 часов (00:00, 06:00, 12:00, 18:00) |
++| `0 2,14 * * *` | дважды в день — в 02:00 и 14:00 |
++| `0 4 * * 0` | раз в неделю, воскресенье 04:00 |
++| `0 4 1 * *` | раз в месяц, 1-го числа в 04:00 |
++| `15 3 * * 1-5` | по будням в 03:15 |
++
++Подбирая частоту, помни про связку с `mongo_backup_retention`: ретенция считается в дампах, а не в днях. Дефолт 14 при ежедневном запуске — две недели истории; при `*/6` те же 14 дампов — всего ~3.5 дня. Увеличил частоту — увеличь и ретенцию (и посматривай на диск: гард в скрипте пропустит бэкап при <500MB свободного).
++
++## Нагрузка на CPU/RAM (важно при динамических лимитах памяти)
++
++`mongodump` запускается **не** через `docker exec` в mongo-контейнер, а в отдельном одноразовом контейнере (тот же образ, что у работающей mongo — версии тулов совпадают всегда), который делит с mongo только сетевой неймспейс. Почему это важно:
++
++- `docker exec` выполнялся бы **внутри cgroup mongo** — дамп ел бы бюджет памяти, выданный базе через `memory-limits.sh`, и под нагрузкой мог бы спровоцировать OOM-kill mongod.
++- У одноразового контейнера свои жёсткие капы: `--memory 256m --cpus 0.5` (дефолты; `MONGO_BACKUP_MEM_LIMIT` / `MONGO_BACKUP_CPUS`). Gzip-сжатие тоже происходит внутри него.
++- В бюджет `memory-limits.sh` дамп-контейнер **не входит** сознательно: он живёт минуты и в ночное окно — выделять ему постоянную долю значило бы отнимать её у api/mongo круглосуточно. Капы вместо доли.
++- На mongod сам дамп даёт умеренную читающую нагрузку; на маленьком сервере (1 vCPU) `--cpus 0.5` не даёт задавить приложение. WiredTiger-кэш mongo не раздувается от mongodump.
++
++## Восстановление
++
++```sh
++ls ~/db-backups/                          # выбрать дамп
++ENV_FILE=.env.prod ~/app/scripts/restore-mongo.sh ~/db-backups/mongo_prod_20260717_033001.archive.gz
++```
++
++Скрипт спросит подтверждение (`FORCE=1` — для скриптованного восстановления). **`--drop`: существующие коллекции заменяются содержимым дампа.** Порядок при серьёзной аварии:
++
++1. Остановить запись: `docker stop api-service worker-service` (nginx отдаст 502 — честнее, чем писать в битую базу).
++2. Прогнать restore, проверить ключевые коллекции через `mongosh`.
++3. Поднять api обратно: деплой или `docker start api-service worker-service`.
++
++## Скачать бэкап на свою машину
++
++С ноута (не с сервера). Подставь юзера/хост своего сервера:
++
++```sh
++# последний дамп одной командой
++scp "user@server:~/db-backups/$(ssh user@server 'ls -1t ~/db-backups/mongo_*.archive.gz | head -1 | xargs basename')" ~/Downloads/
++
++# конкретный файл
++scp user@server:~/db-backups/mongo_prod_20260717_033001.archive.gz ~/Downloads/
++
++# все дампы разом (докачивает только новые — удобно гонять периодически)
++rsync -avz --progress user@server:~/db-backups/ ~/backups/myproject/
++```
++
++С таким локальным дампом можно и поднять базу у себя: `MONGO_CONTAINER=<локальный mongo-контейнер> ENV_FILE=.env.local ./scripts/restore-mongo.sh ~/Downloads/mongo_prod_....archive.gz` — удобно отлаживать прод-баги на реальных данных.
++
++## Ручной запуск / проверка
++
++```sh
++ENV_FILE=.env.prod API_ENV=prod ~/app/scripts/backup-mongo.sh   # разовый бэкап
++tail -50 ~/db-backups/backup.log                                # лог кронов
++crontab -l | grep bp-mongo-backup                               # расписание стоит?
++```
++
++## Офсайт (следующий шаг, вручную)
++
++Дампы на том же диске защищают от «уронил базу», но не от потери сервера. Когда дойдут руки — добавь в конец `backup-mongo.sh` выгрузку в object storage (`rclone copy` / `mc cp` в S3-совместимый бакет). Ретенция в бакете — отдельно, средствами стораджа (lifecycle rules).
+diff --git a/grafana/dashboard/logs_grafana_dashboard.json b/grafana/dashboard/logs_grafana_dashboard.json
+index ecc35cf..846d7c3 100644
+--- a/grafana/dashboard/logs_grafana_dashboard.json
++++ b/grafana/dashboard/logs_grafana_dashboard.json
+@@ -247,7 +247,7 @@
+         "type": "loki",
+         "uid": "P8E80F9AEF21F6940"
+       },
+-      "description": "Background worker (BullMQ crons — scripts/worker.ts). Future crons/collectors log here too.",
++      "description": "Background worker (BullMQ crons \u2014 scripts/worker.ts). Future crons/collectors log here too.",
+       "fieldConfig": {
+         "defaults": {},
+         "overrides": []
+@@ -292,7 +292,7 @@
+         "type": "loki",
+         "uid": "P8E80F9AEF21F6940"
+       },
+-      "description": "Merchant API logs, excluding core backend and schedule",
++      "description": "Local mongo container logs (mongod JSON). Empty when MONGO_ENABLED=false \u2014 remote cluster logs never reach promtail.",
+       "fieldConfig": {
+         "defaults": {},
+         "overrides": []
+@@ -303,6 +303,96 @@
+         "x": 0,
+         "y": 25
+       },
++      "id": 102,
++      "options": {
++        "dedupStrategy": "none",
++        "enableInfiniteScrolling": false,
++        "enableLogDetails": true,
++        "prettifyLogMessage": false,
++        "showCommonLabels": false,
++        "showLabels": false,
++        "showTime": true,
++        "sortOrder": "Descending",
++        "wrapLogMessage": false
++      },
++      "pluginVersion": "11.6.0",
++      "targets": [
++        {
++          "datasource": {
++            "type": "loki",
++            "uid": "P8E80F9AEF21F6940"
++          },
++          "direction": "backward",
++          "editorMode": "builder",
++          "expr": "{job=\"containerlogs\", container_name=\"mongo\"} |= ``",
++          "queryType": "range",
++          "refId": "A"
++        }
++      ],
++      "title": "mongo service",
++      "type": "logs"
++    },
++    {
++      "datasource": {
++        "type": "loki",
++        "uid": "P8E80F9AEF21F6940"
++      },
++      "description": "mongod \"Slow query\" entries (default slowms 100). Local mongo only (MONGO_ENABLED=true).",
++      "fieldConfig": {
++        "defaults": {},
++        "overrides": []
++      },
++      "gridPos": {
++        "h": 8,
++        "w": 12,
++        "x": 12,
++        "y": 25
++      },
++      "id": 103,
++      "options": {
++        "dedupStrategy": "none",
++        "enableInfiniteScrolling": false,
++        "enableLogDetails": true,
++        "prettifyLogMessage": false,
++        "showCommonLabels": false,
++        "showLabels": false,
++        "showTime": true,
++        "sortOrder": "Descending",
++        "wrapLogMessage": false
++      },
++      "pluginVersion": "11.6.0",
++      "targets": [
++        {
++          "datasource": {
++            "type": "loki",
++            "uid": "P8E80F9AEF21F6940"
++          },
++          "direction": "backward",
++          "editorMode": "builder",
++          "expr": "{job=\"containerlogs\", container_name=\"mongo\"} |= `Slow query`",
++          "queryType": "range",
++          "refId": "A"
++        }
++      ],
++      "title": "mongo slow queries",
++      "type": "logs"
++    },
++    {
++      "datasource": {
++        "type": "loki",
++        "uid": "P8E80F9AEF21F6940"
++      },
++      "description": "Merchant API logs, excluding core backend and schedule",
++      "fieldConfig": {
++        "defaults": {},
++        "overrides": []
++      },
++      "gridPos": {
++        "h": 8,
++        "w": 12,
++        "x": 0,
++        "y": 33
++      },
+       "id": 5,
+       "options": {
+         "dedupStrategy": "none",
+@@ -341,7 +431,7 @@
+         "h": 8,
+         "w": 12,
+         "x": 12,
+-        "y": 25
++        "y": 33
+       },
+       "id": 16,
+       "options": {
+@@ -374,7 +464,7 @@
+         "h": 1,
+         "w": 24,
+         "x": 0,
+-        "y": 33
++        "y": 41
+       },
+       "id": 13,
+       "panels": [],
+@@ -444,7 +534,7 @@
+         "h": 12,
+         "w": 12,
+         "x": 0,
+-        "y": 34
++        "y": 42
+       },
+       "id": 11,
+       "options": {
+@@ -536,7 +626,7 @@
+         "h": 12,
+         "w": 12,
+         "x": 12,
+-        "y": 34
++        "y": 42
+       },
+       "id": 12,
+       "options": {
+@@ -590,7 +680,7 @@
+         "h": 16,
+         "w": 8,
+         "x": 0,
+-        "y": 46
++        "y": 54
+       },
+       "id": 9,
+       "options": {
+@@ -650,7 +740,7 @@
+         "h": 16,
+         "w": 16,
+         "x": 8,
+-        "y": 46
++        "y": 54
+       },
+       "id": 10,
+       "options": {
+@@ -669,7 +759,7 @@
+           "color": "rgba(255,0,255,0.7)"
+         },
+         "filterValues": {
+-          "le": 1e-9
++          "le": 1e-09
+         },
+         "legend": {
+           "show": true
+@@ -716,4 +806,4 @@
+   "title": "NGINX/API LOGS",
+   "uid": "bdu5e8ll0ibr4e",
+   "version": 1
+-}
++}
+\ No newline at end of file
+diff --git a/grafana/loki-config.yml b/grafana/loki-config.yml
+index fa3625c..ac646af 100644
+--- a/grafana/loki-config.yml
++++ b/grafana/loki-config.yml
+@@ -49,6 +49,19 @@ limits_config:
+   max_global_streams_per_user: 5000
+   max_query_length: 721h
+   allow_structured_metadata: false
++  # Delete chunks older than 7 days (in tune with reject_old_samples_max_age).
++  # Without this, chunks accumulate for as long as the container lives.
++  retention_period: 168h
++
++# Retention is enforced by the compactor: it periodically marks chunks past
++# retention_period and deletes them after retention_delete_delay.
++compactor:
++  working_directory: /tmp/loki/compactor
++  compaction_interval: 10m
++  retention_enabled: true
++  retention_delete_delay: 2h
++  retention_delete_worker_count: 50
++  delete_request_store: filesystem
+ 
+ ruler:
+   alertmanager_url: http://localhost:9093
+\ No newline at end of file
+diff --git a/scripts/backup-mongo.sh b/scripts/backup-mongo.sh
+new file mode 100755
+index 0000000..4dbe304
+--- /dev/null
++++ b/scripts/backup-mongo.sh
+@@ -0,0 +1,128 @@
++#!/bin/bash
++
++# Mongo backup for the LOCAL mongo container (MONGO_ENABLED=true deployments only;
++# a remote cluster should use the provider's backups). See docs/MONGO_BACKUPS_RU.md.
++#
++# Design notes:
++#  - mongodump runs in a THROWAWAY container sharing the mongo container's network
++#    namespace (`--network container:mongo`) with its own hard --memory/--cpus caps.
++#    Never `docker exec` into the mongo container: the dump would eat the DB's own
++#    cgroup budget (memory-limits.sh) and could OOM-kill mongod under load.
++#  - The dump container is transient (minutes, off-peak cron) — intentionally NOT part
++#    of the memory-limits.sh budget; the caps below keep it polite instead.
++#  - Streams `mongodump --archive --gzip` to a file in BACKUP_DIR (outside $HOME/app,
++#    so blue/green swaps of the app dir never touch the dumps).
++#
++# Usage (cron installs this via the deploy workflow):
++#   ENV_FILE=.env.prod API_ENV=prod ./scripts/backup-mongo.sh
++#
++# Tunables (env):
++#   BACKUP_DIR                  default $HOME/db-backups
++#   MONGO_CONTAINER             default mongo
++#   MONGO_BACKUP_RETENTION      dumps to keep, default 14
++#   MONGO_BACKUP_MIN_FREE_MB    skip if less free disk, default 500
++#   MONGO_BACKUP_MEM_LIMIT      dump container RAM cap, default 256m
++#   MONGO_BACKUP_CPUS           dump container CPU cap, default 0.5
++#   MONGO_BACKUP_DB             db to dump, default $MONGO_DB; "all" = full instance
++
++set -euo pipefail
++
++SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
++PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
++
++BACKUP_DIR="${BACKUP_DIR:-$HOME/db-backups}"
++MONGO_CONTAINER="${MONGO_CONTAINER:-mongo}"
++RETENTION="${MONGO_BACKUP_RETENTION:-14}"
++MIN_FREE_MB="${MONGO_BACKUP_MIN_FREE_MB:-500}"
++MEM_LIMIT="${MONGO_BACKUP_MEM_LIMIT:-256m}"
++CPUS="${MONGO_BACKUP_CPUS:-0.5}"
++ENV_FILE="${ENV_FILE:-.env}"
++
++log() { echo "[backup-mongo] $(date '+%Y-%m-%d %H:%M:%S') $*"; }
++
++# Load MONGO_USER / MONGO_PASSWORD / MONGO_DB from the app env file (values already
++# in the environment win — same convention as the deploy scripts).
++if [ -f "${PROJECT_ROOT}/${ENV_FILE}" ]; then
++    set -a
++    # shellcheck source=/dev/null
++    . "${PROJECT_ROOT}/${ENV_FILE}"
++    set +a
++fi
++
++MONGO_USER="${MONGO_USER:-admin}"
++MONGO_DB="${MONGO_DB:-app}"
++DUMP_DB="${MONGO_BACKUP_DB:-$MONGO_DB}"
++
++if [ -z "${MONGO_PASSWORD:-}" ]; then
++    log "ERROR: MONGO_PASSWORD is empty (env file: ${PROJECT_ROOT}/${ENV_FILE})"
++    exit 1
++fi
++
++mkdir -p "$BACKUP_DIR"
++
++# Trim our own log so cron output never grows unbounded (~10MB cap).
++LOG_FILE="$BACKUP_DIR/backup.log"
++if [ -f "$LOG_FILE" ] && [ "$(stat -c%s "$LOG_FILE" 2>/dev/null || stat -f%z "$LOG_FILE")" -gt 10485760 ]; then
++    tail -c 1048576 "$LOG_FILE" > "$LOG_FILE.tmp" && mv "$LOG_FILE.tmp" "$LOG_FILE"
++fi
++
++# Overlap guard: a slow dump must not stack with the next cron tick.
++LOCK_DIR="$BACKUP_DIR/.backup.lock"
++if ! mkdir "$LOCK_DIR" 2>/dev/null; then
++    log "another backup is already running (lock: $LOCK_DIR) — skipping"
++    exit 0
++fi
++trap 'rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT
++
++# Local mongo must be up; when MONGO_ENABLED=false there is no container — that's fine,
++# the deploy removes this cron entry, but guard anyway (manual runs, race with deploy).
++if [ "$(docker inspect -f '{{.State.Running}}' "$MONGO_CONTAINER" 2>/dev/null)" != "true" ]; then
++    log "container '$MONGO_CONTAINER' is not running — nothing to back up (remote mongo?)"
++    exit 0
++fi
++
++# Reuse the exact image of the running mongo — tool versions always match the server.
++MONGO_IMAGE="$(docker inspect -f '{{.Config.Image}}' "$MONGO_CONTAINER")"
++
++FREE_MB="$(df -Pm "$BACKUP_DIR" | awk 'NR==2 {print $4}')"
++if [ "$FREE_MB" -lt "$MIN_FREE_MB" ]; then
++    log "ERROR: only ${FREE_MB}MB free at $BACKUP_DIR (< ${MIN_FREE_MB}MB) — skipping backup"
++    exit 1
++fi
++
++STAMP="$(date +%Y%m%d_%H%M%S)"
++FILE="$BACKUP_DIR/mongo_${API_ENV:-prod}_${STAMP}.archive.gz"
++
++DB_ARGS=(--db "$DUMP_DB")
++[ "$DUMP_DB" = "all" ] && DB_ARGS=()
++
++log "dumping db='$DUMP_DB' from container '$MONGO_CONTAINER' (image $MONGO_IMAGE, mem $MEM_LIMIT, cpus $CPUS) -> $FILE"
++
++# Password goes in via env (not argv) so it never shows in host `ps`.
++if ! docker run --rm \
++    --network "container:${MONGO_CONTAINER}" \
++    --memory "$MEM_LIMIT" --cpus "$CPUS" \
++    -e MONGO_BACKUP_PWD="$MONGO_PASSWORD" \
++    "$MONGO_IMAGE" \
++    sh -c "mongodump --host 127.0.0.1 --port 27017 --username '$MONGO_USER' --password \"\$MONGO_BACKUP_PWD\" --authenticationDatabase admin --quiet --archive --gzip $(printf '%s ' ${DB_ARGS[@]+"${DB_ARGS[@]}"})" \
++    > "$FILE"; then
++    log "ERROR: mongodump failed"
++    rm -f "$FILE"
++    exit 1
++fi
++
++if [ ! -s "$FILE" ] || ! gzip -t "$FILE" 2>/dev/null; then
++    log "ERROR: dump is empty or corrupt — removing $FILE"
++    rm -f "$FILE"
++    exit 1
++fi
++
++log "done: $FILE ($(du -h "$FILE" | cut -f1))"
++
++# Retention: keep the newest N dumps for this env.
++ls -1t "$BACKUP_DIR"/mongo_"${API_ENV:-prod}"_*.archive.gz 2>/dev/null | tail -n +"$((RETENTION + 1))" | while read -r old; do
++    log "retention: removing $old"
++    rm -f "$old"
++done
++
++log "backups on disk: $(ls -1 "$BACKUP_DIR"/mongo_*.archive.gz 2>/dev/null | wc -l | tr -d ' '), free: $(df -Pm "$BACKUP_DIR" | awk 'NR==2 {print $4}')MB"
+diff --git a/scripts/local-containers-run.sh b/scripts/local-containers-run.sh
+index d18c11a..ecce3ef 100644
+--- a/scripts/local-containers-run.sh
++++ b/scripts/local-containers-run.sh
+@@ -591,8 +591,8 @@ function clean() {
+     # Try to stop containers through docker-compose
+     ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} down --remove-orphans
+ 
+-    docker stop service-api-certbot-init service-api-certbot core-nginx-service api-service api-service-green prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana redis redis-green mongo mongo-green 2>/dev/null || true
+-    docker rm -f service-api-certbot-init service-api-certbot core-nginx-service api-service api-service-green prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana redis redis-green mongo mongo-green 2>/dev/null || true
++    docker stop service-api-certbot-init service-api-certbot core-nginx-service api-service api-service-green worker-service prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana redis redis-green mongo mongo-green 2>/dev/null || true
++    docker rm -f service-api-certbot-init service-api-certbot core-nginx-service api-service api-service-green worker-service prometheus nginx-prometheus-exporter prometheus-node-exporter cadvisor promtail loki telegraf grafana redis redis-green mongo mongo-green 2>/dev/null || true
+ 
+     # Clean up old app_new images
+     echo "Cleaning up old app_new images..."
+diff --git a/scripts/restore-mongo.sh b/scripts/restore-mongo.sh
+new file mode 100755
+index 0000000..3dc81b8
+--- /dev/null
++++ b/scripts/restore-mongo.sh
+@@ -0,0 +1,74 @@
++#!/bin/bash
++
++# Restore a dump produced by scripts/backup-mongo.sh into the LOCAL mongo container.
++# DESTRUCTIVE: --drop replaces existing collections. See docs/MONGO_BACKUPS_RU.md.
++#
++# Usage:
++#   ENV_FILE=.env.prod ./scripts/restore-mongo.sh /root/db-backups/mongo_prod_20260717_033001.archive.gz
++#   FORCE=1 ... — skip the interactive confirmation (for scripted recovery).
++
++set -euo pipefail
++
++SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
++PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
++
++ARCHIVE="${1:-}"
++MONGO_CONTAINER="${MONGO_CONTAINER:-mongo}"
++MEM_LIMIT="${MONGO_BACKUP_MEM_LIMIT:-256m}"
++CPUS="${MONGO_BACKUP_CPUS:-0.5}"
++ENV_FILE="${ENV_FILE:-.env}"
++
++log() { echo "[restore-mongo] $(date '+%Y-%m-%d %H:%M:%S') $*"; }
++
++if [ -z "$ARCHIVE" ] || [ ! -f "$ARCHIVE" ]; then
++    echo "Usage: ENV_FILE=.env.prod $0 /path/to/mongo_<env>_<stamp>.archive.gz"
++    exit 1
++fi
++
++if ! gzip -t "$ARCHIVE" 2>/dev/null; then
++    log "ERROR: $ARCHIVE is not a valid gzip archive"
++    exit 1
++fi
++
++if [ -f "${PROJECT_ROOT}/${ENV_FILE}" ]; then
++    set -a
++    # shellcheck source=/dev/null
++    . "${PROJECT_ROOT}/${ENV_FILE}"
++    set +a
++fi
++
++MONGO_USER="${MONGO_USER:-admin}"
++
++if [ -z "${MONGO_PASSWORD:-}" ]; then
++    log "ERROR: MONGO_PASSWORD is empty (env file: ${PROJECT_ROOT}/${ENV_FILE})"
++    exit 1
++fi
++
++if [ "$(docker inspect -f '{{.State.Running}}' "$MONGO_CONTAINER" 2>/dev/null)" != "true" ]; then
++    log "ERROR: container '$MONGO_CONTAINER' is not running"
++    exit 1
++fi
++
++MONGO_IMAGE="$(docker inspect -f '{{.Config.Image}}' "$MONGO_CONTAINER")"
++
++if [ "${FORCE:-0}" != "1" ]; then
++    echo "About to RESTORE (with --drop!) from: $ARCHIVE"
++    echo "Target: container '$MONGO_CONTAINER' ($MONGO_IMAGE)"
++    read -r -p "Type 'restore' to continue: " answer
++    [ "$answer" = "restore" ] || { echo "Aborted."; exit 1; }
++fi
++
++log "restoring from $ARCHIVE ..."
++
++if ! docker run --rm -i \
++    --network "container:${MONGO_CONTAINER}" \
++    --memory "$MEM_LIMIT" --cpus "$CPUS" \
++    -e MONGO_BACKUP_PWD="$MONGO_PASSWORD" \
++    "$MONGO_IMAGE" \
++    sh -c "mongorestore --host 127.0.0.1 --port 27017 --username '$MONGO_USER' --password \"\$MONGO_BACKUP_PWD\" --authenticationDatabase admin --archive --gzip --drop" \
++    < "$ARCHIVE"; then
++    log "ERROR: mongorestore failed"
++    exit 1
++fi
++
++log "restore complete. Verify the app (healthcheck, key screens) before declaring victory."

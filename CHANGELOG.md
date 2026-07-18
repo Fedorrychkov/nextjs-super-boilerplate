@@ -2,6 +2,26 @@
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-07-18
+
+### Infrastructure & tooling
+
+- **Background worker (`scripts/worker.ts` + `lib/services/worker-scheduler.ts`)** — optional headless BullMQ container for periodic jobs (generic job registry, repeatable-job schedules with stale cleanup, `removeOnComplete/removeOnFail`, dedicated Redis connection). Enabled per environment via `worker_enabled` / `WORKER_ENABLED`; ships with a gated `heartbeat` example job. See [`docs/CRON_ARCHITECTURE_PORTABLE_RU.md`](docs/CRON_ARCHITECTURE_PORTABLE_RU.md)
+- **Mongo backups (local mongo)** — nightly `mongodump` via `scripts/backup-mongo.sh` (throwaway container with CPU/RAM caps, rotation, disk guard, integrity check) + `scripts/restore-mongo.sh`; cron installed/removed by the deploy (`mongo_backup_enabled` / `mongo_backup_cron` / `mongo_backup_retention`, auto-off when `mongo_enabled: false`). See [`docs/MONGO_BACKUPS_RU.md`](docs/MONGO_BACKUPS_RU.md)
+- **Mongo observability** — Grafana `mongo service` + `mongo slow queries` log panels; Loki retention via `compactor` (`retention_period: 168h`)
+- **Docker Compose v1↔v2 compatibility** — deploy scripts, `Makefile` and CI auto-detect `docker compose` / `docker-compose`; explicit `container_name` for promtail/loki/grafana; `version:` removed from compose files. See [`docs/DOCKER_COMPOSE_V2_RU.md`](docs/DOCKER_COMPOSE_V2_RU.md)
+- **Toggled-off cleanup on deploy** — flipping `metrics_enabled` / `worker_enabled` to false now stops the leftover `restart: always` containers instead of leaving them running on a stale image
+- **`scripts/init-project.sh`** — one-shot fork bootstrap: renames placeholders, generates `JWT_SECRET` / `MFA_ENCRYPTION_KEY` / `SEO_NOTIFY_SECRET` / VAPID into `.env.local`, guard file `.project-initialized`, runs `pnpm doctor`
+- `doctor` now validates worker/Redis consistency (`WORKER_ENABLED` without `REDIS_URL`)
+
+### UI
+
+- **Profile page tabs** — profile split into `main` / `devices` / `security` tabs (`TabsContainer` with `?activeTab=` deep-linking); onboarding card/modal navigate to the matching tab + anchor
+
+### Fixes
+
+- **Upstream 502** — `apiErrorHandlerContainer` returns 502 `UPSTREAM_UNREACHABLE` when an outbound request never gets a response, instead of silently answering 200 with an empty body
+
 ### MCP & machine auth
 
 - **Personal Access Tokens (PAT)** — `ApiToken` model (sha256 hash, scopes, expiry, revoke), `withApiTokenOrAuth` middleware with per-token rate limit and `SecurityAuditLog` audit; feature flag `API_TOKENS_ENABLED`

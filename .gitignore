@@ -49,5 +49,12 @@ next-env.d.ts
 
 grafana/prometheus/data
 
+# Project bootstrap guard/log (scripts/init-project.sh) — contains generated secrets
+.project-initialized
+
+# Local mongo dumps (scripts/backup-mongo.sh writes to ~/db-backups on servers; this
+# ignores any stray local dumps if you point BACKUP_DIR into the repo)
+/db-backups
+
 dist/
 !certificates/*

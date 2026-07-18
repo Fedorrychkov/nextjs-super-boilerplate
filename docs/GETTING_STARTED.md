@@ -1,16 +1,30 @@
-# Старт проекта (v0.2.0)
+# Старт проекта (v0.2.4)
 
 Краткий чеклист после форка или первого развёртывания. Инфраструктура (Docker, CI, nginx) — в корневом [`README.md`](../README.md) и [`INFRASTRUCTURE_PLAN_RU.md`](./INFRASTRUCTURE_PLAN_RU.md).
+
+## 0. Быстрый старт одной командой
+
+```bash
+pnpm install
+./scripts/init-project.sh
+```
+
+Скрипт спросит slug / название / домен / автора, переименует захардкоженные плейсхолдеры
+(`package.json`, `config/product.ts`, `prod-deploy.yml`, User-Agent в GitHub OAuth, `Makefile`),
+сгенерит `JWT_SECRET` / `MFA_ENCRYPTION_KEY` / `SEO_NOTIFY_SECRET` / VAPID в `.env.local`,
+запишет их копию в gitignore-файл `.project-initialized` (оттуда — в CI-секреты для прода)
+и прогонит `pnpm doctor`. Запускается один раз (guard-файл). Ручные значения (Mongo, Redis,
+admin, Uploadcare, ключи провайдеров) заполняешь сам. Таблица ниже — ручной путь и что осталось.
 
 ## 1. Первый час
 
 | Шаг | Что сделать |
 |-----|-------------|
-| 1 | `cp .env.example .env.local` — заполнить секреты (см. [`ENV_REFERENCE.md`](./ENV_REFERENCE.md)) |
+| 1 | `./scripts/init-project.sh` (или вручную: `cp .env.example .env.local` + секреты, см. [`ENV_REFERENCE.md`](./ENV_REFERENCE.md)) |
 | 2 | `pnpm doctor` — проверить согласованность env и флагов |
-| 3 | Отредактировать [`config/product.ts`](../config/product.ts) — название, описание, автор, ссылки, PWA |
-| 4 | Заменить `NEXT_PUBLIC_SITE_URL` на ваш домен |
-| 5 | Поднять Mongo (`make up-local` или `MONGO_URI`) |
+| 3 | Дозаполнить [`config/product.ts`](../config/product.ts) — описание, `author: null` для SaaS, PWA-цвета/иконки |
+| 4 | Заполнить Mongo (`MONGO_*` / `MONGO_URI`), `REDIS_URL`, `FIRST_ADMIN_*` |
+| 5 | Поднять Mongo (`make up-local` или внешний `MONGO_URI`) |
 | 6 | `pnpm run dev:local` |
 | 7 | Создать первого admin (`FIRST_ADMIN_*` или вручную в БД) |
 
@@ -92,4 +106,4 @@ pnpm run test
 - [`CONFIGURATION.md`](./CONFIGURATION.md) — auth, email, MFA, sessions, onboarding
 - [`ENV_REFERENCE.md`](./ENV_REFERENCE.md) — все переменные окружения
 - [`SECURITY_AND_ACCOUNT_ROADMAP.md`](./SECURITY_AND_ACCOUNT_ROADMAP.md) — что реализовано в security-блоке
-- [`CHANGELOG.md`](../CHANGELOG.md) — v0.2.0
+- [`CHANGELOG.md`](../CHANGELOG.md) — release notes

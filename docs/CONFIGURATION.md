@@ -1,4 +1,4 @@
-# Конфигурация функций (v0.2.0)
+# Конфигурация функций (v0.2.4)
 
 Все feature flags и секреты — в [`config/env.ts`](../config/env.ts) (блоки `ACCOUNT_CONFIG`, `EMAIL_CONFIG`, `NOTIFICATION_CONFIG`, …).  
 Брендинг и SEO-контент — в [`config/product.ts`](../config/product.ts).
