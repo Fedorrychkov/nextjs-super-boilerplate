@@ -10,6 +10,12 @@ Planning, configuration, and FAQ. Root **[`README.md`](../README.md)** — local
 | [`CONFIGURATION.md`](./CONFIGURATION.md) | RU | Feature flags: auth, email, MFA, sessions, onboarding, push, LLM |
 | [`ENV_REFERENCE.md`](./ENV_REFERENCE.md) | EN/RU table | All environment variables |
 | [`../CHANGELOG.md`](../CHANGELOG.md) | EN | Release notes |
+| [`../AGENTS.md`](../AGENTS.md) / [`../AGENTS_RU.md`](../AGENTS_RU.md) | EN / RU | Contract for people and AI agents (rules, priorities, what CI catches); `CLAUDE.md` is a thin adapter |
+| [`agents/review.md`](./agents/review.md) | RU | How to review a PR: what a finding is, priorities, what not to report |
+| [`agents/triage.md`](./agents/triage.md) | RU | Issues: labels, what an issue must contain |
+| [`DECISIONS_RU.md`](./DECISIONS_RU.md) | RU | Decision journal — why things are the way they are (append-only) |
+| [`plans/README.md`](./plans/README.md) | RU | Plans for large work: when one is needed and what goes in |
+| [`BP_AUDIT_2026_09_RU.md`](./BP_AUDIT_2026_09_RU.md) | RU | Audit vs downstream projects (Sept 2026): what was ported, what is left |
 
 ## Roadmaps & plans
 
@@ -26,6 +32,7 @@ Planning, configuration, and FAQ. Root **[`README.md`](../README.md)** — local
 
 | File | Language | Purpose |
 |------|----------|---------|
+| [`CI_TELEGRAM_LIGHTHOUSE_RU.md`](./CI_TELEGRAM_LIGHTHOUSE_RU.md) | RU | Telegram notifications about PR / review / CI failures, Lighthouse budgets, secret scan, gates |
 | [`INFRASTRUCTURE_PLAN.md`](./INFRASTRUCTURE_PLAN.md) | EN | Deploy vs Plan A/B |
 | [`INFRASTRUCTURE_PLAN_RU.md`](./INFRASTRUCTURE_PLAN_RU.md) | RU | Same (Russian) |
 | [`INFRASTRUCTURE_TODO_RU.md`](./INFRASTRUCTURE_TODO_RU.md) | RU | VPS / CI backlog (§3 mongo logs, §5 backups — **implemented**) |

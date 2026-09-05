@@ -23,8 +23,6 @@ const {
   GOOGLE_INDEXING_PRIVATE_KEY = process.env.GOOGLE_INDEXING_PRIVATE_KEY,
   /** Shared secret guarding the public SEO indexing endpoints (/api/v1/seo/*). Used only when SEO_NOTIFY_AUTH_ENABLED=true. */
   SEO_NOTIFY_SECRET = process.env.SEO_NOTIFY_SECRET || '',
-  /** Hard on/off for SEO endpoint auth. false (default) → endpoints open as before (gradual rollout); true → require secret header. */
-  SEO_NOTIFY_AUTH_ENABLED = process.env.SEO_NOTIFY_AUTH_ENABLED === 'true',
   MFA_ENCRYPTION_KEY = process.env.MFA_ENCRYPTION_KEY || '',
   FIRST_ADMIN_LOGIN = process.env.FIRST_ADMIN_LOGIN || '',
   FIRST_ADMIN_PASSWORD = process.env.FIRST_ADMIN_PASSWORD || '',
@@ -32,11 +30,9 @@ const {
   UPLOADCARE_SECRET_KEY = process.env.UPLOADCARE_SECRET_KEY || '',
   /** Server-only deploy revision (CI injects `COMMIT_HASH` into env; not exposed to the client). */
   COMMIT_HASH = process.env.COMMIT_HASH || process.env.VERCEL_GIT_COMMIT_SHA || '',
-  RUM_ENABLED = process.env.RUM_ENABLED !== 'false',
   NEXT_PUBLIC_RUM_ENABLED = process.env.NEXT_PUBLIC_RUM_ENABLED == 'false',
   NEXT_PUBLIC_ORGANIZATION_SAME_AS = process.env.NEXT_PUBLIC_ORGANIZATION_SAME_AS || '',
   LLM_API_KEY = process.env.LLM_API_KEY || '',
-  NEXT_PUBLIC_LLM_ENABLED = process.env.NEXT_PUBLIC_LLM_ENABLED === 'true',
   /** Comma-separated OpenAI chat model ids (optional). Defaults in `getChatModelAllowlist`. */
   LLM_CHAT_MODELS = process.env.LLM_CHAT_MODELS || '',
   /** Comma-separated GPT Image model ids for `images.generate` (optional). Defaults in `getImageModelAllowlist`. */
@@ -113,6 +109,14 @@ const {
   /** Lazy cleanup: DCR clients with no grants and no activity for this many days are deleted. */
   MCP_OAUTH_CLIENT_RETENTION_DAYS = process.env.MCP_OAUTH_CLIENT_RETENTION_DAYS || '30',
 } = process.env
+
+// Boolean flags are parsed here, not as destructuring defaults: a default only applies when the
+// variable is undefined, so `FLAG = process.env.FLAG === 'true'` returned the raw string 'false'
+// for FLAG=false — truthy — and the doctor gate refused a correctly switched-off feature.
+/** Hard on/off for SEO endpoint auth. false (default) → endpoints open as before (gradual rollout); true → require secret header. */
+const SEO_NOTIFY_AUTH_ENABLED = parseBoolEnv(process.env.SEO_NOTIFY_AUTH_ENABLED, false)
+const RUM_ENABLED = parseBoolEnv(process.env.RUM_ENABLED, true)
+const NEXT_PUBLIC_LLM_ENABLED = parseBoolEnv(process.env.NEXT_PUBLIC_LLM_ENABLED, false)
 
 const isDevelop = [APP_ENV, NEXT_PUBLIC_APP_ENV].includes('development')
 const isStage = [APP_ENV, NEXT_PUBLIC_APP_ENV].includes('stage')

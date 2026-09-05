@@ -1,8 +1,16 @@
 name: Quality
 
-# Reusable quality gate: lint + typecheck + test.
+# Reusable quality gate: gates + lint + typecheck + test.
 # Called by ci.yml (on PR / push) and by prod-deploy.yml (before deploy) so the
 # checks are defined once and shared.
+#
+# `gates` runs the scripts/check-*.mjs family (scripts/gates.mjs) — repository-wide checks eslint
+# structurally cannot do: the agent contract fits the tools' limits, the eslint-disable count only
+# shrinks. fail-fast stays false so one red task never hides another: fixing three problems should
+# take one CI round, not three.
+#
+# `test` needs NOTHING: no database, no redis, no network. That is a rule, not a coincidence — a
+# suite that needs infrastructure is a suite that gets skipped, and a skipped suite reports green.
 on:
   workflow_call:
 
@@ -16,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        task: [lint, typecheck, test]
+        task: [gates, lint, typecheck, test]
     steps:
       - name: ⬇️ Checkout repo
         uses: actions/checkout@v4

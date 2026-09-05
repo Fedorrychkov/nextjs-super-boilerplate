@@ -75,6 +75,7 @@ async function main() {
   const { ACCOUNT_CONFIG, EMAIL_CONFIG, JWT_CONFIG, LLM_CONFIG, MFA_CONFIG, MONGODB_CONFIG, NOTIFICATION_CONFIG, PUSH_CONFIG, REGISTRATION_CONFIG, isProd } =
     await import('../config/env')
   const { OAUTH_CONFIG } = await import('../config/auth-oauth')
+  const { containerMongoFindings, containerRedisFindings } = await import('../config/container-topology')
 
   const findings: Finding[] = []
 
@@ -87,6 +88,29 @@ async function main() {
 
   if (!MONGODB_CONFIG.uri && !MONGODB_CONFIG.host) {
     push(findings, 'error', 'mongo', 'Set MONGO_URI or MONGO_HOST (+ MONGO_DB) for MongoDB.')
+  }
+
+  /**
+   * Sibling-container topology (deploy inputs mongo_enabled / redis_enabled reach this step as
+   * MONGO_ENABLED / REDIS_ENABLED). Inside api-service "localhost" is api-service itself: a first
+   * stage deploy of a downstream project ran eight minutes and died on
+   * `MONGO_URI=mongodb://localhost:27017/...`, and the first successful one shipped
+   * `REDIS_URL=redis://localhost:6379` with the worker restarting in a loop. Pure logic in
+   * config/container-topology.ts, covered by a unit test. Silent when the flags are not set
+   * (local run, external cluster).
+   */
+  for (const message of containerMongoFindings({
+    mongoEnabled: parseBool(process.env.MONGO_ENABLED),
+    uri: MONGODB_CONFIG.uri,
+    host: MONGODB_CONFIG.host,
+    user: MONGODB_CONFIG.user,
+    password: MONGODB_CONFIG.password,
+  })) {
+    push(findings, 'error', 'mongo_topology', message)
+  }
+
+  for (const message of containerRedisFindings({ redisEnabled: parseBool(process.env.REDIS_ENABLED), url: process.env.REDIS_URL })) {
+    push(findings, 'error', 'redis_topology', message)
   }
 
   if (!MFA_CONFIG.encryptionKey?.trim()) {
@@ -116,7 +140,7 @@ async function main() {
   }
 
   if (LLM_CONFIG.enabled && !LLM_CONFIG.apiKey?.trim()) {
-    push(findings, 'error', 'llm_key', 'NEXT_PUBLIC_LLM_ENABLED=true but LLM_API_KEY is empty.')
+    push(findings, 'error', 'llm_key', 'LLM is enabled (NEXT_PUBLIC_LLM_ENABLED) but LLM_API_KEY is empty.')
   }
 
   const notifyPush =

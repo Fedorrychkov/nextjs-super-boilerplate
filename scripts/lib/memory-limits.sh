@@ -35,18 +35,28 @@ compute_memory_limits() {
             api_pct=34; mongo_pct=22; redis_pct=8
 
             # Metrics stack gets ~29% of the host, split across its services.
-            # Grafana is the heaviest by far (unified storage + apiserver: ~150M+ at
-            # start; at 15%/88M on a 2GB host it thrashed at 97% and got OOM-killed),
-            # so it is the biggest recipient here.
+            # Grafana is the heaviest by far and its appetite is a property of the VERSION, not
+            # of the host: Grafana 13 runs the Loki datasource as a separate process and peaks
+            # at ~450M RSS on a log query. With 29% of the pool it got 344M on a 4GB host and
+            # was OOM-killed twice a minute (memcg kill of the grafana process, so the container
+            # even reported OOMKilled=false); 6GB hosts survived only because 29% happened to
+            # land above the peak. Grafana therefore takes the largest share by a wide margin;
+            # Prometheus, which idled at 30M of 249M, gives most of it up. Below ~3GB the
+            # metrics stack does not fit at all — disable it rather than shrink these further.
             local metrics_mb=$(( total * 29 / 100 ))
-            export GRAFANA_MEM_LIMIT="${GRAFANA_MEM_LIMIT:-$(( metrics_mb * 29 / 100 ))M}"
-            export PROMETHEUS_MEM_LIMIT="${PROMETHEUS_MEM_LIMIT:-$(( metrics_mb * 21 / 100 ))M}"
+            export GRAFANA_MEM_LIMIT="${GRAFANA_MEM_LIMIT:-$(( metrics_mb * 43 / 100 ))M}"
+            export PROMETHEUS_MEM_LIMIT="${PROMETHEUS_MEM_LIMIT:-$(( metrics_mb * 14 / 100 ))M}"
             export LOKI_MEM_LIMIT="${LOKI_MEM_LIMIT:-$(( metrics_mb * 16 / 100 ))M}"
-            export CADVISOR_MEM_LIMIT="${CADVISOR_MEM_LIMIT:-$(( metrics_mb * 10 / 100 ))M}"
-            export TELEGRAF_MEM_LIMIT="${TELEGRAF_MEM_LIMIT:-$(( metrics_mb * 9 / 100 ))M}"
-            export PROMTAIL_MEM_LIMIT="${PROMTAIL_MEM_LIMIT:-$(( metrics_mb * 9 / 100 ))M}"
-            # nginx-exporter + node-exporter, each
-            export EXPORTER_MEM_LIMIT="${EXPORTER_MEM_LIMIT:-$(( metrics_mb * 3 / 100 ))M}"
+            export CADVISOR_MEM_LIMIT="${CADVISOR_MEM_LIMIT:-$(( metrics_mb * 8 / 100 ))M}"
+            export TELEGRAF_MEM_LIMIT="${TELEGRAF_MEM_LIMIT:-$(( metrics_mb * 7 / 100 ))M}"
+            export PROMTAIL_MEM_LIMIT="${PROMTAIL_MEM_LIMIT:-$(( metrics_mb * 7 / 100 ))M}"
+            # nginx-exporter + node-exporter, each (2.5% each; the integer math rounds down)
+            export EXPORTER_MEM_LIMIT="${EXPORTER_MEM_LIMIT:-$(( metrics_mb * 25 / 1000 ))M}"
+            # Not clamped: the budget has ~7% headroom and a silent bump would over-commit it.
+            # Loud instead — below this line Grafana 13 gets memcg-killed on the first Loki query.
+            if [ "${GRAFANA_MEM_LIMIT%M}" -lt 450 ] 2>/dev/null; then
+                echo "WARN: GRAFANA_MEM_LIMIT=${GRAFANA_MEM_LIMIT} is below the ~450M peak of Grafana 13: the metrics stack will be OOM-killed on the first log query. Set metrics_enabled: false or raise server_memory_mb (>= 4096), see docs/DECISIONS_RU.md §7." >&2
+            fi
             echo "Metrics budget: total=${metrics_mb}M prometheus=${PROMETHEUS_MEM_LIMIT} loki=${LOKI_MEM_LIMIT} grafana=${GRAFANA_MEM_LIMIT} telegraf=${TELEGRAF_MEM_LIMIT} promtail=${PROMTAIL_MEM_LIMIT} cadvisor=${CADVISOR_MEM_LIMIT} exporters=2x${EXPORTER_MEM_LIMIT}"
         fi
 

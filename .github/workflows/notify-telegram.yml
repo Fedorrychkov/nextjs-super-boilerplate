@@ -1,0 +1,80 @@
+name: Notify Telegram
+
+# Уведомления команде в Telegram о жизни репозитория: открыт PR, запрошено или оставлено ревью,
+# упал CI, PR влит. Тексты и правила «что не слать» (draft, синхронизация открытого PR, успешные
+# прогоны, отмены по concurrency) — в scripts/telegram/format.mjs, с тестами в pnpm test.
+#
+# Секреты те же, что у деплойных уведомлений: TG_TOKEN, TG_CHAT_ID, TG_THREAD_ID. Сами деплойные
+# сообщения (старт / успех / ошибка) живут в reusable-deploy-config.yml и здесь не дублируются.
+#
+# Падения ловятся через workflow_run в контексте базового репо — секреты доходят и для PR из
+# форка, и не нужно добавлять `if: failure()` в каждую джобу quality.yml: новая джоба покрывается
+# сама. Lighthouse сюда не входит: он шлёт сам, с цифрами, из своего последнего шага.
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, review_requested, closed]
+  pull_request_review:
+    types: [submitted]
+  workflow_run:
+    workflows: ['CI', 'Secret scan']
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  pull-request:
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/telegram
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: node scripts/telegram/notify.mjs pr
+        continue-on-error: true
+        env:
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          TG_THREAD_ID: ${{ secrets.TG_THREAD_ID }}
+
+  review:
+    if: github.event_name == 'pull_request_review'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/telegram
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: node scripts/telegram/notify.mjs review
+        continue-on-error: true
+        env:
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          TG_THREAD_ID: ${{ secrets.TG_THREAD_ID }}
+
+  failed-run:
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion != 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/telegram
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: node scripts/telegram/notify.mjs workflow-run
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          TG_THREAD_ID: ${{ secrets.TG_THREAD_ID }}

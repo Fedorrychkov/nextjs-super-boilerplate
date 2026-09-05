@@ -2,6 +2,35 @@
 
 ## [Unreleased]
 
+Audit of the boilerplate against downstream projects (mcrypto-superweb, vpn-saas-super, vrs, banking-future-mvp) — see [`docs/BP_AUDIT_2026_09_RU.md`](docs/BP_AUDIT_2026_09_RU.md). Ported back:
+
+### CI & notifications
+
+- **Telegram notifications for repository life** (`notify-telegram.yml` + `scripts/telegram/`) — PR opened / ready / review requested / review left / merged, CI or Secret scan failed (via `workflow_run`, so forks and new jobs are covered). Pure text formatters with unit tests in `pnpm test`; no dependencies (sparse checkout). Draft PRs, pushes to open PRs, green runs and concurrency cancellations are deliberately silent
+- **Lighthouse budgets for public pages** (`lighthouse.yml`, `lighthouserc.json`) — `/`, `/articles`, `/login` against a live `next start` with an empty Mongo; weight and CLS block, timings warn; results in the step summary and in Telegram
+- **Secret scan** (`ci-secret-scan.yml`) — gitleaks over the tracked tree on every PR/push, no paths filter
+- **Gates** (`pnpm gates`, `scripts/gates.mjs`) — runs every `scripts/check-*.mjs` and prints one table; added to the `quality` matrix. Ships with `check-agent-contract` (AGENTS.md ≤ 28 KB, no `@file` imports, thin `CLAUDE.md`) and `check-eslint-disable-ratchet` (`scripts/lib/ratchet.mjs`)
+- `scripts/notify-telegram.sh` — deploy notification no longer fails silently: commit message is HTML-escaped (a `Co-Authored-By: … <mail>` trailer used to be parsed as a tag → 400), body is URL-encoded, the Bot API answer is checked (`::warning` on refusal), `TG_DRY_RUN=1` prints instead of sending, multi-domain `TG_DOMAIN` uses the first entry
+- PR template (`.github/PULL_REQUEST_TEMPLATE.md`)
+
+### Deploy hardening
+
+- **Public env in Variables** — new input `env_public` (caller passes `${{ vars.WEB_ENV_PUBLIC_PROD }}`); appended after the secret, overlaps printed by name, credential-looking names in Variables fail the deploy; CRLF stripped with a warning (`admin\r` once created a Mongo root user nobody could log in as)
+- **Doctor gate before deploy** — `doctor_check_enabled` runs `pnpm doctor:<env>` on the assembled env file in CI
+- `pnpm doctor` — sibling-container topology checks (`config/container-topology.ts`, unit-tested): `localhost` in `MONGO_URI` / `REDIS_URL` with `MONGO_ENABLED` / `REDIS_ENABLED`, missing credentials / `authSource=admin` when `MONGO_USER` is set
+- `scripts/local-containers-run.sh` — data stores start first and are awaited healthy, then the api; one `wait_for_container_healthy` with a 300 s budget that prints `docker logs --tail=200` on failure (was 60 s and silent); a refused `docker pull` in registry mode stops the deploy instead of falling back to an 8-minute build on the server
+- `scripts/lib/deploy-utils.sh` — `load_env_into_shell` strips CR
+- `scripts/lib/memory-limits.sh` — Grafana gets 43 % of the metrics budget (Grafana 13 runs the Loki datasource as a separate process and peaks at ~450 MB; at 29 % it was OOM-killed twice a minute), Prometheus drops to 14 %
+- `docker-compose.local.yml` — Grafana pinned to `13.2.1` (the budget is tuned to this major), analytics / update checks disabled
+
+### Agent workflow
+
+- **`CLAUDE.md`** — thin Claude Code adapter that imports `AGENTS.md`; **`.claude/settings.json`** with a `PreToolUse` gate (`scripts/guard-external.sh`, fail-closed: `git push`, `.env.prod` / `.env.stage`, Mongo restore) and a read-only allow-list
+- `AGENTS.md` / `AGENTS_RU.md` — working rules: priority ladder, size the work, "done and enough", tests, what CI already catches, documentation discipline
+- `docs/agents/review.md`, `docs/agents/triage.md`, `docs/DECISIONS_RU.md` (decision journal), `docs/plans/README.md`
+- `scripts/setup-local.sh` / `make setup` — repeatable local onboarding (tops up new keys from `.env.example`, fills only empty values, ends with `pnpm doctor`); `init-project.sh` stays the one-shot fork step
+- `.gitignore` — agent runtime files (`.claude/*.local.json`, `.mcp.json`, `.playwright-mcp/`, …)
+
 ## [0.3.0] — 2026-07-18
 
 ### Infrastructure & tooling

@@ -173,7 +173,7 @@ Requires **Node.js 22+** (see `package.json` engines). Lockfile in repo: `pnpm-l
 
 ## Deploy
 
-Deploy runs via GitHub Actions on push to the configured branch (`develop` → stage, `main` → prod). Workflow files: `.github/workflows/stage-deploy.yml`, `prod-deploy.yml`; shared logic: `reusable-deploy-config.yml`.
+Deploy runs via GitHub Actions on push to `main` (`.github/workflows/prod-deploy.yml`); shared logic lives in `reusable-deploy-config.yml`. A stage environment is the same file copied with `develop`, `api_env: stage` and `.env.stage` (see mcrypto-style `stage-deploy.yml` in the audit backlog, `docs/BP_AUDIT_2026_09_RU.md`).
 
 ### Workflow parameters (inputs)
 
@@ -182,6 +182,8 @@ Deploy runs via GitHub Actions on push to the configured branch (`develop` → s
 | `domain` | Target domain (e.g. `app.example.com`). Used by nginx and certbot. |
 | `api_env` | Environment: `stage`, `prod`. |
 | `env_file` | Env file path on server (e.g. `.env.stage`, `.env.prod`). |
+| `env_public` | Public (non-secret) env lines from the caller's **Variables** (e.g. `${{ vars.WEB_ENV_PUBLIC_PROD }}`). Appended after the `env` secret, so it wins on overlap (overlaps are printed by name). Names ending in `_SECRET/_PASSWORD/_TOKEN/_KEY…` fail the deploy — Variables are not masked in logs. Empty = everything still comes from the secret. |
+| `doctor_check_enabled` | Run `pnpm doctor:<api_env>` on the assembled env file in CI before touching the server (stage/prod). Catches `localhost` inside a container, missing keys, inconsistent flags. |
 | `nginx_mode` | `http` or `https`. |
 | `certbot_test_mode` | Use Let's Encrypt staging (for testing). |
 | `migrations_run` | Run DB migrations on deploy. |
@@ -208,7 +210,7 @@ Deploy runs via GitHub Actions on push to the configured branch (`develop` → s
 | `env` | Contents of env file (appended to `env_file` on server). Use different secrets for stage/prod. |
 | `database_certificate` | (Optional) DB certificate/key. |
 | `ghcr_username`, `ghcr_token` | For `deploy_mode: registry` (GitHub Container Registry). |
-| `tg_token`, `tg_chat_id`, `tg_thread_id` | Telegram bot and chat (if notifications enabled). For groups/supergroups, prefix chat id with `-100`. |
+| `tg_token`, `tg_chat_id`, `tg_thread_id` | Telegram bot and chat (if notifications enabled). For groups/supergroups, prefix chat id with `-100`. The same repository secrets `TG_TOKEN` / `TG_CHAT_ID` / `TG_THREAD_ID` also feed the PR / review / CI-failure / Lighthouse notifications (`notify-telegram.yml`, `lighthouse.yml`) — see [docs/CI_TELEGRAM_LIGHTHOUSE_RU.md](docs/CI_TELEGRAM_LIGHTHOUSE_RU.md). |
 | `grafana_admin_user`, `grafana_admin_password` | (Optional) Pass via secrets instead of inputs. |
 
 ---

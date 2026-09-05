@@ -40,7 +40,7 @@
 
 | Variable | Default | Notes |
 |----------|---------|-------|
-| `MONGO_URI` | — | **R** или host-поля ниже |
+| `MONGO_URI` | — | **R** или host-поля ниже. На сервере с `mongo_enabled: true` хост — `mongo` (имя сервиса compose), НЕ localhost: внутри контейнера api localhost — это сам api. Контейнер **всегда** создаётся с root-пользователем (`MONGO_USER`/`MONGO_PASSWORD`, по умолчанию admin/password — задай свои), поэтому рукописный URI обязан нести `user:password@` и `authSource=admin`; проще оставить пустым — строка соберётся из полей. `pnpm doctor` при `MONGO_ENABLED=true` ловит localhost, URI без кредов, креды без authSource и пустые `MONGO_USER`/`MONGO_PASSWORD` (`config/container-topology.ts`) |
 | `MONGO_HOST` | localhost / mongo | |
 | `MONGO_PORT` | 27017 | |
 | `MONGO_USER` | — | |
@@ -51,7 +51,7 @@
 
 | Variable | Default | Notes |
 |----------|---------|-------|
-| `REDIS_URL` | — | C — rate limit / LLM limit / BullMQ worker |
+| `REDIS_URL` | — | C — rate limit / LLM limit / BullMQ worker. На сервере с `redis_enabled: true` — `redis://redis:6379`, НЕ localhost (`pnpm doctor` при `REDIS_ENABLED=true` считает loopback ошибкой); локально — порт из `docker-compose.dev.yml` |
 | `RATE_LIMIT_POINTS` | 400 | Запросов в окно |
 
 ## Background worker (опционально)
@@ -170,7 +170,7 @@ See [`AUTH_OAUTH.md`](./AUTH_OAUTH.md). `pnpm doctor` validates provider lists v
 
 | Variable | Default | Notes |
 |----------|---------|-------|
-| `INDEXNOW_API_KEY` | — | O |
+| `INDEXNOW_API_KEY` | — | O. Публичен по протоколу (отдаётся как `/<key>.txt`), может жить в Variables (`env_public`) — гейт секретов в деплое знает про это исключение |
 | `INDEXNOW_KEY_LOCATION` | — | O |
 | `GOOGLE_INDEXING_CLIENT_EMAIL` | — | O |
 | `GOOGLE_INDEXING_PRIVATE_KEY` | — | O |
