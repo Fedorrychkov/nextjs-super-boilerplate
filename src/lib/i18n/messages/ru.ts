@@ -158,7 +158,7 @@ export const ru = {
       getStarted: 'Начать',
     },
     hero: {
-      badge: 'Open source · MIT · v0.2',
+      badge: 'Open source · MIT · v{version}',
       titleBefore: 'Запустите Next.js-продукт',
       titleHighlight: 'без боли',
       titleAfter: 'от бойлерплейта',

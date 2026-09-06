@@ -15,9 +15,7 @@
   },
   "permissions": {
     "deny": [
-      "Bash(git push:*)",
-      "Bash(gh workflow run:*)",
-      "Bash(gh release:*)"
+      "Bash(gh workflow run:*)"
     ],
     "allow": [
       "Bash(pnpm typecheck)",
@@ -37,7 +35,9 @@
       "Bash(grep:*)",
       "Bash(rg:*)",
       "Bash(find:*)",
-      "Bash(sed -n:*)"
+      "Bash(sed -n:*)",
+      "Bash(gh release:*)",
+      "Bash(git push:*)"
     ]
   }
 }

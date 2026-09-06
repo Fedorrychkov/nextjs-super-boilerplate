@@ -143,10 +143,12 @@ API-роуты живут в `src/app/api/v1/*` (auth, article, llm, media, noti
 ### Что побеждает при конфликте (сверху вниз)
 
 1. **Ничего необратимого или внешне видимого без явного слова владельца именно на эту
-   операцию:** `git push`, ручной деплой (`workflow_dispatch`), любая команда с `.env.prod` /
-   `.env.stage`, запись в боевую базу, восстановление из бэкапа, отправка наружу, ротация
-   секретов. Разрешение на одну операцию не распространяется на следующую. Всё внутреннее — код,
-   файлы, поиск, установка зависимостей, read-only запросы — делай сам и отчитайся.
+   операцию:** push в `main` и любой force-push (`prod-deploy.yml` выкатывает прод на push в
+   `main`; в `main` попадает только PR из `develop`, мержит владелец), ручной деплой
+   (`workflow_dispatch`), любая команда с `.env.prod` / `.env.stage`, запись в боевую базу,
+   восстановление из бэкапа, отправка наружу, ротация секретов. Разрешение на одну операцию не
+   распространяется на следующую. Всё внутреннее — код, файлы, поиск, установка зависимостей,
+   read-only запросы, push своей ветки и PR в `develop` — делай сам и отчитайся.
 2. **Прямая инструкция владельца в текущей сессии.**
 3. **Корректность и безопасность:** проверки auth и ролей, скоуп по пользователю, секреты не в
    логах и не в клиентских DTO, валидация на сервере.
@@ -210,7 +212,7 @@ API-роуты живут в `src/app/api/v1/*` (auth, article, llm, media, noti
 | eslint `no-restricted-syntax` | `pnpm lint` | Сырые `<input>/<select>/<textarea>` вне `src/components/ui`; голый `<span>` с текстом вместо `Typography` |
 | `gitleaks` | workflow `Secret scan` | Новый секрет в отслеживаемых файлах |
 | `Lighthouse` | `lighthouse.yml` | Публичные страницы тяжелее бюджетов `lighthouserc.json` (вес и CLS ломают, тайминги предупреждают) |
-| `guard-external.sh` | Claude Code `PreToolUse` (`.claude/settings.json`) | Запуск `git push`, любой `pnpm <script>:prod` / `:stage` (build, start, worker, doctor), команды с именем `.env.prod` / `.env.stage`, запуск `restore-mongo.sh` / `mongorestore` |
+| `guard-external.sh` | Claude Code `PreToolUse` (`.claude/settings.json`) | `git push` в `main` или с `--force`, любой `pnpm <script>:prod` / `:stage` (build, start, worker, doctor), команды с именем `.env.prod` / `.env.stage`, запуск `restore-mongo.sh` / `mongorestore` |
 
 ### Дисциплина документации
 

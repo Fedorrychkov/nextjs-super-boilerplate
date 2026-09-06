@@ -143,10 +143,12 @@ message is the source of truth, and a retelling drifts on the first edit.
 ### What wins on conflict (top to bottom)
 
 1. **Nothing irreversible or externally visible without the owner's explicit word for that exact
-   action:** `git push`, a manual deploy (`workflow_dispatch`), any command touching `.env.prod` /
-   `.env.stage`, writes to a live database, restore from backup, sending to external services,
-   secret rotation. One approval covers one action. Everything internal — code, files, search,
-   installs, read-only queries — do yourself and report.
+   action:** push to `main` or any force-push (`prod-deploy.yml` deploys on push to `main`; `main`
+   is fed only by a PR from `develop` that the owner merges), a manual deploy (`workflow_dispatch`),
+   any command touching `.env.prod` / `.env.stage`, writes to a live database, restore from backup,
+   sending to external services, secret rotation. One approval covers one action. Everything
+   internal — code, files, search, installs, read-only queries, pushing a feature branch and
+   opening a PR into `develop` — do yourself and report.
 2. **A direct instruction from the owner in the current session.**
 3. **Correctness and security:** auth and role checks, per-user scoping, secrets never in logs or
    client DTOs, server-side validation.
@@ -209,7 +211,7 @@ exceptions can only shrink.
 | eslint `no-restricted-syntax` | `pnpm lint` | Raw `<input>/<select>/<textarea>` outside `src/components/ui`; bare `<span>` text instead of `Typography` |
 | `gitleaks` | `Secret scan` workflow | New secret material in tracked files |
 | `Lighthouse` | `lighthouse.yml` | Public pages heavier than the `lighthouserc.json` budgets (weight and CLS block, timings warn) |
-| `guard-external.sh` | Claude Code `PreToolUse` (`.claude/settings.json`) | Running `git push`, any `pnpm <script>:prod` / `:stage` (build, start, worker, doctor), commands naming `.env.prod` / `.env.stage`, running `restore-mongo.sh` / `mongorestore` |
+| `guard-external.sh` | Claude Code `PreToolUse` (`.claude/settings.json`) | `git push` into `main` or with `--force`, any `pnpm <script>:prod` / `:stage` (build, start, worker, doctor), commands naming `.env.prod` / `.env.stage`, running `restore-mongo.sh` / `mongorestore` |
 
 ### Documentation discipline
 

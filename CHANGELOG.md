@@ -33,6 +33,9 @@ Audit of the boilerplate against what is already proven in production use — se
 
 ### Fixes
 
+- **Landing** — the header / hero / footer "live demo" link is hidden when `links.demo` is the site itself (it opened the homepage in a new tab on the demo); the version badge now reads `package.json` instead of a hard-coded `v0.2`
+- **Agent guard** — `guard-external.sh` no longer blocks every `git push`: the agent pushes its branch and opens the PR into `develop` itself; only pushes into `main` and force-pushes are denied (decision journal §10)
+
 - **Page weight** — `public/images/favicon.svg` was a 1024px PNG wrapped in `<svg>` (680 KB transferred on every page, more than all the JS); removed from the icon list and from the repo, the `.ico` / 96px PNG / apple-touch icons remain. `/notify.mp3` no longer preloads on every page (`preload="none"`, fetched on the first play). Found by the new Lighthouse budget on its first run: pages went from ~1.26 MB to ~0.5 MB
 
 ### Documentation & env layer
