@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 
-Audit of the boilerplate against downstream projects (mcrypto-superweb, vpn-saas-super, vrs, banking-future-mvp) — see [`docs/audits/2026-09-boilerplate-vs-children.ru.md`](docs/audits/2026-09-boilerplate-vs-children.ru.md). Ported back:
+Audit of the boilerplate against what is already proven in production use — see [`docs/audits/2026-09-boilerplate-vs-children.ru.md`](docs/audits/2026-09-boilerplate-vs-children.ru.md). Ported back:
 
 ### CI & notifications
 
