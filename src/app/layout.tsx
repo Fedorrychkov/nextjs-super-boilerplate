@@ -48,8 +48,9 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
+      // No SVG icon on purpose: the one that shipped here was a 1024px PNG wrapped in <svg>,
+      // 680 KB on every page load — more than all the JS. Add a real vector if you have one.
       { url: '/images/favicon.ico' },
-      { url: '/images/favicon.svg', type: 'image/svg+xml' },
       { url: '/images/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
     ],
     apple: '/images/apple-touch-icon.png',

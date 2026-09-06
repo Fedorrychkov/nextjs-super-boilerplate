@@ -1,0 +1,148 @@
+name: Lighthouse
+
+# Бюджеты веса и скорости ПУБЛИЧНЫХ страниц: главная, список статей, логин — первое, что видит
+# посетитель, и без гейта это откатится первой же большой картинкой или шрифтом.
+#
+# Не статика: приложение — Next с SSR, страницы читают данные из монги. Поэтому здесь поднимается
+# монга, делается `next build`, `next start` в фоне, ожидание healthcheck — и только потом
+# Lighthouse по живому серверу. Пустая база — это и есть дефолтный вид свежего проекта.
+#
+# Запускается только когда менялось то, что видно в браузере. Бэк-правки в lib/** его не трогают.
+# Пороги — в lighthouserc.json: вес и CLS ломают сборку (детерминированы), метрики времени
+# предупреждают (плавают на раннере). Медиана из трёх прогонов, mobile. Числа — храповик против
+# регресса, не цель: подгоняй под свой продукт после первого прогона.
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'next.config.ts'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'lighthouserc.json'
+      - '.github/workflows/lighthouse.yml'
+  push:
+    branches: [develop, main]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'next.config.ts'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'lighthouserc.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lighthouse-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      # Обычный standalone mongod: бойлерплейту транзакции не нужны. Если продукт требует
+      # реплика-сет, поднимай его шагом (rs.initiate после старта), как в quality.yml проектов с деньгами.
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+    steps:
+      - name: ⬇️ Checkout repo
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: ⎔ Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: 📥 Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Минимальный env для сборки и старта: только то, без чего приложение не поднимется. Значения
+      # заведомо не боевые. Redis не нужен: без REDIS_URL кеш и лимитер деградируют в память
+      # процесса, для замера страниц этого хватает.
+      - name: 📝 .env.local для прогона
+        run: |
+          cat > .env.local <<'ENV'
+          APP_ENV=stage
+          NEXT_PUBLIC_APP_ENV=stage
+          NEXT_PUBLIC_SITE_URL=http://localhost:3000
+          MONGO_URI=mongodb://127.0.0.1:27017/app_lighthouse
+          JWT_SECRET=lighthouse-only-not-a-secret-00000000000000000000
+          MFA_ENCRYPTION_KEY=lighthouse-only-not-a-secret-00000000000000000000
+          ENV
+
+      - name: 🏗 next build
+        run: pnpm build:local
+
+      # PID сохраняется, чтобы уборка остановила сервер ЯВНО. Раннер добивает сироты сам, но
+      # фоновый процесс, доживающий до конца джобы, — это то, на что мы не хотим полагаться.
+      - name: 🚀 next start
+        run: |
+          set -euo pipefail
+          PORT=3000 nohup pnpm start:local > server.log 2>&1 &
+          echo $! > server.pid
+          for _ in $(seq 1 90); do
+            curl -sf http://localhost:3000/api/v1/healthcheck >/dev/null && break
+            sleep 1
+          done
+          curl -sf http://localhost:3000/api/v1/healthcheck >/dev/null || { echo "сервер не поднялся"; cat server.log; exit 1; }
+          for p in / /articles /login; do
+            printf '%-10s %s\n' "$p" "$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:3000$p")"
+          done
+
+      - name: 🔦 Lighthouse CI
+        id: lhci
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          configPath: ./lighthouserc.json
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
+      - name: 📊 Сводка
+        if: always()
+        run: |
+          echo "## Lighthouse (mobile, живой next start, медиана из 3)" >> "$GITHUB_STEP_SUMMARY"
+          for f in .lighthouseci/lhr-*.json; do
+            [ -f "$f" ] || continue
+            node -e '
+              const r = require(process.argv[1]);
+              const a = r.audits, c = r.categories;
+              const kb = (x) => Math.round(x / 1024);
+              const item = (k) => (a["resource-summary"].details.items.find((i) => i.resourceType === k) || {}).transferSize || 0;
+              console.log(`| ${r.finalDisplayedUrl.replace(/^https?:\/\/[^/]+/, "") || "/"} | ${Math.round(c.performance.score * 100)} | ${a["largest-contentful-paint"].displayValue} | ${kb(item("total"))} KB | ${kb(item("script"))} KB | ${kb(item("image"))} KB | ${kb(item("font"))} KB |`);
+            ' "$f"
+          done | sort -u | { echo "| URL | Perf | LCP | Всего | JS | Картинки | Шрифты |"; echo "|---|---|---|---|---|---|---|"; cat; } >> "$GITHUB_STEP_SUMMARY"
+
+      # Цифры в Telegram отсюда: другой workflow до отчётов не дотянется. continue-on-error —
+      # сломанный бот виден по красному шагу, но гейт Lighthouse не валит: уведомление не должно
+      # блокировать merge. При отмене прогона (concurrency при новом пуше) молчим: это не поломка.
+      - name: 📣 Telegram
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        run: node scripts/telegram/notify.mjs lighthouse
+        env:
+          LH_OUTCOME: ${{ steps.lhci.outcome }}
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          TG_THREAD_ID: ${{ secrets.TG_THREAD_ID }}
+
+      - name: 🧹 Логи сервера и уборка
+        if: always()
+        run: |
+          [ "${{ steps.lhci.outcome }}" = "success" ] || tail -n 100 server.log || true
+          # pnpm → env-cmd → next: сначала дети, потом родитель, иначе next переживает pnpm.
+          if [ -f server.pid ]; then
+            pkill -TERM -P "$(cat server.pid)" || true
+            kill -TERM "$(cat server.pid)" || true
+          fi
+          pkill -f "next start" || true

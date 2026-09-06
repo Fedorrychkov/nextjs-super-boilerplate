@@ -1,0 +1,34 @@
+{
+  "ci": {
+    "collect": {
+      "url": ["http://localhost:3000/", "http://localhost:3000/articles", "http://localhost:3000/login"],
+      "numberOfRuns": 3,
+      "settings": {
+        "onlyCategories": ["performance", "accessibility", "best-practices"],
+        "skipAudits": ["uses-http2", "redirects-http", "is-on-https", "errors-in-console", "bf-cache"]
+      }
+    },
+    "assert": {
+      "aggregationMethod": "median",
+      "assertions": {
+        "resource-summary:total:size": ["error", { "maxNumericValue": 1024000 }],
+        "resource-summary:script:size": ["error", { "maxNumericValue": 614400 }],
+        "resource-summary:image:size": ["error", { "maxNumericValue": 256000 }],
+        "resource-summary:font:size": ["error", { "maxNumericValue": 204800 }],
+        "resource-summary:third-party:count": ["warn", { "maxNumericValue": 0 }],
+        "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1 }],
+        "font-display": "error",
+        "categories:performance": ["warn", { "minScore": 0.7 }],
+        "categories:accessibility": ["warn", { "minScore": 0.9 }],
+        "largest-contentful-paint": ["warn", { "maxNumericValue": 6500 }],
+        "render-blocking-resources": ["warn", { "maxNumericValue": 1500 }],
+        "uses-responsive-images": "off",
+        "unused-javascript": "off",
+        "unused-css-rules": "off"
+      }
+    },
+    "upload": {
+      "target": "temporary-public-storage"
+    }
+  }
+}

@@ -28,6 +28,13 @@ jobs:
       domain: nextjs-super-boilerplate.visn-ai.io
       api_env: prod
       env_file: .env.prod
+      # Public (non-secret) part of the environment from Settings → Variables. The secret
+      # `WEB_ENV_PROD` keeps whatever contains a credential; everything else may move here and
+      # becomes reviewable. Empty variable = everything still comes from the secret.
+      env_public: ${{ vars.WEB_ENV_PUBLIC_PROD }}
+      # `pnpm doctor:prod` on the assembled env BEFORE the deploy: a wrong MONGO_URI / REDIS_URL
+      # (e.g. localhost inside a container) fails here, not on the server after a torn-down stack.
+      doctor_check_enabled: true
       nginx_mode: https
       certbot_test_mode: false
       migrations_run: false
@@ -38,7 +45,10 @@ jobs:
       notify_enabled: true
       tag: 'nextjs-super-boilerplate'
       redis_enabled: true
-      metrics_enabled: true
+      # Grafana 13 needs ~450M on a Loki query; with server_memory_mb: 2048 the metrics pool gives
+      # it ~254M and it is OOM-killed on the first dashboard. Enable again with server_memory_mb
+      # >= 4096 (the real RAM of the box), see docs/DECISIONS_RU.md §7.
+      metrics_enabled: false
       mongo_enabled: true
       # Background worker (scripts/worker.ts — BullMQ crons, headless singleton).
       # Needs redis_enabled: true. See docs/CRON_ARCHITECTURE_PORTABLE_RU.md.

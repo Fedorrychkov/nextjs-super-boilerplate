@@ -5,7 +5,7 @@ const STATIC_CACHE = 'static-v3'
 const HTML_CACHE = 'html-v3'
 const API_PUBLIC_CACHE = 'api-public-v3'
 /** 192px — iOS часто не показывает баннер с мелкой иконкой 48px */
-const APP_ICON = '/images/favicon.svg'
+const APP_ICON = '/images/web-app-manifest-192x192.png'
 
 function resolveNotificationAsset(pathOrUrl) {
 	if (!pathOrUrl) {

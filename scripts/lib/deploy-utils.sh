@@ -6,7 +6,7 @@
 
 # Compose v1/v2 compatibility: prefer the v2 plugin (`docker compose`), fall back to the
 # legacy v1 binary (`docker-compose`). All flags used here (up -d, stop, rm -f, exec -T,
-# logs, restart, -f) are 1:1 compatible. See docs/DOCKER_COMPOSE_V2_RU.md.
+# logs, restart, -f) are 1:1 compatible. See docs/deploy/docker-compose-v2.ru.md.
 if docker compose version >/dev/null 2>&1; then
     DOCKER_COMPOSE="docker compose"
 else
@@ -39,10 +39,20 @@ function load_env_into_shell() {
     local env_file="${1:-.env}"
     local project_root="${PROJECT_ROOT:-.}"
     if [ -f "${project_root}/${env_file}" ]; then
+        # CRLF-tolerant on purpose. A file pasted from a Windows editor sources without a visible
+        # error but leaves `\r` at the end of every value; compose then creates the mongo root user
+        # as "admin\r" while the app (dotenv strips CR) logs in as "admin" — and is refused. The
+        # workflow strips CR at the source; this is the net for a file edited by hand on the server.
+        # A temp file rather than `. <(...)`: bash 3.2 (macOS) reads nothing from a sourced process
+        # substitution, and `tr` unlike `sed` knows `\r` on both BSD and GNU.
+        local cleaned
+        cleaned=$(mktemp)
+        tr -d '\r' < "${project_root}/${env_file}" > "$cleaned"
         set -a
         # shellcheck source=/dev/null
-        . "${project_root}/${env_file}"
+        . "$cleaned"
         set +a
+        rm -f "$cleaned"
     fi
 }
 

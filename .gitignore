@@ -58,3 +58,16 @@ grafana/prometheus/data
 
 dist/
 !certificates/*
+
+# Agent runtimes: local state is not source. `.claude/settings.json` (hooks, permissions) IS
+# committed — it is the project's agent contract for Claude Code; everything below is per-machine.
+.claude/*.local.json
+.claude/agent-memory/
+.claude/worktrees/
+/.mcp.json
+/.cursor/mcp.json
+/.codex/config.toml
+# Screenshots and page dumps left behind by playwright-mcp during exploration
+.playwright-mcp/
+# Lighthouse CI output when run locally
+.lighthouseci/

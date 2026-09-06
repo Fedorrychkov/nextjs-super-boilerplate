@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Mongo backup for the LOCAL mongo container (MONGO_ENABLED=true deployments only;
-# a remote cluster should use the provider's backups). See docs/MONGO_BACKUPS_RU.md.
+# a remote cluster should use the provider's backups). See docs/deploy/mongo-backups.ru.md.
 #
 # Design notes:
 #  - mongodump runs in a THROWAWAY container sharing the mongo container's network

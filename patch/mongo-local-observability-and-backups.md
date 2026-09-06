@@ -18,7 +18,7 @@
 | `.github/workflows/reusable-deploy-config.yml` | 1) cleanup «залипших» контейнеров при выключении флагов; 2) инпуты `mongo_backup_*`; 3) установка/снятие cron | 1) при переключении `metrics_enabled`/`worker_enabled` true→false контейнеры с `restart: always` раньше жили вечно на старом образе; 2–3) см. бэкапы ниже |
 | `scripts/backup-mongo.sh` | Ежесуточный mongodump | Дамп в `~/db-backups` (вне `~/app` — переживает blue/green-свопы). Запуск в одноразовом контейнере с капами `--memory 256m --cpus 0.5`, а НЕ `docker exec` в mongo — иначе дамп ел бы cgroup-бюджет базы и мог спровоцировать OOM-kill mongod. Лок, гард по диску, проверка целостности, ротация |
 | `scripts/restore-mongo.sh` | Восстановление | `mongorestore --drop` с подтверждением; тот же изолированный контейнер |
-| `docs/MONGO_BACKUPS_RU.md` | Дока | Настройка, примеры cron, restore-алгоритм, выгрузка дампов на локальную машину |
+| `docs/deploy/mongo-backups.ru.md` | Дока | Настройка, примеры cron, restore-алгоритм, выгрузка дампов на локальную машину |
 | `.github/workflows/prod-deploy.yml` | Пример включения `mongo_backup_*` | Проектная строка — при конфликте просто добавь руками в свой prod-deploy |
 
 Логика включения бэкапов: `mongo_enabled: true` → cron ставится автоматически (`mongo_backup_enabled` дефолт `true`). Выключил монгу или флаг → следующий деплой снимает cron, дампы остаются. Частота — `mongo_backup_cron`, глубина — `mongo_backup_retention` (в дампах, не в днях!).
@@ -46,4 +46,4 @@ git apply --3way  patch/mongo-local-observability-and-backups.patch   # прим
 2. На сервере: `crontab -l | grep bp-mongo-backup` — строка стоит.
 3. Разовый ручной прогон, не дожидаясь ночи: `ENV_FILE=.env.prod API_ENV=prod ~/app/scripts/backup-mongo.sh && ls -lh ~/db-backups/` — дамп лёг, размер разумный.
 4. Grafana → logs-дашборд: панели `mongo service` / `mongo slow queries` показывают данные (при `metrics_enabled: true`).
-5. Прочитай `docs/MONGO_BACKUPS_RU.md` до момента, когда restore понадобится по-настоящему.
+5. Прочитай `docs/deploy/mongo-backups.ru.md` до момента, когда restore понадобится по-настоящему.

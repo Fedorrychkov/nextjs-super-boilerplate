@@ -130,7 +130,8 @@ export const NotifyProvider = ({ children }: { children: React.ReactNode }) => {
           'z-[1000]': notifies && notifies?.length > 0,
         })}
       >
-        <audio ref={audioRef} src="/notify.mp3" preload="auto" style={{ display: 'none' }} />
+        {/* preload="none": the 68 KB clip is fetched on the first play(), not on every page load */}
+        <audio ref={audioRef} src="/notify.mp3" preload="none" style={{ display: 'none' }} />
         {notifies?.map((notify) => (
           <AlertBlock notify={notify} onClose={handleClose} key={notify.id} />
         ))}

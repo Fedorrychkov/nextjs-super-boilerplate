@@ -15,6 +15,19 @@ on:
         description: .env file path
         required: true
         type: string
+      env_public:
+        # PUBLIC part of the environment — from the CALLER's Variables (`vars.*`), not read here.
+        #
+        # Named by the caller, like the secrets: then the caller decides which variable feeds
+        # which environment, and stage and prod cannot accidentally share one. Reading
+        # `vars.SOMETHING` inside a reusable workflow leaves no such fork.
+        #
+        # Empty is the working case: until Variables are filled, everything still arrives in the
+        # secret and the deploy behaves exactly as before.
+        description: Public (non-secret) env lines, from the caller's repository/environment Variables
+        required: false
+        type: string
+        default: ''
       nginx_mode:
         description: http|https
         required: true
@@ -81,6 +94,11 @@ on:
         type: boolean
       worker_enabled:
         description: Enable the background worker container (scripts/worker.ts, BullMQ crons). Needs Redis (REDIS_URL).
+        required: false
+        default: false
+        type: boolean
+      doctor_check_enabled:
+        description: 'Run `pnpm doctor:<api_env>` on the assembled env file BEFORE deploying (stage/prod only). Catches a wrong MONGO_URI / REDIS_URL / missing key in CI instead of on the server.'
         required: false
         default: false
         type: boolean
@@ -250,7 +268,8 @@ jobs:
           bash scripts/notify-telegram.sh
 
       - name: 📥 Install dependencies
-        if: inputs.deploy_mode != 'registry'
+        # Also needed in registry mode when the doctor gate runs: `pnpm doctor:<env>` is tsx.
+        if: inputs.deploy_mode != 'registry' || inputs.doctor_check_enabled == true
         run: pnpm install --frozen-lockfile
 
       - name: 🧪 Unit tests (sanitize)
@@ -259,10 +278,81 @@ jobs:
 
       - name: Create env and service-account.json files
         run: |
-          # Write env from GitHub secret into env_file (supports multiline, quotes, etc.)
+          # The env file is assembled from TWO sources, and this is not cosmetics.
+          #
+          # `secrets.env` — whatever contains a credential. That is the criterion, not "config or
+          # not": MONGO_URI is configuration by meaning but carries a password, hence a secret.
+          #
+          # `inputs.env_public` — configuration from the caller's Variables: domains, job toggles,
+          # intervals, NEXT_PUBLIC_*. It is visible in Settings → Variables and can be read and
+          # compared at review time without logging into the server. Before, everything lived in
+          # one secret, and "what exactly was shipped" was checked only by eye on the server.
+          #
+          # ORDER: secrets, then public. The last one wins — verified on `env-cmd` itself (dotenv
+          # under it parses the file sequentially), and docker compose `env_file` behaves the same.
+          # So the public block CAN override the secret one, and that is deliberate: a secret is
+          # write-only, six months later nobody remembers what is in it, while the public block is
+          # visible and edited in seconds. Escape hatch for "the whole team forgot".
+          #
+          # The price: an override MUST be visible, otherwise the value in the secret silently
+          # does nothing and cannot be compared (a secret cannot be read). Hence overlaps are
+          # printed by name.
           cat <<'ENV_EOF' >> "${{ inputs.env_file }}"
           ${{ secrets.env }}
           ENV_EOF
+
+          cat <<'VARS_EOF' > /tmp/env_public
+          ${{ inputs.env_public }}
+          VARS_EOF
+
+          # CRLF. Secrets and Variables arrive as pasted, and a paste from a Windows editor carries
+          # \r at the end of every line. On the server the file is sourced
+          # (scripts/lib/deploy-utils.sh): MONGO_USER=admin\r creates a mongo root user with \r in
+          # its name, while the app (dotenv strips CR) logs in as admin and is refused. Strip here
+          # and say so: a silent clean-up would leave a mine in the secret for the next person who
+          # copies it somewhere else.
+          for f in "${{ inputs.env_file }}" /tmp/env_public; do
+            n=$(grep -c $'\r' "$f" || true)
+            if [ "${n:-0}" != "0" ]; then
+              echo "::warning::$f: $n line(s) with CRLF, \\r stripped. The source (Secrets/Variables) was pasted with Windows line endings; re-paste without them"
+              sed -i 's/\r$//' "$f"
+            fi
+          done
+
+          # GUARD: a secret that wandered into Variables is printed to the log as is — Variables
+          # are not masked, and that is the main price of the split.
+          #
+          # The signal is a name ENDING with a credential word, not merely containing it:
+          # `EMAIL_TEMPLATE_PASSWORD_CHANGE_RU` and `AUTH_PASSWORD_FORGOT_ENABLED` carry PASSWORD
+          # as a TOPIC, and a "contains" rule would push them into secrets — i.e. bring back the
+          # opacity the split exists to remove. Exceptions: `*_PUBLIC_KEY` and `NEXT_PUBLIC_*` are
+          # public by design and go to the browser.
+          #
+          # This is a NET for the obvious mistake, not a classifier: `MONGO_URI` and `REDIS_URL`
+          # hide the credential inside the value and cannot be caught by name. The split is a
+          # human decision, recorded in docs/ENV_REFERENCE.md.
+          # INDEXNOW_API_KEY is public by protocol (it is served at /<key>.txt) and may live in Variables.
+          LEAKED=$(grep -oE '^[A-Za-z_][A-Za-z0-9_]*=' /tmp/env_public | tr -d '=' \
+            | grep -vE '(^NEXT_PUBLIC_|_PUBLIC_KEY$|^INDEXNOW_API_KEY$)' \
+            | grep -E '(_SECRET|_PASSWORD|_TOKEN|_PEPPER|_CREDENTIALS?|_KEY)$' || true)
+          if [ -n "$LEAKED" ]; then
+            echo "::error::Looks like a secret in public Variables — Variables are not masked in logs"
+            echo "$LEAKED"
+            exit 1
+          fi
+
+          # Overrides — by name, without values. Not an error, but not a detail either: it is the
+          # only way to see that a line in the secret no longer affects anything.
+          grep -oE '^[A-Za-z_][A-Za-z0-9_]*=' "${{ inputs.env_file }}" | tr -d '=' | sort -u > /tmp/keys_secret
+          grep -oE '^[A-Za-z_][A-Za-z0-9_]*=' /tmp/env_public | tr -d '=' | sort -u > /tmp/keys_public
+          OVERRIDES=$(comm -12 /tmp/keys_secret /tmp/keys_public || true)
+          if [ -n "$OVERRIDES" ]; then
+            echo "::warning::Public Variables override these keys from Secrets:"
+            echo "$OVERRIDES"
+          fi
+
+          cat /tmp/env_public >> "${{ inputs.env_file }}"
+          rm -f /tmp/env_public
 
           # NODE_ENV: production for prod, api_env for others
           if [ "${{ inputs.api_env }}" = "prod" ]; then
@@ -276,6 +366,15 @@ jobs:
 
           # Optional DB certificate
           if [ -n "${{ secrets.database_certificate }}" ]; then echo '${{ secrets.database_certificate }}' >> "db-certificate.${{ inputs.api_env }}.crt"; fi
+
+      - name: 🩺 Doctor — check the environment BEFORE deploying
+        # Only where a matching env file and `doctor:<env>` script exist (stage / prod).
+        if: inputs.doctor_check_enabled == true && (inputs.api_env == 'stage' || inputs.api_env == 'prod')
+        env:
+          # The doctor checks mongo/redis topology only knowing they are sibling containers.
+          MONGO_ENABLED: ${{ inputs.mongo_enabled }}
+          REDIS_ENABLED: ${{ inputs.redis_enabled }}
+        run: pnpm run doctor:${{ inputs.api_env }}
 
       - name: 🐳 Set up Docker Buildx (registry mode)
         if: inputs.deploy_mode == 'registry'
@@ -295,8 +394,9 @@ jobs:
           # Extract only public variables (NEXT_PUBLIC_*, VAPID_SUBJECT) from the corresponding env file in the repository
           PUBLIC_ENV=$(grep -E '^(NEXT_PUBLIC_|VAPID_SUBJECT=)' "${{ inputs.env_file }}" || true)
 
-          echo "Public env for build:"
-          echo "$PUBLIC_ENV"
+          # Names only: the values are public by definition, but the log is not the place to review them.
+          echo "Public env for build (names):"
+          echo "$PUBLIC_ENV" | cut -d= -f1
 
           docker buildx build \
             -f .docker/Dockerfile \
@@ -393,6 +493,16 @@ jobs:
               fi
               echo "Logging in to ghcr.io..."
               echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin || exit 1
+              # Preflight BEFORE the stack is touched: a denied pull must fail here, while the old
+              # containers are still serving. Login only proves the token is valid; read access to
+              # this package (read:packages scope, package visibility) is proven by the pull. The
+              # same check inside local-containers-run.sh is the second net, and with the image
+              # already local it is a fast up-to-date check there.
+              echo "Preflight: pulling $CORE_API_IMAGE..."
+              docker pull "$CORE_API_IMAGE" || {
+                echo "Error: docker pull $CORE_API_IMAGE denied — GHCR_USERNAME/GHCR_TOKEN cannot read this package (read:packages scope, package access). Nothing was stopped."
+                exit 1
+              }
             fi
 
             REDIS_ENABLED=${REDIS_ENABLED:-false}

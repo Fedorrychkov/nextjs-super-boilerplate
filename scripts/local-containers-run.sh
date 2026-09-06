@@ -35,6 +35,58 @@ if [ -f "${PROJECT_ROOT}/scripts/lib/memory-limits.sh" ]; then
     compute_memory_limits
 fi
 
+# One wait budget for every api-service health wait, in 2s polls (150 = 300s). The same value
+# the workflow uses for the blue/green swap. The cold path used to give up at 30 (60s): on a
+# fresh server the image may run start-up work (index build, warm-up) before `next start`, and
+# a downstream project lost three stage deploys in a row at exactly that 60s mark before Next
+# ever listened.
+API_HEALTH_MAX_ATTEMPTS=${API_HEALTH_MAX_ATTEMPTS:-150}
+
+# Poll a container's healthcheck until "healthy". On failure prints the tail of the container
+# log: a red deploy has to carry its reason with it — without this the wait died without a
+# single line from the container, and the cause had to be guessed from the compose file.
+function wait_for_container_healthy() {
+    local container=$1
+    local max_attempts=${2:-$API_HEALTH_MAX_ATTEMPTS}
+    local attempts=0 status
+    while true; do
+        # exact container name (a `docker ps --filter name=` is a substring match and would also hit api-service-green)
+        status=$(docker inspect "$container" --format '{{.State.Health.Status}}' 2>/dev/null || true)
+        if [ "$status" = "healthy" ]; then
+            echo "$container is healthy"
+            return 0
+        fi
+        # A running container with no healthcheck would sit here for the whole budget and then
+        # report "no container" — misleading. Say what is actually wrong and stop at once.
+        if [ -z "$status" ] && docker inspect "$container" >/dev/null 2>&1 \
+           && [ -z "$(docker inspect "$container" --format '{{if .Config.Healthcheck}}yes{{end}}' 2>/dev/null)" ]; then
+            echo "Error: $container is running but defines no healthcheck in ${COMPOSE_FILE}; cannot wait for readiness."
+            return 1
+        fi
+        ((attempts++))
+        if [ $attempts -ge $max_attempts ]; then
+            echo "Error: $container failed to become healthy after $((max_attempts * 2))s (last status: ${status:-no container})"
+            echo "--- docker logs --tail=200 $container ---"
+            docker logs --tail=200 "$container" 2>&1 || true
+            echo "--- end of $container logs ---"
+            return 1
+        fi
+        sleep 2
+    done
+}
+
+# A refused pull must stop the deploy, not fall through: compose would then BUILD the image on
+# the server (the `build:` block exists for default mode) — eight minutes on a small box,
+# silently, because nothing checked this exit code. "denied" here means the GHCR token on the
+# server cannot read this package.
+function pull_core_api_image() {
+    docker pull "$CORE_API_IMAGE" || {
+        echo "Error: docker pull $CORE_API_IMAGE failed. In registry mode the image must come from GHCR."
+        echo "       'denied' = GHCR_USERNAME/GHCR_TOKEN on the server cannot read this package (read:packages scope, package access)."
+        exit 1
+    }
+}
+
 function rollback_mode() {
     local env=${1:-stage}
     local env_file=$(get_env_file $env)
@@ -95,7 +147,7 @@ function bg_validate_green() {
 
     if [ "${DEPLOY_MODE:-default}" = "registry" ] && [ -n "${CORE_API_IMAGE:-}" ]; then
         echo "DEPLOY_MODE=registry: pulling core-api image $CORE_API_IMAGE"
-        docker pull "$CORE_API_IMAGE"
+        pull_core_api_image
         export CORE_API_IMAGE
     fi
 
@@ -106,20 +158,7 @@ function bg_validate_green() {
     ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} up -d --no-deps core-api
 
     echo "Waiting for GREEN core-api to become healthy..."
-    attempts=0; max_attempts=30
-    while true; do
-        status=$(docker ps --filter name=api-service-green --format "{{.Status}}")
-        if [[ "$status" == *"(healthy)"* ]]; then
-            echo "GREEN core-api is healthy"
-            break
-        fi
-        ((attempts++))
-        if [ $attempts -ge $max_attempts ]; then
-            echo "Error: GREEN core-api failed to become healthy"
-            return 1
-        fi
-        sleep 2
-    done
+    wait_for_container_healthy api-service-green || return 1
 
     echo "Running DB migrations for GREEN (MIGRATIONS_RUN=$MIGRATIONS_RUN)..."
     newly_applied_migs=$(run_migrations_flow "$env") || migs_rc=$?
@@ -258,7 +297,7 @@ function start_http() {
     DEPLOY_MODE=${DEPLOY_MODE:-default}
     if [ "$DEPLOY_MODE" = "registry" ] && [ -n "${CORE_API_IMAGE:-}" ]; then
         echo "DEPLOY_MODE=registry: pulling core-api image $CORE_API_IMAGE"
-        docker pull "$CORE_API_IMAGE"
+        pull_core_api_image
         export CORE_API_IMAGE
         API_ENV=$env ENV_FILE=$env_file NGINX_MODE=http DOMAINS="$domains" FIRST_DOMAIN="$FIRST_DOMAIN" \
             ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} up ${DOCKER_OPTS} $CORE_SERVICES nginx
@@ -309,33 +348,35 @@ function start_https() {
             exit 1
         fi
         echo "DEPLOY_MODE=registry: pulling core-api image $CORE_API_IMAGE"
-        docker pull "$CORE_API_IMAGE"
+        pull_core_api_image
         export CORE_API_IMAGE
     else
         echo "DEPLOY_MODE=default: core-api will be built if needed"
     fi
 
     load_env_into_shell "$env_file"
+
+    # Data stores first, api second. Started side by side with a fresh mongo, the api spends the
+    # driver's server-selection window on a daemon that is still initialising, and the api wait
+    # runs out before Next listens. The ordering lives here and not in a compose `depends_on`:
+    # mongo and redis are optional services (MONGO_ENABLED=false means an external cluster), and
+    # a `depends_on` would start a stray local mongo on exactly those deployments.
+    local data_services=""
+    [ "$REDIS_ENABLED" = "true" ] && data_services="$data_services redis"
+    [ "$MONGO_ENABLED" = "true" ] && data_services="$data_services mongo"
+    if [ -n "$data_services" ]; then
+        echo "Stage 0: Starting data services ($data_services)..."
+        ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} up -d $data_services
+        [ "$REDIS_ENABLED" = "true" ] && { wait_for_container_healthy redis || exit 1; }
+        [ "$MONGO_ENABLED" = "true" ] && { wait_for_container_healthy mongo || exit 1; }
+    fi
+
     echo "Stage 1: Starting API service..."
-    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} up -d $CORE_SERVICES
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} up -d core-api
 
     # Wait for API health before migrations
     echo "Waiting for core-api to become healthy..."
-    attempts=0; max_attempts=30
-    while true; do
-        # exact container name (a `name=` filter is a substring match and would also hit api-service-green)
-        status=$(docker inspect api-service --format '{{.State.Health.Status}}' 2>/dev/null || true)
-        if [ "$status" = "healthy" ]; then
-            echo "core-api is healthy"
-            break
-        fi
-        ((attempts++))
-        if [ $attempts -ge $max_attempts ]; then
-            echo "Error: core-api failed to become healthy"
-            exit 1
-        fi
-        sleep 2
-    done
+    wait_for_container_healthy api-service || exit 1
 
     # Migrations before enabling HTTPS
     echo "Stage 1.1: Running DB migrations (MIGRATIONS_RUN=$MIGRATIONS_RUN)..."

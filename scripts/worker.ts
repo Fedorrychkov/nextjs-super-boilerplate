@@ -4,7 +4,7 @@
  * Runs periodic maintenance jobs (BullMQ) in a process separate from the web
  * instances, so background work doesn't compete for resources/restarts with the
  * API and can be scaled/restarted independently. Run exactly ONE instance.
- * See docs/CRON_ARCHITECTURE_PORTABLE_RU.md for the architecture and pitfalls.
+ * See docs/deploy/background-worker.ru.md for the architecture and pitfalls.
  *
  * Project jobs go into the `jobs` registry below. Each `run` must be idempotent;
  * keep the schedule source of truth in the DB (`nextRunAt`-style fields) so the

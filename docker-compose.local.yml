@@ -192,12 +192,15 @@ services:
 
   grafana:
     container_name: grafana
-    image: grafana/grafana:latest
+    # Pinned: `latest` delivered 13.x unannounced, and the memory budget in
+    # scripts/lib/memory-limits.sh is tuned to this major. Bump deliberately, with the budget.
+    image: grafana/grafana:13.2.1
     restart: always
     deploy:
       resources:
         limits:
-          memory: ${GRAFANA_MEM_LIMIT:-300M}
+          # Grafana 13 peaks at ~450M on a Loki query (see scripts/lib/memory-limits.sh)
+          memory: ${GRAFANA_MEM_LIMIT:-512M}
     volumes:
       - ./grafana/datasource:/etc/grafana/provisioning/datasources/
       - ./grafana/dashboard:/etc/grafana/provisioning/dashboards/
@@ -210,6 +213,10 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-password.example}
       - GF_SERVER_ROOT_URL=https://${FIRST_DOMAIN:-app.example.local}/grafana
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
+      # No phoning home from the servers; also spares the update checkers.
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+      - GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES=false
     networks:
       - api_network
     logging:
@@ -261,7 +268,7 @@ services:
       - api_network
 
   # Background worker: periodic maintenance jobs (BullMQ — see scripts/worker.ts and
-  # docs/CRON_ARCHITECTURE_PORTABLE_RU.md). Same image as core-api but a HEADLESS
+  # docs/deploy/background-worker.ru.md). Same image as core-api but a HEADLESS
   # command (`worker:<env>`) — no HTTP server, so the image's HTTP healthcheck is disabled
   # (it would hang unhealthy). Run exactly ONE instance; scale core-api freely without
   # duplicating cron ticks. Enabled per environment via WORKER_ENABLED (deploy workflow
@@ -468,6 +475,15 @@ services:
     # else on a small box. 0.5GB default ~= mongod's auto value on a 2GB host.
     # Set via SERVER_MEMORY_MB / MONGO_CACHE_GB (see scripts/lib/memory-limits.sh).
     command: ["mongod", "--wiredTigerCacheSizeGB", "${MONGO_CACHE_GB:-0.5}"]
+    # The https deploy path starts data stores first and waits for `healthy` before the api
+    # (scripts/local-containers-run.sh, Stage 0); a service without a healthcheck can never pass
+    # that wait. Standalone mongod: a plain unauthenticated ping is the right shape here.
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.runCommand({ ping: 1 }).ok' || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
     restart: always
     deploy:
       resources:
