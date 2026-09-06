@@ -36,7 +36,7 @@ export type WebPushSendResult = {
 
 const DEAD_SUBSCRIPTION_STATUS_CODES = new Set([400, 401, 403, 404, 410, 413])
 
-const DEFAULT_PUSH_ICON_PATH = '/images/favicon.svg'
+const DEFAULT_PUSH_ICON_PATH = '/images/web-app-manifest-192x192.png'
 
 function buildPushIconUrl(icon?: string): string {
   if (icon?.startsWith('http')) {

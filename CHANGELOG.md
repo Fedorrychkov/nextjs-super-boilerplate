@@ -31,6 +31,10 @@ Audit of the boilerplate against what is already proven in production use — se
 - `scripts/setup-local.sh` / `make setup` — repeatable local onboarding (tops up new keys from `.env.example`, fills only empty values, ends with `pnpm doctor`); `init-project.sh` stays the one-shot fork step
 - `.gitignore` — agent runtime files (`.claude/*.local.json`, `.mcp.json`, `.playwright-mcp/`, …)
 
+### Fixes
+
+- **Page weight** — `public/images/favicon.svg` was a 1024px PNG wrapped in `<svg>` (680 KB transferred on every page, more than all the JS); removed from the icon list and from the repo, the `.ico` / 96px PNG / apple-touch icons remain. `/notify.mp3` no longer preloads on every page (`preload="none"`, fetched on the first play). Found by the new Lighthouse budget on its first run: pages went from ~1.26 MB to ~0.5 MB
+
 ### Documentation & env layer
 
 - **`docs/` reorganised by topic** — `start / configure / deploy / develop / security / agents / decisions / plans / audits / roadmaps`, language as a suffix (`.ru.md` / `.en.md`; RU canonical, EN for entry documents). Every reference in code, scripts, workflows and docs rewritten; `check-docs-structure` gate enforces the naming, index coverage and live relative links
