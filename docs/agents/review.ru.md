@@ -30,7 +30,7 @@
 
 | Проверка | Где | Что ловит |
 |---|---|---|
-| `gates` | `quality` | `check-agent-contract` (размер `AGENTS.md`, тонкий `CLAUDE.md`), `check-eslint-disable-ratchet` (число `eslint-disable` не растёт) |
+| `gates` | `quality` | `check-agent-contract` (размер `AGENTS.md`, тонкий `CLAUDE.md`), `check-eslint-disable-ratchet` (число `eslint-disable` не растёт), `check-docs-structure` (имена `docs/<тема>/<имя>.<ru\|en>.md`, индекс, живые ссылки), `check-env-reference` (`.env.example` ↔ справочник по именам) |
 | `lint` | `quality` | ESLint: сырые `<input>/<select>/<textarea>` вне `src/components/ui`, голые `<span>`, порядок импортов, prettier |
 | `typecheck` | `quality` | `tsc --noEmit`, strict |
 | `test` | `quality` | `node --test` по `*.test.ts` и `scripts/telegram/*.test.mjs`, без инфраструктуры |

@@ -216,4 +216,4 @@ Recommendation: with automatic cleanup on the server (already in the template), 
 
 - **Container logs:** `docker logs <container_name>` (e.g. `docker logs api-service`, `docker logs mongo`).
 - **Inspect env in container:** `docker exec api-service env` or `docker exec api-service printenv MONGO_URI`.
-- **Workflow reference:** Parameters and secrets are documented in the tables in the [README](../README.md).
+- **Workflow reference:** Parameters and secrets are documented in the tables in the [README](../../README.md).

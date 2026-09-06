@@ -31,10 +31,10 @@ make up-local               # local MongoDB (docker-compose.dev.yml); make down-
 pnpm dev:local              # dev server, http://localhost:3000
 
 make setup                  # repeatable local onboarding (scripts/setup-local.sh): tops up keys, fills empty, runs doctor
-pnpm gates                  # scripts/check-*.mjs — agent contract size, eslint-disable ratchet (part of CI `quality`)
+pnpm gates                  # scripts/check-*.mjs — agent contract, eslint-disable ratchet, docs structure, env reference (CI `quality`)
 pnpm lint / lint:fix        # ESLint
 pnpm typecheck              # tsc --noEmit
-pnpm test                   # node --test via tsx (*.test.ts, scripts/telegram/*.test.mjs) — no infrastructure needed
+pnpm test                   # node --test via tsx (*.test.ts, scripts/**/*.test.mjs) — no infrastructure needed
 pnpm format                 # prettier over src/**/*.ts
 pnpm build:local|stage|prod # build with env-cmd for the target env
 ```
@@ -73,7 +73,7 @@ mcp/             MCP stdio server for AI agents (server.ts, registry.ts, tools/*
 
 .docker/         Dockerfiles (app, nginx, certbot), nginx configs, supervisor
 .github/workflows/  ci.yml + quality.yml (gates/lint/typecheck/test), prod-deploy.yml (deploy to VPS),
-                 lighthouse.yml, notify-telegram.yml, ci-secret-scan.yml — see docs/CI_TELEGRAM_LIGHTHOUSE_RU.md
+                 lighthouse.yml, notify-telegram.yml, ci-secret-scan.yml — see docs/deploy/ci-notifications-lighthouse.ru.md
 docs/            all documentation (see docs/README.md — index)
 scripts/         doctor.ts (env validation), local-containers-run.sh, notify-telegram.sh
 patch/           git patches with history of major features (reference)
@@ -90,7 +90,7 @@ API routes live in `src/app/api/v1/*` (auth, article, llm, media, notification, 
 
 ## Env and environments
 
-Three environments: `.env.local`, `.env.stage`, `.env.prod` (scripts via `env-cmd`). Template — `.env.example`, full variable reference — `docs/ENV_REFERENCE.md`. Key vars: `JWT_SECRET`, `MONGO_URI` (or MONGO_HOST/USER/PASSWORD/DB), `REDIS_URL`, VAPID keys (push), `MFA_ENCRYPTION_KEY`, `FIRST_ADMIN_LOGIN/PASSWORD`, OAuth keys, `NEXT_PUBLIC_LLM_ENABLED` + OpenAI. After editing env — run `pnpm doctor`.
+Three environments: `.env.local`, `.env.stage`, `.env.prod` (scripts via `env-cmd`). Template — `.env.example`, full variable reference — `docs/configure/env-reference.ru.md`. Key vars: `JWT_SECRET`, `MONGO_URI` (or MONGO_HOST/USER/PASSWORD/DB), `REDIS_URL`, VAPID keys (push), `MFA_ENCRYPTION_KEY`, `FIRST_ADMIN_LOGIN/PASSWORD`, OAuth keys, `NEXT_PUBLIC_LLM_ENABLED` + OpenAI. After editing env — run `pnpm doctor`.
 
 Secrets are never committed; server-side keys (OpenAI etc.) never reach the client — only `NEXT_PUBLIC_*` vars are public.
 
@@ -108,27 +108,28 @@ Secrets are never committed; server-side keys (OpenAI etc.) never reach the clie
 - Deploy: GitHub Actions (`prod-deploy.yml` on push to `main`; a stage workflow is a copy of it with `develop` + `.env.stage`) to a VPS via Docker Compose
 - Compose files: `docker-compose.dev.yml` (local mongo/nginx), `docker-compose.local.yml` (full stack locally)
 - Production stack: app + nginx + certbot (Let's Encrypt) + Redis + MongoDB (optional) + metrics (Prometheus, Grafana, Loki)
-- Blue-green deploy and memory limits — see `docs/INFRA_HARDENING_PLAYBOOK_RU.md`
+- Blue-green deploy and memory limits — see `docs/deploy/hardening-playbook.ru.md`
 
 ## Documentation — where to look
 
-- `docs/README.md` — index of all documentation
-- `docs/GETTING_STARTED.md` (RU) — fork checklist: product.ts, env, verification files
-- `docs/CONFIGURATION.md` (RU) — feature flags: auth, email, MFA, sessions, onboarding, push, LLM
-- `docs/ENV_REFERENCE.md` — all environment variables
-- `docs/DECISIONS_RU.md` — decision journal: why things are the way they are (append-only, dated)
-- `docs/agents/review.md`, `docs/agents/triage.md` — how to review a PR, how to file an issue
+- `docs/README.md` — index of all documentation; folders by topic, language suffix `.ru.md` / `.en.md` (RU canonical, EN for entry docs)
+- `docs/start/getting-started.en.md` / `.ru.md` — first hour after a fork; `docs/start/local-development.en.md` — commands, local Mongo, local HTTPS
+- `docs/deploy/github-actions.en.md` — deploy workflow inputs and secrets, VPS, troubleshooting
+- `docs/configure/feature-flags.ru.md` (RU) — feature flags: auth, email, MFA, sessions, onboarding, push, LLM
+- `docs/configure/env-reference.en.md` / `.ru.md` — all environment variables, same order as `.env.example` (gated)
+- `docs/decisions/journal.ru.md` — decision journal: why things are the way they are (append-only, dated)
+- `docs/agents/review.ru.md`, `docs/agents/triage.ru.md` — how to review a PR, how to file an issue
 - `docs/plans/README.md` — plans for large work
-- `docs/CI_TELEGRAM_LIGHTHOUSE_RU.md` — CI: Telegram notifications, Lighthouse budgets, secret scan, gates
-- `docs/AUTH_OAUTH.md`, `docs/SECURITY_AND_ACCOUNT_ROADMAP.md` — auth/security (implemented)
-- `docs/SECURITY_HARDENING_PLAYBOOK_RU.md`, `docs/SECURITY_SEO_AUDIT.md` — hardening
-- Roadmaps: `PRODUCT_ROADMAP.md`, `AI_FEATURES_ROADMAP.md`, `IMPROVEMENTS_ROADMAP.md`
+- `docs/deploy/ci-notifications-lighthouse.ru.md` — CI: Telegram notifications, Lighthouse budgets, secret scan, gates
+- `docs/configure/oauth.ru.md`, `docs/security/account-security.ru.md` — auth/security (implemented)
+- `docs/security/hardening-playbook.ru.md`, `docs/security/security-seo-audit.ru.md` — hardening
+- Roadmaps: `docs/roadmaps/product.en.md`, `docs/roadmaps/ai-features.en.md`, `docs/roadmaps/geo-discoverability.en.md`
 
 ## MCP server and machine auth (PAT)
 
 The repo ships an MCP stdio server (`mcp/`) exposing the articles + media domains as tools for MCP hosts (Claude Desktop, Cursor, Claude Code). Auth is a Personal Access Token (`nsb_pat_…`) issued at `/admin/api-tokens` (flag `API_TOKENS_ENABLED`), sent as `Authorization: Bearer` to the regular REST `/api/v1/*` — scopes (`articles:read|write|publish|seo`, `media:read|write`), per-token rate limit and `SecurityAuditLog` audit are enforced server-side by `withApiTokenOrAuth` (`lib/middleware/api-token-middleware.ts`).
 
-When adding a new domain that should be MCP-accessible: add scopes to `src/api/api-token/model.ts`, wrap the routes with `withApiTokenOrAuth('<scope>')` (fine-grained checks via `hasApiTokenScope`), create `mcp/tools/<domain>.mcp.ts` and register it in `mcp/tools/index.ts`. Tools must stay thin wrappers over REST — no business logic in `mcp/`. Details: `mcp/README.md`, design doc `docs/MCP_ARTICLES_SERVER_RU.md`.
+When adding a new domain that should be MCP-accessible: add scopes to `src/api/api-token/model.ts`, wrap the routes with `withApiTokenOrAuth('<scope>')` (fine-grained checks via `hasApiTokenScope`), create `mcp/tools/<domain>.mcp.ts` and register it in `mcp/tools/index.ts`. Tools must stay thin wrappers over REST — no business logic in `mcp/`. Details: `mcp/README.md`, design doc `docs/develop/mcp-server.ru.md`.
 
 ## Rules for agents
 
@@ -177,7 +178,7 @@ deviation.
 - No renames or reformatting outside the task: they bloat the diff the owner reads by eye and
   hide the real change.
 - Comments only where a reader who already understands the next line would still be confused —
-  about the *why*. Rationale goes into the commit body or `docs/DECISIONS_RU.md`.
+  about the *why*. Rationale goes into the commit body or `docs/decisions/journal.ru.md`.
 - Never silently narrow scope. Found a bug outside the task — fix it and say so separately, or
   name it.
 - A green test's guarantee is untouchable: do not weaken an expectation, fit expected to new
@@ -203,6 +204,8 @@ exceptions can only shrink.
 |---|---|---|
 | `check-agent-contract` | `pnpm gates` | `AGENTS.md` over 28 KB or with `@file` imports; `CLAUDE.md` without `@AGENTS.md` or over 4 KB |
 | `check-eslint-disable-ratchet` | `pnpm gates` | A new `eslint-disable` (baseline `scripts/eslint-disable-ratchet-baseline.txt`; shrink it with `--update`) |
+| `check-docs-structure` | `pnpm gates` | A doc outside `docs/<topic>/<name>.<ru\|en>.md`, a doc missing from `docs/README.md`, a broken relative link in any `.md` |
+| `check-env-reference` | `pnpm gates` | A variable in `.env.example` without a row in `docs/configure/env-reference.{ru,en}.md`, or a documented variable the template no longer has |
 | eslint `no-restricted-syntax` | `pnpm lint` | Raw `<input>/<select>/<textarea>` outside `src/components/ui`; bare `<span>` text instead of `Typography` |
 | `gitleaks` | `Secret scan` workflow | New secret material in tracked files |
 | `Lighthouse` | `lighthouse.yml` | Public pages heavier than the `lighthouserc.json` budgets (weight and CLS block, timings warn) |
@@ -212,10 +215,10 @@ exceptions can only shrink.
 
 A code change without the doc change is an unfinished task.
 
-- A decision someone may want to revert → dated entry in `docs/DECISIONS_RU.md` (why, and why not otherwise)
-- New env variable → `.env.example` with a comment + `docs/ENV_REFERENCE.md`
+- A decision someone may want to revert → dated entry in `docs/decisions/journal.ru.md` (why, and why not otherwise)
+- New env variable → `.env.example` (one-line comment at most) + a row in `docs/configure/env-reference.ru.md` **and** `.en.md`, same section; `pnpm gates` checks the names
 - Plan for large work → `docs/plans/`
-- New document → a row in `docs/README.md`
+- New document → `docs/<topic>/<kebab-name>.<ru|en>.md` + a row in `docs/README.md`; `pnpm gates` checks both
 - Keep `AGENTS.md` and `AGENTS_RU.md` in sync
 
 ### Project conventions

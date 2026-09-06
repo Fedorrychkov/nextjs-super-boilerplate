@@ -6,7 +6,7 @@
 
 # Compose v1/v2 compatibility: prefer the v2 plugin (`docker compose`), fall back to the
 # legacy v1 binary (`docker-compose`). All flags used here (up -d, stop, rm -f, exec -T,
-# logs, restart, -f) are 1:1 compatible. See docs/DOCKER_COMPOSE_V2_RU.md.
+# logs, restart, -f) are 1:1 compatible. See docs/deploy/docker-compose-v2.ru.md.
 if docker compose version >/dev/null 2>&1; then
     DOCKER_COMPOSE="docker compose"
 else

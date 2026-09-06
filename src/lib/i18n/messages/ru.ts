@@ -282,7 +282,7 @@ export const ru = {
         q8: {
           question: 'Как добавить OAuth (Google, GitHub и т.д.)?',
           answer:
-            'OAuth уже встроен (v0.2.2): включите провайдеры в .env (AUTH_OAUTH_*_ENABLED, client id/secret), пропишите их в AUTH_OAUTH_SIGN_IN_PROVIDERS и запустите pnpm doctor. Yandex, Google и GitHub работают из коробки. Подробности — docs/AUTH_OAUTH.md: link/unlink, MFA после OAuth, AUTH_UI_MODE.',
+            'OAuth уже встроен (v0.2.2): включите провайдеры в .env (AUTH_OAUTH_*_ENABLED, client id/secret), пропишите их в AUTH_OAUTH_SIGN_IN_PROVIDERS и запустите pnpm doctor. Yandex, Google и GitHub работают из коробки. Подробности — docs/configure/oauth.ru.md: link/unlink, MFA после OAuth, AUTH_UI_MODE.',
         },
         q9: {
           question: 'Подходит ли для вайбкодинга — разработки с ИИ-ассистентом?',

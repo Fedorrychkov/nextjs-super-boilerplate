@@ -4,7 +4,7 @@
 
 **Статус:** 📋 спецификация (код ещё не реализован).  
 **Версия цели:** v0.2.2  
-**Связанные документы:** [`SECURITY_AND_ACCOUNT_ROADMAP.md`](./SECURITY_AND_ACCOUNT_ROADMAP.md), [`CONFIGURATION.md`](./CONFIGURATION.md), [`ENV_REFERENCE.md`](./ENV_REFERENCE.md)
+**Связанные документы:** [`docs/security/account-security.ru.md`](../security/account-security.ru.md), [`docs/configure/feature-flags.ru.md`](./feature-flags.ru.md), [`docs/configure/env-reference.ru.md`](./env-reference.ru.md)
 
 ---
 
@@ -59,7 +59,7 @@
 
 ## Связь с текущим auth
 
-Уже реализовано (см. [`SECURITY_AND_ACCOUNT_ROADMAP.md`](./SECURITY_AND_ACCOUNT_ROADMAP.md)):
+Уже реализовано (см. [`docs/security/account-security.ru.md`](../security/account-security.ru.md)):
 
 | Компонент | Роль для OAuth |
 |-----------|----------------|
@@ -266,7 +266,7 @@ Email используется для **UX и антифрода**, не для 
 ### OAuth-only и безопасность
 
 - Нет пароля → нет credential brute-force на этот аккаунт.
-- Восстановление — через IdP + link в профиле (если потерял доступ к IdP — admin recovery по [`SECURITY_AND_ACCOUNT_ROADMAP.md`](./SECURITY_AND_ACCOUNT_ROADMAP.md)).
+- Восстановление — через IdP + link в профиле (если потерял доступ к IdP — admin recovery по [`docs/security/account-security.ru.md`](../security/account-security.ru.md)).
 - Установка пароля — осознанное действие в профиле с MFA, не при первом OAuth sign-up.
 
 ---
@@ -599,7 +599,7 @@ OTP только для **credential** sign-up. OAuth sign-up OTP не треб�
 
 ### Legacy JWT без `sid`
 
-Без изменений — см. [`SECURITY_AND_ACCOUNT_ROADMAP.md`](./SECURITY_AND_ACCOUNT_ROADMAP.md). OAuth всегда выдаёт токены с `sid`.
+Без изменений — см. [`docs/security/account-security.ru.md`](../security/account-security.ru.md). OAuth всегда выдаёт токены с `sid`.
 
 ---
 

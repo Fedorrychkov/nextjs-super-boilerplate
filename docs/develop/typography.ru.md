@@ -1,6 +1,6 @@
 # Миграция на Typography + enforcement (RU) — дизайн-док
 
-Статус: **частично реализовано**. Область: `src/components/ui/Typography/Typography.tsx`, прикладной код `src/**`, `eslint.config.mjs`, `AGENTS.md`/`AGENTS_RU.md`, `/ui-kit`. Companion к `FIELD_COMPONENTS_UNIFICATION_RU.md` (тот же механизм принуждения).
+Статус: **частично реализовано**. Область: `src/components/ui/Typography/Typography.tsx`, прикладной код `src/**`, `eslint.config.mjs`, `AGENTS.md`/`AGENTS_RU.md`, `/ui-kit`. Companion к `docs/develop/field-components.ru.md` (тот же механизм принуждения).
 
 > **Сделано:** (1) `Typography` расширен — `tone: 'default' | 'muted'`, `asTag` до `h4..h6`, и **пустой дефолт** (без `variant` компонент не навязывает свои текстовые классы — className управляет полностью; добавлен проброс остальных HTML-атрибутов: `role`, `aria-*`, `id`, `onClick`, `dangerouslySetInnerHTML` и т.д.). (2) ESLint `no-restricted-syntax` (уровень `warn`) на `p`/`span`/`h1-6` + `input/textarea/select`, override для `src/components/ui/**`. (3) Все сырые `p`/`span`/`h1-6` в `src/**` (вне `ui/`) переведены на `Typography` (0 осталось). `typecheck` и `eslint` — чисто (0 ошибок).
 > **Осталось:** поднять правило до `error`; витрина `/ui-kit`; раздел «Типографика» в `AGENTS.md`; ревью визуальных нюансов заголовков.
@@ -74,7 +74,7 @@
 },
 ```
 
-> Если в `FIELD_COMPONENTS_UNIFICATION_RU.md` уже добавлен `no-restricted-syntax` для `input/textarea/select`, **объединить оба набора в один массив** правила (ESLint позволяет только один `no-restricted-syntax` на конфиг-блок) — селекторы полей и текста в одном списке, один общий override для `src/components/ui/**`.
+> Если в `docs/develop/field-components.ru.md` уже добавлен `no-restricted-syntax` для `input/textarea/select`, **объединить оба набора в один массив** правила (ESLint позволяет только один `no-restricted-syntax` на конфиг-блок) — селекторы полей и текста в одном списке, один общий override для `src/components/ui/**`.
 
 ## Границы (что НЕ трогаем)
 

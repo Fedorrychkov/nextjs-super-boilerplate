@@ -268,7 +268,7 @@ services:
       - api_network
 
   # Background worker: periodic maintenance jobs (BullMQ — see scripts/worker.ts and
-  # docs/CRON_ARCHITECTURE_PORTABLE_RU.md). Same image as core-api but a HEADLESS
+  # docs/deploy/background-worker.ru.md). Same image as core-api but a HEADLESS
   # command (`worker:<env>`) — no HTTP server, so the image's HTTP healthcheck is disabled
   # (it would hang unhealthy). Run exactly ONE instance; scale core-api freely without
   # duplicating cron ticks. Enabled per environment via WORKER_ENABLED (deploy workflow

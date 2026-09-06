@@ -110,7 +110,7 @@ services:
 1. **Auth:** логин первым админом (`FIRST_ADMIN_*`) → редирект в кабинет; невалидный пароль → ошибка + учёт brute-force не роняет флоу.
 2. **Публикация статьи:** создать draft (`/admin/articles/create`) → заполнить контент/SEO → опубликовать ревизию → публичная статья доступна на `/article/[slug]` и не `noindex`.
 3. **Публичный рендер + агенты:** `/article/[slug]` отдаёт HTML; с `Accept: text/markdown` — Markdown + YAML front matter и заголовок `Vary: Accept` (уже реализовано в `src/proxy.ts`) — регрессионная защита.
-4. **Sidebar (связка с `SIDEBAR_NAVIGATION_FIX_RU.md`):** состояние секций переживает смену лейаута.
+4. **Sidebar (связка с `docs/develop/sidebar-navigation.ru.md`):** состояние секций переживает смену лейаута.
 
 ### Джоба E2E
 

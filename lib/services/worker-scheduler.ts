@@ -14,7 +14,7 @@ const BULLMQ_MODULE: string = 'bullmq'
 /**
  * A periodic background job. Register in `scripts/worker.ts`.
  * `run` must be IDEMPOTENT and safe to re-run: the schedule source of truth should
- * live in the DB (e.g. a `nextRunAt` field) — see docs/CRON_ARCHITECTURE_PORTABLE_RU.md.
+ * live in the DB (e.g. a `nextRunAt` field) — see docs/deploy/background-worker.ru.md.
  */
 export type WorkerJob = {
   /** Unique job name (also the BullMQ jobId). */
@@ -34,7 +34,7 @@ let worker: any = null
  * Start the maintenance scheduler as BullMQ repeatable jobs (worker process only).
  * Idempotent. Falls back to a no-op (with a warning) when Redis is not configured.
  *
- * Portable cron architecture (see docs/CRON_ARCHITECTURE_PORTABLE_RU.md):
+ * Portable cron architecture (see docs/deploy/background-worker.ru.md):
  *  - `removeOnComplete/removeOnFail` so Redis does not grow forever
  *  - stale repeatable-job cleanup on boot so an interval change does not double-tick
  *  - `concurrency: 1` — exactly one job at a time

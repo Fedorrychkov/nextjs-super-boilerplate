@@ -216,4 +216,4 @@ cd ~/app
 
 - **Логи контейнеров:** `docker logs <имя_контейнера>` (например `docker logs api-service`, `docker logs mongo`).
 - **Проверка env в контейнере:** `docker exec api-service env` или `docker exec api-service printenv MONGO_URI`.
-- **Документация по workflow:** параметры и секреты описаны в таблицах в [README](../README.md).
+- **Документация по workflow:** параметры и секреты описаны в таблицах в [README](../../README.md).

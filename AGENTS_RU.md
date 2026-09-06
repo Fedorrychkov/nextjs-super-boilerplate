@@ -31,10 +31,10 @@ make up-local               # локальный MongoDB (docker-compose.dev.yml
 pnpm dev:local              # dev-сервер, http://localhost:3000
 
 make setup                  # повторяемая локальная настройка (scripts/setup-local.sh): долив ключей, заполнение пустых, doctor
-pnpm gates                  # scripts/check-*.mjs — размер контракта агента, храповик eslint-disable (часть CI `quality`)
+pnpm gates                  # scripts/check-*.mjs — контракт агента, храповик eslint-disable, структура доков, справочник env (CI `quality`)
 pnpm lint / lint:fix        # ESLint
 pnpm typecheck              # tsc --noEmit
-pnpm test                   # node --test через tsx (*.test.ts, scripts/telegram/*.test.mjs) — без инфраструктуры
+pnpm test                   # node --test через tsx (*.test.ts, scripts/**/*.test.mjs) — без инфраструктуры
 pnpm format                 # prettier по src/**/*.ts
 pnpm build:local|stage|prod # сборка с env-cmd под нужный env
 ```
@@ -73,7 +73,7 @@ mcp/             MCP stdio-сервер для AI-агентов (server.ts, reg
 
 .docker/         Dockerfile'ы (app, nginx, certbot), конфиги nginx, supervisor
 .github/workflows/  ci.yml + quality.yml (gates/lint/typecheck/test), prod-deploy.yml (деплой на VPS),
-                 lighthouse.yml, notify-telegram.yml, ci-secret-scan.yml — см. docs/CI_TELEGRAM_LIGHTHOUSE_RU.md
+                 lighthouse.yml, notify-telegram.yml, ci-secret-scan.yml — см. docs/deploy/ci-notifications-lighthouse.ru.md
 docs/            вся документация (см. docs/README.md — индекс)
 scripts/         doctor.ts (валидация env), local-containers-run.sh, notify-telegram.sh
 patch/           git-патчи с историей крупных фич (справочно)
@@ -90,7 +90,7 @@ API-роуты живут в `src/app/api/v1/*` (auth, article, llm, media, noti
 
 ## Env и окружения
 
-Три окружения: `.env.local`, `.env.stage`, `.env.prod` (скрипты через `env-cmd`). Шаблон — `.env.example`, справочник всех переменных — `docs/ENV_REFERENCE.md`. Ключевые: `JWT_SECRET`, `MONGO_URI` (или MONGO_HOST/USER/PASSWORD/DB), `REDIS_URL`, VAPID-ключи (push), `MFA_ENCRYPTION_KEY`, `FIRST_ADMIN_LOGIN/PASSWORD`, OAuth-ключи, `NEXT_PUBLIC_LLM_ENABLED` + OpenAI. После правки env — `pnpm doctor`.
+Три окружения: `.env.local`, `.env.stage`, `.env.prod` (скрипты через `env-cmd`). Шаблон — `.env.example`, справочник всех переменных — `docs/configure/env-reference.ru.md`. Ключевые: `JWT_SECRET`, `MONGO_URI` (или MONGO_HOST/USER/PASSWORD/DB), `REDIS_URL`, VAPID-ключи (push), `MFA_ENCRYPTION_KEY`, `FIRST_ADMIN_LOGIN/PASSWORD`, OAuth-ключи, `NEXT_PUBLIC_LLM_ENABLED` + OpenAI. После правки env — `pnpm doctor`.
 
 Секреты никогда не коммитятся; серверные ключи (OpenAI и т.п.) не попадают на клиент — только `NEXT_PUBLIC_*` публичны.
 
@@ -108,27 +108,28 @@ API-роуты живут в `src/app/api/v1/*` (auth, article, llm, media, noti
 - Деплой: GitHub Actions (`prod-deploy.yml` на push в `main`; stage-workflow — его копия с `develop` + `.env.stage`) на VPS через Docker Compose
 - Compose-файлы: `docker-compose.dev.yml` (локальный mongo/nginx), `docker-compose.local.yml` (полный стек локально)
 - Стек в проде: app + nginx + certbot (Let's Encrypt) + Redis + MongoDB (опц.) + метрики (Prometheus, Grafana, Loki)
-- Blue-green деплой и memory limits — см. `docs/INFRA_HARDENING_PLAYBOOK_RU.md`
+- Blue-green деплой и memory limits — см. `docs/deploy/hardening-playbook.ru.md`
 
 ## Документация — куда смотреть
 
-- `docs/README.md` — индекс всей документации
-- `docs/GETTING_STARTED.md` (RU) — чеклист форка: product.ts, env, verification-файлы
-- `docs/CONFIGURATION.md` (RU) — feature-флаги: auth, email, MFA, сессии, onboarding, push, LLM
-- `docs/ENV_REFERENCE.md` — все env-переменные
-- `docs/DECISIONS_RU.md` — журнал решений: почему сделано так (только дописывается, с датами)
-- `docs/agents/review.md`, `docs/agents/triage.md` — как ревьюить PR, как заводить issue
+- `docs/README.md` — индекс всей документации; папки по темам, суффикс языка `.ru.md` / `.en.md` (RU канонический, EN у входных документов)
+- `docs/start/getting-started.ru.md` / `.en.md` — первый час после форка; `docs/start/local-development.en.md` — команды, локальная Mongo, локальный HTTPS
+- `docs/deploy/github-actions.en.md` — входы и секреты деплоя, VPS, troubleshooting
+- `docs/configure/feature-flags.ru.md` (RU) — feature-флаги: auth, email, MFA, сессии, onboarding, push, LLM
+- `docs/configure/env-reference.ru.md` / `.en.md` — все env-переменные в порядке `.env.example` (под гейтом)
+- `docs/decisions/journal.ru.md` — журнал решений: почему сделано так (только дописывается, с датами)
+- `docs/agents/review.ru.md`, `docs/agents/triage.ru.md` — как ревьюить PR, как заводить issue
 - `docs/plans/README.md` — планы крупной работы
-- `docs/CI_TELEGRAM_LIGHTHOUSE_RU.md` — CI: уведомления в Telegram, бюджеты Lighthouse, скан секретов, гейты
-- `docs/AUTH_OAUTH.md`, `docs/SECURITY_AND_ACCOUNT_ROADMAP.md` — авторизация/безопасность (реализовано)
-- `docs/SECURITY_HARDENING_PLAYBOOK_RU.md`, `docs/SECURITY_SEO_AUDIT.md` — hardening
-- Роадмапы: `PRODUCT_ROADMAP.md`, `AI_FEATURES_ROADMAP.md`, `IMPROVEMENTS_ROADMAP.md`
+- `docs/deploy/ci-notifications-lighthouse.ru.md` — CI: уведомления в Telegram, бюджеты Lighthouse, скан секретов, гейты
+- `docs/configure/oauth.ru.md`, `docs/security/account-security.ru.md` — авторизация/безопасность (реализовано)
+- `docs/security/hardening-playbook.ru.md`, `docs/security/security-seo-audit.ru.md` — hardening
+- Роадмапы: `docs/roadmaps/product.en.md`, `docs/roadmaps/ai-features.en.md`, `docs/roadmaps/geo-discoverability.en.md`
 
 ## MCP-сервер и машинная авторизация (PAT)
 
 В репозитории есть MCP stdio-сервер (`mcp/`), отдающий домены статей и медиа как tools для MCP-хостов (Claude Desktop, Cursor, Claude Code). Авторизация — Personal Access Token (`nsb_pat_…`), выдаётся в `/admin/api-tokens` (флаг `API_TOKENS_ENABLED`) и отправляется как `Authorization: Bearer` в обычный REST `/api/v1/*` — scopes (`articles:read|write|publish|seo`, `media:read|write`), per-token rate-limit и аудит в `SecurityAuditLog` применяются на сервере через `withApiTokenOrAuth` (`lib/middleware/api-token-middleware.ts`).
 
-Добавляя новый домен, доступный через MCP: добавь scopes в `src/api/api-token/model.ts`, оберни роуты `withApiTokenOrAuth('<scope>')` (точечные проверки — `hasApiTokenScope`), создай `mcp/tools/<домен>.mcp.ts` и зарегистрируй в `mcp/tools/index.ts`. Tools — тонкие обёртки над REST, без бизнес-логики в `mcp/`. Подробнее: `mcp/README.md`, дизайн-док `docs/MCP_ARTICLES_SERVER_RU.md`.
+Добавляя новый домен, доступный через MCP: добавь scopes в `src/api/api-token/model.ts`, оберни роуты `withApiTokenOrAuth('<scope>')` (точечные проверки — `hasApiTokenScope`), создай `mcp/tools/<домен>.mcp.ts` и зарегистрируй в `mcp/tools/index.ts`. Tools — тонкие обёртки над REST, без бизнес-логики в `mcp/`. Подробнее: `mcp/README.md`, дизайн-док `docs/develop/mcp-server.ru.md`.
 
 ## Правила для агентов
 
@@ -178,7 +179,7 @@ API-роуты живут в `src/app/api/v1/*` (auth, article, llm, media, noti
 - Никаких переименований и переформатирования мимо задачи: они раздувают дифф, который владелец
   смотрит глазами, и прячут в нём настоящее изменение.
 - Комментарии — только там, где запутается читатель, уже понимающий следующую строку, и только
-  про *почему*. Обоснование решения — в тело коммита или в `docs/DECISIONS_RU.md`.
+  про *почему*. Обоснование решения — в тело коммита или в `docs/decisions/journal.ru.md`.
 - Никогда молча не сокращай scope. Нашёл баг мимо задачи — почини и скажи об этом отдельно либо
   назови его.
 - Гарантия зелёного теста неприкосновенна: нельзя ослаблять ожидание, подгонять expected под
@@ -204,6 +205,8 @@ API-роуты живут в `src/app/api/v1/*` (auth, article, llm, media, noti
 |---|---|---|
 | `check-agent-contract` | `pnpm gates` | `AGENTS.md` больше 28 КБ или с `@file`-импортами; `CLAUDE.md` без `@AGENTS.md` или больше 4 КБ |
 | `check-eslint-disable-ratchet` | `pnpm gates` | Новый `eslint-disable` (baseline `scripts/eslint-disable-ratchet-baseline.txt`; уменьшать через `--update`) |
+| `check-docs-structure` | `pnpm gates` | Документ вне `docs/<тема>/<имя>.<ru\|en>.md`, документ без строки в `docs/README.md`, битая относительная ссылка в любом `.md` |
+| `check-env-reference` | `pnpm gates` | Переменная в `.env.example` без строки в `docs/configure/env-reference.{ru,en}.md`, или описанная переменная, которой в шаблоне больше нет |
 | eslint `no-restricted-syntax` | `pnpm lint` | Сырые `<input>/<select>/<textarea>` вне `src/components/ui`; голый `<span>` с текстом вместо `Typography` |
 | `gitleaks` | workflow `Secret scan` | Новый секрет в отслеживаемых файлах |
 | `Lighthouse` | `lighthouse.yml` | Публичные страницы тяжелее бюджетов `lighthouserc.json` (вес и CLS ломают, тайминги предупреждают) |
@@ -213,10 +216,10 @@ API-роуты живут в `src/app/api/v1/*` (auth, article, llm, media, noti
 
 Правка кода без правки доки — незакрытая задача.
 
-- Решение, которое кто-то захочет отменить → запись с датой в `docs/DECISIONS_RU.md` (почему так и почему не иначе)
-- Новая переменная окружения → `.env.example` с комментарием + `docs/ENV_REFERENCE.md`
+- Решение, которое кто-то захочет отменить → запись с датой в `docs/decisions/journal.ru.md` (почему так и почему не иначе)
+- Новая переменная окружения → `.env.example` (комментарий не длиннее строки) + строка в `docs/configure/env-reference.ru.md` **и** `.en.md`, в той же секции; `pnpm gates` сверяет имена
 - План крупной работы → `docs/plans/`
-- Новый документ → строка в `docs/README.md`
+- Новый документ → `docs/<тема>/<kebab-имя>.<ru|en>.md` + строка в `docs/README.md`; `pnpm gates` проверяет и то и другое
 - `AGENTS.md` и `AGENTS_RU.md` синхронизируются
 
 ### Соглашения проекта

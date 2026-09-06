@@ -174,7 +174,7 @@
 ## 4. Документация по подключению к MongoDB в контейнере на сервере
 
 > ✅ **Реализовано.** Раздел «Connecting to MongoDB from your dev machine» в корневом
-> [`README.md`](../README.md): shell внутри docker-сети, SSH-туннель, строки для CLI/GUI.
+> [`README.md`](../../README.md): shell внутри docker-сети, SSH-туннель, строки для CLI/GUI.
 
 ### 4.1. Сбор технических деталей
 
@@ -249,7 +249,7 @@
 > ✅ **Реализовано.** `scripts/backup-mongo.sh` (mongodump в одноразовом контейнере с капами
 > CPU/RAM, ротация, лок, гард по диску) + `scripts/restore-mongo.sh`. Cron ставится/снимается
 > деплоем (`mongo_backup_*` пропсы, авто-выкл при `mongo_enabled: false`). Полное описание,
-> restore-алгоритм и выгрузка дампов на локальную машину — в [`MONGO_BACKUPS_RU.md`](./MONGO_BACKUPS_RU.md).
+> restore-алгоритм и выгрузка дампов на локальную машину — в [`docs/deploy/mongo-backups.ru.md`](./mongo-backups.ru.md).
 > Ниже — исходный план для контекста; офсайт в object storage остаётся ручным следующим шагом.
 
 ### 5.1. Определение требований к бэкапам

@@ -4,7 +4,7 @@
 
 **Статус (2026-06-06): Phase 1–5 реализованы.** Ниже — как это работает сейчас и что осталось опционально (тесты, open questions).
 
-Связанные документы: [`PRODUCT_ROADMAP.md`](./PRODUCT_ROADMAP.md), уведомления (`NOTIFY_*` в `config/env.ts`).
+Связанные документы: [`docs/roadmaps/product.en.md`](../roadmaps/product.en.md), уведомления (`NOTIFY_*` в `config/env.ts`).
 
 ---
 
@@ -41,7 +41,7 @@
 
 ## Feature flags — `config/env.ts`
 
-Отдельный `config/account-features.ts` **не используем**. Блок `ACCOUNT_CONFIG` в [`config/env.ts`](../config/env.ts):
+Отдельный `config/account-features.ts` **не используем**. Блок `ACCOUNT_CONFIG` в [`config/env.ts`](../../config/env.ts):
 
 ```ts
 const ACCOUNT_CONFIG = {

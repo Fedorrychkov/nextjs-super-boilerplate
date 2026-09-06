@@ -1,6 +1,6 @@
 # Перенос MCP OAuth + Machine Access в downstream-проекты
 
-Патч: [`patch/mcp-oauth-and-machine-access.patch`](../patch/mcp-oauth-and-machine-access.patch) — **94 файла, весь machine-auth-модуль целиком**: PAT-контур (токены, политики ролей, remote `/api/mcp`, stdio-сервер, страницы токенов, PAT-обвязка v1-роутов статей/ревизий/медиа/LLM) + OAuth 2.1-слой (Claude.ai/Desktop/Cowork по одному URL, Claude Code без токена) + `/admin/machine-access` (usage-тайм-серия по окнам 1ч/6ч/12ч/24ч/7д, ревокация, per-user блокировка). Дизайн: [`MCP_OAUTH_DESIGN_RU.md`](./MCP_OAUTH_DESIGN_RU.md).
+Патч: [`patch/mcp-oauth-and-machine-access.patch`](../../patch/mcp-oauth-and-machine-access.patch) — **94 файла, весь machine-auth-модуль целиком**: PAT-контур (токены, политики ролей, remote `/api/mcp`, stdio-сервер, страницы токенов, PAT-обвязка v1-роутов статей/ревизий/медиа/LLM) + OAuth 2.1-слой (Claude.ai/Desktop/Cowork по одному URL, Claude Code без токена) + `/admin/machine-access` (usage-тайм-серия по окнам 1ч/6ч/12ч/24ч/7д, ревокация, per-user блокировка). Дизайн: [`docs/develop/mcp-oauth-design.ru.md`](./mcp-oauth-design.ru.md).
 
 Патч сделан от состояния бойлерплейта **без** этого модуля и проверен: на чистую базу ложится `git apply` без конфликтов, результат проходит `tsc --noEmit` без ошибок.
 

@@ -77,6 +77,8 @@ performance, accessibility, LCP, render-blocking. Сторонние запро�
 |---|---|
 | `check-agent-contract` | `AGENTS.md` больше 28 КБ или с `@file`-импортом; `CLAUDE.md` без `@AGENTS.md` или больше 4 КБ |
 | `check-eslint-disable-ratchet` | Число `eslint-disable` выросло. Baseline `scripts/eslint-disable-ratchet-baseline.txt`; стало меньше — `node scripts/check-eslint-disable-ratchet.mjs --update` тем же PR |
+| `check-docs-structure` | Документ вне схемы `docs/<тема>/<kebab>.<ru\|en>.md`, документ без строки в `docs/README.md`, битая относительная ссылка в любом `.md` репозитория (код-спаны и блоки кода не считаются) |
+| `check-env-reference` | Имена в `.env.example` и в `docs/configure/env-reference.{ru,en}.md` разошлись в любую сторону; блок `<!-- env-gate: ignore -->` (входы деплоя) не учитывается |
 
 Механика храповика — `scripts/lib/ratchet.mjs`: годится для любого «числа, которое может только
 уменьшаться» (JS-файлы при миграции на TS, `any`, `alert()`, TODO).

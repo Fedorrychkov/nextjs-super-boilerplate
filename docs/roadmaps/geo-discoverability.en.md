@@ -1,6 +1,6 @@
 # Improvements Roadmap (GEO, Discoverability, Marketing Surface)
 
-This roadmap tracks **non-feature** improvements: **GEO** (Generative Engine Optimization / discoverability for LLM agents and tools), homepage quality, and related technical SEO signals. It complements [**`PRODUCT_ROADMAP.md`**](./PRODUCT_ROADMAP.md) (product) and [**`AI_FEATURES_ROADMAP.md`**](./AI_FEATURES_ROADMAP.md) (LLM authoring). **Public articles** already expose Markdown via `Accept`, `Content-Signal`, and YAML front matter — this file focuses on the **landing** and **global** signals.
+This roadmap tracks **non-feature** improvements: **GEO** (Generative Engine Optimization / discoverability for LLM agents and tools), homepage quality, and related technical SEO signals. It complements [**`docs/roadmaps/product.en.md`**](./product.en.md) (product) and [**`docs/roadmaps/ai-features.en.md`**](./ai-features.en.md) (LLM authoring). **Public articles** already expose Markdown via `Accept`, `Content-Signal`, and YAML front matter — this file focuses on the **landing** and **global** signals.
 
 ## Principles
 
@@ -22,9 +22,9 @@ Third-party guides (e.g. [AIOSEO — Generative Engine Optimization](https://aio
 
 ## Baseline (already in repo)
 
-- Root metadata and OG/Twitter from `src/app/layout.tsx` + [`src/lib/seo/config.ts`](../src/lib/seo/config.ts).
-- Homepage: [`src/app/page.tsx`](../src/app/page.tsx) — hero + links + latest articles; `Organization` / `WebSite` JSON-LD via [`src/lib/seo/jsonld`](../src/lib/seo/jsonld.tsx).
-- Article-side agent story is documented in drafts and **`AI_FEATURES_ROADMAP.md`** Phase 5 (Markdown negotiation, tokens header).
+- Root metadata and OG/Twitter from `src/app/layout.tsx` + [`src/lib/seo/config.ts`](../../src/lib/seo/config.ts).
+- Homepage: [`src/app/page.tsx`](../../src/app/page.tsx) — hero + links + latest articles; `Organization` / `WebSite` JSON-LD via [`src/lib/seo/jsonld`](../../src/lib/seo/jsonld.tsx).
+- Article-side agent story is documented in drafts and **`docs/roadmaps/ai-features.en.md`** Phase 5 (Markdown negotiation, tokens header).
 
 ---
 
@@ -33,8 +33,8 @@ Third-party guides (e.g. [AIOSEO — Generative Engine Optimization](https://aio
 Goal: fix common automated checks (`llms.txt` missing, generic meta, homepage not differentiated).
 
 - [x] **`public/llms.txt`** — short project summary, links to GitHub, key docs (`docs/…`), sitemap URL; follow [llmstxt.org](https://llmstxt.org/) conventions.
-- [x] **Homepage-specific metadata** — `export async function generateMetadata` for [`src/app/page.tsx`](../src/app/page.tsx) (or a route `layout.tsx`) so `title` / `description` / OG match the hero and target phrases (without duplicating the entire `seoConfig` for other routes).
-- [ ] **Tighten or specialize `seoConfig`** — optional: richer `defaultDescription` / `defaultTitle` in [`src/lib/seo/config.ts`](../src/lib/seo/config.ts) *or* keep globals minimal and rely on per-route metadata for `/` only. *(Globals unchanged; `/` uses `home.metaTitle` / `home.metaDescription` + shared `BOILERPLATE_*` URLs.)*
+- [x] **Homepage-specific metadata** — `export async function generateMetadata` for [`src/app/page.tsx`](../../src/app/page.tsx) (or a route `layout.tsx`) so `title` / `description` / OG match the hero and target phrases (without duplicating the entire `seoConfig` for other routes).
+- [ ] **Tighten or specialize `seoConfig`** — optional: richer `defaultDescription` / `defaultTitle` in [`src/lib/seo/config.ts`](../../src/lib/seo/config.ts) *or* keep globals minimal and rely on per-route metadata for `/` only. *(Globals unchanged; `/` uses `home.metaTitle` / `home.metaDescription` + shared `BOILERPLATE_*` URLs.)*
 - [x] **Ensure `llms.txt` is linked or discoverable** — **chosen URL:** **`/llms.txt`** (static file under `public/`). Linked from the homepage “For developers and agents” section. *(Optional later: redirect `/.well-known/llms.txt` → `/llms.txt` at the edge if a tool requires it.)*
 
 ---
@@ -57,8 +57,8 @@ Goal: reduce “thin content” warnings and give agents clear sections to index
 
 Goal: stronger machine-readable identity and sharing signals.
 
-- [x] **`SoftwareApplication` or `WebApplication` JSON-LD** on the homepage (name, description, `url`, `installUrl`/`sameAs` → GitHub — `schema-dts` typings omit `codeRepository` on `SoftwareApplication`) — extend [`src/lib/seo/jsonld`](../src/lib/seo/jsonld.tsx) or colocate a small builder next to existing helpers.
-- [ ] **Social links in footer or layout** — consistent `sameAs` alignment with [`NEXT_PUBLIC_ORGANIZATION_SAME_AS`](../config/env.ts) / `seoConfig.organizationSameAs` (improves “entity” signals; many audits score social presence).
+- [x] **`SoftwareApplication` or `WebApplication` JSON-LD** on the homepage (name, description, `url`, `installUrl`/`sameAs` → GitHub — `schema-dts` typings omit `codeRepository` on `SoftwareApplication`) — extend [`src/lib/seo/jsonld`](../../src/lib/seo/jsonld.tsx) or colocate a small builder next to existing helpers.
+- [ ] **Social links in footer or layout** — consistent `sameAs` alignment with [`NEXT_PUBLIC_ORGANIZATION_SAME_AS`](../../config/env.ts) / `seoConfig.organizationSameAs` (improves “entity” signals; many audits score social presence).
 - [ ] **Optional:** dedicated **LinkedIn / YouTube** (or primary channel) links if they exist — audits often flag missing profiles.
 
 ---
@@ -78,7 +78,7 @@ These items often appear in generic site audits; they support crawl budget and t
 
 - [ ] **Reduce client JS weight on first paint** where possible (reports cite large JS vs HTML — prioritize content-visible SSR for hero).
 - [ ] **Avoid unnecessary redirects** — audit “multiple redirects” hints (CDN / www / trailing slash policy).
-- [ ] **Email authentication (domain)** — **SPF** / **DMARC** (and related) for the mail-sending domain; tracked at domain/DNS level — see [**`INFRASTRUCTURE_TODO_RU.md`**](./INFRASTRUCTURE_TODO_RU.md) / [**`INFRASTRUCTURE_PLAN.md`**](./INFRASTRUCTURE_PLAN.md) if applicable.
+- [ ] **Email authentication (domain)** — **SPF** / **DMARC** (and related) for the mail-sending domain; tracked at domain/DNS level — see [**`docs/deploy/infrastructure-backlog.ru.md`**](../deploy/infrastructure-backlog.ru.md) / [**`docs/deploy/infrastructure-plan.en.md`**](../deploy/infrastructure-plan.en.md) if applicable.
 
 ---
 
@@ -103,4 +103,4 @@ These items often appear in generic site audits; they support crawl budget and t
 - [llmstxt.org](https://llmstxt.org/) — `llms.txt` format.
 - [Content Signals](https://contentsignals.org/) — already used for public article responses (`Content-Signal` header).
 - [AIOSEO — The Beginner’s Guide to Generative Engine Optimization (GEO)](https://aioseo.com/generative-engine-optimization-geo/) — intent vs keywords, E-E-A-T, structure, technical GEO, measurement (WordPress-oriented; principles transfer).
-- Internal: [`docs/drafts/article-feat-ai-features-en.md`](./drafts/article-feat-ai-features-en.md) (feature narrative for articles + Markdown).
+- Internal: the article-side feature narrative (articles + Markdown) lived in a draft that was removed; see the published article linked from the root `README.md`.

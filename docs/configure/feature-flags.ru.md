@@ -1,7 +1,7 @@
 # Конфигурация функций (v0.2.4)
 
-Все feature flags и секреты — в [`config/env.ts`](../config/env.ts) (блоки `ACCOUNT_CONFIG`, `EMAIL_CONFIG`, `NOTIFICATION_CONFIG`, …).  
-Брендинг и SEO-контент — в [`config/product.ts`](../config/product.ts).
+Все feature flags и секреты — в [`config/env.ts`](../../config/env.ts) (блоки `ACCOUNT_CONFIG`, `EMAIL_CONFIG`, `NOTIFICATION_CONFIG`, …).  
+Брендинг и SEO-контент — в [`config/product.ts`](../../config/product.ts).
 
 Перед деплоем: `pnpm doctor`.
 
@@ -70,7 +70,7 @@ Self-service: setup / confirm / disable в профиле. Admin reset: `AUTH_AD
 | `AUTH_RECOVERY_STRICTNESS` | `strict` — email+MFA если оба есть; `flexible` — один фактор |
 | `AUTH_ADMIN_ACCOUNT_RECOVERY_ENABLED` | Admin: сброс MFA + установка пароля |
 
-Политика новых паролей: [`config/password-policy.ts`](../config/password-policy.ts) (UI + API).
+Политика новых паролей: [`config/password-policy.ts`](../../config/password-policy.ts) (UI + API).
 
 После смены/сброса пароля: `logoutAll()` по умолчанию.
 
@@ -169,6 +169,6 @@ NOTIFY_<EVENT>_CHANNELS=all|web_push|email
 
 ## Связанные документы
 
-- [`ENV_REFERENCE.md`](./ENV_REFERENCE.md) — полная таблица переменных
-- [`GETTING_STARTED.md`](./GETTING_STARTED.md) — чеклист форка
-- [`SECURITY_AND_ACCOUNT_ROADMAP.md`](./SECURITY_AND_ACCOUNT_ROADMAP.md) — детали security-фич
+- [`docs/configure/env-reference.ru.md`](./env-reference.ru.md) — полная таблица переменных
+- [`docs/start/getting-started.ru.md`](../start/getting-started.ru.md) — чеклист форка
+- [`docs/security/account-security.ru.md`](../security/account-security.ru.md) — детали security-фич

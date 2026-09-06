@@ -286,7 +286,7 @@ export const en = {
         q8: {
           question: 'How do I add OAuth providers (Google, GitHub, etc.)?',
           answer:
-            'OAuth is built in (v0.2.2): enable providers in .env (AUTH_OAUTH_*_ENABLED, client id/secret), list them in AUTH_OAUTH_SIGN_IN_PROVIDERS, and run pnpm doctor. Yandex, Google, and GitHub ship out of the box. See docs/AUTH_OAUTH.md for link/unlink, MFA after OAuth sign-in, and AUTH_UI_MODE.',
+            'OAuth is built in (v0.2.2): enable providers in .env (AUTH_OAUTH_*_ENABLED, client id/secret), list them in AUTH_OAUTH_SIGN_IN_PROVIDERS, and run pnpm doctor. Yandex, Google, and GitHub ship out of the box. See docs/configure/oauth.ru.md for link/unlink, MFA after OAuth sign-in, and AUTH_UI_MODE.',
         },
         q9: {
           question: 'Is it good for vibe coding — building with AI assistance?',

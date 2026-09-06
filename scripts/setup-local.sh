@@ -11,7 +11,7 @@
 #
 #   1. ЗАПОЛНЯЕТСЯ ТОЛЬКО ПУСТОЕ. Непустое значение не трогается никогда. Перегенерация
 #      MFA_ENCRYPTION_KEY необратима: старые шифротексты не расшифруются — TOTP пересоздавать всем
-#      (docs/ENV_REFERENCE.md).
+#      (docs/configure/env-reference.ru.md).
 #   2. НОВЫЕ КЛЮЧИ ДОЛИВАЮТСЯ из .env.example. Иначе у настроившегося месяц назад молча нет
 #      переменных, появившихся с тех пор, и он ловит «тихую деградацию» вместо ошибки.
 #   3. ЗАКАНЧИВАЕТСЯ `pnpm doctor`. Он и решает, годен ли результат.
@@ -70,7 +70,7 @@ fill_if_empty JWT_SECRET "$(openssl rand -hex 32)"
 fill_if_empty MFA_ENCRYPTION_KEY "$(openssl rand -hex 32)"
 fill_if_empty SEO_NOTIFY_SECRET "$(openssl rand -hex 24)"
 
-# Локальные адреса из docs/ENV_REFERENCE.md. Порты и root-пользователь — из docker-compose.dev.yml
+# Локальные адреса из docs/configure/env-reference.ru.md. Порты и root-пользователь — из docker-compose.dev.yml
 # (`make up-local`), не выдуманные. Если монга у тебя своя — значение уже непустое, и оно останется.
 fill_if_empty NEXT_PUBLIC_SITE_URL "http://localhost:3000"
 fill_if_empty MONGO_URI "mongodb://admin:123123@localhost:27017/app?authSource=admin"

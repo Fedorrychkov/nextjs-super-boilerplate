@@ -114,8 +114,9 @@ Point them to:
 - `/ui-kit` — live component playground
 - `/profile` — to test auth
 - `/admin/users` — to manage users (requires ADMIN role)
-- `docs/GETTING_STARTED.md` — for full setup guide
-- `docs/CONFIGURATION.md` — for all env variables
+- `docs/start/getting-started.ru.md` — for full setup guide
+- `docs/configure/env-reference.ru.md` (EN: `env-reference.en.md`) — for all env variables
+- `docs/configure/feature-flags.ru.md` — feature flags and what they switch
 
 Congratulate them and offer to help with the next thing: customizing the landing page, adding OAuth providers, or setting up CI/CD.
 

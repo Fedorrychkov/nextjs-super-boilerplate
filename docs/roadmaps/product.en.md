@@ -10,9 +10,9 @@ This roadmap tracks the remaining work for the article platform and related qual
 - Sitemap and RSS now include published public articles from DB.
 - Publish flow already triggers search engine notifications for indexable public articles.
 - Media pipeline: Uploadcare via own API (`/api/v1/media`), `MediaAsset` in DB, proxy delivery (`/cdn/...`), editor paste/drop + Preview/SEO image fields, responsive `<picture>` / `srcset` on public article HTML; author upload **max size** aligned with `proxyClientMaxBodySize` (see `src/constants/media-upload.ts`), client checks + API **413** on oversize.
-- Optional **LLM** authoring (chat, structured SEO/preview/content suggest, article audit, listen-audio TTS): server-only keys, `NEXT_PUBLIC_LLM_ENABLED`; detail in [**`AI_FEATURES_ROADMAP.md`**](./AI_FEATURES_ROADMAP.md).
+- Optional **LLM** authoring (chat, structured SEO/preview/content suggest, article audit, listen-audio TTS): server-only keys, `NEXT_PUBLIC_LLM_ENABLED`; detail in [**`docs/roadmaps/ai-features.en.md`**](./ai-features.en.md).
 - Public article HTML path: **`unstable_cache`** + **`revalidateTag`** on publish/revision update (`src/lib/cache/publicArticlePageCache.ts`). RUM (Phase 4) + optional analytics cookie consent.
-- Planned / partial (Phase 6): **article view counters** + **`/admin/article-views`** (shipped); **reactions** (roadmap-only / likely deferred). **Public agents:** **`Accept: text/markdown`** on **`/article/[slug]`** (`src/proxy.ts` rewrite → Markdown + YAML front matter; **`Vary: Accept`**); **`Content-Signal`** and **`x-markdown-tokens`** on Markdown. See [**`AI_FEATURES_ROADMAP.md`**](./AI_FEATURES_ROADMAP.md) Phase 5.
+- Planned / partial (Phase 6): **article view counters** + **`/admin/article-views`** (shipped); **reactions** (roadmap-only / likely deferred). **Public agents:** **`Accept: text/markdown`** on **`/article/[slug]`** (`src/proxy.ts` rewrite → Markdown + YAML front matter; **`Vary: Accept`**); **`Content-Signal`** and **`x-markdown-tokens`** on Markdown. See [**`docs/roadmaps/ai-features.en.md`**](./ai-features.en.md) Phase 5.
 
 ## Immediate Execution (Can Start Now)
 
@@ -97,7 +97,7 @@ This roadmap tracks the remaining work for the article platform and related qual
 
 ### 4. AI-assisted SEO authoring (optional module)
 
-Shipped as part of the LLM stack — see [**`AI_FEATURES_ROADMAP.md`**](./AI_FEATURES_ROADMAP.md) (Phase 1–2: chat, structured suggest, modal tabs). **OpenAI-only** on the server; UI gated by `NEXT_PUBLIC_LLM_ENABLED`.
+Shipped as part of the LLM stack — see [**`docs/roadmaps/ai-features.en.md`**](./ai-features.en.md) (Phase 1–2: chat, structured suggest, modal tabs). **OpenAI-only** on the server; UI gated by `NEXT_PUBLIC_LLM_ENABLED`.
 
 - [x] AI suggestions for SEO fields (meta title/description, OG title/description, **keywords**) with explicit user confirmation — `POST /api/v1/llm/seo/suggest`, **SEO** tab in `ArticleAiChatModal`, per-field / apply-all.
 - [x] AI-assisted **keyword** suggestions from article content (same structured SEO response).
@@ -233,7 +233,7 @@ Shipped as part of the LLM stack — see [**`AI_FEATURES_ROADMAP.md`**](./AI_FEA
 - [x] **Markdown body:** TipTap JSON → Markdown via **`renderPublicArticleBodyMarkdown`** (`@tiptap/static-renderer/pm/markdown` + same **`defaultExtensions`** as HTML); **`buildPublicArticleMarkdownDocument`** adds YAML front matter (`title`, `description`, `slug`, `canonical`, `language`, `allow_ai_training`, ISO dates).
 - [x] **Headers (Markdown responses):** `Content-Type: text/markdown; charset=utf-8`, **`Vary: Accept`**, **`Content-Signal`** — set in **`src/app/api/v1/public/article/markdown/route.ts`**; HTML responses also get **`Vary: Accept`** from **`src/proxy.ts`**.
 - [x] **`x-markdown-tokens`** — token count for the full Markdown document via **`gpt-tokenizer`** (`countPublicArticleMarkdownTokens`, **o200k_base**); set on **`src/app/api/v1/public/article/markdown/route.ts`**.
-- [x] **Publisher-controlled training flag** — per-article **`allowAiTraining`** (default **true**) in **Preview**; **`Content-Signal`** on HTML (**`src/proxy.ts`** + content-signal API) and on Markdown (markdown route). See [**`AI_FEATURES_ROADMAP.md`**](./AI_FEATURES_ROADMAP.md) Phase 5.
+- [x] **Publisher-controlled training flag** — per-article **`allowAiTraining`** (default **true**) in **Preview**; **`Content-Signal`** on HTML (**`src/proxy.ts`** + content-signal API) and on Markdown (markdown route). See [**`docs/roadmaps/ai-features.en.md`**](./ai-features.en.md) Phase 5.
 - [x] **Caching:** payload cache (`getCachedPublicArticlePagePayload`) stores both **HTML and Markdown** bodies; responses send **`Vary: Accept`** so CDNs do not serve HTML to a Markdown `Accept` (and vice versa).
 - [ ] **Operations note:** set **`APP_INTERNAL_ORIGIN`** in deploy so **`src/proxy.ts`** can resolve the internal API URL when `request.nextUrl.origin` is wrong (e.g. Docker). If the site uses **Cloudflare “Markdown for Agents”** at the edge, avoid conflicting double conversion — prefer **one** source of truth (origin-first Markdown vs edge HTML→MD).
 

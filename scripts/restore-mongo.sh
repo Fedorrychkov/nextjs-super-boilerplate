@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Restore a dump produced by scripts/backup-mongo.sh into the LOCAL mongo container.
-# DESTRUCTIVE: --drop replaces existing collections. See docs/MONGO_BACKUPS_RU.md.
+# DESTRUCTIVE: --drop replaces existing collections. See docs/deploy/mongo-backups.ru.md.
 #
 # Usage:
 #   ENV_FILE=.env.prod ./scripts/restore-mongo.sh /root/db-backups/mongo_prod_20260717_033001.archive.gz

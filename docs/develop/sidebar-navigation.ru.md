@@ -88,7 +88,7 @@ resolvedOpen = userOverride ?? (isActiveByUrl || defaultOpen)
 
 - **Юнит:** `sectionContainsActivePath` — плоские и вложенные `items`, динамические сегменты (`[...slug]`), trailing slash (переиспользовать кейсы `matchesPathname`).
 - **Юнит:** стор — `userOverride` перекрывает автоматику; `undefined` возвращает автоматику; сериализация в/из `sessionStorage`.
-- **E2E (если внедряется Playwright, см. `CI_QUALITY_GATE_E2E_RU.md`):** зайти на `/admin/rum` → секция `admin` раскрыта; свернуть → перейти на `/profile` → вернуться на `/admin/rum` → секция осталась свёрнутой (override пережил смену лейаута).
+- **E2E (если внедряется Playwright, см. `docs/deploy/ci-quality-gate.ru.md`):** зайти на `/admin/rum` → секция `admin` раскрыта; свернуть → перейти на `/profile` → вернуться на `/admin/rum` → секция осталась свёрнутой (override пережил смену лейаута).
 
 ## Критерии готовности
 

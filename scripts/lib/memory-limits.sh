@@ -55,7 +55,7 @@ compute_memory_limits() {
             # Not clamped: the budget has ~7% headroom and a silent bump would over-commit it.
             # Loud instead — below this line Grafana 13 gets memcg-killed on the first Loki query.
             if [ "${GRAFANA_MEM_LIMIT%M}" -lt 450 ] 2>/dev/null; then
-                echo "WARN: GRAFANA_MEM_LIMIT=${GRAFANA_MEM_LIMIT} is below the ~450M peak of Grafana 13: the metrics stack will be OOM-killed on the first log query. Set metrics_enabled: false or raise server_memory_mb (>= 4096), see docs/DECISIONS_RU.md §7." >&2
+                echo "WARN: GRAFANA_MEM_LIMIT=${GRAFANA_MEM_LIMIT} is below the ~450M peak of Grafana 13: the metrics stack will be OOM-killed on the first log query. Set metrics_enabled: false or raise server_memory_mb (>= 4096), see docs/decisions/journal.ru.md §7." >&2
             fi
             echo "Metrics budget: total=${metrics_mb}M prometheus=${PROMETHEUS_MEM_LIMIT} loki=${LOKI_MEM_LIMIT} grafana=${GRAFANA_MEM_LIMIT} telegraf=${TELEGRAF_MEM_LIMIT} promtail=${PROMTAIL_MEM_LIMIT} cadvisor=${CADVISOR_MEM_LIMIT} exporters=2x${EXPORTER_MEM_LIMIT}"
         fi
