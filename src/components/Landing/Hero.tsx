@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { Typography } from '~/components/ui'
 import { getServerT } from '~/lib/i18n/server'
 
+import pkg from '../../../package.json'
 import { LANDING_TECH_IDS } from './landing-i18n'
 
 type Props = {
@@ -26,7 +27,8 @@ export const Hero = async ({ githubUrl, demoUrl }: Props) => {
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-20 md:py-32 text-center">
         <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground mb-8">
           <Typography asTag="span" className="inline-block h-1.5 w-1.5 rounded-full bg-green-500" />
-          {t('nbs.hero.badge')}
+          {/* Version comes from package.json: the badge said v0.2 while the release was 0.3.0 */}
+          {t('nbs.hero.badge', { version: pkg.version })}
         </div>
 
         <Typography

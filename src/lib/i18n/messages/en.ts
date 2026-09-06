@@ -159,7 +159,7 @@ export const en = {
       getStarted: 'Get started',
     },
     hero: {
-      badge: 'Open source · MIT license · v0.2',
+      badge: 'Open source · MIT license · v{version}',
       titleBefore: 'Ship your Next.js product',
       titleHighlight: 'without the boilerplate',
       titleAfter: 'headaches',

@@ -54,7 +54,7 @@ export default async function Home() {
   const webSiteJsonLd = getWebSiteJsonLd()
   const softwareJsonLd = getSoftwareApplicationJsonLd(t('nbs.meta.description'))
   const githubUrl = seoConfig.links.github
-  const demoUrl = seoConfig.links.demo
+  const demoUrl = seoConfig.externalDemoUrl
 
   const articles = await getServerForPublicArticlesPaginated({ limit: 4, offset: 0 })
 

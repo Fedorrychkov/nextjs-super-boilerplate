@@ -66,15 +66,26 @@ flat="$(printf '%s' "$cmd" | tr '\n\t' '  ' | sed 's/\\ / /g; s/  */ /g')"
 start='(^|[;&|(`] *)(sudo +|env +|[A-Z_]+=[^ ]* +)*'
 # Опции между git и push: флаги без значения (--no-pager) и две с значением (-C <dir>, -c <cfg>).
 # Произвольное слово здесь допускать нельзя: `git log --grep push` стало бы «git push».
+# Сам push разрешён (ветки и PR агент создаёт сам, решение владельца 06.09.2026); запрещён push,
+# который явно целится в main (prod-deploy.yml триггерится на push в main — это выкатка), и
+# любой force-push.
 re_git_push=${start}'git( +(-C +[^ ]+|-c +[^ ]+|-[-A-Za-z0-9=./]+))* +push([ ;&|)]|$)'
+re_push_to_main='( |:)main([ ;&|)]|$)'
+re_push_force='( --force| -f| --force-with-lease| \+[A-Za-z])'
 re_env_file='\.env\.(prod|stage)([^A-Za-z0-9_-]|$)'
 re_env_script=${start}'(pnpm|npm|yarn)( +run)? +[A-Za-z0-9_.-]+:(prod|stage)([ ;&|)]|$)'
 re_restore_script=${start}'(bash +|sh +|\./|[^ ]*/)?scripts/restore-mongo\.sh'
 re_mongorestore=${start}'(docker +(exec|run) +[^;&|]*)?mongorestore'
 
-# --- git push в любой форме: `cd x && git push`, `git -C . push`, `git --no-pager push` ---
+# --- git push в main или с force: `git push origin main`, `git push origin HEAD:main`, `git push -f` ---
 if [[ $flat =~ $re_git_push ]]; then
-  deny "git push. prod-deploy.yml триггерится на push в main — push здесь может означать выкатку в прод. Пушит владелец сам."
+  push_part=${flat#*push}
+  if [[ $push_part =~ $re_push_to_main ]]; then
+    deny "push в main. prod-deploy.yml триггерится на push в main — это выкатка в прод. В main только через PR из develop, мержит владелец."
+  fi
+  if [[ $push_part =~ $re_push_force ]]; then
+    deny "force-push. Перезапись истории на удалённой ветке необратима — только руками владельца."
+  fi
 fi
 
 # --- боевое и стейджевое окружение: файлы и pnpm-цели ---
