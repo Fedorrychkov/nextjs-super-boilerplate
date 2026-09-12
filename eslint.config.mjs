@@ -98,7 +98,9 @@ const eslintConfig = defineConfig([
       // Enforce reusable wrappers over raw HTML controls / text tags.
       // Primitives live in src/components/ui/** (disabled there via override below).
       'no-restricted-syntax': [
-        'warn',
+        // `error`, а не `warn`: `pnpm lint` — это `eslint .` без `--max-warnings`, и warning не красит
+        // CI. Правило в статусе warn — не правило, а пожелание.
+        'error',
         {
           selector: "JSXOpeningElement[name.name='input']",
           message: 'Do not use a raw <input>. Use InputField / DefaultFieldContainer from ~/components/Fields (the Input primitive belongs only inside src/components/ui).',

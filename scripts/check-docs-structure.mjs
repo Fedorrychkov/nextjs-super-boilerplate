@@ -34,13 +34,22 @@ for (const file of docFiles) {
 
 // 2. index coverage
 const index = readFileSync(join(docs, 'README.md'), 'utf8')
+// Планы индексируются своим указателем: их десятки, они приходят и закрываются, и держать их
+// в общей карте документации значит переписывать её на каждый PR.
+const planIndexPath = join(docs, 'plans', 'README.md')
+const planIndex = existsSync(planIndexPath) ? readFileSync(planIndexPath, 'utf8') : ''
 const linkRe = /\]\(([^)\s#]+)(?:#[^)]*)?\)/g
 const indexed = new Set(
-  [...index.matchAll(linkRe)].map((m) => m[1]).filter((t) => !/^https?:/.test(t)).map((t) => normalize(join(docs, t))),
+  [
+    ...[...index.matchAll(linkRe)].map((m) => [docs, m[1]]),
+    ...[...planIndex.matchAll(linkRe)].map((m) => [join(docs, 'plans'), m[1]]),
+  ]
+    .filter(([, t]) => !/^https?:/.test(t))
+    .map(([base, t]) => normalize(join(base, t))),
 )
 for (const file of docFiles) {
   if (file === join(docs, 'README.md')) continue
-  if (!indexed.has(file)) problems.push(`docs/${relative(docs, file)}: нет в docs/README.md`)
+  if (!indexed.has(file)) problems.push(`docs/${relative(docs, file)}: нет в ${relative(docs, file).startsWith('plans/') ? 'docs/plans/README.md' : 'docs/README.md'}`)
 }
 
 // 3. relative links everywhere

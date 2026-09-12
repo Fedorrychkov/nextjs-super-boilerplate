@@ -39,7 +39,7 @@ pnpm format                 # prettier over src/**/*.ts
 pnpm build:local|stage|prod # build with env-cmd for the target env
 ```
 
-Pre-commit: husky + lint-staged (`pnpm lint:src` over staged files in `src/`).
+Pre-commit: husky (`typecheck` + `lint-staged`: `eslint --fix --max-warnings 0` over the staged files in `src/` only — no repo-wide lint pass, nothing outside the commit is touched).
 
 ## Structure
 
@@ -208,10 +208,11 @@ exceptions can only shrink.
 | `check-eslint-disable-ratchet` | `pnpm gates` | A new `eslint-disable` (baseline `scripts/eslint-disable-ratchet-baseline.txt`; shrink it with `--update`) |
 | `check-docs-structure` | `pnpm gates` | A doc outside `docs/<topic>/<name>.<ru\|en>.md`, a doc missing from `docs/README.md`, a broken relative link in any `.md` |
 | `check-env-reference` | `pnpm gates` | A variable in `.env.example` without a row in `docs/configure/env-reference.{ru,en}.md`, or a documented variable the template no longer has |
-| eslint `no-restricted-syntax` | `pnpm lint` | Raw `<input>/<select>/<textarea>` outside `src/components/ui`; bare `<span>` text instead of `Typography` |
+| eslint `no-restricted-syntax` (`error`) | `pnpm lint` | Raw `<input>/<select>/<textarea>` outside `src/components/ui`; bare `<span>` text instead of `Typography` |
 | `gitleaks` | `Secret scan` workflow | New secret material in tracked files |
 | `Lighthouse` | `lighthouse.yml` | Public pages heavier than the `lighthouserc.json` budgets (weight and CLS block, timings warn) |
-| `guard-external.sh` | Claude Code `PreToolUse` (`.claude/settings.json`) | `git push` into `main` or with `--force`, any `pnpm <script>:prod` / `:stage` (build, start, worker, doctor), commands naming `.env.prod` / `.env.stage`, running `restore-mongo.sh` / `mongorestore` |
+| `guard-external.sh` | Claude Code `PreToolUse` (`.claude/settings.json`) | Bare `git push` / into `main` / `--force` / `--all`, `gh pr merge`, `gh api` writes, `gh workflow run` / `release` / `secret`, `docker volume rm` / `prune`, `compose down -v`, `system prune`, `crontab -r`, deleting backups, `pnpm <script>:prod` / `:stage`, `.env.prod` / `.env.stage`, `restore-mongo.sh` / `mongorestore` — also inside `ssh '…'` / `bash -c` / `eval`. Verdict table: `scripts/guard-external.test.mjs` |
+| `check-agent-gate` | `pnpm gates` | The guard losing its executable bit, the hook losing its `[ -x ]` wrapper, or `settings.json` not wiring it — each would silently switch the whole agent gate off |
 
 ### Documentation discipline
 
@@ -219,7 +220,7 @@ A code change without the doc change is an unfinished task.
 
 - A decision someone may want to revert → dated entry in `docs/decisions/journal.ru.md` (why, and why not otherwise)
 - New env variable → `.env.example` (one-line comment at most) + a row in `docs/configure/env-reference.ru.md` **and** `.en.md`, same section; `pnpm gates` checks the names
-- Plan for large work → `docs/plans/`
+- Plan for large work → `docs/plans/<domain>-<what>.<ru|en>.md` + a row in `docs/plans/README.md`; `pnpm gates` checks both
 - New document → `docs/<topic>/<kebab-name>.<ru|en>.md` + a row in `docs/README.md`; `pnpm gates` checks both
 - Keep `AGENTS.md` and `AGENTS_RU.md` in sync
 

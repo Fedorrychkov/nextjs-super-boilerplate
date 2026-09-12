@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+### Agent gate and quality gates (backport batch A)
+
+A downstream audit produced 94 findings against this boilerplate (plan and batches: [`docs/plans/backport-hardening.ru.md`](docs/plans/backport-hardening.ru.md)). Batch A — nothing that changes runtime behaviour:
+
+- **`scripts/guard-external.sh`** — bare `git push` (no explicit remote + branch), `--all` / `--mirror` / `HEAD` / `refs/heads/main`, `gh pr merge`, `gh api` writes, `gh workflow run` / `release` / `secret` / `variable` / `repo`, `docker volume rm` / `prune`, `compose down -v`, `system prune`, `crontab -r`, backup deletion and `dropDatabase(` are denied; quoted wrappers (`ssh host '…'`, `bash -c`, `eval`) are unwrapped. Verdict table with 100+ commands in `scripts/guard-external.test.mjs` (runs in `pnpm test`)
+- **Fail-closed honestly** — the hook in `.claude/settings.json` is a `[ -x ]` wrapper (a missing or non-executable script used to mean "allow": PreToolUse treats 126/127 as "do not block"); new gate `check-agent-gate` watches the executable bit and the wrapper. `permissions.deny` extended, `gh release` removed from `allow`
+- `check-agent-contract` — the `AGENTS_RU.md` twin is optional, but a twin drifting more than 25 % in size fails; paths resolved from the repo root
+- `scripts/lib/ratchet.mjs` — a missing baseline fails instead of silently writing one (in CI the write is lost and the ratchet compares nothing)
+- pre-commit — `typecheck` + `lint-staged` (`eslint --fix --max-warnings 0` on staged files only); the repo-wide `lint:fix` pass that edited files outside the commit is gone
+- `docs/plans/` — names `<domain>-<what>.ru.md`, own index in `docs/plans/README.md`; `check-docs-structure` reads it
+- eslint `no-restricted-syntax` (raw inputs / text tags) is `error` (0 violations); agent docs no longer name non-existent wrappers or old doc paths
+- **Deploy over SSH key** (opt-in) — `server_ssh_key` + `server_ssh_fingerprint` secrets next to the password in every ssh/scp step; the key wins when set, the password stays as the fallback, and a preflight step stops the run before touching the server when neither is present. Callers pass `PROD_WEB_SSH_KEY` / `PROD_WEB_SSH_FINGERPRINT`; nothing changes until they exist
+
 Audit of the boilerplate against what is already proven in production use — see [`docs/audits/2026-09-boilerplate-vs-children.ru.md`](docs/audits/2026-09-boilerplate-vs-children.ru.md). Ported back:
 
 ### CI & notifications

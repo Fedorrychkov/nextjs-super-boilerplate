@@ -166,8 +166,18 @@ on:
         required: true
       server_username:
         required: true
+      # SSH auth: key (server_ssh_key) is preferred, password stays as the fallback — both are
+      # passed to every ssh/scp step and the client tries whichever is set. At least one is
+      # required; the "SSH auth mode" step below refuses to run with neither.
       server_password:
-        required: true
+        description: SSH password (legacy fallback; leave empty once server_ssh_key works)
+        required: false
+      server_ssh_key:
+        description: Private SSH key (PEM) of the deploy user; wins over the password when set
+        required: false
+      server_ssh_fingerprint:
+        description: 'SHA256 host key fingerprint (from `ssh-keyscan -t ed25519 <host> | ssh-keygen -lf -`); empty = host key not verified'
+        required: false
       env:
         required: true
       database_certificate:
@@ -246,6 +256,29 @@ jobs:
           echo 'Migrations run: ${{ inputs.migrations_run }}'
           echo 'Blue-green enabled: ${{ inputs.blue_green_enabled }}'
           echo 'Server host: ${{ secrets.server_host }}'
+
+      # Fails before anything touches the server: with neither a key nor a password every ssh
+      # step would fail one by one after the build. Names only — never the values.
+      - name: 🔐 SSH auth mode
+        env:
+          HAS_KEY: ${{ secrets.server_ssh_key != '' }}
+          HAS_PASSWORD: ${{ secrets.server_password != '' }}
+          HAS_FINGERPRINT: ${{ secrets.server_ssh_fingerprint != '' }}
+        run: |
+          if [ "$HAS_KEY" != "true" ] && [ "$HAS_PASSWORD" != "true" ]; then
+            echo "::error::Neither server_ssh_key nor server_password is set — no way to reach the server"
+            exit 1
+          fi
+          if [ "$HAS_KEY" = "true" ]; then
+            echo "SSH auth: key (password $([ "$HAS_PASSWORD" = "true" ] && echo 'also set as fallback' || echo 'not set'))"
+          else
+            echo "::warning::SSH auth: password only. Set server_ssh_key to switch to a key; the password stays as the fallback until removed"
+          fi
+          if [ "$HAS_FINGERPRINT" = "true" ]; then
+            echo "Host key: verified against server_ssh_fingerprint"
+          else
+            echo "::warning::server_ssh_fingerprint is empty — the host key is not verified (first-connection trust on every run)"
+          fi
 
       - name: Send Telegram Message
         if: ${{ inputs.notify_enabled }}
@@ -425,6 +458,8 @@ jobs:
           port: 22
           host: ${{ secrets.server_host }}
           username: ${{ secrets.server_username }}
+          key: ${{ secrets.server_ssh_key }}
+          fingerprint: ${{ secrets.server_ssh_fingerprint }}
           password: ${{ secrets.server_password }}
           timeout: '300s'
           overwrite: true
@@ -438,6 +473,8 @@ jobs:
         with:
           host: ${{ secrets.server_host }}
           username: ${{ secrets.server_username }}
+          key: ${{ secrets.server_ssh_key }}
+          fingerprint: ${{ secrets.server_ssh_fingerprint }}
           password: ${{ secrets.server_password }}
           port: 22
           envs: GH_USERNAME, GITHUB_TOKEN
@@ -477,6 +514,8 @@ jobs:
         with:
           host: ${{ secrets.server_host }}
           username: ${{ secrets.server_username }}
+          key: ${{ secrets.server_ssh_key }}
+          fingerprint: ${{ secrets.server_ssh_fingerprint }}
           password: ${{ secrets.server_password }}
           port: 22
           envs: GH_USERNAME, GITHUB_TOKEN, DEPLOY_MODE, CORE_API_IMAGE, GHCR_USERNAME, GHCR_TOKEN, GRAFANA_ADMIN_USER, GRAFANA_ADMIN_PASSWORD, REDIS_ENABLED, METRICS_ENABLED, MONGO_ENABLED, WORKER_ENABLED, MONGO_BACKUP_ENABLED, MONGO_BACKUP_CRON, MONGO_BACKUP_RETENTION, SERVER_MEMORY_MB, API_MEM_LIMIT, REDIS_MEM_LIMIT, MONGO_MEM_LIMIT, WORKER_MEM_LIMIT
@@ -680,6 +719,8 @@ jobs:
         with:
           host: ${{ secrets.server_host }}
           username: ${{ secrets.server_username }}
+          key: ${{ secrets.server_ssh_key }}
+          fingerprint: ${{ secrets.server_ssh_fingerprint }}
           password: ${{ secrets.server_password }}
           port: 22
           script: |
@@ -702,6 +743,8 @@ jobs:
         with:
           host: ${{ secrets.server_host }}
           username: ${{ secrets.server_username }}
+          key: ${{ secrets.server_ssh_key }}
+          fingerprint: ${{ secrets.server_ssh_fingerprint }}
           password: ${{ secrets.server_password }}
           port: 22
           script: |

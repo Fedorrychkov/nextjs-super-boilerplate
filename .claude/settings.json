@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/scripts/guard-external.sh"
+            "command": "sh -c 'g=\"$CLAUDE_PROJECT_DIR/scripts/guard-external.sh\"; [ -x \"$g\" ] || { echo \"ЗАПРЕЩЕНО ГЕЙТОМ: $g отсутствует или не исполняем — гейт выключен, действовать нельзя\" >&2; exit 2; }; exec \"$g\"'"
           }
         ]
       }
@@ -15,7 +15,18 @@
   },
   "permissions": {
     "deny": [
-      "Bash(gh workflow run:*)"
+      "Bash(gh pr merge:*)",
+      "Bash(gh workflow run:*)",
+      "Bash(gh release:*)",
+      "Bash(gh secret:*)",
+      "Bash(gh variable:*)",
+      "Bash(gh repo delete:*)",
+      "Bash(docker volume rm:*)",
+      "Bash(docker volume prune:*)",
+      "Bash(docker system prune:*)",
+      "Bash(crontab -r:*)",
+      "Bash(rclone purge:*)",
+      "Bash(mongorestore:*)"
     ],
     "allow": [
       "Bash(pnpm typecheck)",
@@ -23,10 +34,12 @@
       "Bash(pnpm lint)",
       "Bash(pnpm lint:fix)",
       "Bash(pnpm format)",
+      "Bash(pnpm gates)",
       "Bash(git status:*)",
       "Bash(git diff:*)",
       "Bash(git log:*)",
       "Bash(git show:*)",
+      "Bash(git push:*)",
       "Bash(ls:*)",
       "Bash(cat:*)",
       "Bash(head:*)",
@@ -35,9 +48,7 @@
       "Bash(grep:*)",
       "Bash(rg:*)",
       "Bash(find:*)",
-      "Bash(sed -n:*)",
-      "Bash(gh release:*)",
-      "Bash(git push:*)"
+      "Bash(sed -n:*)"
     ]
   }
 }
