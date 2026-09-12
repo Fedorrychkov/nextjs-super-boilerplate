@@ -37,7 +37,9 @@ blue/green — [`hardening-playbook.ru.md`](./hardening-playbook.ru.md) (RU); ba
 
 | Secret | Description |
 |---|---|
-| `server_host`, `server_username`, `server_password` | SSH access to the VPS |
+| `server_host`, `server_username` | SSH target |
+| `server_ssh_key`, `server_ssh_fingerprint` | Preferred SSH auth: the deploy user's private key (PEM) and the host key fingerprint (`ssh-keyscan -t ed25519 <host> \| ssh-keygen -lf -`, the part after `SHA256:`). Both optional; without the fingerprint the host key is not verified (a warning in the run) |
+| `server_password` | Legacy SSH password. Kept as the fallback: when both key and password are set the key wins; with neither the deploy stops before touching the server. Rollout on a live server: add the key to `authorized_keys`, set `PROD_WEB_SSH_KEY`, watch one green deploy, then drop the password and set `PasswordAuthentication no` |
 | `env` | Contents of the env file (appended to `env_file` on the server). One secret per environment, e.g. `WEB_ENV_PROD` |
 | `database_certificate` | Optional DB certificate |
 | `ghcr_username`, `ghcr_token` | For `deploy_mode: registry`; the token needs `read:packages` |

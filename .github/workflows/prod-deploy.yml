@@ -65,7 +65,10 @@ jobs:
     secrets:
       server_host: ${{ secrets.PROD_WEB_HOST }}
       server_username: ${{ secrets.PROD_WEB_USERNAME }}
+      # Either is enough; the key wins when both are set. Missing secrets evaluate to empty.
       server_password: ${{ secrets.PROD_WEB_PASSWORD }}
+      server_ssh_key: ${{ secrets.PROD_WEB_SSH_KEY }}
+      server_ssh_fingerprint: ${{ secrets.PROD_WEB_SSH_FINGERPRINT }}
       env: ${{ secrets.WEB_ENV_PROD }}
       ghcr_username: ${{ secrets.GHCR_USERNAME }}
       ghcr_token: ${{ secrets.GHCR_TOKEN }}

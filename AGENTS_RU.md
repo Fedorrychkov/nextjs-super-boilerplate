@@ -39,7 +39,7 @@ pnpm format                 # prettier по src/**/*.ts
 pnpm build:local|stage|prod # сборка с env-cmd под нужный env
 ```
 
-Pre-commit: husky + lint-staged (`pnpm lint:src` по staged-файлам в `src/`).
+Pre-commit: husky (`typecheck` + `lint-staged`: `eslint --fix --max-warnings 0` только по staged-файлам в `src/` — без прохода по всему репозиторию, вне коммита ничего не правится).
 
 ## Структура
 
@@ -209,10 +209,11 @@ API-роуты живут в `src/app/api/v1/*` (auth, article, llm, media, noti
 | `check-eslint-disable-ratchet` | `pnpm gates` | Новый `eslint-disable` (baseline `scripts/eslint-disable-ratchet-baseline.txt`; уменьшать через `--update`) |
 | `check-docs-structure` | `pnpm gates` | Документ вне `docs/<тема>/<имя>.<ru\|en>.md`, документ без строки в `docs/README.md`, битая относительная ссылка в любом `.md` |
 | `check-env-reference` | `pnpm gates` | Переменная в `.env.example` без строки в `docs/configure/env-reference.{ru,en}.md`, или описанная переменная, которой в шаблоне больше нет |
-| eslint `no-restricted-syntax` | `pnpm lint` | Сырые `<input>/<select>/<textarea>` вне `src/components/ui`; голый `<span>` с текстом вместо `Typography` |
+| eslint `no-restricted-syntax` (`error`) | `pnpm lint` | Сырые `<input>/<select>/<textarea>` вне `src/components/ui`; голый `<span>` с текстом вместо `Typography` |
 | `gitleaks` | workflow `Secret scan` | Новый секрет в отслеживаемых файлах |
 | `Lighthouse` | `lighthouse.yml` | Публичные страницы тяжелее бюджетов `lighthouserc.json` (вес и CLS ломают, тайминги предупреждают) |
-| `guard-external.sh` | Claude Code `PreToolUse` (`.claude/settings.json`) | `git push` в `main` или с `--force`, любой `pnpm <script>:prod` / `:stage` (build, start, worker, doctor), команды с именем `.env.prod` / `.env.stage`, запуск `restore-mongo.sh` / `mongorestore` |
+| `guard-external.sh` | Claude Code `PreToolUse` (`.claude/settings.json`) | Голый `git push` / в `main` / `--force` / `--all`, `gh pr merge`, `gh api` с записью, `gh workflow run` / `release` / `secret`, `docker volume rm` / `prune`, `compose down -v`, `system prune`, `crontab -r`, удаление бэкапов, `pnpm <script>:prod` / `:stage`, `.env.prod` / `.env.stage`, `restore-mongo.sh` / `mongorestore` — в том числе внутри `ssh '…'` / `bash -c` / `eval`. Таблица вердиктов: `scripts/guard-external.test.mjs` |
+| `check-agent-gate` | `pnpm gates` | Потеря бита x у гейта, потеря обёртки `[ -x ]` у хука или отсутствие хука в `settings.json` — каждое молча выключило бы весь агентский слой |
 
 ### Дисциплина документации
 
@@ -220,7 +221,7 @@ API-роуты живут в `src/app/api/v1/*` (auth, article, llm, media, noti
 
 - Решение, которое кто-то захочет отменить → запись с датой в `docs/decisions/journal.ru.md` (почему так и почему не иначе)
 - Новая переменная окружения → `.env.example` (комментарий не длиннее строки) + строка в `docs/configure/env-reference.ru.md` **и** `.en.md`, в той же секции; `pnpm gates` сверяет имена
-- План крупной работы → `docs/plans/`
+- План крупной работы → `docs/plans/<домен>-<что>.<ru|en>.md` + строка в `docs/plans/README.md`; `pnpm gates` проверяет и то и другое
 - Новый документ → `docs/<тема>/<kebab-имя>.<ru|en>.md` + строка в `docs/README.md`; `pnpm gates` проверяет и то и другое
 - `AGENTS.md` и `AGENTS_RU.md` синхронизируются
 
