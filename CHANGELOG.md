@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Mail (backport batch C)
+
+- **`EMAIL_SEND_MODE` has exactly three modes** — `console` (log; a dev/stage workflow, codes are read from the log), `elastic` (the only delivering transport) and `empty` (mail off). Anything else used to fall through to the console provider and report "skipped" as if that were fine; now it is `email_mode_unknown`, logged as an error, and `pnpm doctor` warns (`lib/services/email/email-mode.ts`, tested)
+- **Sign-up and password-recovery codes check the send result** — `console` is accepted, `empty` / a typo / a refused send answer `SIGNUP_EMAIL_FAILED` / `PASSWORD_EMAIL_FAILED` instead of "code sent" with no mail on the way; the recovery send counter is not incremented on failure
+- **Recovery email factor** counts `console` as available (unchanged), `elastic` needs a key, `empty` and unknown are off (a typo used to count as available)
+- **Notification events with an email-only channel are recorded even when mail is off** — the channel is no longer filtered out before delivery; delivery marks it `skipped: email not configured`, so a login or password event is not lost without a trace. Aggregate status: all channels skipped → `skipped`, not `delivered`
+- `pnpm doctor` — warnings (never new errors): unknown `EMAIL_SEND_MODE`, `REGISTRATION_MODE=email` with `console` in production, password recovery or notification email channel without a delivering transport
+
 ### Auth and leaks (backport batch B)
 
 - **Access token no longer echoed in response headers** — `src/proxy.ts` used to copy the httpOnly `accessToken` cookie into the `Authorization` header of every page response (readable by any script from its own `fetch`, so one XSS took the whole session), along with `X-Client-Info`, `X-Client-IP`, `X-Real-IP`, `X-Forwarded-For`, `X-User-Agent`. Removed; nobody consumed them. The proxy now has a `matcher` and no longer runs on `/api/*` and static assets

@@ -77,7 +77,7 @@ English version: [env-reference.en.md](./env-reference.en.md)
 |---|---|---|
 | `REGISTRATION_MODE` | — | `email` — OTP на почту; пусто — регистрация без подтверждения |
 | `REGISTRATION_CODE_PEPPER` | JWT_SECRET | HMAC для кодов |
-| `EMAIL_SEND_MODE` | empty | `console` (только лог) \| `elastic` (Elastic Email API) \| `empty` (не слать) |
+| `EMAIL_SEND_MODE` | empty | `console` — письмо в лог сервера, коды регистрации и восстановления читаются оттуда (dev/stage); `elastic` — Elastic Email API, единственный боевой транспорт; `empty` — почты нет. Опечатка = почты нет: `pnpm doctor` предупреждает, а регистрация по коду честно отвечает ошибкой вместо «код отправлен» |
 | `EMAIL_API_KEY` | — | **C** elastic |
 | `EMAIL_FROM` | Noreply \<noreply@localhost\> | **C** elastic — подтверждённый отправитель |
 | `EMAIL_REPLY_TO` | — | O |
