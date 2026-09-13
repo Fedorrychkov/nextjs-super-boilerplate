@@ -56,7 +56,9 @@ jobs:
         run: |
           set -o pipefail
           pnpm run test 2>&1 | tee test.log
-          TOTAL=$(grep -E '^# tests [0-9]+' test.log | tail -1 | awk '{print $3}')
+          # node --test prints "# tests N" (tap reporter, piped) or "ℹ tests N" (spec reporter,
+          # what the runner shows); ANSI colour codes are stripped before matching.
+          TOTAL=$(sed 's/\x1b\[[0-9;]*m//g' test.log | grep -oE '(#|ℹ) tests [0-9]+' | tail -1 | grep -oE '[0-9]+$')
           echo "tests run: ${TOTAL:-0}"
           if [ "${TOTAL:-0}" -lt 100 ]; then
             echo "::error::Only ${TOTAL:-0} tests ran — the suite is expected to have well over 100. Check the test glob in package.json."
