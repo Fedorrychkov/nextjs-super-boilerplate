@@ -50,6 +50,17 @@ function computeAggregateDeliveryStatus(recipientUserId: string | null, deliveri
   const attempted = deliveries.filter((d) => d.attempted)
 
   if (attempted.length === 0) {
+    // No channel was even tried. With channels configured that means every one of them was
+    // skipped (mail not configured, no push subscription) — say so, do not call it delivered.
+    // Without channels the in-app record itself is the delivery.
+    if (deliveries.length > 0 && deliveries.every((d) => d.status === NotificationDeliveryStatus.SKIPPED_NO_TARGET)) {
+      return NotificationDeliveryStatus.SKIPPED_NO_TARGET
+    }
+
+    if (deliveries.length > 0) {
+      return NotificationDeliveryStatus.SKIPPED
+    }
+
     return NotificationDeliveryStatus.DELIVERED
   }
 

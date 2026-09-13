@@ -78,7 +78,7 @@ The container itself is enabled by the deploy input `worker_enabled`; the variab
 |---|---|---|
 | `REGISTRATION_MODE` | — | `email` — OTP to the mailbox; empty — sign-up without verification |
 | `REGISTRATION_CODE_PEPPER` | JWT_SECRET | HMAC pepper for codes |
-| `EMAIL_SEND_MODE` | empty | `console` (log only) \| `elastic` (Elastic Email API) \| `empty` (do not send) |
+| `EMAIL_SEND_MODE` | empty | `console` — the mail goes to the server log, sign-up and recovery codes are read from there (dev/stage); `elastic` — Elastic Email API, the only production transport; `empty` — no mail. A typo = no mail: `pnpm doctor` warns, and code-based sign-up answers with an honest error instead of "code sent" |
 | `EMAIL_API_KEY` | — | **C** elastic |
 | `EMAIL_FROM` | Noreply \<noreply@localhost\> | **C** elastic — verified sender |
 | `EMAIL_REPLY_TO` | — | O |

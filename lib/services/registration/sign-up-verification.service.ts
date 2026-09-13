@@ -9,6 +9,7 @@ import { time } from '~/utils/time'
 
 import { emailService } from '../email/email.service'
 import { resolveVerifyEmailTemplateName } from '../email/email-locale'
+import { type EmailSendResult, isOtpEmailAccepted } from '../email/email-mode'
 import {
   PENDING_SIGNUP_TTL_SEC,
   REDIS_PREFIX,
@@ -134,8 +135,10 @@ export async function requestSignupCode(params: { email: string; password: strin
   const subject = t('auth.messages.signUpCodeSent')
   const text = t('auth.email.signUp.text', { code })
 
+  let result: EmailSendResult
+
   try {
-    await emailService.sendTransactional({
+    result = await emailService.sendTransactional({
       to: email,
       subject,
       text,
@@ -145,6 +148,13 @@ export async function requestSignupCode(params: { email: string; password: strin
       },
     })
   } catch {
+    result = { sent: false, skipped: false, error: 'email_send_failed' }
+  }
+
+  // "Skipped" is not "sent". Console is accepted (the code is in the log); empty, a typo in
+  // EMAIL_SEND_MODE and a refused send used to reach here as success — the user was told the
+  // code is on its way and then waited for a mail nobody delivered.
+  if (!isOtpEmailAccepted(result)) {
     await cacheClient.del(pendingKey(email))
     const { ValidationError } = await import('@lib/error/custom-errors')
 

@@ -2,7 +2,8 @@ import { EMAIL_CONFIG } from '@config/env'
 
 import { Logger } from '~/utils/logger'
 
-import type { EmailProvider, TransactionalEmailMessage } from './email-provider.types'
+import { type EmailSendResult, isEmailDeliverable, resolveEmailSendMode } from './email-mode'
+import type { TransactionalEmailMessage } from './email-provider.types'
 import { ConsoleEmailProvider } from './providers/console-email.provider'
 import { ElasticEmailProvider } from './providers/elastic-email.provider'
 
@@ -15,37 +16,26 @@ export type NotificationEmailPayload = {
   html?: string
 }
 
-export type NotificationEmailResult = { sent: true } | { sent: false; skipped: true; reason: string } | { sent: false; skipped: false; error: string }
+export type NotificationEmailResult = EmailSendResult
 
-/** Outbound mail is configured (Elastic API). Console-only mode does not count for notification delivery. */
+/** Outbound mail is configured (Elastic API with a key). Console-only mode does not count for notification delivery. */
 export function isTransactionalEmailEnabled(): boolean {
-  const { sendMode, emailApiKey } = EMAIL_CONFIG
-
-  if (sendMode === 'elastic') {
-    return Boolean(emailApiKey?.trim())
-  }
-
-  return sendMode !== 'console'
+  return isEmailDeliverable(EMAIL_CONFIG.sendMode, EMAIL_CONFIG.emailApiKey)
 }
 
 /**
- * Facade for transactional mail. Inject a real provider (Nodemailer, Resend, …) later.
- * `EMAIL_SEND_MODE=console` keeps registration working without SMTP.
+ * Facade for transactional mail. Modes are resolved explicitly (`email-mode.ts`): the old code
+ * matched `console` and `elastic` and sent EVERYTHING else — the `empty` default and any typo —
+ * through a fallback console provider while reporting "skipped", which callers read as fine.
  */
 class EmailService {
-  private provider: EmailProvider = new ConsoleEmailProvider()
-
-  setProvider(provider: EmailProvider): void {
-    this.provider = provider
-  }
-
-  getProvider(): EmailProvider {
-    return this.provider
-  }
-
-  /** Sends via configured provider; on failure throws (caller maps to user-facing support error). */
+  /**
+   * Never throws for a configuration state: `console` / `empty` / unknown come back as `skipped`
+   * with a reason, and the caller decides what that means for its flow (`isOtpEmailAccepted`).
+   * A transport failure (Elastic refused) throws, as before.
+   */
   async sendTransactional(message: TransactionalEmailMessage): Promise<NotificationEmailResult> {
-    const mode = EMAIL_CONFIG.sendMode
+    const mode = resolveEmailSendMode(EMAIL_CONFIG.sendMode)
 
     if (mode === 'console') {
       await new ConsoleEmailProvider().send(message)
@@ -53,28 +43,26 @@ class EmailService {
       return { sent: false, skipped: true, reason: 'email_send_console' }
     }
 
-    if (mode === 'elastic') {
-      try {
-        await new ElasticEmailProvider().send(message)
+    if (mode === 'empty') {
+      return { sent: false, skipped: true, reason: 'email_not_configured' }
+    }
 
-        return { sent: true }
-      } catch (error) {
-        logger.error('Elastic Email failed', { error: (error as Error)?.message, to: message.to })
+    if (mode === null) {
+      // The old fallback lived here: an unknown mode logged the message and reported skipped.
+      logger.error('EMAIL_SEND_MODE is not a supported mode (console | elastic | empty) — mail is not delivered', {
+        mode: EMAIL_CONFIG.sendMode,
+        to: message.to,
+      })
 
-        throw error
-      }
+      return { sent: false, skipped: true, reason: 'email_mode_unknown' }
     }
 
     try {
-      await this.provider.send(message)
-
-      if (this.provider instanceof ConsoleEmailProvider) {
-        return { sent: false, skipped: true, reason: 'email_send_console' }
-      }
+      await new ElasticEmailProvider().send(message)
 
       return { sent: true }
     } catch (error) {
-      logger.error('Email provider failed', { error: (error as Error)?.message, to: message.to })
+      logger.error('Elastic Email failed', { error: (error as Error)?.message, to: message.to })
 
       throw error
     }
