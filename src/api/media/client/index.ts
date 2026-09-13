@@ -1,7 +1,7 @@
 import { Request } from '@lib/request'
 import { AxiosInstance } from 'axios'
 
-import { MediaAssetListResponse, MediaAssetModel, MediaUploadResponse } from '../model'
+import { MediaAssetDto, MediaAssetListResponse, MediaUploadResponse } from '../model'
 import { MediaListDto, MediaUploadDto } from '../types'
 
 export class ClientMediaApi {
@@ -29,7 +29,7 @@ export class ClientMediaApi {
     return response.data
   }
 
-  async deleteMedia(assetId: string, articleRevisionId?: string): Promise<{ asset: MediaAssetModel }> {
+  async deleteMedia(assetId: string, articleRevisionId?: string): Promise<{ asset: MediaAssetDto }> {
     const response = await this.client.delete(`/api/v1/media/delete/${assetId}`, {
       params: {
         articleRevisionId,

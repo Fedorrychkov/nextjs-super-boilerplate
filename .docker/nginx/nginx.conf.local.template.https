@@ -5,7 +5,8 @@ http {
     default_type  application/octet-stream;
 
     # Default nginx is 1m → 413 on media/API uploads. Match MEDIA_UPLOAD_MAX_BYTES / next.config proxyClientMaxBodySize.
-    client_max_body_size 200m;
+    # Default for every request; the media upload location below raises it for itself.
+    client_max_body_size 10m;
     large_client_header_buffers 8 32k;
 
     # Larger server names hash (fixes warnings)
@@ -200,6 +201,25 @@ http {
             proxy_connect_timeout 60s;
             proxy_send_timeout 300s;
             proxy_read_timeout 300s;
+
+            # Only the upload route takes big bodies; every other request is capped by the
+            # http-level client_max_body_size, so an anonymous POST cannot stream 200 MB into
+            # the api. Nested location: proxy_* directives are inherited from the block above,
+            # `set` is not (rewrite module runs the innermost block only) — the variables the
+            # inherited proxy_set_header lines read are repeated verbatim.
+            location = /api/v1/media/upload {
+                client_max_body_size 200m;
+                set $client_ip $realip_remote_addr;
+                set $request_source "api";
+                set $processed_by "api-nginx";
+                set $custom_action_info "$remote_addr | $http_user_agent";
+                set $custom_client_info "";
+                set $real_ip $realip_remote_addr;
+                set $client_info "";
+                set $x_forwarded_for $proxy_add_x_forwarded_for;
+                set $user_agent $http_user_agent;
+                proxy_pass http://backend;
+            }
         }
     }
 }

@@ -1492,6 +1492,7 @@ export const ru = {
       mediaNotFound: 'Медиа не найдено',
       failedToUploadFile: 'Не удалось загрузить файл',
       fileExceedsMaxSize: 'Файл слишком большой ({size}). Допустимо не больше {maxLabel}.',
+      unsupportedFileType: 'Неподдерживаемый тип файла',
       failedToRemoveFile: 'Не удалось удалить файл',
       failedToLoadMediaList: 'Не удалось загрузить список медиа',
       noMediaFoundYet: 'Пока нет медиа. Загрузите один, чтобы начать.',
