@@ -1499,6 +1499,7 @@ export const en = {
       mediaNotFound: 'Media not found',
       failedToUploadFile: 'Failed to upload file',
       fileExceedsMaxSize: 'File is too large ({size}). Maximum: {maxLabel}.',
+      unsupportedFileType: 'Unsupported file type',
       failedToRemoveFile: 'Failed to remove file',
       failedToLoadMediaList: 'Failed to load media list',
       noMediaFoundYet: 'No media found yet. Upload one to get started.',

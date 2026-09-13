@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Media (backport batch D)
+
+- **Upload size is checked on `Content-Length` before the body is read** — `formData()` buffered the whole request first, so the 200 MB check in the handler protected nothing. A missing or non-numeric header keeps the old path (`src/lib/security/uploadContentLength.ts`, tested)
+- **nginx: `client_max_body_size` 10m by default, 200m only on `location = /api/v1/media/upload`** — the limit used to be 200m for every request, including anonymous API calls. Nested location in all three templates, verified with `nginx -t` and a live proxy test (`set` variables are repeated: the rewrite module does not inherit them)
+- **File type from the bytes, not from the form** — `sniffFileMime` (JPEG, PNG, GIF, WebP, HEIC/AVIF, PDF, SVG, HTML) and `decideUploadMime`: an image slot takes image bytes only, no slot takes HTML, SVG stays allowed for images (served from the CDN origin, never ours). The storage's own detection must agree with the sniffed type or the file is deleted and the request answers `MEDIA_MIME_MISMATCH` (`src/lib/security/fileSignature.ts`, tested). Unknown `resourceType` values are ignored instead of stored
+- **`MediaAsset.purpose` (`cms` \| `user`) and `visibility` (`public` \| `private`)** — defaults match every existing document, no migration. `/cdn/<id>` answers 404 for a private asset (for everyone, including the owner) and for a malformed id instead of a CastError 500
+- **`GET /api/v1/media/[id]/file`** — authorised counterpart of `/cdn` for private assets: owner or admin (`canReadMediaAsset`, tested), streamed through our origin with `Cache-Control: private, no-store`, `nosniff`, a sandbox CSP and `Content-Disposition: attachment` for anything that is not a raster image
+- **Media API responses are an explicit DTO** — no `createdBy`, `originalUrl` or `providerFileId` (`toMediaAssetDto`); the library lists CMS files only (`purpose != user`), and the library delete answers 404 for a person's file
+- `pnpm doctor` unchanged; `.env.example` unchanged
+
 ### Deploy pipeline (backport batch E)
 
 - **Smoke check after deploy** — the runner requests `/api/v1/healthcheck` and `/` on the domain after nginx restarts (12 attempts); a non-200 answer fails the run and fires the failure notification. Nothing is rolled back. Off with `smoke_check_enabled: false` for domains not reachable from GitHub runners

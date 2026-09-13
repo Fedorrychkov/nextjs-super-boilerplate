@@ -55,6 +55,7 @@ relative link alive.
 | [`security/account-security.ru.md`](./security/account-security.ru.md) | Account security — implemented (phases 1–5) |
 | [`security/hardening-playbook.ru.md`](./security/hardening-playbook.ru.md) | Security hardening playbook |
 | [`security/security-seo-audit.ru.md`](./security/security-seo-audit.ru.md) | Security and SEO audit |
+| [`security/media-uploads.ru.md`](./security/media-uploads.ru.md) | Media uploads and the CDN route: size before the body, type by bytes, private assets, nginx limits |
 
 ## Agents, decisions, plans
 

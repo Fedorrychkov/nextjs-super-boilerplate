@@ -6,7 +6,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from 'react-query'
 
 import { ClientLlmApi } from '~/api/llm'
-import { MediaAssetModel, MediaResourceType } from '~/api/media'
+import { MediaAssetDto, MediaResourceType } from '~/api/media'
 import { ImageLoader } from '~/components/Containers'
 import { MultiselectField } from '~/components/Fields/Input/MultiselectField'
 import { Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Textarea, Typography } from '~/components/ui'
@@ -57,7 +57,7 @@ type Props = {
   urlInputReadOnly?: boolean
   /** Replaces the default «Upload» (library) + «Remove» row with custom actions. */
   renderToolbar?: (ctx: MediaUrlUploadToolbarRenderProps) => ReactNode
-  onChange: (next: { value: string; removed?: boolean; assetId?: string | null; asset?: MediaAssetModel | null }) => void
+  onChange: (next: { value: string; removed?: boolean; assetId?: string | null; asset?: MediaAssetDto | null }) => void
 }
 
 export const MediaUrlUploadField = (props: Props) => {
@@ -172,7 +172,7 @@ export const MediaUrlUploadField = (props: Props) => {
   const acceptedMimeTypesString = useMemo(() => acceptedMimeTypes.join(','), [acceptedMimeTypes])
 
   const getAssetPreviewUrl = useCallback(
-    (asset: MediaAssetModel) => {
+    (asset: MediaAssetDto) => {
       if (resourceType === MediaResourceType.IMAGE) {
         return `${asset.proxyPath}/${variant}`
       }
@@ -242,7 +242,7 @@ export const MediaUrlUploadField = (props: Props) => {
   }, [assetId, articleRevisionId, deleteMediaMutation, onChange, notify, queryClient, t])
 
   const handleSelectFromLibrary = useCallback(
-    (asset: MediaAssetModel) => {
+    (asset: MediaAssetDto) => {
       onChange({
         value: getAssetPreviewUrl(asset),
         assetId: asset.id,
@@ -335,7 +335,7 @@ export const MediaUrlUploadField = (props: Props) => {
     | { type: 'partial'; b64?: string; mime?: string; index?: number }
     | {
         type: 'done'
-        asset?: MediaAssetModel
+        asset?: MediaAssetDto
         proxyUrl?: string
       }
     | { type: 'error'; message?: string }

@@ -1,6 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose'
 
-import { MediaAssetModel, MediaProvider, MediaResourceType } from '~/api/media'
+import { MediaAssetModel, MediaProvider, MediaPurpose, MediaResourceType, MediaVisibility } from '~/api/media'
 import { time } from '~/utils/time'
 
 export interface IMediaAsset extends Document, Omit<MediaAssetModel, 'id' | 'createdBy'> {
@@ -59,6 +59,20 @@ const MediaAssetSchema: Schema<IMediaAsset> = new Schema<IMediaAsset>(
     originalUrl: {
       type: String,
       default: null,
+    },
+    // Existing documents have neither field: queries treat a missing value as the default
+    // (`cms` / `public`), so no migration is needed.
+    purpose: {
+      type: String,
+      enum: Object.values(MediaPurpose),
+      default: MediaPurpose.CMS,
+      index: true,
+    },
+    visibility: {
+      type: String,
+      enum: Object.values(MediaVisibility),
+      default: MediaVisibility.PUBLIC,
+      index: true,
     },
     isDeleted: {
       type: Boolean,
