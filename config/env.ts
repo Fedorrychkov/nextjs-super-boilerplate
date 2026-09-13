@@ -117,6 +117,8 @@ const {
 const SEO_NOTIFY_AUTH_ENABLED = parseBoolEnv(process.env.SEO_NOTIFY_AUTH_ENABLED, false)
 const RUM_ENABLED = parseBoolEnv(process.env.RUM_ENABLED, true)
 const NEXT_PUBLIC_LLM_ENABLED = parseBoolEnv(process.env.NEXT_PUBLIC_LLM_ENABLED, false)
+/** /api/v1/healthcheck answers 503 when Mongo is unreachable (container goes unhealthy). Off = always 200, `db` only in the body. */
+const HEALTHCHECK_DB_STRICT = parseBoolEnv(process.env.HEALTHCHECK_DB_STRICT, false)
 
 const isDevelop = [APP_ENV, NEXT_PUBLIC_APP_ENV].includes('development')
 const isStage = [APP_ENV, NEXT_PUBLIC_APP_ENV].includes('stage')
@@ -278,6 +280,7 @@ export {
   FIRST_ADMIN_CONFIG,
   GOOGLE_INDEXING_CLIENT_EMAIL,
   GOOGLE_INDEXING_PRIVATE_KEY,
+  HEALTHCHECK_DB_STRICT,
   INDEXNOW_API_KEY,
   INDEXNOW_KEY_LOCATION,
   isDevelop,

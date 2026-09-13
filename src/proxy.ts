@@ -8,8 +8,6 @@ import { preferMarkdownAccept } from '~/lib/http/preferMarkdownAccept'
 import { Logger } from '~/utils/logger'
 import { time } from '~/utils/time'
 
-import { jsonStringifySafety } from './utils/jsonSafe'
-
 /** For root layout / SEO (utm, AI referral): pathname and query are not available from `headers()` without forwarding. */
 function buildForwardedRequestHeaders(request: NextRequest): Headers {
   const h = new Headers(request.headers)
@@ -97,24 +95,10 @@ export async function proxy(request: NextRequest) {
     request: { headers: forwardedHeaders },
   })
 
-  // Set Authorization header from httpOnly cookies
-  // Next.js middleware can read httpOnly cookies, unlike client-side JavaScript
-  if (request.cookies.has('accessToken')) {
-    const accessToken = request.cookies.get('accessToken')?.value
-
-    if (accessToken) {
-      response.headers.set('Authorization', `Bearer ${accessToken}`)
-    }
-  }
-
-  response.headers.set('X-Client-Info', jsonStringifySafety(clientInfo) ?? '')
-
-  if (clientIP) {
-    response.headers.set('X-Client-IP', clientIP)
-    response.headers.set('X-Real-IP', clientIP)
-    response.headers.set('X-Forwarded-For', clientIP)
-  }
-
+  // Nothing from the httpOnly cookies goes into RESPONSE headers. The access token used to be
+  // echoed back as `Authorization: Bearer …` — readable by any script from its own fetch(), which
+  // made httpOnly meaningless (one XSS = the whole session). Nobody consumed it: routes read the
+  // cookie themselves. Client IP / client info stay in the forwarded REQUEST headers only.
   if (processedBy) response.headers.set('X-Processed-By', processedBy)
 
   if (clientInfo.source) response.headers.set('X-Request-Source', clientInfo.source)
@@ -124,8 +108,6 @@ export async function proxy(request: NextRequest) {
   if (responseTime) response.headers.set('X-Response-Time', responseTime)
 
   if (requestTime) response.headers.set('X-Request-Time', requestTime)
-
-  if (userAgent) response.headers.set('X-User-Agent', userAgent)
 
   if (publicArticleSlug) {
     const base = APP_INTERNAL_ORIGIN || request.nextUrl.origin
@@ -151,4 +133,13 @@ export async function proxy(request: NextRequest) {
   }
 
   return response
+}
+
+/**
+ * Without a matcher the proxy ran on /api/* and on static assets: request bodies buffered for
+ * nothing and extra headers on every chunk. Only pages, the article rewrite and the 429 screen
+ * need it. API routes read cookies and client meta on their own.
+ */
+export const config = {
+  matcher: ['/((?!api/|_next/static/|_next/image/|favicon|sw\\.js|manifest|robots\\.txt|sitemap|rss\\.xml|images/|icons/|fonts/|notify\\.mp3).*)'],
 }

@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+### Auth and leaks (backport batch B)
+
+- **Access token no longer echoed in response headers** — `src/proxy.ts` used to copy the httpOnly `accessToken` cookie into the `Authorization` header of every page response (readable by any script from its own `fetch`, so one XSS took the whole session), along with `X-Client-Info`, `X-Client-IP`, `X-Real-IP`, `X-Forwarded-For`, `X-User-Agent`. Removed; nobody consumed them. The proxy now has a `matcher` and no longer runs on `/api/*` and static assets
+- **API request logs without headers** — `apiErrorHandlerContainer` logged every request header (`cookie` with both tokens, `authorization`, `x-api-token`) and the full URL with query at `info`. Now `debug`, path only, request id and content length
+- **First-admin oracle closed** — public sign-up answered 403 for a wrong `FIRST_ADMIN_PASSWORD` and 400 for the right one. The bootstrap branch lives only while the database has no ADMIN, uses a constant-time compare, counts wrong attempts against the login brute-force limits, and a mismatch takes the ordinary path (`src/lib/auth/firstAdmin.ts`, tested)
+- **Open redirects via `nextPath`** — one validator `safeInternalPath` (`src/lib/security/safeInternalPath.ts`, tested against `//host`, `/\host`, encoded and absolute forms) on `/login`, `/refresh`, `/logout`, the page guard and all five OAuth spots; `nextPath` is re-encoded when glued into a URL (`withNextPath`)
+- **`/login` no longer logs you out** — the page fired `POST /auth/logout` on mount (logout-CSRF via any external link, and the header "Sign in" button threw out whoever was signed in). A signed-in visitor is redirected on; signing out is only `/logout`
+- **Forgot-password no longer reveals registration** — an unknown address gets the same shape a typical user gets (decoy `pendingId`, never stored); TOTP verification in the recovery flow is rate-limited per pending session
+- **MFA login challenge is single-use with an attempt counter** — `takeLoginChallenge` (atomic `GETDEL`, `CacheClient.take`), five wrong codes kill the challenge, failures feed the login brute-force counters (`lib/security/login-challenge-policy.ts`, tested)
+- **Legacy `POST /api/v1/auth/register`** — ADMIN only (EDITOR could create users), the password policy applies, and the response no longer swaps the caller's cookies for the new user's; `register-by-admin` is the supported path
+- **Healthcheck pings Mongo** — `/api/v1/healthcheck` reports `db: ok|fail` in the body and logs a failed ping. Status stays 200 by default; `HEALTHCHECK_DB_STRICT=true` makes it 503 (container unhealthy, no blue/green swap) for deployments that want that
+- **Service worker keeps no private HTML** — `/profile`, `/admin`, `/notifications` are never written to Cache Storage (deny-list in `sw.js` + `Cache-Control: no-store` headers in `next.config.ts` + `Cache-Control` check before `cache.put`); HTML cache bumped to `html-v4` so copies saved by v3 are dropped
+- `robots.ts` — every named bot group carries the same `disallow` (per RFC 9309 a crawler reads one group and ignores `*`; private sections were open to Yandex, Bing and LLM crawlers)
+- `src/instrumentation.ts` — a production process refuses to start with an empty or default `JWT_SECRET` (the doctor already errors on that before deploy); a secret shorter than 32 characters is a warning in both, never a stop (`src/lib/security/jwtSecret.ts`, tested)
+- OAuth browser errors log the path, not the full URL with `code` / `state`
+
 ### Agent gate and quality gates (backport batch A)
 
 A downstream audit produced 94 findings against this boilerplate (plan and batches: [`docs/plans/backport-hardening.ru.md`](docs/plans/backport-hardening.ru.md)). Batch A — nothing that changes runtime behaviour:

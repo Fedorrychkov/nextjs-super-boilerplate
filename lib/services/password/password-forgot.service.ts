@@ -1,4 +1,5 @@
 import { ACCOUNT_CONFIG } from '@config/env'
+import { cacheClient } from '@lib/cache'
 import connectDB from '@lib/db/client'
 import User from '@lib/db/models/User'
 import UserSettings from '@lib/db/models/UserSettings'
@@ -18,6 +19,7 @@ import { assertPasswordPolicy } from '@lib/validation/password-policy'
 
 import type { TFunction } from '~/lib/i18n'
 
+import { PENDING_PASSWORD_TTL_SEC, REDIS_PREFIX, VERIFY_WRONG_ATTEMPTS_MAX } from './password-recovery.constants'
 import {
   createPendingId,
   deletePendingSession,
@@ -51,17 +53,38 @@ export async function startPasswordForgot(params: { email: string; locale?: stri
 
   await connectDB()
   const user = await User.findOne({ email }).select('_id email')
+  const platformEmailAvailable = isPasswordRecoveryEmailAvailable()
 
   if (!user) {
+    /**
+     * An unknown address gets exactly what a typical existing user (no MFA) gets, so the public
+     * form cannot answer "is there an account for this email". The pendingId looks real but is
+     * never stored: the next step honestly reports an expired session. No mail is sent.
+     */
+    const decoy = resolveRecoveryFactorPlan({ platformEmailAvailable, userMfaEnabled: false })
+
+    if (!decoy.selfServicePossible) {
+      return {
+        message: t(GENERIC_FORGOT_MESSAGE),
+        recoveryPossible: false as const,
+        supportRequired: true as const,
+      }
+    }
+
     return {
       message: t(GENERIC_FORGOT_MESSAGE),
-      recoveryPossible: false as const,
-      supportRequired: false as const,
+      recoveryPossible: true as const,
+      pendingId: createPendingId(),
+      allowedFactors: decoy.allowedFactors,
+      requiredFactors: decoy.requiredFactors,
+      strictness: decoy.strictness,
+      emailSent: decoy.allowedFactors.includes('email'),
+      needsTotp: decoy.allowedFactors.includes('totp'),
+      devCode: undefined,
     }
   }
 
   const userId = user._id.toString()
-  const platformEmailAvailable = isPasswordRecoveryEmailAvailable()
   const userMfaEnabled = await isUserMfaEnabled(userId)
   const plan = resolveRecoveryFactorPlan({ platformEmailAvailable, userMfaEnabled })
 
@@ -148,7 +171,19 @@ export async function verifyForgotTotp(params: { pendingId: string; totp: string
   const totpValid = await verifyTotpCode(secret, params.totp, t)
 
   if (!totpValid.valid) {
-    throw new ValidationError(t('totp.errors.invalidMfaCode'))
+    // A six-digit TOTP against an unlimited pendingId is a brute force with a 30-minute window.
+    // Wrong codes are counted per pending session; the session dies at the limit.
+    const failKey = `${REDIS_PREFIX}forgot_totp_fail:${params.pendingId}`
+    const fails = await cacheClient.incr(failKey, PENDING_PASSWORD_TTL_SEC)
+
+    if (fails >= VERIFY_WRONG_ATTEMPTS_MAX) {
+      await deletePendingSession(params.pendingId)
+      await cacheClient.del(failKey)
+
+      throw new ValidationError(t('auth.password.errors.tooManyAttempts'), { code: 'PASSWORD_VERIFY_LOCKED' })
+    }
+
+    throw new ValidationError(t('totp.errors.invalidMfaCode'), { attemptsRemaining: VERIFY_WRONG_ATTEMPTS_MAX - fails })
   }
 
   pending.mfaVerified = true

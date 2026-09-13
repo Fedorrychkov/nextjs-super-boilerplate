@@ -5,6 +5,7 @@ import { Suspense, useEffect } from 'react'
 
 import { SpinnerScreen } from '~/components/Loaders'
 import { routes } from '~/constants'
+import { safeInternalPath } from '~/lib/security/safeInternalPath'
 import { useRefreshTokenQuery } from '~/query/auth'
 import { Logger } from '~/utils/logger'
 
@@ -24,7 +25,7 @@ const RefreshWithParams = () => {
 
   useEffect(() => {
     if (data) {
-      const cleanNextPath = nextPath && nextPath !== '//' ? nextPath : routes.home.path
+      const cleanNextPath = safeInternalPath(nextPath, routes.home.path)
       logger.info('RefreshWithParams cleanNextPath', cleanNextPath)
       redirect(cleanNextPath, RedirectType.replace)
     } else if (error) {

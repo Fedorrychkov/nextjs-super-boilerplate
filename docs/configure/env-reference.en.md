@@ -18,6 +18,7 @@ Legend: **R** — required in prod, **C** — conditional (when the feature is o
 | `NEXT_PUBLIC_SITE_URL` | http://localhost:3000 | **R** — canonical URL for metadata, sitemap, OAuth redirects |
 | `APP_INTERNAL_ORIGIN` | http://127.0.0.1:3000 | O — server-side requests to the app's own API when the public hostname does not resolve from inside the container |
 | `COMMIT_HASH` | — | Injected by CI; server-only, correlates RUM and deploys |
+| `HEALTHCHECK_DB_STRICT` | false | `true` — `/api/v1/healthcheck` answers 503 when Mongo is unreachable (2 s timeout): the container goes unhealthy, blue/green does not swap, nginx drops the upstream. Default: status is always 200 and the database state is only in the body (`db: ok\|fail`) and the log, so a short database hiccup does not become an outage |
 
 ## Theme & i18n
 

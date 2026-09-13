@@ -6,11 +6,11 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
+import { isMissingOrDefaultJwtSecret, isShortJwtSecret } from '../src/lib/security/jwtSecret'
+
 type Level = 'error' | 'warn' | 'info'
 
 type Finding = { level: Level; code: string; message: string }
-
-const DEFAULT_JWT_SECRET = 'your-secret-key-change'
 
 function loadEnvFile(filePath: string): void {
   if (!existsSync(filePath)) {
@@ -82,8 +82,17 @@ async function main() {
   push(findings, 'info', 'env_file', `Loaded ${envFile}`)
   push(findings, 'info', 'app_env', `APP_ENV=${process.env.APP_ENV ?? 'development'}`)
 
-  if (!JWT_CONFIG.secret || JWT_CONFIG.secret === DEFAULT_JWT_SECRET) {
-    push(findings, isProd ? 'error' : 'warn', 'jwt_secret', 'JWT_SECRET is empty or still the default placeholder — set a strong random value.')
+  // Same rules as src/instrumentation.ts. Only empty/default is an error (no signature at all);
+  // a short secret is a warning — stopping a deploy over it would be an outage, not a fix.
+  if (isMissingOrDefaultJwtSecret(JWT_CONFIG.secret)) {
+    push(
+      findings,
+      isProd ? 'error' : 'warn',
+      'jwt_secret',
+      'JWT_SECRET is empty or still the default placeholder — set a strong random value (make setup generates one).',
+    )
+  } else if (isShortJwtSecret(JWT_CONFIG.secret)) {
+    push(findings, 'warn', 'jwt_secret_short', 'JWT_SECRET is shorter than 32 characters — rotate to a longer one when convenient.')
   }
 
   if (!MONGODB_CONFIG.uri && !MONGODB_CONFIG.host) {
