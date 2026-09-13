@@ -2,8 +2,16 @@
 
 Push to `main` runs `.github/workflows/prod-deploy.yml`: the `quality` gate (gates, lint,
 typecheck, test), then `reusable-deploy-config.yml` builds the image in CI, pushes it to GHCR,
-copies the repo to the server and (re)starts the Docker stack. A stage environment is the same
-caller workflow with `develop`, `api_env: stage` and `.env.stage`.
+copies the repo to the server, (re)starts the Docker stack and smoke-checks the domain from the
+runner. A stage environment is the same caller workflow with `develop`, `api_env: stage` and
+`.env.stage`.
+
+A push that touches only documentation, agent files, `patch/`, `skills/`, `lighthouserc.json` or
+the CI-only workflows does not deploy (`paths-ignore` in `prod-deploy.yml`); anything else does.
+The caller runs with `contents: read` + `packages: write` — nothing in the pipeline writes to the
+repository, and the runner's `GITHUB_TOKEN` is used only to push the image and never reaches the
+server. Third-party actions (`appleboy/ssh-action`, `appleboy/scp-action`, `actions/checkout`)
+are pinned to a commit SHA with the release tag in a comment; bump them by editing the SHA.
 
 Related: CI notifications, Lighthouse, secret scan —
 [`ci-notifications-lighthouse.ru.md`](./ci-notifications-lighthouse.ru.md) (RU); memory limits and
@@ -22,9 +30,10 @@ blue/green — [`hardening-playbook.ru.md`](./hardening-playbook.ru.md) (RU); ba
 | `nginx_mode` | `http` or `https` |
 | `certbot_test_mode` | Use the Let's Encrypt staging CA |
 | `certbot_email` | Email for Let's Encrypt (a real one, or certbot refuses) |
-| `migrations_run` | Run DB migrations on deploy |
+| `migrations_run` | Run DB migrations on deploy. The image must define `migration:show:<env>` / `migration:run:<env>` scripts; with the flag on and the scripts missing the deploy fails instead of reporting "no pending migrations" |
 | `blue_green_enabled` | Validate the new api in a green container before swapping |
-| `deploy_mode` | `default` = build on the server; `registry` = build in CI, image from GHCR (recommended) |
+| `deploy_mode` | `default` = build on the server; `registry` = build in CI, image from GHCR (recommended). The server logs in to GHCR for the pull and logs out when the deploy script ends |
+| `smoke_check_enabled` | Default `true`. After the stack is up and nginx restarted, the runner requests `<scheme>://<domain>/api/v1/healthcheck` and `/` (12 attempts, 10 s apart, `-k` under `certbot_test_mode`). A non-200 answer fails the run and triggers the failure notification; nothing is rolled back. Turn off only when the domain is not reachable from GitHub runners |
 | `node_version` | Node in CI; must match `.docker/Dockerfile` |
 | `registry_subname` | GHCR image name fragment (`web` → `ghcr.io/owner/web:sha`) |
 | `notify_enabled`, `tag` | Telegram deploy notifications and their hashtag |
@@ -100,6 +109,8 @@ ENV_FILE=.env.prod ~/app/scripts/restore-mongo.sh ~/db-backups/mongo_prod_<stamp
 | `MONGO_URI=mongodb://localhost…` on the server | Inside the api container `localhost` is the api. Use the service name `mongo`; the pre-deploy doctor rejects loopback |
 | Env vars missing in the container | The `env` secret must contain every key; redeploy so the env file is recreated |
 | Deploy fails on "pull denied" | The GHCR token on the server lacks `read:packages` or package access. Nothing was stopped: the pull is a preflight |
+| Deploy is red on "Smoke check from outside" | The stack is up but the domain does not answer 200 within two minutes. `docker ps` and `docker logs api-service` on the server; check DNS and the firewall for port 443. If the domain is deliberately unreachable from the internet, set `smoke_check_enabled: false` |
+| Push to `main` did not start a deploy | The commit touched only paths in `paths-ignore` (docs, `*.md`, agent files, CI-only workflows). Run the workflow manually or push a code change |
 | Disk full: many ghcr.io images | The deploy prunes old images; manually `./scripts/local-containers-run.sh prune-images` |
 | Build: "no space left on device" | `prune-images`, `docker system prune -a -f`, or `deploy_mode: registry` |
 | Metrics stack overloads a small VPS (CPU 100 %, Grafana 502 / restart loop) | `metrics_enabled: false`, or a bigger box with the real `server_memory_mb` |

@@ -102,6 +102,11 @@ on:
         required: false
         default: false
         type: boolean
+      smoke_check_enabled:
+        description: 'After the deploy, request https://<domain>/api/v1/healthcheck and / from the runner with retries. A red answer fails the run (the failure notification fires); nothing is rolled back — the stack is already up, this is the proof that it answers from outside.'
+        required: false
+        default: true
+        type: boolean
       mongo_backup_enabled:
         description: 'Nightly mongodump cron on the server (scripts/backup-mongo.sh). Effective ONLY with mongo_enabled: true — remote clusters use provider backups. Cron is auto-removed when mongo or this flag turns off.'
         required: false
@@ -210,7 +215,6 @@ on:
 permissions:
   contents: read
   packages: write
-  id-token: write
 
 # cancel-in-progress must stay false: cancelling a deploy mid-flight can kill the server
 # in a half-torn-down state (old containers removed, new ones not started yet).
@@ -230,7 +234,7 @@ jobs:
       DEPLOY_MODE: ${{ inputs.deploy_mode == 'registry' && 'registry' || 'default' }}
     steps:
       - name: ⬇️ Checkout repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
 
       - name: 📦 Setup pnpm
         uses: pnpm/action-setup@v4
@@ -451,7 +455,7 @@ jobs:
           rm -rf node_modules .git .github
 
       - name: 📦 Copy project files to server (to app_new)
-        uses: appleboy/scp-action@master
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
         with:
           source: "*"
           target: "~/app_new"
@@ -464,32 +468,18 @@ jobs:
           timeout: '300s'
           overwrite: true
           strip_components: 0
-
-      - name: 🗑️ Remove all tar.gz files from server
-        uses: appleboy/ssh-action@master
-        env:
-          GH_USERNAME: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          host: ${{ secrets.server_host }}
-          username: ${{ secrets.server_username }}
-          key: ${{ secrets.server_ssh_key }}
-          fingerprint: ${{ secrets.server_ssh_fingerprint }}
-          password: ${{ secrets.server_password }}
-          port: 22
-          envs: GH_USERNAME, GITHUB_TOKEN
-          script: |
-            find ~ -type f -name '*.tar.gz' -exec rm -f {} +
+          # Fresh ~/app_new on every deploy: a stale file from a previous, interrupted upload
+          # never survives into the swap. Replaces the old `find ~ -name '*.tar.gz' -exec rm`
+          # step, which walked the whole home directory with rm.
+          rm: true
 
       - name: 🚀 Prepare and run on server (Blue/Green or Cold)
         id: deploy_run
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         # Must be >= command_timeout below, otherwise GitHub kills the step mid-deploy
         # and leaves the server half-torn-down (old containers removed, new not started).
         timeout-minutes: 30
         env:
-          GH_USERNAME: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CERTBOT_TEST_MODE: ${{ inputs.certbot_test_mode }}
           CERTBOT_EMAIL: ${{ secrets.certbot_email || inputs.certbot_email }}
           DOMAINS: ${{ inputs.domain }}
@@ -518,7 +508,7 @@ jobs:
           fingerprint: ${{ secrets.server_ssh_fingerprint }}
           password: ${{ secrets.server_password }}
           port: 22
-          envs: GH_USERNAME, GITHUB_TOKEN, DEPLOY_MODE, CORE_API_IMAGE, GHCR_USERNAME, GHCR_TOKEN, GRAFANA_ADMIN_USER, GRAFANA_ADMIN_PASSWORD, REDIS_ENABLED, METRICS_ENABLED, MONGO_ENABLED, WORKER_ENABLED, MONGO_BACKUP_ENABLED, MONGO_BACKUP_CRON, MONGO_BACKUP_RETENTION, SERVER_MEMORY_MB, API_MEM_LIMIT, REDIS_MEM_LIMIT, MONGO_MEM_LIMIT, WORKER_MEM_LIMIT
+          envs: DEPLOY_MODE, CORE_API_IMAGE, GHCR_USERNAME, GHCR_TOKEN, GRAFANA_ADMIN_USER, GRAFANA_ADMIN_PASSWORD, REDIS_ENABLED, METRICS_ENABLED, MONGO_ENABLED, WORKER_ENABLED, MONGO_BACKUP_ENABLED, MONGO_BACKUP_CRON, MONGO_BACKUP_RETENTION, SERVER_MEMORY_MB, API_MEM_LIMIT, REDIS_MEM_LIMIT, MONGO_MEM_LIMIT, WORKER_MEM_LIMIT
           command_timeout: 25m
           script: |
             set -e
@@ -531,6 +521,9 @@ jobs:
                 exit 1
               fi
               echo "Logging in to ghcr.io..."
+              # The login writes the token into ~/.docker/config.json on the server; the trap
+              # removes it when this script ends, whether the deploy succeeded or failed.
+              trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
               echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin || exit 1
               # Preflight BEFORE the stack is touched: a denied pull must fail here, while the old
               # containers are still serving. Login only proves the token is valid; read access to
@@ -715,7 +708,7 @@ jobs:
 
       - name: 🧹 Cleanup backup on success
         if: always() && steps.deploy_run.outcome == 'success'
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         with:
           host: ${{ secrets.server_host }}
           username: ${{ secrets.server_username }}
@@ -739,7 +732,7 @@ jobs:
 
       - name: 🧹 Cleanup app_new containers and images
         if: always()
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         with:
           host: ${{ secrets.server_host }}
           username: ${{ secrets.server_username }}
@@ -792,14 +785,49 @@ jobs:
 
             echo "✅ Docker cleanup completed"
 
-      
+      # Runs after the nginx restart above, so it sees what a visitor sees. Until now a deploy
+      # was "green" when the ssh script exited 0 — a 502 from nginx or a crash-looping api was
+      # noticed by users first.
+      - name: 🔎 Smoke check from outside
+        if: success() && inputs.smoke_check_enabled
+        env:
+          DOMAIN: ${{ inputs.domain }}
+          NGINX_MODE: ${{ inputs.nginx_mode }}
+          CERTBOT_TEST_MODE: ${{ inputs.certbot_test_mode }}
+        run: |
+          SCHEME=https; [ "$NGINX_MODE" = "http" ] && SCHEME=http
+          # Let's Encrypt staging issues an untrusted chain on purpose.
+          INSECURE=""; [ "$CERTBOT_TEST_MODE" = "true" ] && INSECURE="-k"
+          check() {
+            local url="$1" attempt=1 code
+            while [ $attempt -le 12 ]; do
+              # -w prints 000 when the connection itself failed; a slow first answer after a
+              # container start is the normal case the retries are for.
+              code=$(curl $INSECURE -sS -o /tmp/smoke.body -w '%{http_code}' --max-time 30 "$url" 2>/dev/null)
+              if [ "${code:-000}" = "200" ]; then
+                echo "OK  $url ($code)"
+                return 0
+              fi
+              echo "..  $url answered $code, attempt $attempt/12"
+              attempt=$((attempt + 1))
+              sleep 10
+            done
+            echo "FAIL $url — last answer ${code:-000}"
+            head -c 600 /tmp/smoke.body 2>/dev/null || true
+            echo
+            return 1
+          }
+          check "$SCHEME://$DOMAIN/api/v1/healthcheck"
+          echo "healthcheck body: $(head -c 300 /tmp/smoke.body)"
+          check "$SCHEME://$DOMAIN/"
+
   failure-notify:
     if: ${{ failure() && inputs.notify_enabled }}
     needs: [deploy]
     runs-on: ubuntu-latest
     steps:
     - name: ⬇️ Checkout repo
-      uses: actions/checkout@v2
+      uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
     - name: Send Telegram Message
       env:
         TG_TOKEN: ${{ secrets.tg_token }}
@@ -825,7 +853,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: ⬇️ Checkout repo
-      uses: actions/checkout@v2
+      uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
     - name: Send Telegram Message
       env:
         TG_TOKEN: ${{ secrets.tg_token }}
@@ -851,7 +879,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: ⬇️ Checkout repo
-      uses: actions/checkout@v2
+      uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
     - name: Send Telegram Message
       env:
         TG_TOKEN: ${{ secrets.tg_token }}

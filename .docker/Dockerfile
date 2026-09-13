@@ -39,8 +39,8 @@ RUN if [ "$API_ENV" = "stage" ]; then \
       if [ -n "$PUBLIC_ENV" ]; then printf '%s\n' "$PUBLIC_ENV" >> .env.prod; fi; \
     fi
 
-# Defense-in-depth HTML sanitizer tests (also run in CI when deploy_mode != registry)
-RUN pnpm run test
+# No test step here on purpose: .dockerignore excludes **/*.test.*, so `pnpm run test` inside the
+# image ran zero tests and reported green. The suite runs in the `quality` workflow before deploy.
 
 RUN pnpm run build:${API_ENV}
 

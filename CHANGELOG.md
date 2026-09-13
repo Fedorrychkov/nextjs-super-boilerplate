@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Deploy pipeline (backport batch E)
+
+- **Smoke check after deploy** — the runner requests `/api/v1/healthcheck` and `/` on the domain after nginx restarts (12 attempts); a non-200 answer fails the run and fires the failure notification. Nothing is rolled back. Off with `smoke_check_enabled: false` for domains not reachable from GitHub runners
+- **Actions pinned to commit SHAs** — `appleboy/ssh-action` (v1.2.5), `appleboy/scp-action` (v1.0.0), `actions/checkout` (v6.1.0) instead of `@master` / `@v2`
+- **Minimum permissions** — `prod-deploy.yml` runs with `contents: read` + `packages: write` instead of `write-all`; `id-token` dropped from the reusable workflow; `GITHUB_TOKEN` / `GH_USERNAME` no longer sent to the server; the server runs `docker logout ghcr.io` when the deploy script ends
+- **No `find ~ -name '*.tar.gz' -exec rm` on the server** — replaced by `rm: true` on the scp step (fresh `~/app_new` every deploy)
+- **`paths-ignore` on push to `main`** — documentation, `*.md`, `patch/`, `skills/`, `.claude/`, `lighthouserc.json` and CI-only workflows no longer restart production
+- **Dockerfile test step removed** — it ran zero tests (`.dockerignore` excludes `**/*.test.*`); the `quality` workflow now fails if fewer than 100 tests ran, so an empty glob cannot report green
+- **`migrations_run: true` without migration scripts fails the deploy** instead of "No pending migrations"
+
 ### Mail (backport batch C)
 
 - **`EMAIL_SEND_MODE` has exactly three modes** — `console` (log; a dev/stage workflow, codes are read from the log), `elastic` (the only delivering transport) and `empty` (mail off). Anything else used to fall through to the console provider and report "skipped" as if that were fine; now it is `email_mode_unknown`, logged as an error, and `pnpm doctor` warns (`lib/services/email/email-mode.ts`, tested)
