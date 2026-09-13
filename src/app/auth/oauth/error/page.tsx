@@ -46,7 +46,7 @@ function OAuthErrorContent() {
       <div className="flex flex-wrap items-center justify-center gap-3">
         {intent === 'link' ? (
           <Button asChild variant="default">
-            <Link href="/profile#connected-accounts">{t('auth.oauth.errorPage.backToProfile')}</Link>
+            <Link href="/profile?activeTab=security#connected-accounts">{t('auth.oauth.errorPage.backToProfile')}</Link>
           </Button>
         ) : (
           <Button asChild variant="default">

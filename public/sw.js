@@ -123,6 +123,12 @@ self.addEventListener('notificationclick', (event) => {
 				try {
 					const clientUrl = new URL(client.url)
 					if (clientUrl.pathname === targetPathname || clientUrl.href === targetUrl) {
+						// Only focus() lived here: an open /profile got focused and the ?activeTab= from the
+						// notification was never applied. navigate() is not universal, hence the check.
+						if (clientUrl.href !== targetUrl && 'navigate' in client) {
+							return client.navigate(targetUrl).then((navigated) => (navigated || client).focus())
+						}
+
 						return client.focus()
 					}
 				} catch {}

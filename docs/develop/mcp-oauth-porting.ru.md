@@ -67,7 +67,7 @@ lib/db/models/ApiTokenUsageEvent.ts
 lib/services/machine-access.service.ts
 src/api/machine-access/{index,model,client/index}.ts
 src/app/api/v1/machine-access/{users,users/[id],block}/route.ts
-src/app/admin/machine-access/page.tsx
+src/app/(cabinet)/admin/machine-access/page.tsx
 src/components/Views/MachineAccess/MachineAccessScreen.tsx
 src/query/machine-access/index.ts
 

@@ -314,8 +314,10 @@ const Sidebar = ({ children, navigation }: SidebarProps) => {
 
   const toggleSidebar = () => setIsOpen(!isOpen)
 
+  // overflow-clip, not overflow-hidden: hidden turns the element into a scroll container, and any
+  // `sticky` inside the cabinet then sticks to a box as tall as the whole page — i.e. never.
   return (
-    <div className="flex overflow-hidden">
+    <div className="flex overflow-clip">
       {/* Mobile Sidebar */}
       <AnimatePresence>
         {isOpen && (
@@ -350,7 +352,9 @@ const Sidebar = ({ children, navigation }: SidebarProps) => {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 ml-0 md:ml-[200px] transition-all overflow-hidden duration-300 flex-col flex">
+      {/* min-w-0 is required: a flex item's min-width defaults to auto, so flex-1 could not shrink
+          it below its content and the right edge ran off-screen by the sidebar's width. */}
+      <div className="flex-1 ml-0 md:ml-[200px] transition-all overflow-clip duration-300 flex-col flex min-w-0">
         {/* Top bar for mobile toggle */}
         <div className="p-4 bg-background border-b border-border md:hidden flex justify-end items-center">
           <AnimatedMenuToggle toggle={toggleSidebar} isOpen={isOpen} />

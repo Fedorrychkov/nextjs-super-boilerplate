@@ -47,6 +47,8 @@ export function buildProfileRedirect(params?: { oauthLinked?: string; oauthError
     url.searchParams.set('oauthError', params.oauthError)
   }
 
+  // Tabs render lazily: the anchor alone has no target in the DOM until the Security tab is active.
+  url.searchParams.set('activeTab', 'security')
   url.hash = 'connected-accounts'
 
   return url.toString()
