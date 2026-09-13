@@ -3,11 +3,29 @@ on:
   push:
     branches:
       - main
+    # A push that touches only what never reaches the image or the server does not restart the
+    # stack: documentation, agent files, patches, CI-only workflows. Everything else deploys.
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - 'patch/**'
+      - 'skills/**'
+      - '.claude/**'
+      - 'lighthouserc.json'
+      - '.github/PULL_REQUEST_TEMPLATE.md'
+      - '.github/workflows/ci.yml'
+      - '.github/workflows/lighthouse.yml'
+      - '.github/workflows/notify-telegram.yml'
+      - '.github/workflows/ci-secret-scan.yml'
 
   # Manual run: Actions → Production Deploy → Run workflow (branch can be selected in UI)
   workflow_dispatch:
 
-permissions: write-all
+# The minimum the pipeline uses: read the repo, push the image to GHCR. Nothing here writes to
+# the repository, issues or releases, so a leaked GITHUB_TOKEN could not either.
+permissions:
+  contents: read
+  packages: write
 
 # cancel-in-progress: false — a second push to main queues instead of cancelling the
 # running deploy. Cancelling mid-deploy leaves the server with containers torn down.

@@ -27,7 +27,7 @@ jobs:
         task: [gates, lint, typecheck, test]
     steps:
       - name: ⬇️ Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
 
       - name: 📦 Setup pnpm
         uses: pnpm/action-setup@v4
@@ -46,4 +46,19 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: ✅ Run ${{ matrix.task }}
+        if: matrix.task != 'test'
         run: pnpm run ${{ matrix.task }}
+
+      # A glob that matches nothing makes node --test exit 0 with "# tests 0". That is how a test
+      # step inside the Docker image stayed green for months while running nothing.
+      - name: ✅ Run test (and prove the suite is not empty)
+        if: matrix.task == 'test'
+        run: |
+          set -o pipefail
+          pnpm run test 2>&1 | tee test.log
+          TOTAL=$(grep -E '^# tests [0-9]+' test.log | tail -1 | awk '{print $3}')
+          echo "tests run: ${TOTAL:-0}"
+          if [ "${TOTAL:-0}" -lt 100 ]; then
+            echo "::error::Only ${TOTAL:-0} tests ran — the suite is expected to have well over 100. Check the test glob in package.json."
+            exit 1
+          fi
