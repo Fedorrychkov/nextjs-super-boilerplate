@@ -130,7 +130,7 @@
 - `eslint.config.mjs` — `no-restricted-syntax` + override для `src/components/ui/**` (+ опц. `no-restricted-imports`).
 - `src/components/Fields/**/index.ts` — алиас `DefaultInputField = DefaultFieldContainer`; при необходимости нормализация single-значения в `MultiselectField`.
 - 12 файлов из раздела «Миграция» — замена сырого HTML.
-- `src/app/ui-kit/**` — витрина полей.
+- `src/app/(cabinet)/ui-kit/**` — витрина полей.
 - `AGENTS.md`/`AGENTS_RU.md`, `README.md` — документация конвенции.
 
 ## Этапы

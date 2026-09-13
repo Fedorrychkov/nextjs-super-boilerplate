@@ -334,8 +334,8 @@ src/app/api/v1/user/[id]/password/reset/route.ts
 src/app/api/v1/admin/security-audit/route.ts
 
 src/app/forgot-password/page.tsx
-src/app/profile/page.tsx
-src/app/admin/security-audit/page.tsx
+src/app/(cabinet)/profile/page.tsx
+src/app/(cabinet)/admin/security-audit/page.tsx
 
 src/components/Views/Profile/ProfileChangePasswordPanel.tsx
 src/components/Views/User/Blocks/UserSessionsPanel.tsx

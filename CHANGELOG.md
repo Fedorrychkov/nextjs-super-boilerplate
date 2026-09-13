@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### UI (backport batch G)
+
+- **Cabinet is one route group** — `src/app/(cabinet)/layout.tsx` replaces four identical `layout.tsx` files (`admin`, `notifications`, `profile`, `ui-kit`); URLs are unchanged. Moving between sections no longer unmounts and remounts the sidebar (open sections, scroll position and navigation queries survive)
+- **Sidebar wrappers use `overflow-clip` and `min-w-0`** — `overflow-hidden` made the cabinet a scroll container, so any `sticky` inside never stuck; without `min-w-0` the main column could not shrink below its content and ran off-screen by the sidebar's width
+- **Security notifications and OAuth return open the right profile tab** — new login → `/profile?activeTab=devices`; MFA on/off, password changed/reset/set by admin → `/profile?activeTab=security`; OAuth link/unlink return and the OAuth error page → `/profile?activeTab=security#connected-accounts` (tabs are lazy, so the bare anchor had no target). The service worker navigates an already-open `/profile` window to the notification URL instead of only focusing it
+
 ### Media (backport batch D)
 
 - **Upload size is checked on `Content-Length` before the body is read** — `formData()` buffered the whole request first, so the 200 MB check in the handler protected nothing. A missing or non-numeric header keeps the old path (`src/lib/security/uploadContentLength.ts`, tested)

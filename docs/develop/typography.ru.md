@@ -93,7 +93,7 @@
 - `eslint.config.mjs` — добавить селекторы `h1..h6`/`p`/`span` в общий `no-restricted-syntax` (объединить с правилом полей) + override `src/components/ui/**`.
 - `src/components/ui/Typography/Typography.tsx` — при необходимости расширить `asTag` до `h4..h6` + варианты; экспорт остаётся прежним.
 - `src/**` (вне `ui/`) — миграция ~120 мест по директориям (`Views` → `Blocks` → `app`).
-- `src/app/ui-kit/**` — витрина типографики.
+- `src/app/(cabinet)/ui-kit/**` — витрина типографики.
 - `AGENTS.md`/`AGENTS_RU.md`, `README.md` — документация конвенции.
 
 ## Этапы

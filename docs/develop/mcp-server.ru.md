@@ -101,7 +101,7 @@ AI-агент ──MCP──▶ MCP-сервер (mcp/) ──HTTP + Bearer PAT
 - Роуты статей — обернуть в `withApiTokenOrAuth` + `requireScope` (минимальная правка).
 - `mcp/` — **новый** пакет: `server.ts` (stdio), клиент REST, конвертер Markdown→TipTap, `README`.
 - `src/app/api/mcp/route.ts` — **новый** (опциональный HTTP-транспорт, этап 2).
-- `src/app/admin/api-tokens/*`, `src/api/api-token/*`, `src/query/api-token/*` — **новый** (админ-UI).
+- `src/app/(cabinet)/admin/api-tokens/*`, `src/api/api-token/*`, `src/query/api-token/*` — **новый** (админ-UI).
 - `src/constants/routes.ts`, `src/components/Layouts/PlatformLayout.tsx` — пункт навигации.
 - `config/env.ts`, `.env.example`, `docs/ENV_REFERENCE.md` — флаг + переменные.
 - `docs/AGENTS_RU.md`/`AGENTS.md`, `README.md`, `public/llms.txt` — документация и discovery.

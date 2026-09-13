@@ -5,7 +5,10 @@ import type { TFunction } from '~/lib/i18n'
 
 import type { RequestClientMeta } from '../utils/request-client-meta'
 
-const PROFILE_URL_PATH = '/profile'
+// The profile is tabbed (`?activeTab=`), and a bare `/profile` opens "Main" — not where the
+// person was asked to look. Sessions live under Devices, MFA and password under Security.
+const PROFILE_SECURITY_PATH = '/profile?activeTab=security'
+const PROFILE_DEVICES_PATH = '/profile?activeTab=devices'
 
 export async function notifyMfaEnabled(params: { recipientUserId: string; t: TFunction }): Promise<void> {
   await deliverEventNotification({
@@ -14,7 +17,7 @@ export async function notifyMfaEnabled(params: { recipientUserId: string; t: TFu
     type: PlatformNotificationType.MFA_ENABLED,
     title: params.t('platformNotifications.triggers.mfaEnabled.title'),
     body: params.t('platformNotifications.triggers.mfaEnabled.body'),
-    urlPath: PROFILE_URL_PATH,
+    urlPath: PROFILE_SECURITY_PATH,
     source: 'mfa_enable',
     t: params.t,
   })
@@ -27,7 +30,7 @@ export async function notifyMfaDisabled(params: { recipientUserId: string; t: TF
     type: PlatformNotificationType.MFA_DISABLED,
     title: params.t('platformNotifications.triggers.mfaDisabled.title'),
     body: params.t('platformNotifications.triggers.mfaDisabled.body'),
-    urlPath: PROFILE_URL_PATH,
+    urlPath: PROFILE_SECURITY_PATH,
     source: 'mfa_disable',
     t: params.t,
   })
@@ -47,7 +50,7 @@ export async function notifyNewLogin(params: { recipientUserId: string; t: TFunc
       userAgent,
       backup: params.usedMfaBackupCode ? params.t('platformNotifications.triggers.newLogin.usedBackupCode') : '',
     }),
-    urlPath: PROFILE_URL_PATH,
+    urlPath: PROFILE_DEVICES_PATH,
     source: 'auth_login',
     t: params.t,
   })
@@ -60,7 +63,7 @@ export async function notifyPasswordChanged(params: { recipientUserId: string; t
     type: PlatformNotificationType.PASSWORD_CHANGED,
     title: params.t('platformNotifications.triggers.passwordChanged.title'),
     body: params.t('platformNotifications.triggers.passwordChanged.body'),
-    urlPath: PROFILE_URL_PATH,
+    urlPath: PROFILE_SECURITY_PATH,
     source: 'password_change',
     t: params.t,
   })
@@ -73,7 +76,7 @@ export async function notifyPasswordReset(params: { recipientUserId: string; t: 
     type: PlatformNotificationType.PASSWORD_RESET,
     title: params.t('platformNotifications.triggers.passwordReset.title'),
     body: params.t('platformNotifications.triggers.passwordReset.body'),
-    urlPath: PROFILE_URL_PATH,
+    urlPath: PROFILE_SECURITY_PATH,
     source: 'password_forgot',
     t: params.t,
   })
@@ -86,7 +89,7 @@ export async function notifyAdminPasswordSet(params: { recipientUserId: string; 
     type: PlatformNotificationType.ADMIN_PASSWORD_SET,
     title: params.t('platformNotifications.triggers.adminPasswordSet.title'),
     body: params.t('platformNotifications.triggers.adminPasswordSet.body'),
-    urlPath: PROFILE_URL_PATH,
+    urlPath: PROFILE_SECURITY_PATH,
     source: 'admin_password_set',
     t: params.t,
   })
