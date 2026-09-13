@@ -18,7 +18,9 @@ export async function withOAuthBrowserHandler(request: NextRequest, intent: OAut
     logger.warn('OAuth browser handler error', {
       intent,
       code,
-      url: request.nextUrl.toString(),
+      // Path only: the query carries the provider's `code` and our `state`, and warn is not
+      // stripped in production.
+      path: request.nextUrl.pathname,
       message: error instanceof Error ? error.message : String(error),
     })
 

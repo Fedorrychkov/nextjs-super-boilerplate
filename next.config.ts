@@ -106,6 +106,13 @@ const nextConfig = {
         source: '/(.*)',
         headers: securityHeaders,
       },
+      // Private sections: `no-store` so neither the browser HTTP cache nor the service worker
+      // (public/sw.js checks this header before cache.put) keeps their markup. Next's default for
+      // a dynamic route is `no-cache, must-revalidate` — that alone does not stop a cache.put.
+      ...['/profile', '/admin', '/notifications'].flatMap((prefix) => [
+        { source: prefix, headers: [{ key: 'Cache-Control', value: 'no-store, max-age=0' }] },
+        { source: `${prefix}/:path*`, headers: [{ key: 'Cache-Control', value: 'no-store, max-age=0' }] },
+      ]),
     ]
   },
   experimental: {

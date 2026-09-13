@@ -4,7 +4,9 @@ import User from '@lib/db/models/User'
 import UserSettings from '@lib/db/models/UserSettings'
 import { ValidationError } from '@lib/error/custom-errors'
 import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
-import { consumeLoginChallenge } from '@lib/security/login-challenge'
+import { recordLoginFailure } from '@lib/security/bruteforce'
+import { returnChallengeAfterFailure, takeLoginChallenge } from '@lib/security/login-challenge'
+import { getClientKey } from '@lib/security/rate-limit'
 import { consumeBackupCode, decryptSecret, verifyTotpCode } from '@lib/security/totp'
 import { authService } from '@lib/services/auth.service'
 import { notifyNewLogin } from '@lib/services/security-notification.service'
@@ -23,6 +25,7 @@ const handler = (request: NextRequest) => {
   return apiErrorHandlerContainer(request)(async (res, req) => {
     const body = (await req.json()) as MfaLoginDto
     const languageCode = getPreferredLanguageCodeFromAcceptLanguage(req.headers.get('accept-language'))
+    const ip = getClientKey(req)
 
     const { t } = await getServerTFromNextRequestAsync(request)
 
@@ -30,7 +33,8 @@ const handler = (request: NextRequest) => {
       throw new ValidationError(t('totp.errors.challengeIdAndCodeAreRequired'))
     }
 
-    const challenge = await consumeLoginChallenge(body.challengeId)
+    // Taken out of the cache: the id is single-use from here on.
+    const challenge = await takeLoginChallenge(body.challengeId)
 
     if (!challenge) {
       throw new ValidationError(t('totp.errors.loginChallengeHasExpiredOrIsInvalid'))
@@ -60,7 +64,13 @@ const handler = (request: NextRequest) => {
       const { matched, remainingCodes } = await consumeBackupCode(body.code, settings.mfaBackupCodes)
 
       if (!matched) {
-        throw new ValidationError(t('totp.errors.invalidRemainingBackupCode'))
+        // Wrong code: the challenge goes back with the attempt counted (dies on the fifth), and the
+        // failure lands in the same brute-force counters as a wrong password.
+        const { dead } = await returnChallengeAfterFailure(body.challengeId, challenge)
+
+        await recordLoginFailure(ip, user.email)
+
+        throw new ValidationError(t(dead ? 'totp.errors.loginChallengeHasExpiredOrIsInvalid' : 'totp.errors.invalidRemainingBackupCode'))
       }
 
       settings.mfaBackupCodes = remainingCodes

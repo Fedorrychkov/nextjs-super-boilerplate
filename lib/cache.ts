@@ -10,6 +10,8 @@ export interface CacheClient {
   incr(key: string, ttlSeconds?: number): Promise<number>
   del(key: string): Promise<void>
   ttl(key: string): Promise<number | null>
+  /** Atomic get + delete: a one-time value (login challenge, code) must not be usable twice. */
+  take(key: string): Promise<CacheValue | null>
 }
 
 type InMemoryEntry = {
@@ -51,6 +53,14 @@ class InMemoryCacheClient implements CacheClient {
 
   async del(key: string): Promise<void> {
     this.store.delete(key)
+  }
+
+  async take(key: string): Promise<CacheValue | null> {
+    const value = await this.get(key)
+
+    this.store.delete(key)
+
+    return value
   }
 
   async ttl(key: string): Promise<number | null> {
@@ -104,6 +114,13 @@ class RedisCacheClient implements CacheClient {
 
   async del(key: string): Promise<void> {
     await this.client.del(key)
+  }
+
+  async take(key: string): Promise<CacheValue | null> {
+    // GETDEL — Redis 6.2+; the compose file runs 7.2.
+    const value = await this.client.getdel(key)
+
+    return value ?? null
   }
 
   async ttl(key: string): Promise<number | null> {

@@ -25,19 +25,23 @@ export const apiErrorHandlerContainer =
     try {
       const start = time()
 
-      logger.info('start', {
+      // debug, path only, no headers: the previous `info` line carried every request header —
+      // `cookie` with both tokens, `authorization`, `x-api-token` — and the full URL with its
+      // query on every call. Container log access was session access.
+      logger.debug('start', {
         traceId,
-        url: req.nextUrl.toString(),
+        path: req.nextUrl.pathname,
         method: req.method,
-        headers: Object.fromEntries(req.headers.entries()),
+        requestId: req.headers.get('x-request-id'),
+        contentLength: req.headers.get('content-length'),
         startHandler: start.toISOString(),
       })
 
       const result = await handler(res, req)
 
-      logger.info('end', {
+      logger.debug('end', {
         traceId,
-        url: req.nextUrl.toString(),
+        path: req.nextUrl.pathname,
         method: req.method,
         endHandler: time().toISOString(),
         durationMs: time().diff(start, 'milliseconds'),

@@ -18,6 +18,7 @@ English version: [env-reference.en.md](./env-reference.en.md)
 | `NEXT_PUBLIC_SITE_URL` | http://localhost:3000 | **R** — канонический URL для metadata, sitemap, OAuth-редиректов |
 | `APP_INTERNAL_ORIGIN` | http://127.0.0.1:3000 | O — серверные запросы к собственному API, когда публичный hostname из контейнера не резолвится |
 | `COMMIT_HASH` | — | Проставляет CI; серверный, нужен для корреляции RUM и деплоев |
+| `HEALTHCHECK_DB_STRICT` | false | `true` — `/api/v1/healthcheck` отвечает 503, когда Mongo недоступна (тайм-аут 2 с): контейнер становится unhealthy, blue/green не свопает, nginx убирает апстрим. По умолчанию статус всегда 200, состояние базы только в теле (`db: ok\|fail`) и в логе — так короткая заминка базы не превращается в простой |
 
 ## Theme & i18n
 

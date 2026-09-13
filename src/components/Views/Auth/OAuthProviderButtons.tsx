@@ -4,6 +4,7 @@ import type { OAuthFlow, OAuthProviderId } from '~/api/oauth'
 import { Typography } from '~/components/ui'
 import { OAuthProviderCircleButton } from '~/components/Views/Auth/OAuthProviderIcon'
 import { getPublicOAuthConfig, OAUTH_PROVIDER_LABELS } from '~/lib/auth/oauth-public-config'
+import { safeInternalPath } from '~/lib/security/safeInternalPath'
 import { useT } from '~/providers'
 
 type Props = {
@@ -24,8 +25,10 @@ export function OAuthProviderButtons({ flow, nextPath, disabled }: Props) {
   const startUrl = (provider: OAuthProviderId) => {
     const params = new URLSearchParams({ flow })
 
-    if (nextPath?.startsWith('/')) {
-      params.set('nextPath', nextPath)
+    const safeNextPath = safeInternalPath(nextPath, '')
+
+    if (safeNextPath) {
+      params.set('nextPath', safeNextPath)
     }
 
     return `/api/v1/auth/oauth/${provider}/start?${params.toString()}`

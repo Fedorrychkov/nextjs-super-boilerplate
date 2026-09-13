@@ -3,6 +3,7 @@ import { redirect, RedirectType } from 'next/navigation'
 
 import { UserRole } from '~/api/user'
 import { routes } from '~/constants'
+import { withNextPath } from '~/lib/security/safeInternalPath'
 import { Logger } from '~/utils/logger'
 
 import { authService } from './services/auth.service'
@@ -82,7 +83,7 @@ export const defaultGuard = async <T extends Record<string, unknown> | undefined
     if (!accessToken && !refreshToken) {
       const cleanNavigatePath = navigatePath && navigatePath !== '//' ? navigatePath : routes.login.path
 
-      return redirect(`${cleanNavigatePath}?nextPath=${cleanPathname}`, RedirectType.replace)
+      return redirect(withNextPath(cleanNavigatePath, nextPath), RedirectType.replace)
     }
 
     try {
@@ -114,7 +115,7 @@ export const defaultGuard = async <T extends Record<string, unknown> | undefined
 
           logger.info('defaultGuard redirect to refresh', nextPath, nextPath)
 
-          return redirect(`/refresh?nextPath=${nextPath}`, RedirectType.replace)
+          return redirect(withNextPath('/refresh', nextPath), RedirectType.replace)
         } catch (error: unknown) {
           if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {
             throw error
@@ -122,13 +123,13 @@ export const defaultGuard = async <T extends Record<string, unknown> | undefined
 
           logger.info('defaultGuard error verifyRefreshToken, redirect to logout', error, nextPath)
 
-          return redirect(`/logout?nextPath=${nextPath}`, RedirectType.replace)
+          return redirect(withNextPath('/logout', nextPath), RedirectType.replace)
         }
       }
 
       logger.info('defaultGuard redirect to logout', nextPath)
 
-      return redirect(`/logout?nextPath=${nextPath}`, RedirectType.replace)
+      return redirect(withNextPath('/logout', nextPath), RedirectType.replace)
     }
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {

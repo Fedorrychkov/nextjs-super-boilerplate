@@ -2,8 +2,11 @@
 
 // Bump suffix when changing caching rules so activate() drops old buckets (avoids stale/error payloads).
 const STATIC_CACHE = 'static-v3'
-const HTML_CACHE = 'html-v3'
+// v4: private pages are no longer cached; the bump makes activate() drop the copies saved by v3.
+const HTML_CACHE = 'html-v4'
 const API_PUBLIC_CACHE = 'api-public-v3'
+/** Sections whose markup carries personal data — never written to Cache Storage. */
+const PRIVATE_HTML_PREFIXES = ['/profile', '/admin', '/notifications']
 /** 192px — iOS часто не показывает баннер с мелкой иконкой 48px */
 const APP_ICON = '/images/web-app-manifest-192x192.png'
 
@@ -203,6 +206,13 @@ self.addEventListener('fetch', (event) => {
 
 	// HTML pages (SSR/SPA routes) — network-first with fallback in cache
 	if (request.headers.get('accept')?.includes('text/html')) {
+		// Private sections are never cached: their markup carries personal data, and Cache Storage
+		// outlives the tab and the session. A deny-list here is the net under the Cache-Control
+		// check in isCacheableHtmlResponse — for a page where the header was forgotten.
+		if (PRIVATE_HTML_PREFIXES.some((prefix) => url.pathname === prefix || url.pathname.startsWith(prefix + '/'))) {
+			return
+		}
+
 		event.respondWith(networkFirstHtml(request))
 	}
 })
@@ -227,6 +237,14 @@ async function cacheFirst(request) {
 
 function isCacheableHtmlResponse(response) {
 	if (!response || response.status !== 200 || !response.ok) {
+		return false
+	}
+
+	// HTTP cache directives do not reach the service worker on their own: cache.put stores
+	// whatever it is given. A page marked personal must not land in Cache Storage.
+	const cacheControl = response.headers.get('Cache-Control') || ''
+
+	if (cacheControl.includes('no-store') || cacheControl.includes('private')) {
 		return false
 	}
 
