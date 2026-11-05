@@ -90,3 +90,6 @@ src/constants/routes.ts → paths + seo.sitemap / seo.breadcrumb
 ```
 
 `pnpm doctor` after editing env. Release notes: [`../CHANGELOG.md`](../CHANGELOG.md).
+
+
+- [Обновление форка и релиз](start/upgrading.ru.md) / [Updating a fork](start/upgrading.en.md): перенос общих исправлений, границы миграций, порядок develop → main и проверка опубликованного результата.

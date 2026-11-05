@@ -104,3 +104,22 @@ Onboarding, push, LLM, OAuth, API tokens / MCP — all behind flags, all off by 
 - [`../configure/env-reference.en.md`](../configure/env-reference.en.md) — every variable
 - [`../security/account-security.ru.md`](../security/account-security.ru.md) (RU) — what the security block implements
 - [`../../CHANGELOG.md`](../../CHANGELOG.md) — release notes
+
+
+## Template boundaries and adaptation examples
+
+The template provides a Next.js web app, authentication, an article CMS and
+infrastructure. It does not ship billing, multitenancy, VPN, family-data sync or
+native mobile clients. Those belong to the application built on top.
+
+Examples of different adaptations of this base:
+
+- [Matyr-kover](https://matyrkover.ru): a studio website with services, enquiries and certificates.
+- [Ladim](https://ladim.app): a family product with its own application modules and monorepo.
+- [OhMyVPNs](https://ohmyvpns.io): a VPN platform with its own tenants, payments and access model.
+
+These are examples of using the base, not features installed with the template.
+Start with one user journey, replace the branding and enable only the modules you
+need. Verify i18n, OAuth, email delivery, Mongo/Redis and your domain independently.
+
+For later changes, see [updating a fork](upgrading.en.md).
