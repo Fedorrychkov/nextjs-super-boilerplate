@@ -19,7 +19,7 @@ make worker-local       # BullMQ worker in a second terminal (needs REDIS_URL)
 Requires Node.js 22+ (`package.json` engines; `.nvmrc` pins 24) and pnpm. The lockfile is
 `pnpm-lock.yaml`.
 
-Pre-commit (husky): `typecheck` + `lint-staged` + `lint:fix`. Pre-push: `typecheck` + `test`.
+Pre-commit (husky): `typecheck` + `lint-staged` on staged source files only. Run tests explicitly before opening a PR; do not rely on hooks to run them.
 
 ## Local MongoDB
 
