@@ -95,6 +95,18 @@ http {
             add_header X-Real-Path $request_filename always;
         }
 
+        # Метрики nginx для экспортёра и telegraf из docker-сети — по http, без TLS: внутри сети сертификат
+        # домена не совпал бы с именем сервиса `nginx`. Снаружи закрыто тем же allow/deny.
+        location = /nginx_status {
+            stub_status on;
+            access_log off;
+            allow 127.0.0.1;
+            allow ::1;
+            allow 172.16.0.0/12;
+            allow 10.0.0.0/8;
+            deny all;
+        }
+
         # Redirect all HTTP to HTTPS
         location / {
             return 301 https://$host$request_uri;
