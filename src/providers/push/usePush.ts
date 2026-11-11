@@ -74,7 +74,10 @@ export const usePush = (params?: { publicVapidKey?: string; getUserId?: () => st
       try {
         const reg = registrationRef.current || (await register())
 
-        if (!reg) {
+        // Service Worker есть, а пушей нет (Safari на iPhone вне режима приложения, часть встроенных браузеров):
+        // регистрация приходит без pushManager — это «не поддерживается», а не ошибка.
+        if (!reg?.pushManager) {
+          if (reg) setPermission('unsupported')
           setSubscribed(false)
           setCurrentEndpoint(null)
 
@@ -109,7 +112,9 @@ export const usePush = (params?: { publicVapidKey?: string; getUserId?: () => st
 
   const subscribe = useCallback(async () => {
     if (!registrationRef.current) await register()
-    const reg = registrationRef.current!
+    const reg = registrationRef.current
+
+    if (!reg?.pushManager) return null
 
     if (permission !== 'granted') {
       const perm = await askPermission()
@@ -150,7 +155,7 @@ export const usePush = (params?: { publicVapidKey?: string; getUserId?: () => st
     const api = new ClientSubscriptionApi()
     const reg = registrationRef.current || (await register())
 
-    if (!reg) return
+    if (!reg?.pushManager) return
 
     const sub = await reg.pushManager.getSubscription()
 

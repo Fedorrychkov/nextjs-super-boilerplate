@@ -24,7 +24,7 @@ scrape_configs:
     # node-exporter
       - targets: ['prometheus-node-exporter:9100']
     # cadvisor
-      - targets: ['cadvisor:8081']
+      - targets: ['cadvisor:8080']
     # nginx-prometheus-exporter
       - targets: ['nginx-prometheus-exporter:9113']
     # telegraf

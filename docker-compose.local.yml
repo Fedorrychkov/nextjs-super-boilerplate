@@ -34,7 +34,8 @@ services:
         limits:
           memory: ${EXPORTER_MEM_LIMIT:-512M}
     command:
-      - -nginx.scrape-uri=https://nginx-container/nginx_status
+      # Сервис nginx в той же сети; `nginx-container` не существует — экспортёр отдавал nginx_up=0.
+      - -nginx.scrape-uri=http://nginx/nginx_status
     expose: 
       - 9113
     networks:
@@ -84,7 +85,7 @@ services:
         max-file: "3"
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    image: gcr.io/cadvisor/cadvisor:v0.52.1
     restart: always
     container_name: cadvisor
     deploy:
@@ -101,8 +102,9 @@ services:
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
+    # cAdvisor слушает 8080; Prometheus ходил на 8081 и не получал метрик контейнеров.
     expose:
-      - 8081
+      - 8080
     networks:
       - api_network
     logging:
