@@ -428,8 +428,11 @@ jobs:
           # are not rebuilt when package.json / lockfile / sources are unchanged.
           CACHE_REF="ghcr.io/${OWNER}/${{ inputs.registry_subname || 'service-image' }}:buildcache"
 
-          # Extract only public variables (NEXT_PUBLIC_*, VAPID_SUBJECT) from the corresponding env file in the repository
-          PUBLIC_ENV=$(grep -E '^(NEXT_PUBLIC_|VAPID_SUBJECT=)' "${{ inputs.env_file }}" || true)
+          # Only the names listed in config/public-env.json reach the image: a secret misnamed with a
+          # NEXT_PUBLIC_ prefix must not end up in the client bundle. The check-public-env gate keeps
+          # the list in sync with what the code reads, so nothing the code needs is dropped here.
+          PUBLIC_NAMES=$(jq -r '(.build + (.serverBuild // [])) | join("|")' config/public-env.json)
+          PUBLIC_ENV=$(grep -E "^(${PUBLIC_NAMES})=" "${{ inputs.env_file }}" || true)
 
           # Names only: the values are public by definition, but the log is not the place to review them.
           echo "Public env for build (names):"

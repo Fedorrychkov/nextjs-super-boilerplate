@@ -96,6 +96,16 @@ async function main() {
     push(findings, 'warn', 'jwt_secret_short', 'JWT_SECRET is shorter than 32 characters — rotate to a longer one when convenient.')
   }
 
+  if (JWT_CONFIG.refreshExpiresInConfigured > JWT_CONFIG.refreshCookieMaxAge) {
+    push(
+      findings,
+      'warn',
+      'jwt_refresh_capped',
+      `JWT_REFRESH_EXPIRES_IN=${JWT_CONFIG.refreshExpiresInConfigured} is above the ${JWT_CONFIG.refreshCookieMaxAge}s refresh cookie — ` +
+        'the effective session lifetime is the cookie lifetime (config/env.ts). Set 604800 or raise the cap in code.',
+    )
+  }
+
   if (!MONGODB_CONFIG.uri && !MONGODB_CONFIG.host) {
     push(findings, 'error', 'mongo', 'Set MONGO_URI or MONGO_HOST (+ MONGO_DB) for MongoDB.')
   }

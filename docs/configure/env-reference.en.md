@@ -35,7 +35,7 @@ Legend: **R** — required in prod, **C** — conditional (when the feature is o
 |---|---|---|
 | `JWT_SECRET` | placeholder | **R** — signs access/refresh tokens; `make setup` generates it |
 | `JWT_ACCESS_EXPIRES_IN` | 3600 | Seconds |
-| `JWT_REFRESH_EXPIRES_IN` | 15724800 | ~21 days; refresh session TTL |
+| `JWT_REFRESH_EXPIRES_IN` | 604800 | Refresh session TTL in seconds (7 days). Capped at 7 days in `config/env.ts`, the lifetime of the refresh cookie: a larger value is ignored and the doctor warns |
 | `MFA_ENCRYPTION_KEY` | — | **R** when TOTP is used. Regenerating invalidates every enrolled MFA |
 | `FIRST_ADMIN_LOGIN` | — | O — the first admin is created on start if the user does not exist |
 | `FIRST_ADMIN_PASSWORD` | — | O |

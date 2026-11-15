@@ -18,4 +18,15 @@ export function register() {
   if (isShortJwtSecret(JWT_CONFIG.secret)) {
     console.warn(`[instrumentation] JWT_SECRET is shorter than ${RECOMMENDED_JWT_SECRET_LENGTH} characters — rotate when convenient (make setup generates 64)`)
   }
+
+  // In the background: the first requests must not wait for it, and a failure here is a missed
+  // cleanup (rows are also rewritten on rotation), not a reason to refuse to serve.
+  void import('@lib/services/refresh-token-migration')
+    .then(({ migrateLegacyRefreshTokens }) => migrateLegacyRefreshTokens())
+    .then((count) => {
+      if (count > 0) console.info(`[instrumentation] hashed ${count} legacy refresh token row(s)`)
+    })
+    .catch((error: unknown) => {
+      console.error('[instrumentation] legacy refresh token hashing failed', error instanceof Error ? error.message : error)
+    })
 }

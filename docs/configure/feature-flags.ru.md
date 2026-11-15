@@ -13,7 +13,7 @@
 |------------|------------|
 | `JWT_SECRET` | Подпись access/refresh JWT |
 | `JWT_ACCESS_EXPIRES_IN` | TTL access cookie (сек), по умолчанию 3600 |
-| `JWT_REFRESH_EXPIRES_IN` | TTL refresh / сессии (сек), ~21 день |
+| `JWT_REFRESH_EXPIRES_IN` | TTL refresh-сессии (сек), по умолчанию и не больше 7 дней |
 
 Access token привязан к refresh-сессии (`sid` в JWT). Revoke сессии сразу отзывает API-доступ.
 

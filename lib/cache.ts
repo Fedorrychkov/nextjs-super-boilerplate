@@ -137,3 +137,10 @@ class RedisCacheClient implements CacheClient {
 const redis = redisClient.client
 
 export const cacheClient: CacheClient = redis ? new RedisCacheClient(redis) : new InMemoryCacheClient()
+
+/**
+ * True when the cache is shared by every app process (Redis). The in-memory fallback is per
+ * process: a value cached there cannot be invalidated from another process, so state that must
+ * flip everywhere at once (a revoked session) must not be cached in it.
+ */
+export const isSharedCache = Boolean(redis)

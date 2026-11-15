@@ -1,12 +1,17 @@
 import { ACCOUNT_CONFIG } from '@config/env'
+import { cacheClient, isSharedCache } from '@lib/cache'
 import connectDB from '@lib/db/client'
 import RefreshToken, { IRefreshToken } from '@lib/db/models/RefreshToken'
+import User from '@lib/db/models/User'
 import { UnauthorizedError } from '@lib/error/custom-errors'
+import { ACCESS_SNAPSHOT_TTL_SECONDS, accessGenerationKey, type AccessSnapshot, accessSnapshotKey, parseAccessSnapshot } from '@lib/security/access-snapshot'
+import { refreshTokenQuery } from '@lib/security/refresh-token-hash'
 import { buildDeviceLabel, maskIpForUser } from '@lib/utils/parse-user-agent'
 import type { RequestClientMeta } from '@lib/utils/request-client-meta'
 import mongoose from 'mongoose'
 
 import type { JwtPayload } from '~/api/auth/model'
+import { UserStatus } from '~/api/user/model'
 
 export type SessionPublicItem = {
   id: string
@@ -56,6 +61,52 @@ export async function assertActiveAccessSession(payload: JwtPayload): Promise<vo
   }
 }
 
+/**
+ * Role, status and email of the caller from the database, plus the live-session check — what the
+ * API authorizes by. The JWT says what was true at sign-in: a demoted or blocked user kept their
+ * old role for up to an hour. With a shared cache (Redis) the snapshot is reused for
+ * ACCESS_SNAPSHOT_TTL_SECONDS and dropped at once by `invalidateUserAccess`; with the per-process
+ * fallback it is not cached at all, so revocation stays immediate everywhere.
+ */
+export async function loadAccessSnapshot(payload: JwtPayload): Promise<AccessSnapshot> {
+  const generation = isSharedCache ? await cacheClient.get(accessGenerationKey(payload.sub)) : null
+  const key = accessSnapshotKey(payload.sub, payload.sid, generation)
+
+  if (isSharedCache) {
+    const cached = parseAccessSnapshot(await cacheClient.get(key))
+
+    if (cached) return cached
+  }
+
+  await assertActiveAccessSession(payload)
+
+  if (!mongoose.isValidObjectId(payload.sub)) {
+    throw new UnauthorizedError('Invalid token subject')
+  }
+
+  const user = await User.findById(payload.sub).select('role status email').lean()
+
+  if (!user || user.status !== UserStatus.ACTIVE) {
+    throw new UnauthorizedError('User not found or inactive')
+  }
+
+  const snapshot: AccessSnapshot = { role: user.role, status: user.status, email: user.email }
+
+  if (isSharedCache) {
+    await cacheClient.set(key, JSON.stringify(snapshot), ACCESS_SNAPSHOT_TTL_SECONDS)
+  }
+
+  return snapshot
+}
+
+/** Call after changing a user's role or status, or revoking any of their sessions. */
+export async function invalidateUserAccess(userId: string): Promise<void> {
+  if (!isSharedCache) return
+
+  // The counter outlives every snapshot it guards; a day is far above their 30 s.
+  await cacheClient.incr(accessGenerationKey(userId), 24 * 60 * 60)
+}
+
 export async function findCurrentSessionId(refreshTokenString?: string | null): Promise<string | null> {
   if (!refreshTokenString) {
     return null
@@ -63,7 +114,7 @@ export async function findCurrentSessionId(refreshTokenString?: string | null): 
 
   await connectDB()
 
-  const doc = await RefreshToken.findOne({ token: refreshTokenString }).select('_id').lean()
+  const doc = await RefreshToken.findOne(refreshTokenQuery(refreshTokenString)).select('_id').lean()
 
   return doc?._id?.toString() ?? null
 }
@@ -117,6 +168,8 @@ export async function revokeUserSession(userId: string, sessionId: string): Prom
 
   const result = await RefreshToken.deleteOne({ _id: sessionId, userId })
 
+  await invalidateUserAccess(userId)
+
   return result.deletedCount === 1
 }
 
@@ -131,6 +184,8 @@ export async function revokeOtherUserSessions(userId: string, currentSessionId?:
     userId,
     _id: { $ne: new mongoose.Types.ObjectId(currentSessionId) },
   })
+
+  await invalidateUserAccess(userId)
 
   return result.deletedCount ?? 0
 }

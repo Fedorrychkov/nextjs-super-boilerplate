@@ -30,7 +30,9 @@ export class Request {
 
     this.client.interceptors.request.use(
       (config) => {
-        logger.info('axios interceptor request', config.url, config.method, config.headers)
+        // Method and path only: on the server the headers carry the forwarded Cookie with both
+        // auth tokens, and info-level logs end up in Loki.
+        logger.info('axios interceptor request', config.method, config.url?.split('?')[0])
 
         return config
       },

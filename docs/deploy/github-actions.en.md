@@ -25,7 +25,7 @@ blue/green — [`hardening-playbook.ru.md`](./hardening-playbook.ru.md) (RU); ba
 | `domain` | Target domain (`app.example.com`), used by nginx and certbot |
 | `api_env` | `stage` or `prod` |
 | `env_file` | Env file path on the server (`.env.stage`, `.env.prod`) |
-| `env_public` | Public (non-secret) env lines from the caller's **Variables** (`${{ vars.WEB_ENV_PUBLIC_PROD }}`). Appended after the `env` secret, so it wins on overlap (overlaps are printed by name). Names ending in `_SECRET/_PASSWORD/_TOKEN/_KEY…` fail the deploy — Variables are not masked in logs. Empty = everything still comes from the secret |
+| `env_public` | Public (non-secret) env lines from the caller's **Variables** (`${{ vars.WEB_ENV_PUBLIC_PROD }}`). Appended after the `env` secret, so it wins on overlap (overlaps are printed by name). Names ending in `_SECRET/_PASSWORD/_TOKEN/_KEY…` fail the deploy — Variables are not masked in logs. Empty = everything still comes from the secret. Of the assembled file, only the names listed in `config/public-env.json` are passed to `docker build` (baked into the client); a new public variable is a line there, kept in sync by the `check-public-env` gate |
 | `doctor_check_enabled` | Run `pnpm doctor:<api_env>` on the assembled env file in CI before touching the server. Catches `localhost` inside a container, missing keys, inconsistent flags |
 | `nginx_mode` | `http` or `https` |
 | `certbot_test_mode` | Use the Let's Encrypt staging CA |

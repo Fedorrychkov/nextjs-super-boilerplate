@@ -209,6 +209,7 @@ API-роуты живут в `src/app/api/v1/*` (auth, article, llm, media, noti
 | `check-eslint-disable-ratchet` | `pnpm gates` | Новый `eslint-disable` (baseline `scripts/eslint-disable-ratchet-baseline.txt`; уменьшать через `--update`) |
 | `check-docs-structure` | `pnpm gates` | Документ вне `docs/<тема>/<имя>.<ru\|en>.md`, документ без строки в `docs/README.md`, битая относительная ссылка в любом `.md` |
 | `check-env-reference` | `pnpm gates` | Переменная в `.env.example` без строки в `docs/configure/env-reference.{ru,en}.md`, или описанная переменная, которой в шаблоне больше нет |
+| `check-public-env` | `pnpm gates` | `NEXT_PUBLIC_*`, которое читает код или описывает шаблон, но которого нет в `config/public-env.json`: деплой передаёт в сборку только имена из списка |
 | eslint `no-restricted-syntax` (`error`) | `pnpm lint` | Сырые `<input>/<select>/<textarea>` вне `src/components/ui`; голый `<span>` с текстом вместо `Typography` |
 | `gitleaks` | workflow `Secret scan` | Новый секрет в отслеживаемых файлах |
 | `Lighthouse` | `lighthouse.yml` | Публичные страницы тяжелее бюджетов `lighthouserc.json` (вес и CLS ломают, тайминги предупреждают) |
