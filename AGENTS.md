@@ -206,8 +206,9 @@ exceptions can only shrink.
 |---|---|---|
 | `check-agent-contract` | `pnpm gates` | `AGENTS.md` over 28 KB or with `@file` imports; `CLAUDE.md` without `@AGENTS.md` or over 4 KB |
 | `check-eslint-disable-ratchet` | `pnpm gates` | A new `eslint-disable` (baseline `scripts/eslint-disable-ratchet-baseline.txt`; shrink it with `--update`) |
-| `check-docs-structure` | `pnpm gates` | A doc outside `docs/<topic>/<name>.<ru\|en>.md`, a doc missing from `docs/README.md`, a broken relative link in any `.md` |
+| `check-docs-structure` | `pnpm gates` | A doc outside `docs/<topic>/<name>.<ru\|en>.md`, a doc missing from `docs/README.md`, a broken relative link or `#anchor` in any `.md` |
 | `check-env-reference` | `pnpm gates` | A variable in `.env.example` without a row in `docs/configure/env-reference.{ru,en}.md`, or a documented variable the template no longer has |
+| `check-actions-pinned` | `pnpm gates` | A third-party `uses:` not pinned to a 40-char SHA, or a registry image in a workflow without `@sha256:` — a tag can be moved to another commit, a SHA cannot |
 | `check-public-env` | `pnpm gates` | A `NEXT_PUBLIC_*` the code reads or the template has but `config/public-env.json` lacks — the deploy passes only listed names to the build |
 | eslint `no-restricted-syntax` (`error`) | `pnpm lint` | Raw `<input>/<select>/<textarea>` outside `src/components/ui`; bare `<span>` text instead of `Typography` |
 | `gitleaks` | `Secret scan` workflow | New secret material in tracked files |

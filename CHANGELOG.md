@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Hygiene (backport from a descendant, batch 2)
+
+- **Worker scheduler on BullMQ Job Schedulers** — `getRepeatableJobs` / `repeat` are deprecated in BullMQ 5 and gone in 6, and a repeatable job keyed by (name + every) kept ticking after an interval change. Schedules written by the old code are removed on boot so they do not tick next to the new ones (checked against a real Redis: one schedule, one tick per interval)
+- **Every third-party action pinned to a commit SHA** (with the release tag in a comment), gitleaks pinned by digest (`v8.30.1@sha256:…`); majors unchanged. New gate `check-actions-pinned`
+- **Docs gate checks anchors** — `file.md#section` and `#section` must point at a real heading (GitHub slug rules, numbered duplicates, `<a id>`). It found one broken link, fixed; the FAQ entry on nginx 413 now describes the per-location limits
+- **`/indexnow.txt`** — every IndexNow ping sent `keyLocation=<site>/indexnow.txt`, which returned 404, so search engines could not verify the key
+- **Article dates in meta and JSON-LD are always ISO** — uncached rendering put `Date` objects into `article:published_time` ("[object Object]"); `og:locale:alternate` on an article lists only languages it is really translated into
+- Elastic Email requests time out after 20 s instead of never; the empty toast container no longer swallows clicks in the bottom-left corner; personal notifications no longer show delivery status, type and source (admin log still does); a failed refresh reloads the page at most once a minute per tab (no reload loop for guests)
+
 ### Security and tokens (backport from a descendant, batch 1)
 
 - **A refresh token is no longer accepted as a Bearer** — both token kinds were signed with the same secret and carried the same claims, so the refresh token (days) passed `verifyAccessToken`. Tokens now carry `typ`; a token without it, issued before this change, is classified by its lifetime (`lib/jwt/token-type.ts`, tested), so nobody is signed out on deploy: legacy access tokens live out their hour, legacy refresh tokens still refresh but no longer authorize API calls

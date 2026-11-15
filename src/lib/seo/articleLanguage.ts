@@ -43,7 +43,37 @@ export const toOgLocale = (locale: string): string => {
   return l === 'ru' ? 'ru_RU' : 'en_US'
 }
 
-/** Paired locale for `og:locale:alternate` on bilingual pages. */
+/**
+ * `og:locale:alternate` for an article — only the languages it really exists in (its translation
+ * group). An article used to always claim the "other" UI locale, e.g. `en_US` on a Russian article
+ * with no English version.
+ */
+export const alternateOgLocales = (locale: string, available: readonly string[]): string[] => {
+  const own = toOgLocale(locale)
+  // `x-default` and other non-languages in the translations map are skipped.
+  const known = available.flatMap((entry) => {
+    const l = coerceLocale(entry)
+
+    return l ? [toOgLocale(l)] : []
+  })
+
+  return [...new Set(known)].filter((entry) => entry !== own)
+}
+
+/**
+ * A date for meta tags and JSON-LD. From the database a revision carries `Date` objects, from the
+ * cache strings; uncached rendering put the object itself into `article:published_time`, which
+ * came out as "[object Object]".
+ */
+export const isoDate = (value: unknown): string | undefined => {
+  if (value == null || value === '') return undefined
+
+  const date = value instanceof Date ? value : new Date(String(value))
+
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString()
+}
+
+/** Paired locale for `og:locale:alternate` on bilingual site pages (home, lists) — not articles. */
 export const getAlternateOgLocale = (locale: string): string => {
   const l = coerceLocale(locale) ?? getDefaultLocale()
 

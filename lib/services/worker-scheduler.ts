@@ -31,14 +31,19 @@ let queue: any = null
 let worker: any = null
 
 /**
- * Start the maintenance scheduler as BullMQ repeatable jobs (worker process only).
+ * Start the maintenance scheduler as BullMQ Job Schedulers (worker process only).
  * Idempotent. Falls back to a no-op (with a warning) when Redis is not configured.
  *
  * Portable cron architecture (see docs/deploy/background-worker.ru.md):
  *  - `removeOnComplete/removeOnFail` so Redis does not grow forever
- *  - stale repeatable-job cleanup on boot so an interval change does not double-tick
+ *  - one scheduler per job name: `upsertJobScheduler` replaces the interval in place, and
+ *    schedulers of removed jobs are dropped on boot
  *  - `concurrency: 1` — exactly one job at a time
  *  - dedicated Redis connections with `maxRetriesPerRequest: null`
+ *
+ * Job Schedulers, not repeatable jobs: `getRepeatableJobs` / `repeat` are deprecated in BullMQ 5
+ * and removed in 6, and a repeatable job was keyed by (name + every), so an interval change left
+ * the old one ticking.
  */
 export const startWorkerScheduler = async (jobs: WorkerJob[]): Promise<void> => {
   if (queue) {
@@ -71,21 +76,27 @@ export const startWorkerScheduler = async (jobs: WorkerJob[]): Promise<void> => 
     },
   })
 
-  // Drop stale repeatable schedules (renamed/removed jobs or a changed interval)
-  // before re-adding — a repeatable job is keyed by (name + every), so an interval
-  // change would otherwise leave the old schedule ticking alongside the new one.
-  const repeatables = await queue.getRepeatableJobs()
-
-  for (const repeatable of repeatables) {
-    const job = activeJobs.find(({ name }) => name === repeatable.name)
-
-    if (!job || job.intervalMs !== repeatable.every) {
+  // Schedules written by the previous version of this file (`queue.add(..., { repeat })`) live in
+  // Redis of every deployment that ran it; left alone they would tick next to the schedulers below.
+  // Removed while BullMQ still has the API (5.x); on 6 there is nothing left to remove.
+  if (typeof queue.getRepeatableJobs === 'function') {
+    for (const repeatable of (await queue.getRepeatableJobs()) as { key: string }[]) {
       await queue.removeRepeatableByKey(repeatable.key)
     }
   }
 
+  // A scheduler is keyed by the job name: upsert changes the interval in place. Schedulers of
+  // renamed or removed jobs would keep ticking into the "unknown job" branch — drop them.
+  const schedulers: { key: string }[] = await queue.getJobSchedulers()
+
+  for (const scheduler of schedulers) {
+    if (!activeJobs.some(({ name }) => name === scheduler.key)) {
+      await queue.removeJobScheduler(scheduler.key)
+    }
+  }
+
   for (const job of activeJobs) {
-    await queue.add(job.name, {}, { repeat: { every: job.intervalMs }, jobId: job.name })
+    await queue.upsertJobScheduler(job.name, { every: job.intervalMs }, { name: job.name, data: {} })
   }
 
   worker = new Worker(

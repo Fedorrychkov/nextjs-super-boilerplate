@@ -2,6 +2,8 @@ import axios, { AxiosInstance, CreateAxiosDefaults } from 'axios'
 
 import { Logger } from '~/utils/logger'
 
+import { reloadAllowed } from './reload-guard'
+
 const logger = new Logger(['Request', '[lib/request/axios.ts]'])
 
 export class Request {
@@ -99,7 +101,7 @@ export class Request {
                   .catch((refreshError) => {
                     logger.error('Failed to refresh token:', refreshError)
                     setTimeout(() => {
-                      if (typeof window !== 'undefined') {
+                      if (typeof window !== 'undefined' && reloadAllowed(window.sessionStorage, Date.now())) {
                         window.location.reload()
                       }
                     }, 1000)

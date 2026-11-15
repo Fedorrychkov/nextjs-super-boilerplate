@@ -18,7 +18,7 @@ import { ArticleViewTracker } from '~/components/Views/Article/Public/ArticleVie
 import { FALLBACK_THUMBNAIL_IMAGE } from '~/constants'
 import { finalizeArticleBodyHtml } from '~/lib/editor/finalizeArticleBodyHtml'
 import { resolveArticleCanonicalUrl } from '~/lib/seo/articleCanonical'
-import { resolveArticleLanguage } from '~/lib/seo/articleLanguage'
+import { isoDate, resolveArticleLanguage } from '~/lib/seo/articleLanguage'
 import { seoConfig } from '~/lib/seo/config'
 import { getArticleJsonLd, JsonLd } from '~/lib/seo/jsonld'
 import { jsonParseSafety } from '~/utils/jsonSafe'
@@ -132,8 +132,8 @@ const PrivateArticleRoot = async (props: PageProps<{ slug: string[] }>) => {
     title: response.revision.title ?? response.article.slug ?? 'Article',
     description: response.revision.description,
     image: response.revision.thumbnailUrl || FALLBACK_THUMBNAIL_IMAGE,
-    datePublished: response.revision.publishedAt ?? response.article.publishedAt,
-    dateModified: response.revision.updatedAt ?? response.article.updatedAt,
+    datePublished: isoDate(response.revision.publishedAt ?? response.article.publishedAt),
+    dateModified: isoDate(response.revision.updatedAt ?? response.article.updatedAt),
     canonicalUrl: canonicalForJson,
     keywords: seoJson.keywords,
     language: articleLanguage,

@@ -105,7 +105,7 @@ ENV_FILE=.env.prod ~/app/scripts/restore-mongo.sh ~/db-backups/mongo_prod_<stamp
 |---|---|
 | Certbot: "example@example.com is an invalid email" | Set the `CERTBOT_EMAIL` secret or the `certbot_email` input |
 | nginx: broken or leftover containers, wrong names | On the server: `./scripts/local-containers-run.sh clean`, then redeploy |
-| MongoDB: registration fails, "Access control is not enabled", wrong user/password | Mongo init runs only on the first start with an empty volume. Remove the volume, fix `MONGO_USER`/`MONGO_PASSWORD` in the `env` secret, redeploy. See [FAQ](../start/faq.en.md#mongodb-wrong-init-data) |
+| MongoDB: registration fails, "Access control is not enabled", wrong user/password | Mongo init runs only on the first start with an empty volume. Remove the volume, fix `MONGO_USER`/`MONGO_PASSWORD` in the `env` secret, redeploy. See [FAQ](../start/faq.en.md#mongodb-authentication-errors-and-recreating-the-database) |
 | `MONGO_URI=mongodb://localhost…` on the server | Inside the api container `localhost` is the api. Use the service name `mongo`; the pre-deploy doctor rejects loopback |
 | Env vars missing in the container | The `env` secret must contain every key; redeploy so the env file is recreated |
 | Deploy fails on "pull denied" | The GHCR token on the server lacks `read:packages` or package access. Nothing was stopped: the pull is a preflight |

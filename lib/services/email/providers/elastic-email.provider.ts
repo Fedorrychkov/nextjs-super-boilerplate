@@ -34,6 +34,9 @@ export class ElasticEmailProvider implements EmailProvider {
 
     this.client = axios.create({
       baseURL: 'https://api.elasticemail.com/v4',
+      // axios waits forever by default: a hung provider held the sign-up or recovery request open
+      // until the client gave up, with nothing in the log.
+      timeout: 20_000,
       headers: {
         'Content-Type': 'application/json',
         ...(apiKey ? { 'X-ElasticEmail-ApiKey': apiKey } : {}),
