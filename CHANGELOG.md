@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Worker as a platform (batch 4)
+
+- **Queues** — `lib/queues/queue.ts`: `defineQueue` (definition shared by API and worker), `enqueue` (idempotent `jobId`, `'unavailable'` without Redis), `consume` (worker only), `closeQueues` on SIGTERM; completed jobs kept an hour, failed a week. New gate `check-worker-wired`: every defined queue must be consumed in a module the worker imports
+- **Notifications are delivered by the worker when it is alive** — a fresh liveness mark decides; otherwise they are delivered inline as before, so a deployment with Redis but no worker (the default) loses nothing. Delivery takes a lease on the record (`deliveringAt`), so a retried job and the `notifications-requeue` sweep (every 2 min, pending older than 2 min and younger than a day) never send twice. Checked on a stand: inline without a worker, queued and delivered with one, a stuck record re-delivered by the sweep
+- **"The worker is alive"** — job `worker-beat` writes `WorkerHeartbeat` every minute; `/api/v1/healthcheck` reports `worker: ok | stale | never | unknown` and never changes its status because of it. The article editor warns when scheduled publishing has no live worker
+- **Retention job** — per-channel delivery logs older than 90 days are dropped (`deliveryHistoryClearedAt`); notifications themselves stay
+- `pnpm doctor` no longer says a worker without `WORKER_HEARTBEAT` idles — it always has jobs now
+
 ### Scheduled article publishing (batch 3)
 
 - **Articles can be scheduled** — the editor's publication block takes a date and time (browser time zone, sent as UTC), the list shows "goes live …", MCP gets `schedule_article`. The worker job `articles-scheduled` publishes due articles once a minute: confirms the revision, publishes, pings IndexNow, notifies whoever scheduled — in their language. Needs the background worker (`worker_enabled`); the editor says so

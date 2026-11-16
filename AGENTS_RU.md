@@ -210,6 +210,7 @@ API-роуты живут в `src/app/api/v1/*` (auth, article, llm, media, noti
 | `check-docs-structure` | `pnpm gates` | Документ вне `docs/<тема>/<имя>.<ru\|en>.md`, документ без строки в `docs/README.md`, битая относительная ссылка или `#якорь` в любом `.md` |
 | `check-env-reference` | `pnpm gates` | Переменная в `.env.example` без строки в `docs/configure/env-reference.{ru,en}.md`, или описанная переменная, которой в шаблоне больше нет |
 | `check-actions-pinned` | `pnpm gates` | Стороннее `uses:` без 40-значного SHA или образ из реестра в workflow без `@sha256:` — тег можно перевесить на другой коммит, SHA нет |
+| `check-worker-wired` | `pnpm gates` | Очередь из `defineQueue`, чей `consume(...)` не в модуле, который импортирует `scripts/worker.ts`, или голый `new Queue(`/`new Worker(` вне подключённых модулей — задачи копились бы в Redis, а продюсер отвечал бы «поставлено» |
 | `check-public-env` | `pnpm gates` | `NEXT_PUBLIC_*`, которое читает код или описывает шаблон, но которого нет в `config/public-env.json`: деплой передаёт в сборку только имена из списка |
 | eslint `no-restricted-syntax` (`error`) | `pnpm lint` | Сырые `<input>/<select>/<textarea>` вне `src/components/ui`; голый `<span>` с текстом вместо `Typography` |
 | `gitleaks` | workflow `Secret scan` | Новый секрет в отслеживаемых файлах |

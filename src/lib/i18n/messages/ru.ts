@@ -1316,6 +1316,7 @@ export const ru = {
         scheduledShort: 'Выйдет {date}',
         scheduleSaved: 'Публикация запланирована',
         scheduleCancelled: 'Расписание снято',
+        scheduleWorkerDown: 'Фоновый воркер на этом сервере не работает — запланированная статья не выйдет, пока его не запустят.',
       },
       listenAudioShowPlayer: 'Слушать статью',
       listenAudioHidePlayer: 'Скрыть плеер',

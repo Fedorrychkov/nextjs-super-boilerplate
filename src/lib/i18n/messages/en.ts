@@ -1324,6 +1324,7 @@ export const en = {
         scheduledShort: 'Goes live {date}',
         scheduleSaved: 'Publishing scheduled',
         scheduleCancelled: 'Schedule removed',
+        scheduleWorkerDown: 'The background worker is not running on this server — a scheduled article will not be published until it is started.',
       },
       listenAudioShowPlayer: 'Listen to article',
       listenAudioHidePlayer: 'Hide player',

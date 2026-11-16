@@ -242,15 +242,6 @@ async function main() {
     push(findings, 'info', 'worker_heartbeat_only', 'WORKER_HEARTBEAT=true but WORKER_ENABLED is off — the flag only matters inside the worker container.')
   }
 
-  if (workerEnabled && !workerHeartbeat) {
-    push(
-      findings,
-      'info',
-      'worker_no_jobs_hint',
-      'WORKER_ENABLED=true with WORKER_HEARTBEAT off — make sure scripts/worker.ts has project jobs enabled, otherwise the worker idles ("no jobs registered").',
-    )
-  }
-
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? ''
 
   if (isProd && siteUrl.startsWith('http://')) {
