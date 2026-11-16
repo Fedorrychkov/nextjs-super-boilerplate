@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-11-16
+
 - **Review fixes** — deploy cleanup no longer restarts nginx; remote backup deletion is off by default; the scheduler confirms a revision only after claiming the article and retries interrupted confirmation.
 
 ### Deploy and backups (batch 8)
