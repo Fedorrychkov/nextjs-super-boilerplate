@@ -63,7 +63,7 @@ export const Select = ({
   return (
     <div>
       {label && (
-        <label htmlFor="select" className="cursor-text block font-sans text-[13px] text-foreground capitalize mb-2">
+        <label htmlFor="select" className="cursor-text block font-sans text-[13px] text-foreground first-letter:uppercase mb-2">
           {label}
         </label>
       )}

@@ -2,6 +2,8 @@ import axios, { AxiosInstance, CreateAxiosDefaults } from 'axios'
 
 import { Logger } from '~/utils/logger'
 
+import { reloadAllowed } from './reload-guard'
+
 const logger = new Logger(['Request', '[lib/request/axios.ts]'])
 
 export class Request {
@@ -30,7 +32,9 @@ export class Request {
 
     this.client.interceptors.request.use(
       (config) => {
-        logger.info('axios interceptor request', config.url, config.method, config.headers)
+        // Method and path only: on the server the headers carry the forwarded Cookie with both
+        // auth tokens, and info-level logs end up in Loki.
+        logger.info('axios interceptor request', config.method, config.url?.split('?')[0])
 
         return config
       },
@@ -97,7 +101,7 @@ export class Request {
                   .catch((refreshError) => {
                     logger.error('Failed to refresh token:', refreshError)
                     setTimeout(() => {
-                      if (typeof window !== 'undefined') {
+                      if (typeof window !== 'undefined' && reloadAllowed(window.sessionStorage, Date.now())) {
                         window.location.reload()
                       }
                     }, 1000)

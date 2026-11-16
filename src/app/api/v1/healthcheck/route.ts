@@ -1,6 +1,8 @@
 import { HEALTHCHECK_DB_STRICT, isDevelop } from '@config/env'
 import connectDB from '@lib/db/client'
 import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
+import type { WorkerState } from '@lib/services/worker-health'
+import { workerStatus } from '@lib/services/worker-health.service'
 import mongoose from 'mongoose'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -40,7 +42,20 @@ const handler = (request: NextRequest) =>
       db = 'fail'
     }
 
-    return response.json({ isDevelop, db }, { status: db === 'fail' && HEALTHCHECK_DB_STRICT ? 503 : 200 })
+    // The worker is its own process; its health never changes the API status — otherwise a dead
+    // worker would make nginx drop a live API. Only reported: `stale` — no mark for over three
+    // intervals, `never` — the worker has never run (normal when it is switched off).
+    let worker: WorkerState | 'unknown' = 'unknown'
+
+    if (db === 'ok') {
+      try {
+        worker = await withTimeout(workerStatus(), PING_TIMEOUT_MS)
+      } catch {
+        worker = 'unknown'
+      }
+    }
+
+    return response.json({ isDevelop, db, worker }, { status: db === 'fail' && HEALTHCHECK_DB_STRICT ? 503 : 200 })
   })
 
 export const GET = withGlobalRateLimit(handler)

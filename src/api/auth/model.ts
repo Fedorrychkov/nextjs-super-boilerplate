@@ -7,6 +7,9 @@ export type JwtPayload = {
   status: UserStatus | null
   /** RefreshToken document id — binds access JWT to a revocable server session */
   sid?: string
+  /** `access` | `refresh`; absent on tokens issued before the claim (lib/jwt/token-type.ts). */
+  typ?: 'access' | 'refresh'
+  iat?: number
   exp?: number
 }
 

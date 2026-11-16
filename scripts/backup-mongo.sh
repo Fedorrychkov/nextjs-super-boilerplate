@@ -24,6 +24,9 @@
 #   MONGO_BACKUP_MEM_LIMIT      dump container RAM cap, default 256m
 #   MONGO_BACKUP_CPUS           dump container CPU cap, default 0.5
 #   MONGO_BACKUP_DB             db to dump, default $MONGO_DB; "all" = full instance
+#   MONGO_BACKUP_REMOTE         off-site copy: s3://bucket/prefix or sftp://user@host:port/path
+#                               (written by the deploy into $BACKUP_DIR/.remote.env with its keys)
+#   MONGO_BACKUP_REMOTE_RETENTION_DAYS  delete older off-site dumps on a dedicated prefix; default 0 (never)
 
 set -euo pipefail
 
@@ -72,7 +75,8 @@ if ! mkdir "$LOCK_DIR" 2>/dev/null; then
     log "another backup is already running (lock: $LOCK_DIR) — skipping"
     exit 0
 fi
-trap 'rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT
+RCLONE_ENV=""
+trap 'rmdir "$LOCK_DIR" 2>/dev/null || true; [ -n "$RCLONE_ENV" ] && rm -f "$RCLONE_ENV"' EXIT
 
 # Local mongo must be up; when MONGO_ENABLED=false there is no container — that's fine,
 # the deploy removes this cron entry, but guard anyway (manual runs, race with deploy).
@@ -126,3 +130,54 @@ ls -1t "$BACKUP_DIR"/mongo_"${API_ENV:-prod}"_*.archive.gz 2>/dev/null | tail -n
 done
 
 log "backups on disk: $(ls -1 "$BACKUP_DIR"/mongo_*.archive.gz 2>/dev/null | wc -l | tr -d ' '), free: $(df -Pm "$BACKUP_DIR" | awk 'NR==2 {print $4}')MB"
+
+# Off-site copy (optional, scripts/lib/backup-remote.sh). A dump that lives only on the server it
+# protects dies with that server. The deploy writes the destination and its keys into
+# $BACKUP_DIR/.remote.env (0600); no file or an empty MONGO_BACKUP_REMOTE — nothing to do. A failed
+# upload fails the run (exit 1, ERROR in the log) and keeps the local dump.
+if [ -f "$BACKUP_DIR/.remote.env" ]; then
+    set -a
+    # shellcheck source=/dev/null
+    . "$BACKUP_DIR/.remote.env"
+    set +a
+fi
+# shellcheck source=lib/backup-remote.sh
+. "$SCRIPT_DIR/lib/backup-remote.sh"
+
+RCLONE_ENV="$(mktemp "$BACKUP_DIR/.rclone.XXXXXX")"
+REMOTE_RC=0
+REMOTE_TARGET="$(backup_remote_rclone_env "$RCLONE_ENV")" || REMOTE_RC=$?
+
+if [ "$REMOTE_RC" -eq 2 ]; then
+    log "off-site copy: not configured (the dump stays on this server only)"
+    exit 0
+fi
+if [ "$REMOTE_RC" -ne 0 ]; then
+    log "ERROR: off-site copy is misconfigured — see the message above; the local dump $FILE is kept"
+    exit 1
+fi
+
+NAME="$(basename "$FILE")"
+KNOWN_HOSTS_ARGS=()
+[ -n "${MONGO_BACKUP_SFTP_KNOWN_HOSTS_FILE:-}" ] && KNOWN_HOSTS_ARGS=(-v "${MONGO_BACKUP_SFTP_KNOWN_HOSTS_FILE}:/config/known_hosts:ro")
+
+rclone_run() {
+    docker run --rm --env-file "$RCLONE_ENV" ${KNOWN_HOSTS_ARGS[@]+"${KNOWN_HOSTS_ARGS[@]}"} \
+        -v "$FILE:/data/$NAME:ro" --memory 128m --cpus 0.5 "$RCLONE_IMAGE" "$@"
+}
+
+log "off-site copy: $NAME -> $REMOTE_TARGET"
+if ! rclone_run copyto "/data/$NAME" "$REMOTE_TARGET/$NAME" --retries 3 --low-level-retries 5 -q; then
+    log "ERROR: off-site copy failed — the local dump $FILE is kept"
+    exit 1
+fi
+log "off-site copy: done"
+
+# Remote retention is in days, not dumps: the remote may also hold dumps of other runs. 0 = never
+# delete there (leave it to the bucket's lifecycle rules).
+REMOTE_DAYS="${MONGO_BACKUP_REMOTE_RETENTION_DAYS:-0}"
+if [ "$REMOTE_DAYS" -gt 0 ]; then
+    if ! rclone_run delete "$REMOTE_TARGET" --min-age "${REMOTE_DAYS}d" --include "mongo_${API_ENV:-prod}_*.archive.gz" -q; then
+        log "warning: off-site retention failed (the copy itself succeeded)"
+    fi
+fi

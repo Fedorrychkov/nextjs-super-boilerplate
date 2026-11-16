@@ -4,6 +4,8 @@ WORKDIR /usr/src/api
 # Validate and set API_ENV
 ARG API_ENV=prod
 ARG PUBLIC_ENV
+# NODE_OPTIONS for `next build` only (e.g. --max-old-space-size=4096); empty = Node defaults.
+ARG BUILD_NODE_OPTIONS=
 
 RUN if [ "$API_ENV" != "prod" ] && [ "$API_ENV" != "stage" ]; then \
     echo "Error: API_ENV must be either 'prod' or 'stage'" && exit 1; \
@@ -42,7 +44,7 @@ RUN if [ "$API_ENV" = "stage" ]; then \
 # No test step here on purpose: .dockerignore excludes **/*.test.*, so `pnpm run test` inside the
 # image ran zero tests and reported green. The suite runs in the `quality` workflow before deploy.
 
-RUN pnpm run build:${API_ENV}
+RUN NODE_OPTIONS="${BUILD_NODE_OPTIONS}" pnpm run build:${API_ENV}
 
 # Drop dev dependencies from node_modules (runtime deps like env-cmd/tsx stay: they are in "dependencies")
 RUN pnpm prune --prod

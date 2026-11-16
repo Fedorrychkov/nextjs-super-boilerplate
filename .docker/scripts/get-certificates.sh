@@ -6,14 +6,8 @@ chmod 755 /var/log/certbot
 echo "running" > /var/log/certbot/error_status
 chmod 644 /var/log/certbot/error_status
 
-# Safe nginx container restart and wait for ready
-restart_nginx_container() {
-    echo "🔄 Restarting nginx container before certificate issuance..."
-    docker restart core-nginx-service 2>/dev/null || \
-    docker kill -s HUP core-nginx-service 2>/dev/null || \
-    docker exec core-nginx-service nginx -s reload 2>/dev/null || \
-    echo "⚠️ Failed to restart nginx (container may be down)"
-}
+# nginx is started before this container (depends_on: service_healthy): wait for it, never restart
+# it — a restart drops the live connections.
 
 wait_for_nginx_ready() {
     echo "⏳ Waiting for nginx to become ready on port 80..."
@@ -31,7 +25,6 @@ wait_for_nginx_ready() {
     return 1
 }
 
-restart_nginx_container
 wait_for_nginx_ready || true
 
 # Clean up old certificates with numeric suffixes
@@ -125,11 +118,7 @@ get_letsencrypt_cert() {
     
     # Safe nginx reload helper
     reload_nginx() {
-        echo "🔁 Reloading nginx to apply new certificates..."
-        docker kill -s HUP core-nginx-service 2>/dev/null || \
-        docker exec core-nginx-service nginx -s reload 2>/dev/null || \
-        docker restart core-nginx-service 2>/dev/null || \
-        echo "⚠️ Failed to reload nginx (container may be down)"
+        /scripts/request-nginx-reload.sh
     }
     
     # Early exit if cert files already exist in persistent storage

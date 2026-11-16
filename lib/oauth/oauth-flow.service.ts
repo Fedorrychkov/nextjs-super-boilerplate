@@ -3,6 +3,7 @@ import connectDB from '@lib/db/client'
 import User from '@lib/db/models/User'
 import UserSettings from '@lib/db/models/UserSettings'
 import { ValidationError } from '@lib/error/custom-errors'
+import { metrics } from '@lib/metrics'
 import { createLoginChallenge } from '@lib/security/login-challenge'
 import { authService } from '@lib/services/auth.service'
 import type { RequestClientMeta } from '@lib/utils/request-client-meta'
@@ -52,6 +53,7 @@ async function completeLoginForUser(
   }
 
   const auth = await authService.createAuthTokensForUser(user, options)
+  metrics.track('auth:login', { method: 'oauth' }, { userId: auth.user.id })
 
   return { kind: 'auth', auth }
 }

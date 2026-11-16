@@ -7,8 +7,7 @@ RUN apk update && \
     bash \
     openssl \
     supervisor \
-    dcron \
-    docker-cli && \
+    dcron && \
     echo "=== Finding supervisord ===" && \
     find / -name supervisord 2>/dev/null && \
     echo "=== Which supervisord ===" && \
@@ -25,6 +24,7 @@ COPY .docker/supervisor/certbot.conf /etc/supervisor/conf.d/certbot.conf
 COPY .docker/scripts/get-certificates.sh /scripts/get-certificates.sh
 COPY .docker/scripts/renew-certificates.sh /scripts/renew-certificates.sh
 COPY .docker/scripts/setup-cron.sh /scripts/setup-cron.sh
+COPY .docker/scripts/request-nginx-reload.sh /scripts/request-nginx-reload.sh
 RUN chmod +x /scripts/*.sh
 
 # Configure cron for automatic certificate renewal

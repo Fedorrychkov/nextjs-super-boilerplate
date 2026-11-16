@@ -41,6 +41,8 @@ import {
 } from '~/query/i18n'
 import { cn } from '~/utils/cn'
 
+const ROWS_PAGE = 100
+
 type TranslationForm = {
   items: Array<{ value: string }>
 }
@@ -208,6 +210,12 @@ function I18nTranslationsEditor({
       .map(({ entry, idx }) => ({ entry, idx }))
   }, [translationsData, deferredSearch, getValues])
 
+  // Every key is a card with a textarea; ~1700 of them at once froze the tab on open and on each
+  // keystroke in the search. Render a page and grow it on request; a new search starts over.
+  const [shown, setShown] = useState({ query: '', count: ROWS_PAGE })
+  const shownCount = shown.query === deferredSearch ? shown.count : ROWS_PAGE
+  const renderedRows = visibleRows.slice(0, shownCount)
+
   const saveOne = useCallback(
     async (idx: number) => {
       const key = translationsData.list[idx]?.key
@@ -324,7 +332,7 @@ function I18nTranslationsEditor({
           </Typography>
         ) : (
           <div className="grid grid-cols-1 gap-3">
-            {visibleRows.map(({ entry, idx }) => (
+            {renderedRows.map(({ entry, idx }) => (
               <I18nTranslationEntryCard
                 key={entry.key}
                 control={control}
@@ -342,6 +350,16 @@ function I18nTranslationsEditor({
                 effectiveLabel={t('i18n.ui.effective')}
               />
             ))}
+          </div>
+        )}
+        {!isTranslationsLoading && visibleRows.length > renderedRows.length && (
+          <div className="flex flex-col items-center gap-2">
+            <Typography variant="Body/XS/Regular" className="text-muted-foreground">
+              {t('i18n.ui.shownOf', { shown: renderedRows.length, total: visibleRows.length })}
+            </Typography>
+            <Button type="button" variant="outline" size="sm-md" onClick={() => setShown({ query: deferredSearch, count: shownCount + ROWS_PAGE })}>
+              {t('i18n.ui.showMore')}
+            </Button>
           </div>
         )}
       </div>

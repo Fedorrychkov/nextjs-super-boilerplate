@@ -7,13 +7,15 @@
 
 ---
 
+Флаги ниже — переменные env, они задаются при деплое. Переключатели, которые меняются в админке без релиза, — [настройки платформы](./platform-settings.ru.md); новые ручки заводятся там, а не здесь.
+
 ## Auth и JWT
 
 | Переменная | Назначение |
 |------------|------------|
 | `JWT_SECRET` | Подпись access/refresh JWT |
 | `JWT_ACCESS_EXPIRES_IN` | TTL access cookie (сек), по умолчанию 3600 |
-| `JWT_REFRESH_EXPIRES_IN` | TTL refresh / сессии (сек), ~21 день |
+| `JWT_REFRESH_EXPIRES_IN` | TTL refresh-сессии (сек), по умолчанию и не больше 7 дней |
 
 Access token привязан к refresh-сессии (`sid` в JWT). Revoke сессии сразу отзывает API-доступ.
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { AnimatePresence, motion } from 'framer-motion'
-import { User } from 'lucide-react'
+import { ChevronDownIcon, User } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { Fragment, useState } from 'react'
@@ -82,9 +82,14 @@ const CollapsibleSection = ({
 
   return (
     <>
-      <button className="w-full flex items-center justify-between py-2 px-4 rounded-xl hover:bg-muted" onClick={() => setOverride(!open)}>
-        <span className="font-semibold text-md text-left">{title}</span>
-        {open ? <XIcon /> : <MenuIcon />}
+      <button
+        type="button"
+        aria-expanded={open}
+        className="w-full flex items-center justify-between gap-2 py-2 px-2 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
+        onClick={() => setOverride(!open)}
+      >
+        <span className="min-w-0 truncate text-left text-sm font-semibold">{title}</span>
+        <ChevronDownIcon width={16} height={16} className={cn('shrink-0 transition-transform duration-200', { '-rotate-90': !open })} />
       </button>
       <AnimatePresence>
         {open && (
@@ -102,19 +107,6 @@ const CollapsibleSection = ({
     </>
   )
 }
-
-const MenuIcon = () => (
-  <motion.svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
-    <motion.line x1="3" y1="12" x2="21" y2="12" />
-  </motion.svg>
-)
-
-const XIcon = () => (
-  <motion.svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
-    <motion.line x1="18" y1="6" x2="6" y2="18" />
-    <motion.line x1="6" y1="6" x2="18" y2="18" />
-  </motion.svg>
-)
 
 const Footer = () => {
   const t = useT()
@@ -227,7 +219,8 @@ const NavigationSection = ({ navigation, toggle }: { navigation: NavigationSecti
     <nav className="flex-1 p-4 overflow-y-auto">
       <ul className="flex flex-col gap-2">
         {navigation
-          ?.filter((nav) => !nav.disabled)
+          // A group whose every item the role cannot open is noise: an editor would see empty admin headings.
+          ?.filter((nav) => !nav.disabled && (!nav.items || nav.items.some((item) => !item.disabled)))
           .map((nav) => {
             if (nav.extra) {
               const sectionId = nav.id ?? nav.title ?? ''

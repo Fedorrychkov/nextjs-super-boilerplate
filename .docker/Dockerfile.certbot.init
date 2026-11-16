@@ -5,8 +5,7 @@ RUN apk update && \
     apk add --no-cache \
     curl \
     bash \
-    openssl \
-    docker-cli
+    openssl
 
 # Create directories for logs
 RUN mkdir -p /var/log/certbot && \
@@ -14,6 +13,7 @@ RUN mkdir -p /var/log/certbot && \
 
 # Copy only the script for obtaining certificates
 COPY .docker/scripts/get-certificates.sh /scripts/get-certificates.sh
+COPY .docker/scripts/request-nginx-reload.sh /scripts/request-nginx-reload.sh
 RUN chmod +x /scripts/*.sh
 
 ENTRYPOINT ["/scripts/get-certificates.sh"] 

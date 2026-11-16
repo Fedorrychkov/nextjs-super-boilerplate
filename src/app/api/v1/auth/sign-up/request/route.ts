@@ -4,6 +4,7 @@ import { FIRST_ADMIN_CONFIG, REGISTRATION_CONFIG } from '@config/env'
 import { setAuthCookies } from '@lib/cookies'
 import connectDB from '@lib/db/client'
 import User from '@lib/db/models/User'
+import { metrics } from '@lib/metrics'
 import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
 import { assertLoginNotBlocked, ensureCanRegister, recordLoginFailure } from '@lib/security/bruteforce'
 import { getClientKey } from '@lib/security/rate-limit'
@@ -81,6 +82,7 @@ const handler = (request: NextRequest) => {
         clientMeta: getRequestClientMeta(req),
         t,
       })
+      metrics.track('auth:signup', { method: 'email' }, { userId: authResponse.user.id })
       const response = res.json(
         {
           success: true,

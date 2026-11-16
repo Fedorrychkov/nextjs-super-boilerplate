@@ -1,5 +1,5 @@
 import { verifyAccessToken } from '@lib/jwt/utils'
-import { assertActiveAccessSession } from '@lib/services/user-session.service'
+import { loadAccessSnapshot } from '@lib/services/user-session.service'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { JwtPayload } from '~/api/auth/model'
@@ -49,8 +49,13 @@ export async function authMiddleware(request: NextRequest): Promise<AuthResult> 
 
   try {
     const payload = verifyAccessToken(accessToken)
+    // Role, status and email come from the database (cached briefly), not from the token: the
+    // token is what was true at sign-in, and a demotion or a block must take effect now.
+    const account = await loadAccessSnapshot(payload)
 
-    await assertActiveAccessSession(payload)
+    payload.role = account.role
+    payload.status = account.status
+    payload.email = account.email
 
     // Add user to request headers for use in route handlers
     const requestHeaders = new Headers(request.headers)

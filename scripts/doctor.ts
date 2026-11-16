@@ -96,6 +96,16 @@ async function main() {
     push(findings, 'warn', 'jwt_secret_short', 'JWT_SECRET is shorter than 32 characters — rotate to a longer one when convenient.')
   }
 
+  if (JWT_CONFIG.refreshExpiresInConfigured > JWT_CONFIG.refreshCookieMaxAge) {
+    push(
+      findings,
+      'warn',
+      'jwt_refresh_capped',
+      `JWT_REFRESH_EXPIRES_IN=${JWT_CONFIG.refreshExpiresInConfigured} is above the ${JWT_CONFIG.refreshCookieMaxAge}s refresh cookie — ` +
+        'the effective session lifetime is the cookie lifetime (config/env.ts). Set 604800 or raise the cap in code.',
+    )
+  }
+
   if (!MONGODB_CONFIG.uri && !MONGODB_CONFIG.host) {
     push(findings, 'error', 'mongo', 'Set MONGO_URI or MONGO_HOST (+ MONGO_DB) for MongoDB.')
   }
@@ -230,15 +240,6 @@ async function main() {
 
   if (workerHeartbeat && !workerEnabled) {
     push(findings, 'info', 'worker_heartbeat_only', 'WORKER_HEARTBEAT=true but WORKER_ENABLED is off — the flag only matters inside the worker container.')
-  }
-
-  if (workerEnabled && !workerHeartbeat) {
-    push(
-      findings,
-      'info',
-      'worker_no_jobs_hint',
-      'WORKER_ENABLED=true with WORKER_HEARTBEAT off — make sure scripts/worker.ts has project jobs enabled, otherwise the worker idles ("no jobs registered").',
-    )
   }
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? ''

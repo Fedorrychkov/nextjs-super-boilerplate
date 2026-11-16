@@ -83,7 +83,7 @@ export const Input = ({
 
   return (
     <div className="flex flex-col gap-2" onClick={() => _ref.current?.focus()}>
-      {label && <div className="capitalize text-[13px] text-muted-foreground">{label}</div>}
+      {label && <div className="text-[13px] text-muted-foreground first-letter:uppercase">{label}</div>}
       <div
         className={clsx(
           'flex items-center duration-150 font-sans border transition-shadow',

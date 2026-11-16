@@ -57,14 +57,22 @@ export const NotificationListItem = ({ item, showAdminExtras = false }: Props) =
             {item.body}
           </Typography>
         </div>
-        <Badge variant={deliveryStatusVariant(item.deliveryStatus)}>{t(`platformNotifications.deliveryStatus.${item.deliveryStatus}` as AppMessageKey)}</Badge>
+        {/* Delivery status, type and source are for triage in the admin log. In "my notifications"
+            a person learns nothing from "queued" or an internal source id. */}
+        {showAdminExtras && (
+          <Badge variant={deliveryStatusVariant(item.deliveryStatus)}>
+            {t(`platformNotifications.deliveryStatus.${item.deliveryStatus}` as AppMessageKey)}
+          </Badge>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2 text-muted-foreground">
-        <Typography variant="Body/XS/Regular">
-          {t('platformNotifications.typeLabel')}: {typeLabel}
-        </Typography>
-        {sourceLabel && (
+        {showAdminExtras && (
+          <Typography variant="Body/XS/Regular">
+            {t('platformNotifications.typeLabel')}: {typeLabel}
+          </Typography>
+        )}
+        {showAdminExtras && sourceLabel && (
           <Typography variant="Body/XS/Regular">
             {t('platformNotifications.sourceLabel')}: {sourceLabel}
           </Typography>
@@ -72,7 +80,7 @@ export const NotificationListItem = ({ item, showAdminExtras = false }: Props) =
         <Typography variant="Body/XS/Regular">{item.createdAt ? time(item.createdAt).format('DD/MM/YYYY HH:mm') : '-'}</Typography>
       </div>
 
-      {item.channelDeliveries.length > 0 && (
+      {showAdminExtras && item.channelDeliveries.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {item.channelDeliveries.map((delivery) => (
             <Badge key={delivery.channel} variant="outline">

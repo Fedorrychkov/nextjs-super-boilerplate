@@ -128,6 +128,14 @@ export const apiErrorHandlerContainer =
         return res.json({ message: error.message }, { status: error.statusCode })
       }
 
+      // A malformed id in the URL or body (mongoose CastError) is the caller's mistake, not a server
+      // fault: answer 400 instead of 500, and keep it out of error tracking.
+      if ((error as Error | undefined)?.name === 'CastError') {
+        logger.warn(`CastError traceId: ${traceId}`, (error as Error).message)
+
+        return res.json({ message: t('errors.badRequest') }, { status: 400 })
+      }
+
       logger.error(`Default error traceId: ${traceId}`, (error as Error)?.message)
 
       const response = error && typeof error === 'object' && 'response' in error ? (error.response as AxiosResponse) : null
@@ -142,6 +150,10 @@ export const apiErrorHandlerContainer =
           },
         )
       }
+
+      // An unexpected 500 is exactly what error tracking is for. Lazy: the metrics facade pulls the
+      // settings service, which most handled errors never need.
+      void import('@lib/metrics').then(({ metrics }) => metrics.error(error, { route: req.nextUrl.pathname }))
 
       return res.json(
         {

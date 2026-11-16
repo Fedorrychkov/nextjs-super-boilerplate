@@ -19,7 +19,7 @@ import { getCachedPublicArticlePagePayload } from '~/lib/cache/publicArticlePage
 import { getServerT } from '~/lib/i18n/server'
 import { toAbsoluteSiteUrl } from '~/lib/seo/absoluteUrl'
 import { pickPreferredTranslationFromAcceptLanguage } from '~/lib/seo/acceptLanguageTranslationSuggest'
-import { getAlternateOgLocale, resolveArticleLanguage, toOgLocale } from '~/lib/seo/articleLanguage'
+import { alternateOgLocales, isoDate, resolveArticleLanguage, toOgLocale } from '~/lib/seo/articleLanguage'
 import { resolvePublicArticlePageMeta } from '~/lib/seo/articleMeta'
 import {
   loadPublishedIndexableAlternatesLanguagesMap,
@@ -68,8 +68,8 @@ export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Pr
 
   /** Align `<title>`, JSON-LD `headline`, and OG/Twitter titles (GEO / rich-result consistency). */
   const canonicalTitle = meta.title
-  const publishedAt = response.revision.publishedAt ?? response.article.publishedAt
-  const modifiedAt = response.revision.updatedAt ?? response.article.updatedAt
+  const publishedAt = isoDate(response.revision.publishedAt ?? response.article.publishedAt)
+  const modifiedAt = isoDate(response.revision.updatedAt ?? response.article.updatedAt)
   const ogImage = toAbsoluteSiteUrl(meta.image)
 
   const translationLanguages = await loadPublishedIndexableAlternatesLanguagesMap(response.article.translationGroupId ?? undefined)
@@ -97,9 +97,9 @@ export const generateMetadata = async (props: PageProps<{ slug: string[] }>): Pr
       description: meta.ogDescription,
       images: ogImage ? [{ url: ogImage }] : undefined,
       locale: toOgLocale(articleLanguage),
-      alternateLocale: [getAlternateOgLocale(articleLanguage)],
-      publishedTime: publishedAt ?? undefined,
-      modifiedTime: modifiedAt ?? undefined,
+      alternateLocale: alternateOgLocales(articleLanguage, Object.keys(translationLanguages ?? {})),
+      publishedTime: publishedAt,
+      modifiedTime: modifiedAt,
       ...(author ? { authors: [author.url] } : {}),
     },
     twitter: {
@@ -164,8 +164,8 @@ const ArticlePublicRoot = async (props: PageProps<{ slug: string[] }>) => {
     title: canonicalTitle,
     description: response.revision.description,
     image: response.revision.thumbnailUrl || FALLBACK_THUMBNAIL_IMAGE,
-    datePublished: response.revision.publishedAt ?? response.article.publishedAt,
-    dateModified: response.revision.updatedAt ?? response.article.updatedAt,
+    datePublished: isoDate(response.revision.publishedAt ?? response.article.publishedAt),
+    dateModified: isoDate(response.revision.updatedAt ?? response.article.updatedAt),
     canonicalUrl: pageMeta.canonical,
     keywords: seoJson.keywords,
     language: articleLanguage,

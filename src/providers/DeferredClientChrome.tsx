@@ -41,6 +41,9 @@ const CookieConsentBanner = safeDynamicImport(
   'CookieConsentBanner',
 )
 
+/** Page views and browser errors into the metrics facade; nothing in the critical path. */
+const MetricsBridge = safeDynamicImport(() => import('~/providers/MetricsBridge').then((m) => ({ default: m.MetricsBridge })), 'MetricsBridge')
+
 const OnboardingModalHost = safeDynamicImport(
   () => import('~/components/Views/Onboarding/OnboardingModalHost').then((m) => ({ default: m.OnboardingModalHost })),
   'OnboardingModalHost',
@@ -52,6 +55,7 @@ export function DeferredClientChrome() {
       <WebVitalsReporter />
       <CookieConsentBanner />
       <OnboardingModalHost />
+      <MetricsBridge />
     </>
   )
 }

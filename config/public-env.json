@@ -1,0 +1,25 @@
+{
+  "$comment": "Variables the build bakes into client code. A new public variable is a deliberate line here, not just a NEXT_PUBLIC_ prefix on a name. build — NEXT_PUBLIC_* only; serverBuild — non-secret names without the prefix that the build needs (not baked into the client). The deploy passes only these names to docker build; the check-public-env gate compares the lists with the code and .env.example.",
+  "build": [
+    "NEXT_PUBLIC_API_TOKENS_ENABLED",
+    "NEXT_PUBLIC_API_TOKEN_BRAND",
+    "NEXT_PUBLIC_APP_ENV",
+    "NEXT_PUBLIC_AUTH_OAUTH_LINK_PROVIDERS",
+    "NEXT_PUBLIC_AUTH_OAUTH_SIGN_IN_PROVIDERS",
+    "NEXT_PUBLIC_AUTH_OAUTH_SIGN_UP_PROVIDERS",
+    "NEXT_PUBLIC_AUTH_UI_MODE",
+    "NEXT_PUBLIC_DEFAULT_LOCALE",
+    "NEXT_PUBLIC_DEFAULT_THEME_MODE",
+    "NEXT_PUBLIC_LLM_ENABLED",
+    "NEXT_PUBLIC_ONBOARDING_ENABLED",
+    "NEXT_PUBLIC_ONBOARDING_PUSH_PROMPT_ENABLED",
+    "NEXT_PUBLIC_ORGANIZATION_SAME_AS",
+    "NEXT_PUBLIC_PUSH_IOS_PWA_HINT_ENABLED",
+    "NEXT_PUBLIC_RUM_ENABLED",
+    "NEXT_PUBLIC_RUM_SAMPLE_RATE",
+    "NEXT_PUBLIC_SITE_URL",
+    "NEXT_PUBLIC_SKIP_ANALYTICS_CONSENT",
+    "NEXT_PUBLIC_VAPID_PUBLIC_KEY"
+  ],
+  "serverBuild": ["VAPID_SUBJECT"]
+}

@@ -61,6 +61,12 @@ export const routes = {
     tKey: 'navigation.notifications' as const,
     needAuth: true,
   },
+  adminOverview: {
+    path: '/admin',
+    name: 'Admin overview',
+    tKey: 'navigation.adminOverview' as const,
+    needAuth: true,
+  },
   adminNotifications: {
     path: '/admin/notifications',
     name: 'Admin Notifications',
@@ -89,6 +95,18 @@ export const routes = {
     path: '/admin/machine-access',
     name: 'Machine access',
     tKey: 'navigation.adminMachineAccess' as const,
+    needAuth: true,
+  },
+  adminMetrics: {
+    path: '/admin/metrics',
+    name: 'Metrics',
+    tKey: 'navigation.adminMetrics' as const,
+    needAuth: true,
+  },
+  adminPlatformSettings: {
+    path: '/admin/platform-settings',
+    name: 'Platform settings',
+    tKey: 'navigation.adminPlatformSettings' as const,
     needAuth: true,
   },
   login: {

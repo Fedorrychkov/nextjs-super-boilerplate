@@ -3,14 +3,14 @@ import Article from '@lib/db/models/Article'
 import ArticleRevision from '@lib/db/models/ArticleRevision'
 import { apiErrorHandlerContainer, hasApiTokenScope, withApiTokenOrAuth, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidatePath } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { ArticleStatus, ArticleVisibility } from '~/api/article'
 import { ArticleRevisionMetadata, ArticleRevisionModel, ArticleRevisionStatus } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
 import { routes } from '~/constants'
-import { publicArticleCacheTag } from '~/lib/cache/publicArticlePageCache'
+import { invalidatePublicArticlePage } from '~/lib/cache/publicArticlePageCache'
 import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 import { validateCanonicalUrlForStorage } from '~/lib/seo/articleCanonical'
 import { resolveIndexingUrlsForArticleTransition } from '~/lib/seo/articleIndexingNotify'
@@ -86,7 +86,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     const parentArticle = await Article.findById(data.articleId).select('status visibility slug translationGroupId revisionId').lean()
 
     if (parentArticle?.slug && String(parentArticle.revisionId) === String(data._id)) {
-      revalidateTag(publicArticleCacheTag(String(parentArticle.slug)), 'max')
+      await invalidatePublicArticlePage(String(parentArticle.slug))
       revalidatePath(routes.articlePublic.path.replace(':slug', String(parentArticle.slug)))
 
       const isPublishedPublic =

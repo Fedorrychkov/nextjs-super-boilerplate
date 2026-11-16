@@ -4,7 +4,8 @@ import RefreshToken, { IRefreshToken } from '@lib/db/models/RefreshToken'
 import User, { IUser } from '@lib/db/models/User'
 import { ForbiddenError, NotFoundError, UnauthorizedError, ValidationError } from '@lib/error/custom-errors'
 import { generateAccessToken, generateRefreshToken, getTokenExpiration, verifyAccessToken, verifyRefreshToken } from '@lib/jwt/utils'
-import { assertActiveAccessSession, inheritedSessionMeta, sessionMetaFromRequest } from '@lib/services/user-session.service'
+import { refreshTokenQuery } from '@lib/security/refresh-token-hash'
+import { assertActiveAccessSession, inheritedSessionMeta, invalidateUserAccess, sessionMetaFromRequest } from '@lib/services/user-session.service'
 import type { RequestClientMeta } from '@lib/utils/request-client-meta'
 import { assertPasswordPolicy } from '@lib/validation/password-policy'
 import mongoose, { type HydratedDocument } from 'mongoose'
@@ -166,7 +167,7 @@ export class AuthService {
 
     const payload = verifyRefreshToken(refreshTokenString)
     const storedToken = await RefreshToken.findOne({
-      token: refreshTokenString,
+      ...refreshTokenQuery(refreshTokenString),
       userId: payload.sub,
     })
 
@@ -196,15 +197,17 @@ export class AuthService {
     await connectDB()
 
     await RefreshToken.deleteOne({
-      token: refreshTokenString,
+      ...refreshTokenQuery(refreshTokenString),
       userId,
     })
+    await invalidateUserAccess(userId)
   }
 
   async logoutAll(userId: string): Promise<void> {
     await connectDB()
 
     await RefreshToken.deleteMany({ userId })
+    await invalidateUserAccess(userId)
   }
 
   async validateUserCredentials(data: LoginEmailDto, t: TFunction): Promise<IUser> {

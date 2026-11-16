@@ -2,6 +2,81 @@
 
 ## [Unreleased]
 
+- **Review fixes** — deploy cleanup no longer restarts nginx; remote backup deletion is off by default; the scheduler confirms a revision only after claiming the article and retries interrupted confirmation.
+
+### Deploy and backups (batch 8)
+
+- **Blue/green swap without a 502 window** (`scripts/lib/blue-green.sh`): the validated green container takes the network alias `api-service`, so nginx balances to blue and green; blue is retired, the new blue starts under its own name, green is removed. nginx is reloaded after each step, never restarted; app locations get `proxy_connect_timeout 3s`, so a request to a vanished container address moves on instead of hanging for 60 s. On a stand under 25 req/s the old order lost 9 requests with a 2-second app start, the new one 0 of ~590 in two runs. nginx is recreated only when a release changes its template or compose config
+- **certbot without the Docker socket** — it drops a file into the shared `nginx_signals` volume (`request-nginx-reload.sh`, also the `--deploy-hook`); nginx checks it every 30 s and reloads gracefully. The nightly nginx restart before the certificate check is gone; `docker-cli` removed from the certbot images
+- **Container logs `100m × 3`** instead of `2g × 3` — inputs `docker_log_max_size` / `docker_log_max_file`. Redis and mongo keep theirs: changing it would restart the database
+- **Off-site copy of each Mongo dump (optional)** — `mongo_backup_remote: s3://bucket/prefix` (any S3-compatible storage, `mongo_backup_s3_endpoint` / `_region`) or `sftp://user@host:port/path`, keys in workflow secrets. The deploy writes them into `~/db-backups/.remote.env` (0600); the backup script uploads with a throwaway rclone container (image pinned by digest, keys via `--env-file`, never argv), keeps N days remotely (`mongo_backup_remote_retention_days`), and exits 1 with `ERROR` when the upload fails — the local dump is kept. SFTP host key pinned via `mongo_backup_sftp_known_hosts`
+- **`build_node_options`** — `NODE_OPTIONS` for `next build` only (e.g. a bigger heap); empty by default
+- **First deploy with this release** recreates nginx once (new command and volume — about a second) and certbot (now without the socket)
+
+### Admin, theme tokens and UX (batch 7)
+
+- **Admin overview at `/admin`** (ADMIN; editors are sent to articles): what needs attention first — database or Redis down, scheduled articles with no live worker, a worker that stopped reporting, overdue publications, metrics switched off — then health tiles and people/article counts. A failing dependency is shown, not thrown
+- **Grouped admin menu** — Admin, Content, Analytics, Security; a group with nothing the role may open is hidden. Section toggles are chevrons instead of a "×" that read as "close"
+- **Theme tokens in one source** — `config/design-tokens.json` → `src/app/tokens.css` (`pnpm tokens`), new gate `check-design-tokens`. The palette moved as is: computed values of every variable in both themes matched before and after
+- **New UI pieces**: `PageShell`, `EmptyState`, `Switch` (boolean platform settings use it)
+- **Find a person** — `/admin/users` search box: part of the email (case-insensitive) or an exact id; `q` in `GET /api/v1/user/list`, escaped and capped at 100 characters
+- **Translations screen** renders cards 100 at a time with "Show more" instead of ~1700 textareas at once
+- Field labels capitalize the first letter only (`capitalize` turned every word upper-case)
+
+### Metrics facade (batch 6)
+
+- **One facade for product events and errors** (`lib/metrics`): `metrics.track` / `metrics.error`, a closed event list (`METRIC_EVENTS`) whose properties are enum values only. The sink is a platform setting: `log` (default), `mongo` (collection with TTL from `metrics.retentionDays`, summary at `/admin/metrics`), `posthog` (batch API, no IP or geo, no person profile for anonymous browsers, errors as `$exception`), `custom` (`registerMetricsSink`), `off`. A failing sink is logged and never breaks the action
+- **Events wired**: login (password, MFA, OAuth), sign-up, article published (manual and scheduled); page views from the browser after analytics consent
+- **Error tracking**: unexpected 500s from API handlers, final job failures in the worker, browser errors (`window.onerror`, `unhandledrejection`) and the new `src/app/error.tsx` / `global-error.tsx` (retry button, error digest). Messages scrubbed of emails, JWTs, ids, queries and tokens; the same error at most once per 5 minutes
+- **Pseudonymous ids**: a signed-in user is `u_<hmac>` keyed by the server secret, never the account id; an anonymous browser is `a_<uuid>`
+- **Browser ingestion** `POST /api/v1/ev/batch`: 32 KB, 50 events, its own 60/min limit, replayed events deduplicated by uuid
+- **Malformed ids answer 400, not 500** — a mongoose `CastError` from a bad id in the URL was reported as a server fault (found by the new error tracking on three routes)
+
+### Platform settings (batch 5)
+
+- **Runtime settings in the admin** — `/admin/platform-settings` (ADMIN): switches, limits and integration keys changed without a release. Registry in code (`config/platform-settings.ts`: key, group, spec, default, `sensitive`, `secret`), values in Mongo (`PlatformSetting`: who, when, previous value), 60 s Redis cache dropped on write, a stored value that no longer passes its spec falls back to the default. The admin editor is chosen by the spec (`boolean`, `int`, `choice`, `text`, `textList`) — a new setting needs no UI code. Every change goes to the security audit log (`platform_setting_updated`, secrets only as set / not set); sensitive settings ask for confirmation
+- **Secrets encrypted** with AES-256-GCM under a subkey derived by HKDF from `MFA_ENCRYPTION_KEY` (`lib/security/keys.ts`) — no new env variable; never returned to the admin, sealed in the cache too
+- First settings: the metrics sink (`metrics.*`), used by the next batch
+- Rule in `AGENTS.md`: a new runtime switch is a platform setting, not a new env variable
+- Security audit labels for the eight actions that had none (`api_token_policy_updated`, `mcp_oauth_*`, `machine_access_*`)
+
+### Worker as a platform (batch 4)
+
+- **Queues** — `lib/queues/queue.ts`: `defineQueue` (definition shared by API and worker), `enqueue` (idempotent `jobId`, `'unavailable'` without Redis), `consume` (worker only), `closeQueues` on SIGTERM; completed jobs kept an hour, failed a week. New gate `check-worker-wired`: every defined queue must be consumed in a module the worker imports
+- **Notifications are delivered by the worker when it is alive** — a fresh liveness mark decides; otherwise they are delivered inline as before, so a deployment with Redis but no worker (the default) loses nothing. Delivery takes a lease on the record (`deliveringAt`), so a retried job and the `notifications-requeue` sweep (every 2 min, pending older than 2 min and younger than a day) never send twice. Checked on a stand: inline without a worker, queued and delivered with one, a stuck record re-delivered by the sweep
+- **"The worker is alive"** — job `worker-beat` writes `WorkerHeartbeat` every minute; `/api/v1/healthcheck` reports `worker: ok | stale | never | unknown` and never changes its status because of it. The article editor warns when scheduled publishing has no live worker
+- **Retention job** — per-channel delivery logs older than 90 days are dropped (`deliveryHistoryClearedAt`); notifications themselves stay
+- `pnpm doctor` no longer says a worker without `WORKER_HEARTBEAT` idles — it always has jobs now
+
+### Scheduled article publishing (batch 3)
+
+- **Articles can be scheduled** — the editor's publication block takes a date and time (browser time zone, sent as UTC), the list shows "goes live …", MCP gets `schedule_article`. The worker job `articles-scheduled` publishes due articles once a minute: confirms the revision, publishes, pings IndexNow, notifies whoever scheduled — in their language. Needs the background worker (`worker_enabled`); the editor says so
+- **Claimed atomically** by the article's old status, time, revision and `updatedAt`: two workers, a manual publish or an edit in the same minute never publish twice (checked: two parallel passes over three due articles publish each exactly once). A revision of another article is skipped; a revision confirmed for a claim that missed goes back to its old status
+- **Rules** (`lib/services/article-schedule-decision.ts`, tested): a time needs a time zone and must not be in the past; a published article cannot be scheduled and publishing by hand drops the schedule; taking an article down drops it too; setting or dropping a time needs `articles:publish`; the server writes `scheduledBy`, never the client
+- **Public article page caches only hits** — a miss is remembered for a minute in the shared cache (Redis), and every invalidation goes through one helper, `invalidatePublicArticlePage`, which drops both. The worker cannot call `revalidateTag`; without this a scheduled article stayed a 404 until the next edit. Unknown slugs no longer hit the database on every request either
+
+### Hygiene (backport from a descendant, batch 2)
+
+- **Worker scheduler on BullMQ Job Schedulers** — `getRepeatableJobs` / `repeat` are deprecated in BullMQ 5 and gone in 6, and a repeatable job keyed by (name + every) kept ticking after an interval change. Schedules written by the old code are removed on boot so they do not tick next to the new ones (checked against a real Redis: one schedule, one tick per interval)
+- **Every third-party action pinned to a commit SHA** (with the release tag in a comment), gitleaks pinned by digest (`v8.30.1@sha256:…`); majors unchanged. New gate `check-actions-pinned`
+- **Docs gate checks anchors** — `file.md#section` and `#section` must point at a real heading (GitHub slug rules, numbered duplicates, `<a id>`). It found one broken link, fixed; the FAQ entry on nginx 413 now describes the per-location limits
+- **`/indexnow.txt`** — every IndexNow ping sent `keyLocation=<site>/indexnow.txt`, which returned 404, so search engines could not verify the key
+- **Article dates in meta and JSON-LD are always ISO** — uncached rendering put `Date` objects into `article:published_time` ("[object Object]"); `og:locale:alternate` on an article lists only languages it is really translated into
+- Elastic Email requests time out after 20 s instead of never; the empty toast container no longer swallows clicks in the bottom-left corner; personal notifications no longer show delivery status, type and source (admin log still does); a failed refresh reloads the page at most once a minute per tab (no reload loop for guests)
+
+### Security and tokens (backport from a descendant, batch 1)
+
+- **A refresh token is no longer accepted as a Bearer** — both token kinds were signed with the same secret and carried the same claims, so the refresh token (days) passed `verifyAccessToken`. Tokens now carry `typ`; a token without it, issued before this change, is classified by its lifetime (`lib/jwt/token-type.ts`, tested), so nobody is signed out on deploy: legacy access tokens live out their hour, legacy refresh tokens still refresh but no longer authorize API calls
+- **Refresh-token rollout is read-compatible first** — lookup accepts raw tokens and `h:<sha256>`. Writes keep the legacy format and startup does not rewrite rows, so old images can still refresh sessions during a rollout or rollback. Hash writes are a separate rollout
+- **Refresh lifetime is one number** — token, database row and cookie all use min(`JWT_REFRESH_EXPIRES_IN`, 7 days). The cookie always lived 7 days, so idle sessions end as before; a leaked token or database row no longer stays valid for the 182 days of the old template value. Template default is now `604800`; the doctor warns above the cap
+- **API authorizes by role and status from the database** — the JWT said what was true at sign-in, so a demoted or blocked user kept access for up to an hour. One snapshot (session alive + role + status + email) is read per request and cached 30 s in Redis, dropped at once on role/status change, sign-out and session revocation (generation counter). Without Redis it is not cached, so revocation stays immediate. Replaces the per-request `RefreshToken.exists` with a cached check
+- **The TOTP secret no longer goes to `api.qrserver.com`** — the MFA setup QR code is drawn in the browser (`QrCode`, `qrcode-generator`, loaded lazily)
+- **Axios logs method and path only** — the request interceptor logged all headers at info, which on the server includes the forwarded `Cookie` with both tokens
+- **Security audit filter covers every action** — the filter list missed the `mcp_oauth_*` and `machine_access_*` actions the code writes; the type is now derived from the one list (`SECURITY_AUDIT_ACTIONS`)
+- **CSP built in `config/csp.ts`** — the enforced policy no longer allows the Yandex Metrika / Google Analytics / GTM / yclients hosts no code loads, and `upgrade-insecure-requests` is production-only (Safari applied it to localhost). A strict candidate without `unsafe-eval` and bare `https:` in `connect-src` runs as `Content-Security-Policy-Report-Only`; violations go to `POST /api/v1/csp-report` and are logged as directive + origin only. Forks that load third-party scripts add their hosts to `THIRD_PARTY` in the same file
+- **Public env allow-list** — `config/public-env.json` lists what the build may bake into the client; the deploy passes only those names to `docker build`, and the new `check-public-env` gate keeps the list in sync with the code and `.env.example`
+- `next dev` no longer appends its own block to `AGENTS.md` (`agentRules: false`); ESLint ignores `.claude/worktrees/**`; gate unit tests (`check-*.test.mjs`) are not run as gates
+
 ### UI (backport batch G)
 
 - **Cabinet is one route group** — `src/app/(cabinet)/layout.tsx` replaces four identical `layout.tsx` files (`admin`, `notifications`, `profile`, `ui-kit`); URLs are unchanged. Moving between sections no longer unmounts and remounts the sidebar (open sections, scroll position and navigation queries survive)

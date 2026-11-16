@@ -36,6 +36,7 @@ pnpm lint / lint:fix        # ESLint
 pnpm typecheck              # tsc --noEmit
 pnpm test                   # node --test через tsx (*.test.ts, scripts/**/*.test.mjs) — без инфраструктуры
 pnpm format                 # prettier по src/**/*.ts
+pnpm tokens                 # пересобрать src/app/tokens.css из config/design-tokens.json (цвета темы)
 pnpm build:local|stage|prod # сборка с env-cmd под нужный env
 ```
 
@@ -207,8 +208,12 @@ API-роуты живут в `src/app/api/v1/*` (auth, article, llm, media, noti
 |---|---|---|
 | `check-agent-contract` | `pnpm gates` | `AGENTS.md` больше 28 КБ или с `@file`-импортами; `CLAUDE.md` без `@AGENTS.md` или больше 4 КБ |
 | `check-eslint-disable-ratchet` | `pnpm gates` | Новый `eslint-disable` (baseline `scripts/eslint-disable-ratchet-baseline.txt`; уменьшать через `--update`) |
-| `check-docs-structure` | `pnpm gates` | Документ вне `docs/<тема>/<имя>.<ru\|en>.md`, документ без строки в `docs/README.md`, битая относительная ссылка в любом `.md` |
+| `check-docs-structure` | `pnpm gates` | Документ вне `docs/<тема>/<имя>.<ru\|en>.md`, документ без строки в `docs/README.md`, битая относительная ссылка или `#якорь` в любом `.md` |
 | `check-env-reference` | `pnpm gates` | Переменная в `.env.example` без строки в `docs/configure/env-reference.{ru,en}.md`, или описанная переменная, которой в шаблоне больше нет |
+| `check-actions-pinned` | `pnpm gates` | Стороннее `uses:` без 40-значного SHA или образ из реестра в workflow без `@sha256:` — тег можно перевесить на другой коммит, SHA нет |
+| `check-worker-wired` | `pnpm gates` | Очередь из `defineQueue`, чей `consume(...)` не в модуле, который импортирует `scripts/worker.ts`, или голый `new Queue(`/`new Worker(` вне подключённых модулей — задачи копились бы в Redis, а продюсер отвечал бы «поставлено» |
+| `check-public-env` | `pnpm gates` | `NEXT_PUBLIC_*`, которое читает код или описывает шаблон, но которого нет в `config/public-env.json`: деплой передаёт в сборку только имена из списка |
+| `check-design-tokens` | `pnpm gates` | `src/app/tokens.css` поправлен руками или отстал от `config/design-tokens.json`, либо токен есть только в тёмной теме и в светлой остался бы без значения — запусти `pnpm tokens` |
 | eslint `no-restricted-syntax` (`error`) | `pnpm lint` | Сырые `<input>/<select>/<textarea>` вне `src/components/ui`; голый `<span>` с текстом вместо `Typography` |
 | `gitleaks` | workflow `Secret scan` | Новый секрет в отслеживаемых файлах |
 | `Lighthouse` | `lighthouse.yml` | Публичные страницы тяжелее бюджетов `lighthouserc.json` (вес и CLS ломают, тайминги предупреждают) |
@@ -229,6 +234,7 @@ API-роуты живут в `src/app/api/v1/*` (auth, article, llm, media, noti
 
 - Начиная новую фичу, смотри существующий домен-образец (например, `article`): api → query → app/api/v1 → services → models
 - Если новый домен должен быть доступен AI-агентам — выведи его через MCP-реестр (см. «MCP-сервер и машинная авторизация» выше)
+- Новый переключатель, лимит или ключ интеграции — настройка платформы (`config/platform-settings.ts`, см. `docs/configure/platform-settings.ru.md`), а не новая переменная env; в env — только то, без чего процесс не стартует
 - Не менять `pnpm-workspace.yaml` overrides без причины — это security-фиксы транзитивных зависимостей
 - При форке под новый продукт первым делом правится `config/product.ts` и `.env.local`, затем `pnpm doctor`; повторная настройка (новая машина, новые ключи в шаблоне) — `make setup`
 - Перед коммитом: `pnpm gates`, `pnpm lint`, `pnpm typecheck`, `pnpm test`

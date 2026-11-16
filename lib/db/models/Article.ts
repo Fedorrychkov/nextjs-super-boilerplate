@@ -10,8 +10,11 @@ import { UserRole } from '~/api/user'
 import type { PaginationMeta } from '~/types/pagination'
 import { time } from '~/utils/time'
 
-export interface IArticle extends Document, Omit<ArticleModel, 'id' | 'revisionId' | 'listenAudioAssetId' | 'listenAudioSourceRevisionId'> {
+export interface IArticle
+  extends Document, Omit<ArticleModel, 'id' | 'revisionId' | 'listenAudioAssetId' | 'listenAudioSourceRevisionId' | 'scheduledAt' | 'scheduledBy'> {
   revisionId?: mongoose.Types.ObjectId | null
+  scheduledAt?: Date | null
+  scheduledBy?: mongoose.Types.ObjectId | null
   listenAudioAssetId?: mongoose.Types.ObjectId | null
   listenAudioSourceRevisionId?: mongoose.Types.ObjectId | null
 }
@@ -100,6 +103,18 @@ const ArticleSchema: Schema<IArticle> = new Schema<IArticle>(
     },
     publishedAt: {
       type: Date,
+      default: null,
+    },
+    /** Scheduled publishing: the worker job `articles-scheduled` publishes `revisionId` at this time. */
+    scheduledAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    /** Who set `scheduledAt` — they get the "published" notification. */
+    scheduledBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
       default: null,
     },
     listenAudioAssetId: {

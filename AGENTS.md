@@ -36,6 +36,7 @@ pnpm lint / lint:fix        # ESLint
 pnpm typecheck              # tsc --noEmit
 pnpm test                   # node --test via tsx (*.test.ts, scripts/**/*.test.mjs) — no infrastructure needed
 pnpm format                 # prettier over src/**/*.ts
+pnpm tokens                 # regenerate src/app/tokens.css from config/design-tokens.json (theme colors)
 pnpm build:local|stage|prod # build with env-cmd for the target env
 ```
 
@@ -206,8 +207,12 @@ exceptions can only shrink.
 |---|---|---|
 | `check-agent-contract` | `pnpm gates` | `AGENTS.md` over 28 KB or with `@file` imports; `CLAUDE.md` without `@AGENTS.md` or over 4 KB |
 | `check-eslint-disable-ratchet` | `pnpm gates` | A new `eslint-disable` (baseline `scripts/eslint-disable-ratchet-baseline.txt`; shrink it with `--update`) |
-| `check-docs-structure` | `pnpm gates` | A doc outside `docs/<topic>/<name>.<ru\|en>.md`, a doc missing from `docs/README.md`, a broken relative link in any `.md` |
+| `check-docs-structure` | `pnpm gates` | A doc outside `docs/<topic>/<name>.<ru\|en>.md`, a doc missing from `docs/README.md`, a broken relative link or `#anchor` in any `.md` |
 | `check-env-reference` | `pnpm gates` | A variable in `.env.example` without a row in `docs/configure/env-reference.{ru,en}.md`, or a documented variable the template no longer has |
+| `check-actions-pinned` | `pnpm gates` | A third-party `uses:` not pinned to a 40-char SHA, or a registry image in a workflow without `@sha256:` — a tag can be moved to another commit, a SHA cannot |
+| `check-worker-wired` | `pnpm gates` | A queue defined with `defineQueue` whose `consume(...)` is not in a module `scripts/worker.ts` imports, or a raw `new Queue(`/`new Worker(` outside wired modules — jobs would pile up in Redis while producers report "queued" |
+| `check-public-env` | `pnpm gates` | A `NEXT_PUBLIC_*` the code reads or the template has but `config/public-env.json` lacks — the deploy passes only listed names to the build |
+| `check-design-tokens` | `pnpm gates` | `src/app/tokens.css` edited by hand or out of date with `config/design-tokens.json`, or a dark-only token the light theme would leave unset — run `pnpm tokens` |
 | eslint `no-restricted-syntax` (`error`) | `pnpm lint` | Raw `<input>/<select>/<textarea>` outside `src/components/ui`; bare `<span>` text instead of `Typography` |
 | `gitleaks` | `Secret scan` workflow | New secret material in tracked files |
 | `Lighthouse` | `lighthouse.yml` | Public pages heavier than the `lighthouserc.json` budgets (weight and CLS block, timings warn) |
@@ -228,6 +233,7 @@ A code change without the doc change is an unfinished task.
 
 - When starting a new feature, follow an existing domain as a template (e.g. `article`): api → query → app/api/v1 → services → models
 - If a new domain should be usable by AI agents, expose it through the MCP registry (see "MCP server and machine auth" above)
+- A new runtime switch, limit or integration key is a platform setting (`config/platform-settings.ts`, see `docs/configure/platform-settings.ru.md`), not a new env variable; env keeps only what the process needs to start
 - Do not change `pnpm-workspace.yaml` overrides without reason — they are security fixes for transitive dependencies
 - When forking for a new product, edit `config/product.ts` and `.env.local` first, then run `pnpm doctor`; repeat onboarding (new machine, new keys in the template) is `make setup`
 - Before committing: `pnpm gates`, `pnpm lint`, `pnpm typecheck`, `pnpm test`

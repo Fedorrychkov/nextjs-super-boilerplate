@@ -18,6 +18,7 @@ relative link alive.
 |---|---|
 | [`configure/env-reference.en.md`](./configure/env-reference.en.md) · [RU](./configure/env-reference.ru.md) | Every environment variable, same order as `.env.example` |
 | [`configure/feature-flags.ru.md`](./configure/feature-flags.ru.md) | Feature flags: auth, email, MFA, sessions, onboarding, push, LLM |
+| [`configure/platform-settings.ru.md`](./configure/platform-settings.ru.md) | Platform settings: runtime switches and integrations changed in the admin (instead of new env) |
 | [`configure/oauth.ru.md`](./configure/oauth.ru.md) | OAuth / social login — implemented (Yandex, Google, GitHub) |
 
 ## Deploy
@@ -40,9 +41,11 @@ relative link alive.
 | File | Purpose |
 |---|---|
 | [`develop/bundle-optimization.en.md`](./develop/bundle-optimization.en.md) | Bundle analysis, lazy loading, HTTP caching, metrics stack on small servers |
+| [`develop/metrics.ru.md`](./develop/metrics.ru.md) | Product events and errors: one facade, sink chosen in the admin (log, Mongo, PostHog, custom) |
 | [`develop/typography.ru.md`](./develop/typography.ru.md) | Typography component migration + eslint enforcement |
 | [`develop/field-components.ru.md`](./develop/field-components.ru.md) | Field components unification + enforcement |
 | [`develop/sidebar-navigation.ru.md`](./develop/sidebar-navigation.ru.md) | Sidebar navigation — design note |
+| [`develop/admin-ui.ru.md`](./develop/admin-ui.ru.md) | Admin: grouped menu, overview page, page shell, theme tokens (`config/design-tokens.json`) |
 | [`develop/article-translation-groups.ru.md`](./develop/article-translation-groups.ru.md) | Cross-language article groups + SEO pipeline |
 | [`develop/mcp-server.ru.md`](./develop/mcp-server.ru.md) | MCP server for articles/media (stdio + remote HTTP); see also [`../mcp/README.md`](../mcp/README.md) |
 | [`develop/mcp-oauth-design.ru.md`](./develop/mcp-oauth-design.ru.md) | OAuth layer for MCP — design |

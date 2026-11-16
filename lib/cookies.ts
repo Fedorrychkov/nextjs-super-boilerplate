@@ -1,4 +1,4 @@
-import { isDevelop } from '@config/env'
+import { isDevelop, JWT_CONFIG } from '@config/env'
 import type { GetServerSidePropsContext, NextApiResponse } from 'next'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
@@ -29,7 +29,7 @@ export function setAuthCookies(response: NextResponse, accessToken: string, refr
   })
 
   // Refresh token cookie
-  const refreshExpiresIn = 7 * 24 * 60 * 60 // 7 days in seconds
+  const refreshExpiresIn = Number(JWT_CONFIG.refreshExpiresIn) // min(env, 7 days) — config/env.ts
   response.cookies.set('refreshToken', refreshToken, {
     httpOnly: true,
     secure,

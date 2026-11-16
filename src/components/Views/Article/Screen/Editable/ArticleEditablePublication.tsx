@@ -3,11 +3,12 @@
 import { AxiosError } from 'axios'
 import { ExternalLink, Send } from 'lucide-react'
 import Link from 'next/link'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { ArticleModel, ArticleStatus } from '~/api/article'
 import { ArticleRevisionModel, ArticleRevisionStatus } from '~/api/article-revision'
 import { AlertBlock, Button, Typography } from '~/components/ui'
+import { Input } from '~/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '~/components/ui/table'
 import { routes } from '~/constants'
 import { useT } from '~/providers'
@@ -203,6 +204,57 @@ export function ArticleEditablePublication(props: ArticleEditablePublicationProp
     updateArticleMutation,
     updateArticleRevisionMutation,
   ])
+
+  // Scheduled publishing: the picker defaults to tomorrow 09:00 in the browser's time zone; the
+  // server gets UTC (`toISOString`), so the moment is the same wherever the worker runs.
+  const [scheduleAt, setScheduleAt] = useState(() => time().add(1, 'day').hour(9).minute(0).format('YYYY-MM-DDTHH:mm'))
+  const canSchedule = article.status !== ArticleStatus.PUBLISHED && canPublishOrRepublish
+  // The healthcheck reports the worker's last mark: without a live worker a schedule is saved but
+  // nothing ever publishes it — say so next to the button instead of letting it fail silently.
+  const [workerState, setWorkerState] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!canSchedule && !article.scheduledAt) return
+
+    let cancelled = false
+
+    void fetch('/api/v1/healthcheck', { cache: 'no-store' })
+      .then((res) => res.json() as Promise<{ worker?: string }>)
+      .then((body) => {
+        if (!cancelled) setWorkerState(body.worker ?? null)
+      })
+      .catch(() => undefined)
+
+    return () => {
+      cancelled = true
+    }
+  }, [canSchedule, article.scheduledAt])
+
+  const workerDown = workerState === 'never' || workerState === 'stale'
+
+  const handleSchedule = useCallback(
+    async (at: string | null) => {
+      try {
+        await updateArticleMutation.mutateAsync({
+          id: articleId,
+          ...(at ? { revisionId: activeRevisionId, scheduledAt: new Date(at).toISOString() } : { scheduledAt: null }),
+        })
+        notify(t(at ? 'article.ui.publication.scheduleSaved' : 'article.ui.publication.scheduleCancelled'), 'success')
+        window.location.reload()
+      } catch (error) {
+        logger.error(error)
+
+        if (error instanceof AxiosError) {
+          notify(error.response?.data?.message ?? t('errors.unknown'), 'destructive')
+
+          return
+        }
+
+        notify(t('errors.unknown'), 'destructive')
+      }
+    },
+    [activeRevisionId, articleId, notify, t, updateArticleMutation],
+  )
 
   const handleRestoreLiveSnapshot = useCallback(async () => {
     try {
@@ -422,6 +474,41 @@ export function ArticleEditablePublication(props: ArticleEditablePublicationProp
           ) : null}
         </div>
       </div>
+
+      {article.scheduledAt && article.status !== ArticleStatus.PUBLISHED ? (
+        <div className="flex flex-col gap-2 border-t border-border pt-4">
+          <Typography variant="Body/S/Semibold">{t('article.ui.publication.scheduleTitle')}</Typography>
+          {workerDown && (
+            <Typography variant="Body/S/Regular" className="text-destructive">
+              {t('article.ui.publication.scheduleWorkerDown')}
+            </Typography>
+          )}
+          <Typography variant="Body/S/Regular">
+            {t('article.ui.publication.scheduledFor', { date: time(article.scheduledAt).format('DD.MM.YYYY HH:mm'), revision: article.revisionId ?? '—' })}
+          </Typography>
+          <Button type="button" variant="outline" size="sm-md" className="w-fit" disabled={busy} onClick={() => void handleSchedule(null)}>
+            {t('article.ui.publication.scheduleCancel')}
+          </Button>
+        </div>
+      ) : canSchedule ? (
+        <div className="flex flex-col gap-2 border-t border-border pt-4">
+          <Typography variant="Body/S/Semibold">{t('article.ui.publication.scheduleTitle')}</Typography>
+          <Typography variant="Body/S/Regular" className="text-muted-foreground">
+            {t('article.ui.publication.scheduleHint')}
+          </Typography>
+          {workerDown && (
+            <Typography variant="Body/S/Regular" className="text-destructive">
+              {t('article.ui.publication.scheduleWorkerDown')}
+            </Typography>
+          )}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+            <Input type="datetime-local" label={t('article.ui.publication.scheduleAt')} value={scheduleAt} onChange={setScheduleAt} wrapperClassName="w-56" />
+            <Button type="button" variant="secondary" size="sm-md" disabled={busy || !scheduleAt} onClick={() => void handleSchedule(scheduleAt)}>
+              {t('article.ui.publication.scheduleSave')}
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

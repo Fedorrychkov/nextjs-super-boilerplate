@@ -20,6 +20,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Agent git worktrees are other checkouts of this repo: linting them here doubles every error.
+    ".claude/worktrees/**",
   ]),
   prettierConfig,
   { ignores: ['eslint.config.mjs', '/dist/**/*', '.next', 'next.config.ts', 'node_modules'] },
