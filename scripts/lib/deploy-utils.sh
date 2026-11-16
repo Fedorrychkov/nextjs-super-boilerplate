@@ -151,53 +151,53 @@ function run_migrations_flow() {
     local state_file="${DEPLOY_STATE_DIR}/migrations_${env}.count"
     local delta_file="${DEPLOY_STATE_DIR}/last_new_migrations_${env}.count"
 
-    # Migrations disabled by default; enable with MIGRATIONS_RUN=true
+    # Callers capture stdout as the numeric rollback count; diagnostics go to stderr.
     if [[ "$(parse_bool "$MIGRATIONS_RUN")" != "true" ]]; then
-        echo "Migrations are disabled by default (MIGRATIONS_RUN=$MIGRATIONS_RUN). Skipping."
+        echo "Migrations are disabled by default (MIGRATIONS_RUN=$MIGRATIONS_RUN). Skipping." >&2
         echo 0
         return 0
     fi
 
-    if ! migrations_scripts_present "$env"; then
-        echo "MIGRATIONS_RUN=true but the image has no migration:show:${env} / migration:run:${env} scripts — add them or set migrations_run: false"
+    if ! migrations_scripts_present "$env" >&2; then
+        echo "MIGRATIONS_RUN=true but the image has no migration:show:${env} / migration:run:${env} scripts — add them or set migrations_run: false" >&2
         echo 0
         return 1
     fi
 
-    echo "Checking migrations status before run..."
+    echo "Checking migrations status before run..." >&2
     local before_show
     if ! before_show=$(migrations_show "$env"); then
-        echo "Failed to show migrations"
+        echo "Failed to show migrations" >&2
         echo 0
         return 1
     fi
     local applied_before=$(get_applied_count "$before_show")
     local pending_before=$(get_pending_count "$before_show")
-    echo "Applied before: $applied_before, Pending: $pending_before"
+    echo "Applied before: $applied_before, Pending: $pending_before" >&2
 
     if [[ "$pending_before" -eq 0 ]]; then
-        echo "No pending migrations."
+        echo "No pending migrations." >&2
         echo 0
         return 0
     fi
 
-    echo "Running migrations..."
-    if ! migrations_run "$env"; then
-        echo "Migrations run failed"
+    echo "Running migrations..." >&2
+    if ! migrations_run "$env" >&2; then
+        echo "Migrations run failed" >&2
         echo 0
         return 1
     fi
 
     local after_show
     if ! after_show=$(migrations_show "$env"); then
-        echo "Failed to show migrations after run"
+        echo "Failed to show migrations after run" >&2
         echo 0
         return 1
     fi
     local applied_after=$(get_applied_count "$after_show")
     local newly_applied=$((applied_after - applied_before))
     if [[ $newly_applied -lt 0 ]]; then newly_applied=0; fi
-    echo "Newly applied migrations in this deploy: $newly_applied"
+    echo "Newly applied migrations in this deploy: $newly_applied" >&2
 
     echo "$applied_after" > "$state_file"
     echo "$newly_applied" > "$delta_file"
