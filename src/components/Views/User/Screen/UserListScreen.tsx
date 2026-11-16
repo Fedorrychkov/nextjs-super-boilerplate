@@ -1,8 +1,8 @@
 'use client'
 
 import { AxiosError } from 'axios'
-import { FilterIcon, PlusIcon, XIcon } from 'lucide-react'
-import { lazy, Suspense, useRef, useState } from 'react'
+import { FilterIcon, PlusIcon, SearchIcon, XIcon } from 'lucide-react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 
 import { RegisterByAdminDto } from '~/api/auth/types'
 import { UpdateUserDto, UserModel } from '~/api/user'
@@ -14,6 +14,7 @@ import { useDefaultFilters } from '~/components/Filters/useDefaultFilters'
 import { PaginationSkeleton } from '~/components/List'
 import { usePagination } from '~/components/List/usePagination'
 import { Badge, Button, Typography } from '~/components/ui'
+import { Input } from '~/components/ui/input'
 import { useStickyContainer } from '~/hooks/useStickyContainer'
 import { useSwitch } from '~/hooks/useSwitch'
 import { useAuth, useT } from '~/providers'
@@ -76,8 +77,21 @@ export const UserListScreen = () => {
 
   const { page, setPage, offset } = usePagination({ limit: 25 })
 
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search.trim())
+      // A new query starts from the first page: page 4 of the old result may not exist in the new one.
+      setPage(1)
+    }, 400)
+
+    return () => clearTimeout(timer)
+  }, [search, setPage])
+
   const { data, isLoading, refetch } = useUsersListQuery(
-    { limit: 25, offset, startOfDateIso: period?.fromDate, endOfDateIso: period?.toDate, ...debouncedFilters },
+    { limit: 25, offset, startOfDateIso: period?.fromDate, endOfDateIso: period?.toDate, ...debouncedFilters, q: debouncedSearch || null },
     isPeriodEnabled,
   )
 
@@ -137,6 +151,15 @@ export const UserListScreen = () => {
         <StickyContainer ref={headerRef} className="flex flex-row gap-4 items-center justify-between md:px-8 md:py-4 py-2 px-1">
           <TitleWithBadge title={t('navigation.users')} badgeContent={<Typography variant="Body/XS/Regular">{data?.count ?? 0}</Typography>} />
           <div className="flex md:flex-row flex-col items-end md:items-center gap-2">
+            <Input
+              type="search"
+              size="small"
+              value={search}
+              onChange={setSearch}
+              placeholder={t('user.searchPlaceholder')}
+              prefix={<SearchIcon width={14} height={14} className="text-muted-foreground" />}
+              wrapperClassName="w-56 md:w-64"
+            />
             <div className="flex flex-row gap-2">
               <RegisterByAdminUserDialog isOpen={isOpened} toggle={toggle} onSubmit={handleAddUser} isLoading={isLoading}>
                 <CustomTooltip content={<Typography variant="Body/XS/Regular">{t('article.ui.createNewArticle')}</Typography>}>

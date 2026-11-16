@@ -36,6 +36,7 @@ pnpm lint / lint:fix        # ESLint
 pnpm typecheck              # tsc --noEmit
 pnpm test                   # node --test через tsx (*.test.ts, scripts/**/*.test.mjs) — без инфраструктуры
 pnpm format                 # prettier по src/**/*.ts
+pnpm tokens                 # пересобрать src/app/tokens.css из config/design-tokens.json (цвета темы)
 pnpm build:local|stage|prod # сборка с env-cmd под нужный env
 ```
 
@@ -212,6 +213,7 @@ API-роуты живут в `src/app/api/v1/*` (auth, article, llm, media, noti
 | `check-actions-pinned` | `pnpm gates` | Стороннее `uses:` без 40-значного SHA или образ из реестра в workflow без `@sha256:` — тег можно перевесить на другой коммит, SHA нет |
 | `check-worker-wired` | `pnpm gates` | Очередь из `defineQueue`, чей `consume(...)` не в модуле, который импортирует `scripts/worker.ts`, или голый `new Queue(`/`new Worker(` вне подключённых модулей — задачи копились бы в Redis, а продюсер отвечал бы «поставлено» |
 | `check-public-env` | `pnpm gates` | `NEXT_PUBLIC_*`, которое читает код или описывает шаблон, но которого нет в `config/public-env.json`: деплой передаёт в сборку только имена из списка |
+| `check-design-tokens` | `pnpm gates` | `src/app/tokens.css` поправлен руками или отстал от `config/design-tokens.json`, либо токен есть только в тёмной теме и в светлой остался бы без значения — запусти `pnpm tokens` |
 | eslint `no-restricted-syntax` (`error`) | `pnpm lint` | Сырые `<input>/<select>/<textarea>` вне `src/components/ui`; голый `<span>` с текстом вместо `Typography` |
 | `gitleaks` | workflow `Secret scan` | Новый секрет в отслеживаемых файлах |
 | `Lighthouse` | `lighthouse.yml` | Публичные страницы тяжелее бюджетов `lighthouserc.json` (вес и CLS ломают, тайминги предупреждают) |

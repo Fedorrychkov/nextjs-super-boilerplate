@@ -29,7 +29,8 @@
     "doctor": "env-cmd -f .env.local tsx scripts/doctor.ts -- .env.local",
     "doctor:stage": "env-cmd -f .env.stage tsx scripts/doctor.ts -- .env.stage",
     "doctor:prod": "env-cmd -f .env.prod tsx scripts/doctor.ts -- .env.prod",
-    "prepare": "husky"
+    "prepare": "husky",
+    "tokens": "node scripts/design-tokens.mjs"
   },
   "engines": {
     "node": ">= 22.0.0",

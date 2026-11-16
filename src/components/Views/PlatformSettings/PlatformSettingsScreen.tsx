@@ -5,8 +5,7 @@ import { ShieldAlert } from 'lucide-react'
 import { useState } from 'react'
 
 import type { PlatformSettingModel } from '~/api/platform-settings'
-import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Typography } from '~/components/ui'
-import { Checkbox } from '~/components/ui/fields/checkbox'
+import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Switch, Typography } from '~/components/ui'
 import { Textarea } from '~/components/ui/fields/textarea'
 import { Input } from '~/components/ui/input'
 import { Select } from '~/components/ui/select-1'
@@ -72,10 +71,12 @@ function SettingRow({ setting }: { setting: PlatformSettingModel }) {
       </div>
 
       {spec.kind === 'boolean' && (
-        <label className="flex w-fit cursor-pointer items-center gap-2">
-          <Checkbox checked={draft === true} onCheckedChange={(checked) => setDraft(checked === true)} />
-          <Typography variant="Body/S/Regular">{t('platformSettings.enabled')}</Typography>
-        </label>
+        <div className="flex w-fit items-center gap-2">
+          <Switch id={`setting-${setting.key}`} checked={draft === true} onCheckedChange={setDraft} />
+          <Typography asTag="label" htmlFor={`setting-${setting.key}`} variant="Body/S/Regular" className="cursor-pointer">
+            {draft === true ? t('platformSettings.enabled') : t('platformSettings.disabled')}
+          </Typography>
+        </div>
       )}
 
       {spec.kind === 'int' && <Input type="number" value={String(draft)} onChange={setDraft} wrapperClassName="w-40" />}

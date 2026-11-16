@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Admin, theme tokens and UX (batch 7)
+
+- **Admin overview at `/admin`** (ADMIN; editors are sent to articles): what needs attention first — database or Redis down, scheduled articles with no live worker, a worker that stopped reporting, overdue publications, metrics switched off — then health tiles and people/article counts. A failing dependency is shown, not thrown
+- **Grouped admin menu** — Admin, Content, Analytics, Security; a group with nothing the role may open is hidden. Section toggles are chevrons instead of a "×" that read as "close"
+- **Theme tokens in one source** — `config/design-tokens.json` → `src/app/tokens.css` (`pnpm tokens`), new gate `check-design-tokens`. The palette moved as is: computed values of every variable in both themes matched before and after
+- **New UI pieces**: `PageShell`, `EmptyState`, `Switch` (boolean platform settings use it)
+- **Find a person** — `/admin/users` search box: part of the email (case-insensitive) or an exact id; `q` in `GET /api/v1/user/list`, escaped and capped at 100 characters
+- **Translations screen** renders cards 100 at a time with "Show more" instead of ~1700 textareas at once
+- Field labels capitalize the first letter only (`capitalize` turned every word upper-case)
+
 ### Metrics facade (batch 6)
 
 - **One facade for product events and errors** (`lib/metrics`): `metrics.track` / `metrics.error`, a closed event list (`METRIC_EVENTS`) whose properties are enum values only. The sink is a platform setting: `log` (default), `mongo` (collection with TTL from `metrics.retentionDays`, summary at `/admin/metrics`), `posthog` (batch API, no IP or geo, no person profile for anonymous browsers, errors as `$exception`), `custom` (`registerMetricsSink`), `off`. A failing sink is logged and never breaks the action

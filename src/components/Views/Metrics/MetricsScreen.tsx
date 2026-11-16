@@ -1,10 +1,11 @@
 'use client'
 
 import { Request } from '@lib/request'
+import { BarChart3Icon } from 'lucide-react'
 import Link from 'next/link'
 import { useQuery } from 'react-query'
 
-import { Typography } from '~/components/ui'
+import { EmptyState, PageShell, Typography } from '~/components/ui'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '~/components/ui/table'
 import { routes } from '~/constants'
 import { useT } from '~/providers'
@@ -46,14 +47,7 @@ export const MetricsScreen = () => {
   const { data, isLoading, isError } = useMetricsSummary()
 
   return (
-    <div className="flex w-full max-w-5xl flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <Typography variant="heading-2">{t('metricsAdmin.title')}</Typography>
-        <Typography variant="Body/S/Regular" className="text-muted-foreground">
-          {t('metricsAdmin.subtitle', { sink: data?.sink ?? '…' })}
-        </Typography>
-      </div>
-
+    <PageShell title={t('metricsAdmin.title')} description={t('metricsAdmin.subtitle', { sink: data?.sink ?? '…' })}>
       {isLoading && <Typography variant="Body/S/Regular">{t('metricsAdmin.loading')}</Typography>}
       {isError && (
         <Typography variant="Body/S/Regular" className="text-destructive">
@@ -62,14 +56,15 @@ export const MetricsScreen = () => {
       )}
 
       {data && !data.available && (
-        <div className="flex flex-col gap-2 rounded-lg border border-dashed border-border p-4">
-          <Typography variant="Body/M/Regular">{t('metricsAdmin.unavailable', { sink: data.sink })}</Typography>
-          <Typography variant="Body/S/Regular">
-            <Link className="underline" href={routes.adminPlatformSettings.path}>
+        <EmptyState
+          icon={<BarChart3Icon width={20} height={20} />}
+          title={t('metricsAdmin.unavailable', { sink: data.sink })}
+          action={
+            <Link className="text-sm font-medium underline underline-offset-2" href={routes.adminPlatformSettings.path}>
               {t('metricsAdmin.openSettings')}
             </Link>
-          </Typography>
-        </div>
+          }
+        />
       )}
 
       {data?.available && (
@@ -142,6 +137,6 @@ export const MetricsScreen = () => {
           </section>
         </>
       )}
-    </div>
+    </PageShell>
   )
 }

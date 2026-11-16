@@ -36,6 +36,7 @@ pnpm lint / lint:fix        # ESLint
 pnpm typecheck              # tsc --noEmit
 pnpm test                   # node --test via tsx (*.test.ts, scripts/**/*.test.mjs) — no infrastructure needed
 pnpm format                 # prettier over src/**/*.ts
+pnpm tokens                 # regenerate src/app/tokens.css from config/design-tokens.json (theme colors)
 pnpm build:local|stage|prod # build with env-cmd for the target env
 ```
 
@@ -211,6 +212,7 @@ exceptions can only shrink.
 | `check-actions-pinned` | `pnpm gates` | A third-party `uses:` not pinned to a 40-char SHA, or a registry image in a workflow without `@sha256:` — a tag can be moved to another commit, a SHA cannot |
 | `check-worker-wired` | `pnpm gates` | A queue defined with `defineQueue` whose `consume(...)` is not in a module `scripts/worker.ts` imports, or a raw `new Queue(`/`new Worker(` outside wired modules — jobs would pile up in Redis while producers report "queued" |
 | `check-public-env` | `pnpm gates` | A `NEXT_PUBLIC_*` the code reads or the template has but `config/public-env.json` lacks — the deploy passes only listed names to the build |
+| `check-design-tokens` | `pnpm gates` | `src/app/tokens.css` edited by hand or out of date with `config/design-tokens.json`, or a dark-only token the light theme would leave unset — run `pnpm tokens` |
 | eslint `no-restricted-syntax` (`error`) | `pnpm lint` | Raw `<input>/<select>/<textarea>` outside `src/components/ui`; bare `<span>` text instead of `Typography` |
 | `gitleaks` | `Secret scan` workflow | New secret material in tracked files |
 | `Lighthouse` | `lighthouse.yml` | Public pages heavier than the `lighthouserc.json` budgets (weight and CLS block, timings warn) |
