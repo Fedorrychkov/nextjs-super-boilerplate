@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Scheduled article publishing (batch 3)
+
+- **Articles can be scheduled** — the editor's publication block takes a date and time (browser time zone, sent as UTC), the list shows "goes live …", MCP gets `schedule_article`. The worker job `articles-scheduled` publishes due articles once a minute: confirms the revision, publishes, pings IndexNow, notifies whoever scheduled — in their language. Needs the background worker (`worker_enabled`); the editor says so
+- **Claimed atomically** by the article's old status, time, revision and `updatedAt`: two workers, a manual publish or an edit in the same minute never publish twice (checked: two parallel passes over three due articles publish each exactly once). A revision of another article is skipped; a revision confirmed for a claim that missed goes back to its old status
+- **Rules** (`lib/services/article-schedule-decision.ts`, tested): a time needs a time zone and must not be in the past; a published article cannot be scheduled and publishing by hand drops the schedule; taking an article down drops it too; setting or dropping a time needs `articles:publish`; the server writes `scheduledBy`, never the client
+- **Public article page caches only hits** — a miss is remembered for a minute in the shared cache (Redis), and every invalidation goes through one helper, `invalidatePublicArticlePage`, which drops both. The worker cannot call `revalidateTag`; without this a scheduled article stayed a 404 until the next edit. Unknown slugs no longer hit the database on every request either
+
 ### Hygiene (backport from a descendant, batch 2)
 
 - **Worker scheduler on BullMQ Job Schedulers** — `getRepeatableJobs` / `repeat` are deprecated in BullMQ 5 and gone in 6, and a repeatable job keyed by (name + every) kept ticking after an interval change. Schedules written by the old code are removed on boot so they do not tick next to the new ones (checked against a real Redis: one schedule, one tick per interval)

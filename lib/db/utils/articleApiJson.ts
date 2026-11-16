@@ -17,6 +17,8 @@ export function articleDocumentToApiJson(article: HydratedDocument<IArticle>) {
     listenAudioAssetId: article.listenAudioAssetId?.toString() ?? null,
     listenAudioSourceRevisionId: article.listenAudioSourceRevisionId?.toString() ?? null,
     publishedAt: o.publishedAt != null ? time(o.publishedAt as string | Date).toISOString() : null,
+    scheduledAt: o.scheduledAt != null ? time(o.scheduledAt as string | Date).toISOString() : null,
+    scheduledBy: article.scheduledBy?.toString() ?? null,
     updatedAt: o.updatedAt != null ? time(o.updatedAt as string | Date).toISOString() : null,
     createdAt: o.createdAt != null ? time(o.createdAt as string | Date).toISOString() : null,
   }

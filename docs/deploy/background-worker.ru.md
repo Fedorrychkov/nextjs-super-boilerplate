@@ -23,6 +23,7 @@
 | Флаг в CI | `reusable-deploy-config.yml` → input `worker_enabled` (+ `worker_mem_limit`) |
 | Слайс памяти | `scripts/lib/memory-limits.sh` (10% от api-доли при `WORKER_ENABLED=true`) |
 | npm-скрипты | `worker`, `worker:local`, `worker:stage`, `worker:prod` |
+| Публикация статей по расписанию | джоба `articles-scheduled` (раз в минуту) → `lib/services/article-schedule.service.ts`. **Без включённого воркера запланированные статьи не выходят** — редактор об этом предупреждает |
 
 ### Как добавить свою джобу
 

@@ -9,6 +9,7 @@ type ArticleJson = {
   version?: number | null
   revisionId?: string | null
   publishedAt?: string | null
+  scheduledAt?: string | null
 }
 
 type RevisionJson = {
@@ -280,6 +281,37 @@ export const articleTools: McpToolDefinition[] = [
         status: 'published',
         publicUrl: article.slug ? `${ctx.baseUrl}/article/${article.slug}` : null,
       })
+    },
+  },
+  {
+    name: 'schedule_article',
+    description:
+      'Schedule an unpublished article: points it to the given revision and sets publishAt; the background worker publishes it within a minute after that time ' +
+      '(revision confirmed, IndexNow, notification to whoever scheduled). publishAt must be in the future and carry a time zone. Pass publishAt=null to cancel. ' +
+      'Rejected for an already published article. Needs the worker running on the server. Requires scope articles:publish.',
+    scope: 'articles:publish',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        articleId: { type: 'string' },
+        revisionId: { type: 'string', description: 'Revision to publish (required unless cancelling)' },
+        publishAt: { type: ['string', 'null'], description: 'ISO 8601 with a time zone, e.g. 2026-11-20T09:00:00+03:00; null cancels the schedule' },
+      },
+      required: ['articleId', 'publishAt'],
+    },
+    handler: async (args, ctx) => {
+      const publishAt = args.publishAt == null ? null : String(args.publishAt)
+
+      if (publishAt && !args.revisionId) {
+        return errorResult('revisionId is required to schedule an article')
+      }
+
+      const data = await ctx.api.put<ArticleJson>('/api/v1/article/update', {
+        id: String(args.articleId),
+        ...(publishAt ? { revisionId: String(args.revisionId), scheduledAt: publishAt } : { scheduledAt: null }),
+      })
+
+      return textResult({ articleId: data.id, status: data.status, revisionId: data.revisionId, scheduledAt: data.scheduledAt ?? null })
     },
   },
   {

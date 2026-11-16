@@ -17,6 +17,7 @@
  * Start: `npm run worker:<env>` (uses env-cmd + `node --import tsx`).
  */
 import connectDB from '@lib/db/client'
+import { articleScheduleService } from '@lib/services/article-schedule.service'
 import { startWorkerScheduler, stopWorkerScheduler, WorkerJob } from '@lib/services/worker-scheduler'
 
 import { Logger } from '~/utils/logger'
@@ -44,6 +45,12 @@ const jobs: WorkerJob[] = [
 
       return { ok: true }
     },
+  },
+  /** Scheduled publishing: articles set to go live at a time are published here, once a minute. */
+  {
+    name: 'articles-scheduled',
+    intervalMs: 60 * 1000,
+    run: async () => articleScheduleService.publishDue(),
   },
 ]
 

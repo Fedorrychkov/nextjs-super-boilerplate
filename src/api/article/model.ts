@@ -15,6 +15,10 @@ export type ArticleModel = {
    */
   revisionId?: string | null
   publishedAt?: string | null
+  /** Scheduled publishing: when the worker publishes `revisionId`. Only on an article that is not published. */
+  scheduledAt?: string | null
+  /** Who set `scheduledAt`; set by the server. */
+  scheduledBy?: string | null
   createdAt?: string | null
   updatedAt?: string | null
   /** MediaAsset id (audio/mpeg) — AI listen / TTS narration of the article body. */

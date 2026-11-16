@@ -5,14 +5,16 @@ import { articleDocumentToApiJson } from '@lib/db/utils/articleApiJson'
 import { apiErrorHandlerContainer, hasApiTokenScope, withApiTokenOrAuth, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
 import { notifyArticlePublishedFromRevision, notifyArticleUpdated } from '@lib/services/article-notification.service'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { scheduleDecision } from '@lib/services/article-schedule-decision'
+import mongoose from 'mongoose'
+import { revalidatePath } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { ArticleModel, ArticleStatus } from '~/api/article'
 import { ArticleRevisionSeoMetadata } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
 import { routes } from '~/constants'
-import { publicArticleCacheTag } from '~/lib/cache/publicArticlePageCache'
+import { invalidatePublicArticlePage } from '~/lib/cache/publicArticlePageCache'
 import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 import { resolveIndexingUrlsForArticleTransition } from '~/lib/seo/articleIndexingNotify'
 import { collectSlugsForTranslationGroups } from '~/lib/seo/articleTranslationAlternates'
@@ -44,6 +46,41 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
       return NextResponse.json({ message: t('apiTokens.errors.missingScope', { scope: 'articles:publish' }) }, { status: 403 })
     }
 
+    const schedule = scheduleDecision({
+      currentStatus: article.status,
+      nextStatus: body.status ?? article.status,
+      revisionId: body.revisionId ?? article.revisionId?.toString(),
+      current: article.scheduledAt,
+      requested: 'scheduledAt' in body ? (body.scheduledAt ?? null) : undefined,
+      now: new Date(),
+    })
+
+    if (schedule.kind === 'error') {
+      return NextResponse.json({ message: t(`article.errors.${schedule.code}`) }, { status: 400 })
+    }
+
+    // Setting or dropping a time is the same publishing decision as changing the status.
+    if ('scheduledAt' in body && schedule.kind !== 'keep' && !hasApiTokenScope(authResult, 'articles:publish')) {
+      return NextResponse.json({ message: t('apiTokens.errors.missingScope', { scope: 'articles:publish' }) }, { status: 403 })
+    }
+
+    if (body.revisionId != null && schedule.kind === 'set') {
+      const revisionOfArticle = mongoose.isValidObjectId(body.revisionId) && (await ArticleRevision.exists({ _id: body.revisionId, articleId: article._id }))
+
+      if (!revisionOfArticle) {
+        return NextResponse.json({ message: t('article.errors.scheduleNoRevision') }, { status: 400 })
+      }
+    }
+
+    // The schedule is the server's to write: the client sends a wish (`scheduledAt`), never `scheduledBy`.
+    const { scheduledAt: _requestedAt, scheduledBy: _scheduledBy, ...fields } = body
+    const scheduleFields =
+      schedule.kind === 'set'
+        ? { scheduledAt: schedule.at, scheduledBy: authResult.payload.sub }
+        : schedule.kind === 'clear'
+          ? { scheduledAt: null, scheduledBy: null }
+          : {}
+
     const previousSlug = article.slug ?? undefined
 
     const id = body.id
@@ -59,7 +96,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     const isPublishedUpdate =
       article.status === ArticleStatus.PUBLISHED && body.status !== ArticleStatus.UNPUBLISHED && !isPublishing && (revisionChanged || slugChanged)
 
-    await article.updateOne({ ...body, _id: id, updatedAt, publishedAt: isPublishing ? updatedAt : article.publishedAt })
+    await article.updateOne({ ...fields, ...scheduleFields, _id: id, updatedAt, publishedAt: isPublishing ? updatedAt : article.publishedAt })
 
     const data = await Article.findById(id)
 
@@ -106,7 +143,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     const slugSet = new Set<string>([...fromGroups, previousSlug, data.slug ?? undefined].filter((s): s is string => Boolean(s)))
 
     for (const s of slugSet) {
-      revalidateTag(publicArticleCacheTag(s), 'max')
+      await invalidatePublicArticlePage(s)
       revalidatePath(routes.articlePublic.path.replace(':slug', s))
     }
 

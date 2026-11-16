@@ -137,6 +137,7 @@ Endpoint совместим с [MCP connector](https://platform.claude.com/docs/
 | `suggest_seo` | `articles:seo` | LLM-подсказки по SEO (нужен `NEXT_PUBLIC_LLM_ENABLED` на сервере) |
 | `publish_article` | `articles:publish` | Публикация ревизии (кэш + IndexNow — существующий флоу) |
 | `unpublish_article` | `articles:publish` | Снятие с публикации |
+| `schedule_article` | `articles:publish` | Публикация по расписанию: ревизия + время с часовым поясом (`null` — отмена); публикует воркер в течение минуты после срока |
 | `get_article_views` | `articles:read` | Статистика просмотров |
 | `list_media` | `media:read` | Список медиа-ассетов |
 | `upload_media_from_url` | `media:write` | Загрузка файла по URL в медиатеку (нужен Uploadcare) |
