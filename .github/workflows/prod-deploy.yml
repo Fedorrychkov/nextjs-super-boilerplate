@@ -79,6 +79,11 @@ jobs:
       mongo_backup_enabled: true
       mongo_backup_cron: '30 3 * * *'
       mongo_backup_retention: 2
+      # Off-site copy of each dump (docs/deploy/mongo-backups.ru.md): any S3-compatible storage or
+      # another server over SFTP; keys go into the MONGO_BACKUP_* secrets below. Empty = this server only.
+      # mongo_backup_remote: 's3://my-backups/prod'
+      # mongo_backup_s3_endpoint: 'https://storage.yandexcloud.net'
+      # mongo_backup_s3_region: 'ru-central1'
 
     secrets:
       server_host: ${{ secrets.PROD_WEB_HOST }}
@@ -96,3 +101,8 @@ jobs:
       grafana_admin_user: ${{ secrets.GRAFANA_ADMIN_USER }}
       grafana_admin_password: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
       certbot_email: ${{ secrets.CERTBOT_EMAIL || 'example@example.com' }}
+      # Used only when mongo_backup_remote is set; a missing secret is simply empty.
+      mongo_backup_s3_access_key_id: ${{ secrets.MONGO_BACKUP_S3_ACCESS_KEY_ID }}
+      mongo_backup_s3_secret_access_key: ${{ secrets.MONGO_BACKUP_S3_SECRET_ACCESS_KEY }}
+      mongo_backup_sftp_key: ${{ secrets.MONGO_BACKUP_SFTP_KEY }}
+      mongo_backup_sftp_known_hosts: ${{ secrets.MONGO_BACKUP_SFTP_KNOWN_HOSTS }}

@@ -2,23 +2,12 @@
 
 echo "Starting certificate renewal check at $(date)"
 
-# Check docker.sock availability for deploy-hook
-if [ ! -S "/var/run/docker.sock" ]; then
-    echo "❌ Warning: Docker socket not available, deploy-hook may not work"
-fi
-
 # Ensure webroot and health file for ACME
 mkdir -p /var/www/certbot/.well-known/acme-challenge
 echo OK > /var/www/certbot/.well-known/acme-challenge/health
 
-# Safe nginx container restart and wait for ready
-restart_nginx_container() {
-    echo "🔄 Restarting nginx container before certificate operations..."
-    docker restart core-nginx-service 2>/dev/null || \
-    docker kill -s HUP core-nginx-service 2>/dev/null || \
-    docker exec core-nginx-service nginx -s reload 2>/dev/null || \
-    echo "⚠️ Failed to restart nginx (container may be down)"
-}
+# nginx is already running: it is only waited for, never restarted (a restart dropped live
+# connections every night when the renewal check ran).
 
 wait_for_nginx_ready() {
     echo "⏳ Waiting for nginx to become ready on port 80..."
@@ -36,9 +25,8 @@ wait_for_nginx_ready() {
     return 1
 }
 
-restart_nginx_container
 if ! wait_for_nginx_ready; then
-    echo "❌ Warning: Nginx is not available on port 80 after restart, skipping renewal for now"
+    echo "❌ Warning: Nginx is not available on port 80, skipping renewal for now"
     exit 0
 fi
 
@@ -108,11 +96,7 @@ force_reissue_cert() {
     
     # Safe nginx reload helper
     reload_nginx() {
-        echo "🔁 Reloading nginx to apply new certificates..."
-        docker kill -s HUP core-nginx-service 2>/dev/null || \
-        docker exec core-nginx-service nginx -s reload 2>/dev/null || \
-        docker restart core-nginx-service 2>/dev/null || \
-        echo "⚠️ Failed to reload nginx (container may be down)"
+        /scripts/request-nginx-reload.sh
     }
 
     # Do not remove current cert first; get new one then switch
@@ -179,7 +163,7 @@ for domain in "${DOMAIN_ARRAY[@]}"; do
             --domains "$domain"
             --webroot -w /var/www/certbot
             --cert-name "$domain"
-            --deploy-hook "docker kill -s HUP core-nginx-service"
+            --deploy-hook "/scripts/request-nginx-reload.sh"
             --non-interactive
             --force-renewal
             --disable-hook-validation
@@ -190,10 +174,7 @@ for domain in "${DOMAIN_ARRAY[@]}"; do
         if certbot "${FORCE_ARGS[@]}"; then
             echo "✅ Force renewal completed successfully for $domain"
             # Reload nginx after successful renewal
-            docker kill -s HUP core-nginx-service 2>/dev/null || \
-            docker exec core-nginx-service nginx -s reload 2>/dev/null || \
-            docker restart core-nginx-service 2>/dev/null || \
-            echo "⚠️ Failed to reload nginx (container may be down)"
+            /scripts/request-nginx-reload.sh
         else
             echo "❌ Force renewal failed for $domain"
             renewal_failed=true
@@ -244,7 +225,7 @@ for domain in "${DOMAIN_ARRAY[@]}"; do
                 renew
                 --webroot -w /var/www/certbot
                 --cert-name "$domain"
-                --deploy-hook "docker kill -s HUP core-nginx-service"
+                --deploy-hook "/scripts/request-nginx-reload.sh"
                 --non-interactive
                 --quiet
                 --disable-hook-validation
@@ -263,7 +244,7 @@ for domain in "${DOMAIN_ARRAY[@]}"; do
                     --domains "$domain"
                     --webroot -w /var/www/certbot
                     --cert-name "$domain"
-                    --deploy-hook "docker kill -s HUP core-nginx-service"
+                    --deploy-hook "/scripts/request-nginx-reload.sh"
                     --non-interactive
                     --force-renewal
                     --disable-hook-validation

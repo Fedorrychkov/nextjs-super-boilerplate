@@ -31,7 +31,7 @@ blue/green — [`hardening-playbook.ru.md`](./hardening-playbook.ru.md) (RU); ba
 | `certbot_test_mode` | Use the Let's Encrypt staging CA |
 | `certbot_email` | Email for Let's Encrypt (a real one, or certbot refuses) |
 | `migrations_run` | Run DB migrations on deploy. The image must define `migration:show:<env>` / `migration:run:<env>` scripts; with the flag on and the scripts missing the deploy fails instead of reporting "no pending migrations" |
-| `blue_green_enabled` | Validate the new api in a green container before swapping |
+| `blue_green_enabled` | Validate the new api in a green container, then swap with no gap: green answers as `api-service` while blue is replaced, nginx is reloaded, never restarted (`scripts/lib/blue-green.sh`, details in `hardening-playbook.ru.md` §2.8) |
 | `deploy_mode` | `default` = build on the server; `registry` = build in CI, image from GHCR (recommended). The server logs in to GHCR for the pull and logs out when the deploy script ends |
 | `smoke_check_enabled` | Default `true`. After the stack is up and nginx restarted, the runner requests `<scheme>://<domain>/api/v1/healthcheck` and `/` (12 attempts, 10 s apart, `-k` under `certbot_test_mode`). A non-200 answer fails the run and triggers the failure notification; nothing is rolled back. Turn off only when the domain is not reachable from GitHub runners |
 | `node_version` | Node in CI; must match `.docker/Dockerfile` |
@@ -39,6 +39,9 @@ blue/green — [`hardening-playbook.ru.md`](./hardening-playbook.ru.md) (RU); ba
 | `notify_enabled`, `tag` | Telegram deploy notifications and their hashtag |
 | `redis_enabled`, `mongo_enabled`, `worker_enabled`, `metrics_enabled` | Which containers to run. `mongo_enabled: false` = external cluster via `MONGO_URI` |
 | `mongo_backup_enabled`, `mongo_backup_cron`, `mongo_backup_retention` | Nightly `mongodump` cron for the local mongo |
+| `mongo_backup_remote`, `mongo_backup_s3_endpoint`, `mongo_backup_s3_region`, `mongo_backup_remote_retention_days` | Optional off-site copy of each dump: empty = this server only (default); `s3://bucket/prefix` = any S3-compatible storage; `sftp://user@host:port/path` = another server. A failed upload fails the backup run and keeps the local dump. Details: `mongo-backups.ru.md` |
+| `docker_log_max_size`, `docker_log_max_file` | Rotation of container logs (`100m` × 3 by default; was `2g` × 3). Redis and mongo keep theirs — changing it would restart the database |
+| `build_node_options` | `NODE_OPTIONS` for `next build` only, e.g. `--max-old-space-size=4096` if the build runs out of heap. The build runs on the CI runner, so this does not depend on the server's RAM. Empty = Node defaults |
 | `server_memory_mb`, `*_mem_limit` | Memory budget; per-container limits are derived from the total (`scripts/lib/memory-limits.sh`). Below ~4 GB keep metrics off |
 | `grafana_admin_user`, `grafana_admin_password` | Grafana credentials (or pass as secrets) |
 
@@ -55,6 +58,8 @@ blue/green — [`hardening-playbook.ru.md`](./hardening-playbook.ru.md) (RU); ba
 | `tg_token`, `tg_chat_id`, `tg_thread_id` | Telegram bot and chat (prefix group ids with `-100`). The same repository secrets `TG_TOKEN` / `TG_CHAT_ID` / `TG_THREAD_ID` feed the PR / review / CI-failure / Lighthouse notifications |
 | `grafana_admin_user`, `grafana_admin_password` | Optional, instead of inputs |
 | `certbot_email` | Optional, instead of the input |
+| `mongo_backup_s3_access_key_id`, `mongo_backup_s3_secret_access_key` | Keys for `mongo_backup_remote: s3://…` — a key that may only write objects to that bucket is enough |
+| `mongo_backup_sftp_key`, `mongo_backup_sftp_known_hosts` | For `mongo_backup_remote: sftp://…`: the private key (PEM) of the receiving account and `ssh-keyscan -p <port> <host>` output (empty = host key not verified) |
 
 ## Domain and DNS
 

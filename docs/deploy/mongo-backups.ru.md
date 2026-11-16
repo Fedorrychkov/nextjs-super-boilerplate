@@ -88,6 +88,48 @@ tail -50 ~/db-backups/backup.log                                # лог кро�
 crontab -l | grep bp-mongo-backup                               # расписание стоит?
 ```
 
-## Офсайт (следующий шаг, вручную)
+## Копия на другом сервере или в S3 (по желанию)
 
-Дампы на том же диске защищают от «уронил базу», но не от потери сервера. Когда дойдут руки — добавь в конец `backup-mongo.sh` выгрузку в object storage (`rclone copy` / `mc cp` в S3-совместимый бакет). Ретенция в бакете — отдельно, средствами стораджа (lifecycle rules).
+Дампы на том же диске защищают от «уронил базу», но не от потери сервера. По умолчанию всё как
+раньше — только `~/db-backups`. Чтобы каждый дамп уходил ещё и наружу, задай в деплое одно место
+назначения и его ключи — это входы и секреты воркфлоу, не env приложения:
+
+```yaml
+with:
+  # любое S3-совместимое хранилище: AWS, Cloudflare R2, Yandex Object Storage, MinIO…
+  mongo_backup_remote: 's3://my-backups/prod'
+  mongo_backup_s3_endpoint: 'https://storage.yandexcloud.net'   # пусто = AWS
+  mongo_backup_s3_region: 'ru-central1'
+  # или другой сервер по SFTP:
+  # mongo_backup_remote: 'sftp://backup@203.0.113.7:22/srv/dumps'
+  mongo_backup_remote_retention_days: 30   # 0 = не удалять там (lifecycle бакета)
+secrets:
+  mongo_backup_s3_access_key_id: ${{ secrets.MONGO_BACKUP_S3_ACCESS_KEY_ID }}
+  mongo_backup_s3_secret_access_key: ${{ secrets.MONGO_BACKUP_S3_SECRET_ACCESS_KEY }}
+  # для SFTP:
+  # mongo_backup_sftp_key: ${{ secrets.MONGO_BACKUP_SFTP_KEY }}               # приватный ключ, PEM
+  # mongo_backup_sftp_known_hosts: ${{ secrets.MONGO_BACKUP_SFTP_KNOWN_HOSTS }} # ssh-keyscan -p 22 <host>
+```
+
+Как устроено:
+
+- Деплой пишет место назначения и ключи в `~/db-backups/.remote.env` (права `0600`); пустой
+  `mongo_backup_remote` этот файл удаляет.
+- `backup-mongo.sh` после локального дампа и ротации копирует файл одноразовым контейнером
+  rclone (`scripts/lib/backup-remote.sh`, образ закреплён по digest). Ключи уходят в контейнер
+  через `--env-file` — ни в `ps` хоста, ни в аргументах их нет. Своих лимитов памяти у контейнера
+  128 МБ и полпроцессора.
+- **Провал выгрузки — красный прогон:** скрипт выходит с кодом 1 и пишет `ERROR` в
+  `backup.log`, локальный дамп остаётся. Ошибка в настройке (нет ключа, кривой адрес) — тоже код 1.
+- Ротация снаружи — в днях (`mongo_backup_remote_retention_days`) и только для дампов этого
+  окружения (`mongo_<env>_*.archive.gz`); ключ, которому можно только писать, удалять не сможет —
+  это предупреждение, а не провал.
+- SFTP — только по ключу. Без `mongo_backup_sftp_known_hosts` ключ хоста не проверяется; с ним
+  подменённый сервер отклоняется (`knownhosts: key mismatch`). Учётке на принимающем сервере
+  хватит одного каталога на запись, shell не нужен.
+- Ключу S3 достаточно права записывать объекты в этот бакет: существование бакета не
+  проверяется (`no_check_bucket`).
+
+Проверено на локальном стенде с настоящим `mongodump`: без места назначения — как раньше; MinIO —
+дамп в бакете; SFTP — дамп на втором сервере, контрольная сумма совпала с локальной; неверный
+секрет — код 1, локальный дамп на месте, временный файл с ключами удалён.

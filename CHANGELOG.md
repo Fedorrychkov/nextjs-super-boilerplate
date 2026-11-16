@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Deploy and backups (batch 8)
+
+- **Blue/green swap without a 502 window** (`scripts/lib/blue-green.sh`): the validated green container takes the network alias `api-service`, so nginx balances to blue and green; blue is retired, the new blue starts under its own name, green is removed. nginx is reloaded after each step, never restarted; app locations get `proxy_connect_timeout 3s`, so a request to a vanished container address moves on instead of hanging for 60 s. On a stand under 25 req/s the old order lost 9 requests with a 2-second app start, the new one 0 of ~590 in two runs. nginx is recreated only when a release changes its template or compose config
+- **certbot without the Docker socket** — it drops a file into the shared `nginx_signals` volume (`request-nginx-reload.sh`, also the `--deploy-hook`); nginx checks it every 30 s and reloads gracefully. The nightly nginx restart before the certificate check is gone; `docker-cli` removed from the certbot images
+- **Container logs `100m × 3`** instead of `2g × 3` — inputs `docker_log_max_size` / `docker_log_max_file`. Redis and mongo keep theirs: changing it would restart the database
+- **Off-site copy of each Mongo dump (optional)** — `mongo_backup_remote: s3://bucket/prefix` (any S3-compatible storage, `mongo_backup_s3_endpoint` / `_region`) or `sftp://user@host:port/path`, keys in workflow secrets. The deploy writes them into `~/db-backups/.remote.env` (0600); the backup script uploads with a throwaway rclone container (image pinned by digest, keys via `--env-file`, never argv), keeps N days remotely (`mongo_backup_remote_retention_days`), and exits 1 with `ERROR` when the upload fails — the local dump is kept. SFTP host key pinned via `mongo_backup_sftp_known_hosts`
+- **`build_node_options`** — `NODE_OPTIONS` for `next build` only (e.g. a bigger heap); empty by default
+- **First deploy with this release** recreates nginx once (new command and volume — about a second) and certbot (now without the socket)
+
 ### Admin, theme tokens and UX (batch 7)
 
 - **Admin overview at `/admin`** (ADMIN; editors are sent to articles): what needs attention first — database or Redis down, scheduled articles with no live worker, a worker that stopped reporting, overdue publications, metrics switched off — then health tiles and people/article counts. A failing dependency is shown, not thrown
