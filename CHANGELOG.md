@@ -4,6 +4,7 @@
 
 ## [0.3.1] — 2026-11-16
 
+- **Deploy hotfix** — nginx validates its generated config before starting; migration diagnostics no longer pollute the numeric rollback count.
 - **Review fixes** — deploy cleanup no longer restarts nginx; remote backup deletion is off by default; the scheduler confirms a revision only after claiming the article and retries interrupted confirmation.
 
 ### Deploy and backups (batch 8)
