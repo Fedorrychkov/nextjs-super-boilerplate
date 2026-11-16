@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Platform settings (batch 5)
+
+- **Runtime settings in the admin** — `/admin/platform-settings` (ADMIN): switches, limits and integration keys changed without a release. Registry in code (`config/platform-settings.ts`: key, group, spec, default, `sensitive`, `secret`), values in Mongo (`PlatformSetting`: who, when, previous value), 60 s Redis cache dropped on write, a stored value that no longer passes its spec falls back to the default. The admin editor is chosen by the spec (`boolean`, `int`, `choice`, `text`, `textList`) — a new setting needs no UI code. Every change goes to the security audit log (`platform_setting_updated`, secrets only as set / not set); sensitive settings ask for confirmation
+- **Secrets encrypted** with AES-256-GCM under a subkey derived by HKDF from `MFA_ENCRYPTION_KEY` (`lib/security/keys.ts`) — no new env variable; never returned to the admin, sealed in the cache too
+- First settings: the metrics sink (`metrics.*`), used by the next batch
+- Rule in `AGENTS.md`: a new runtime switch is a platform setting, not a new env variable
+- Security audit labels for the eight actions that had none (`api_token_policy_updated`, `mcp_oauth_*`, `machine_access_*`)
+
 ### Worker as a platform (batch 4)
 
 - **Queues** — `lib/queues/queue.ts`: `defineQueue` (definition shared by API and worker), `enqueue` (idempotent `jobId`, `'unavailable'` without Redis), `consume` (worker only), `closeQueues` on SIGTERM; completed jobs kept an hour, failed a week. New gate `check-worker-wired`: every defined queue must be consumed in a module the worker imports

@@ -232,6 +232,7 @@ API-роуты живут в `src/app/api/v1/*` (auth, article, llm, media, noti
 
 - Начиная новую фичу, смотри существующий домен-образец (например, `article`): api → query → app/api/v1 → services → models
 - Если новый домен должен быть доступен AI-агентам — выведи его через MCP-реестр (см. «MCP-сервер и машинная авторизация» выше)
+- Новый переключатель, лимит или ключ интеграции — настройка платформы (`config/platform-settings.ts`, см. `docs/configure/platform-settings.ru.md`), а не новая переменная env; в env — только то, без чего процесс не стартует
 - Не менять `pnpm-workspace.yaml` overrides без причины — это security-фиксы транзитивных зависимостей
 - При форке под новый продукт первым делом правится `config/product.ts` и `.env.local`, затем `pnpm doctor`; повторная настройка (новая машина, новые ключи в шаблоне) — `make setup`
 - Перед коммитом: `pnpm gates`, `pnpm lint`, `pnpm typecheck`, `pnpm test`

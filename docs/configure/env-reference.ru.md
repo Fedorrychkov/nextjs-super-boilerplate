@@ -36,7 +36,7 @@ English version: [env-reference.en.md](./env-reference.en.md)
 | `JWT_SECRET` | заглушка | **R** — подпись access/refresh; `make setup` генерирует |
 | `JWT_ACCESS_EXPIRES_IN` | 3600 | Секунды |
 | `JWT_REFRESH_EXPIRES_IN` | 604800 | TTL refresh-сессии в секундах (7 дней). Ограничен 7 днями в `config/env.ts` — столько живёт cookie refresh; большее значение не действует, доктор предупреждает |
-| `MFA_ENCRYPTION_KEY` | — | **R**, если используется TOTP. Перегенерация обнуляет все подключённые MFA |
+| `MFA_ENCRYPTION_KEY` | — | **R**, если используется TOTP или секреты настроек платформы (из него по HKDF выводится их ключ). Перегенерация обнуляет все подключённые MFA и делает сохранённые секреты настроек нечитаемыми |
 | `FIRST_ADMIN_LOGIN` | — | O — первый админ создаётся на старте, если пользователя нет |
 | `FIRST_ADMIN_PASSWORD` | — | O |
 

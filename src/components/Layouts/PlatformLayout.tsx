@@ -11,6 +11,7 @@ import {
   KeySquareIcon,
   LanguagesIcon,
   ShieldCheckIcon,
+  SlidersHorizontalIcon,
   TextQuoteIcon,
   UserIcon,
   WrenchIcon,
@@ -136,6 +137,12 @@ export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
                   icon: <KeyRoundIcon width={16} height={16} />,
                   disabled: authUser?.role !== UserRole.ADMIN,
                   href: routes.adminOAuthAttempts.path,
+                },
+                {
+                  label: t(routes.adminPlatformSettings.tKey),
+                  icon: <SlidersHorizontalIcon width={16} height={16} />,
+                  disabled: authUser?.role !== UserRole.ADMIN,
+                  href: routes.adminPlatformSettings.path,
                 },
                 ...(process.env.NEXT_PUBLIC_API_TOKENS_ENABLED === '1' || process.env.NEXT_PUBLIC_API_TOKENS_ENABLED === 'true'
                   ? [

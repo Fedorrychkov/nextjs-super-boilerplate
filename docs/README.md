@@ -18,6 +18,7 @@ relative link alive.
 |---|---|
 | [`configure/env-reference.en.md`](./configure/env-reference.en.md) · [RU](./configure/env-reference.ru.md) | Every environment variable, same order as `.env.example` |
 | [`configure/feature-flags.ru.md`](./configure/feature-flags.ru.md) | Feature flags: auth, email, MFA, sessions, onboarding, push, LLM |
+| [`configure/platform-settings.ru.md`](./configure/platform-settings.ru.md) | Platform settings: runtime switches and integrations changed in the admin (instead of new env) |
 | [`configure/oauth.ru.md`](./configure/oauth.ru.md) | OAuth / social login — implemented (Yandex, Google, GitHub) |
 
 ## Deploy

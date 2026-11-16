@@ -231,6 +231,7 @@ A code change without the doc change is an unfinished task.
 
 - When starting a new feature, follow an existing domain as a template (e.g. `article`): api → query → app/api/v1 → services → models
 - If a new domain should be usable by AI agents, expose it through the MCP registry (see "MCP server and machine auth" above)
+- A new runtime switch, limit or integration key is a platform setting (`config/platform-settings.ts`, see `docs/configure/platform-settings.ru.md`), not a new env variable; env keeps only what the process needs to start
 - Do not change `pnpm-workspace.yaml` overrides without reason — they are security fixes for transitive dependencies
 - When forking for a new product, edit `config/product.ts` and `.env.local` first, then run `pnpm doctor`; repeat onboarding (new machine, new keys in the template) is `make setup`
 - Before committing: `pnpm gates`, `pnpm lint`, `pnpm typecheck`, `pnpm test`

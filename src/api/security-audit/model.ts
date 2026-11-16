@@ -20,6 +20,7 @@ export const SECURITY_AUDIT_ACTIONS = [
   'mcp_oauth_grant_revoked',
   'machine_access_blocked',
   'machine_access_unblocked',
+  'platform_setting_updated',
 ] as const
 
 export type SecurityAuditAction = (typeof SECURITY_AUDIT_ACTIONS)[number]
