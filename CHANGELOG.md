@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- **Review fixes** — deploy cleanup no longer restarts nginx; remote backup deletion is off by default; the scheduler confirms a revision only after claiming the article and retries interrupted confirmation.
+
 ### Deploy and backups (batch 8)
 
 - **Blue/green swap without a 502 window** (`scripts/lib/blue-green.sh`): the validated green container takes the network alias `api-service`, so nginx balances to blue and green; blue is retired, the new blue starts under its own name, green is removed. nginx is reloaded after each step, never restarted; app locations get `proxy_connect_timeout 3s`, so a request to a vanished container address moves on instead of hanging for 60 s. On a stand under 25 req/s the old order lost 9 requests with a 2-second app start, the new one 0 of ~590 in two runs. nginx is recreated only when a release changes its template or compose config
@@ -65,7 +67,7 @@
 ### Security and tokens (backport from a descendant, batch 1)
 
 - **A refresh token is no longer accepted as a Bearer** — both token kinds were signed with the same secret and carried the same claims, so the refresh token (days) passed `verifyAccessToken`. Tokens now carry `typ`; a token without it, issued before this change, is classified by its lifetime (`lib/jwt/token-type.ts`, tested), so nobody is signed out on deploy: legacy access tokens live out their hour, legacy refresh tokens still refresh but no longer authorize API calls
-- **Refresh tokens are stored hashed** — the `token` field now holds `h:<sha256>`; lookup accepts both forms during the transition, rows are rewritten on rotation and by a background pass at server start. Same field and index, no schema migration
+- **Refresh-token rollout is read-compatible first** — lookup accepts raw tokens and `h:<sha256>`. Writes keep the legacy format and startup does not rewrite rows, so old images can still refresh sessions during a rollout or rollback. Hash writes are a separate rollout
 - **Refresh lifetime is one number** — token, database row and cookie all use min(`JWT_REFRESH_EXPIRES_IN`, 7 days). The cookie always lived 7 days, so idle sessions end as before; a leaked token or database row no longer stays valid for the 182 days of the old template value. Template default is now `604800`; the doctor warns above the cap
 - **API authorizes by role and status from the database** — the JWT said what was true at sign-in, so a demoted or blocked user kept access for up to an hour. One snapshot (session alive + role + status + email) is read per request and cached 30 s in Redis, dropped at once on role/status change, sign-out and session revocation (generation counter). Without Redis it is not cached, so revocation stays immediate. Replaces the per-request `RefreshToken.exists` with a cached check
 - **The TOTP secret no longer goes to `api.qrserver.com`** — the MFA setup QR code is drawn in the browser (`QrCode`, `qrcode-generator`, loaded lazily)

@@ -29,6 +29,14 @@ export type ScheduleRequest = {
 
 export type ScheduleVerdict = { kind: 'keep' } | { kind: 'clear' } | { kind: 'set'; at: Date } | { kind: 'error'; code: ScheduleErrorCode }
 
+export async function finalizeClaimedPublication<T>(claim: Promise<T | null>, finalize: (claimed: T) => Promise<void>): Promise<T | null> {
+  const claimed = await claim
+
+  if (claimed !== null) await finalize(claimed)
+
+  return claimed
+}
+
 export function scheduleDecision({ currentStatus, nextStatus, revisionId, current, requested, now }: ScheduleRequest): ScheduleVerdict {
   const scheduled = current != null
 

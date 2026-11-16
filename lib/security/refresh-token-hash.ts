@@ -1,9 +1,8 @@
 import { createHash } from 'node:crypto'
 
 /**
- * Refresh tokens are stored as a hash, not as the token. A refresh token is a full account login
- * for days; a database dump or a backup that leaks must not turn into a set of working sessions.
- * Lookup is by hash, so the server still finds the row for a token the client presents.
+ * Read support for hashed refresh tokens. Keep writes in the old format until every instance
+ * and rollback image can read hashes.
  *
  * The hash lives in the existing `token` field with an `h:` prefix instead of a new field: the
  * field already has a unique index in every deployed database, and rows without it would all
@@ -20,8 +19,7 @@ export function isHashedRefreshTokenValue(value: string): boolean {
 }
 
 /**
- * Matches a row by the presented token: the hashed form, or the plain token in a row written
- * before hashing (until the startup pass or the next rotation rewrites it).
+ * Matches either storage format while deployments transition.
  */
 export function refreshTokenQuery(token: string): { token: { $in: string[] } } {
   return { token: { $in: [storedRefreshTokenValue(token), token] } }

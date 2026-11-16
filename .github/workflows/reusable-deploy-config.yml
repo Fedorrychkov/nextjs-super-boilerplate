@@ -138,9 +138,9 @@ on:
         default: ''
         type: string
       mongo_backup_remote_retention_days:
-        description: Delete off-site dumps of this environment older than N days after each upload. 0 = never (leave it to the bucket lifecycle).
+        description: Delete off-site dumps older than N days. Enable only on a prefix or directory dedicated to this installation. 0 leaves cleanup to the storage lifecycle.
         required: false
-        default: 30
+        default: 0
         type: number
       docker_log_max_size:
         description: 'Rotation size of each container log (json-file) for the app, nginx, worker, certbot and metrics containers. Redis and mongo keep theirs: changing it would restart the database.'
@@ -783,7 +783,7 @@ jobs:
                   printf '%s=%s\n' MONGO_BACKUP_S3_SECRET_ACCESS_KEY "$(shq "${MONGO_BACKUP_S3_SECRET_ACCESS_KEY:-}")"
                   printf '%s=%s\n' MONGO_BACKUP_SFTP_KEY_PEM "$(shq "$KEY_ONE_LINE")"
                   printf '%s=%s\n' MONGO_BACKUP_SFTP_KNOWN_HOSTS_FILE "$(shq "$KH")"
-                  printf '%s=%s\n' MONGO_BACKUP_REMOTE_RETENTION_DAYS "$(shq "${MONGO_BACKUP_REMOTE_RETENTION_DAYS:-30}")"
+                  printf '%s=%s\n' MONGO_BACKUP_REMOTE_RETENTION_DAYS "$(shq "${MONGO_BACKUP_REMOTE_RETENTION_DAYS:-0}")"
                 } > "$REMOTE_ENV" )
                 echo "Mongo backup off-site copy: ${MONGO_BACKUP_REMOTE%%://*} (keys in $REMOTE_ENV, 0600)"
               else
@@ -840,14 +840,6 @@ jobs:
             cd $HOME/app || true
             $DOCKER_COMPOSE -f docker-compose.local.yml logs certbot-init || true
 
-            echo "Restarting nginx with proper env context after deploy..."
-            API_ENV=${{ inputs.api_env }} \
-            ENV_FILE=${{ inputs.env_file }} \
-            NGINX_MODE=${{ inputs.nginx_mode }} \
-            DOMAINS=${{ inputs.domain }} \
-            FIRST_DOMAIN=${{ inputs.domain }} \
-              $DOCKER_COMPOSE -f docker-compose.local.yml restart nginx || true
-
             echo "🧹 Starting Docker cleanup..."
             docker images --filter "reference=app_new_*" --filter "reference=app_new-*" --format "table {{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.Size}}" || true
             docker rmi $(docker images --filter "reference=app_new_*" --filter "reference=app_new-*" --format "{{.ID}}") 2>/dev/null || true
@@ -877,7 +869,7 @@ jobs:
 
             echo "✅ Docker cleanup completed"
 
-      # Runs after the nginx restart above, so it sees what a visitor sees. Until now a deploy
+      # Runs after deploy and cleanup, so it sees what a visitor sees. Until now a deploy
       # was "green" when the ssh script exited 0 — a 502 from nginx or a crash-looping api was
       # noticed by users first.
       - name: 🔎 Smoke check from outside

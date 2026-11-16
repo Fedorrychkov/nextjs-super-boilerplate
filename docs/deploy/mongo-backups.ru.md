@@ -102,7 +102,7 @@ with:
   mongo_backup_s3_region: 'ru-central1'
   # или другой сервер по SFTP:
   # mongo_backup_remote: 'sftp://backup@203.0.113.7:22/srv/dumps'
-  mongo_backup_remote_retention_days: 30   # 0 = не удалять там (lifecycle бакета)
+  mongo_backup_remote_retention_days: 0    # дефолт; >0 только для выделенного каталога или префикса
 secrets:
   mongo_backup_s3_access_key_id: ${{ secrets.MONGO_BACKUP_S3_ACCESS_KEY_ID }}
   mongo_backup_s3_secret_access_key: ${{ secrets.MONGO_BACKUP_S3_SECRET_ACCESS_KEY }}
@@ -121,8 +121,9 @@ secrets:
   128 МБ и полпроцессора.
 - **Провал выгрузки — красный прогон:** скрипт выходит с кодом 1 и пишет `ERROR` в
   `backup.log`, локальный дамп остаётся. Ошибка в настройке (нет ключа, кривой адрес) — тоже код 1.
-- Ротация снаружи — в днях (`mongo_backup_remote_retention_days`) и только для дампов этого
-  окружения (`mongo_<env>_*.archive.gz`); ключ, которому можно только писать, удалять не сможет —
+- По умолчанию удалённой ротации нет. Положительный `mongo_backup_remote_retention_days`
+  включайте только для каталога или префикса, выделенного этой установке: маска
+  `mongo_<env>_*.archive.gz` не различает установки. Ключ, которому можно только писать, удалять не сможет —
   это предупреждение, а не провал.
 - SFTP — только по ключу. Без `mongo_backup_sftp_known_hosts` ключ хоста не проверяется; с ним
   подменённый сервер отклоняется (`knownhosts: key mismatch`). Учётке на принимающем сервере

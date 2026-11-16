@@ -1,10 +1,11 @@
 import connectDB from '@lib/db/client'
-import Article from '@lib/db/models/Article'
+import Article, { type IArticle } from '@lib/db/models/Article'
 import ArticleRevision from '@lib/db/models/ArticleRevision'
 import User from '@lib/db/models/User'
 import { metrics } from '@lib/metrics'
 import { notifyArticlePublishedFromRevision } from '@lib/services/article-notification.service'
 import { forgetArticleMisses } from '@lib/services/article-page-miss'
+import { finalizeClaimedPublication } from '@lib/services/article-schedule-decision'
 
 import { ArticleStatus } from '~/api/article'
 import { ArticleRevisionSeoMetadata, ArticleRevisionStatus } from '~/api/article-revision'
@@ -22,6 +23,22 @@ const BATCH = 20
 
 const seoOf = (metadata: unknown) => (metadata as { seo?: ArticleRevisionSeoMetadata | null } | undefined)?.seo ?? null
 
+async function finishSchedule(article: Pick<IArticle, '_id' | 'revisionId' | 'scheduledAt'>, publishedAt: Date): Promise<void> {
+  // Leave the schedule marker until confirmation succeeds, so a crashed worker can retry.
+  await ArticleRevision.updateOne(
+    { _id: article.revisionId, articleId: article._id, publishedAt: null },
+    { $set: { status: ArticleRevisionStatus.CONFIRMED, publishedAt } },
+  )
+  await ArticleRevision.updateOne(
+    { _id: article.revisionId, articleId: article._id, status: { $ne: ArticleRevisionStatus.CONFIRMED } },
+    { $set: { status: ArticleRevisionStatus.CONFIRMED } },
+  )
+  await Article.updateOne(
+    { _id: article._id, revisionId: article.revisionId, status: ArticleStatus.PUBLISHED, scheduledAt: article.scheduledAt },
+    { $set: { scheduledAt: null, scheduledBy: null } },
+  )
+}
+
 /**
  * Scheduled publishing, run by the worker job `articles-scheduled` once a minute. The worker is its
  * own process without Next's cache, so it cannot call `revalidateTag`: the page cache keeps only
@@ -32,9 +49,12 @@ export const articleScheduleService = {
   async publishDue(now: Date = new Date()): Promise<{ published: number }> {
     await connectDB()
 
-    // An article can be published by hand around `article/update` (the translation-group batch
-    // buttons) — then its schedule is just dropped, or the admin would keep showing "goes live …".
-    await Article.updateMany({ status: ArticleStatus.PUBLISHED, scheduledAt: { $ne: null } }, { $set: { scheduledAt: null, scheduledBy: null } })
+    // Recover a claim interrupted between the article write and the revision write.
+    const unfinished = await Article.find({ status: ArticleStatus.PUBLISHED, scheduledAt: { $ne: null }, revisionId: { $ne: null } })
+      .limit(BATCH)
+      .lean()
+
+    for (const article of unfinished) await finishSchedule(article, new Date(article.publishedAt ?? now))
 
     const due = Article.find({ status: { $ne: ArticleStatus.PUBLISHED }, scheduledAt: { $ne: null, $lte: now }, revisionId: { $ne: null } })
       .sort({ scheduledAt: 1 })
@@ -53,41 +73,26 @@ export const articleScheduleService = {
         continue
       }
 
-      // Confirm before the claim, so a failed revision write leaves the article queued for retry.
-      const confirmedHere = revision.status !== ArticleRevisionStatus.CONFIRMED
-
-      if (confirmedHere) await revision.updateOne({ $set: { status: ArticleRevisionStatus.CONFIRMED } })
-
       // Claimed by the old status, time, revision and `updatedAt`: a manual publish, an edit, a
       // reschedule or another worker in between makes it miss — no second publication.
-      const claimed = await Article.findOneAndUpdate(
+      const claim = Article.findOneAndUpdate(
         { _id: article._id, status: article.status, scheduledAt: article.scheduledAt, revisionId: article.revisionId, updatedAt: article.updatedAt },
         {
           $set: {
             status: ArticleStatus.PUBLISHED,
             publishedAt: article.publishedAt ?? article.scheduledAt,
-            scheduledAt: null,
-            scheduledBy: null,
             updatedAt: now,
           },
           $inc: { version: 1 },
         },
         { returnDocument: 'after' },
-      )
+      ).exec()
+      const claimed = await finalizeClaimedPublication(claim, (winner) => finishSchedule(winner, now))
 
-      if (!claimed) {
-        // Someone else changed the article; the revision we confirmed may not be what goes live.
-        if (confirmedHere) {
-          await ArticleRevision.updateOne({ _id: revision._id, status: ArticleRevisionStatus.CONFIRMED }, { $set: { status: revision.status } })
-        }
-
-        continue
-      }
+      if (!claimed) continue
 
       published += 1
       metrics.track('article:published', { how: 'scheduled' }, { userId: article.scheduledBy?.toString() ?? null })
-
-      if (!revision.publishedAt) await revision.updateOne({ $set: { publishedAt: now } })
 
       try {
         const slugs = new Set<string>([claimed.slug].filter((slug): slug is string => Boolean(slug)))

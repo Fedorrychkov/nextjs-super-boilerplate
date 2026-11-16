@@ -1,10 +1,22 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { scheduleDecision, type ScheduleRequest } from './article-schedule-decision'
+import { finalizeClaimedPublication, scheduleDecision, type ScheduleRequest } from './article-schedule-decision'
 
 const now = new Date('2026-11-16T10:00:00.000Z')
 const base: ScheduleRequest = { currentStatus: 'draft', nextStatus: 'draft', revisionId: 'r1', current: null, requested: undefined, now }
+
+it('leaves the revision untouched when a manual publication wins the article claim', async () => {
+  const calls: string[] = []
+  const finalize = async (revision: string) => {
+    calls.push(revision)
+  }
+
+  assert.equal(await finalizeClaimedPublication(Promise.resolve(null), finalize), null)
+  assert.deepEqual(calls, [])
+  assert.equal(await finalizeClaimedPublication(Promise.resolve('r1'), finalize), 'r1')
+  assert.deepEqual(calls, ['r1'])
+})
 
 describe('scheduleDecision', () => {
   it('sets a future time with an offset on a draft with a revision', () => {

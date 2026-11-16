@@ -26,7 +26,7 @@
 #   MONGO_BACKUP_DB             db to dump, default $MONGO_DB; "all" = full instance
 #   MONGO_BACKUP_REMOTE         off-site copy: s3://bucket/prefix or sftp://user@host:port/path
 #                               (written by the deploy into $BACKUP_DIR/.remote.env with its keys)
-#   MONGO_BACKUP_REMOTE_RETENTION_DAYS  delete off-site dumps older than this, default 30; 0 = never
+#   MONGO_BACKUP_REMOTE_RETENTION_DAYS  delete older off-site dumps on a dedicated prefix; default 0 (never)
 
 set -euo pipefail
 
@@ -175,7 +175,7 @@ log "off-site copy: done"
 
 # Remote retention is in days, not dumps: the remote may also hold dumps of other runs. 0 = never
 # delete there (leave it to the bucket's lifecycle rules).
-REMOTE_DAYS="${MONGO_BACKUP_REMOTE_RETENTION_DAYS:-30}"
+REMOTE_DAYS="${MONGO_BACKUP_REMOTE_RETENTION_DAYS:-0}"
 if [ "$REMOTE_DAYS" -gt 0 ]; then
     if ! rclone_run delete "$REMOTE_TARGET" --min-age "${REMOTE_DAYS}d" --include "mongo_${API_ENV:-prod}_*.archive.gz" -q; then
         log "warning: off-site retention failed (the copy itself succeeded)"

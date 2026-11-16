@@ -4,7 +4,7 @@ import RefreshToken, { IRefreshToken } from '@lib/db/models/RefreshToken'
 import User, { IUser } from '@lib/db/models/User'
 import { ForbiddenError, NotFoundError, UnauthorizedError, ValidationError } from '@lib/error/custom-errors'
 import { generateAccessToken, generateRefreshToken, getTokenExpiration, verifyAccessToken, verifyRefreshToken } from '@lib/jwt/utils'
-import { refreshTokenQuery, storedRefreshTokenValue } from '@lib/security/refresh-token-hash'
+import { refreshTokenQuery } from '@lib/security/refresh-token-hash'
 import { assertActiveAccessSession, inheritedSessionMeta, invalidateUserAccess, sessionMetaFromRequest } from '@lib/services/user-session.service'
 import type { RequestClientMeta } from '@lib/utils/request-client-meta'
 import { assertPasswordPolicy } from '@lib/validation/password-policy'
@@ -256,7 +256,7 @@ export class AuthService {
       { _id: storedToken._id },
       {
         $set: {
-          token: storedRefreshTokenValue(refreshToken),
+          token: refreshToken,
           expiresAt,
           lastSeenAt: sessionMeta.lastSeenAt,
         },
@@ -302,7 +302,7 @@ export class AuthService {
 
     await RefreshToken.create({
       _id: sessionId,
-      token: storedRefreshTokenValue(refreshToken),
+      token: refreshToken,
       userId: user._id,
       expiresAt,
       deviceLabel: sessionMeta.deviceLabel,
