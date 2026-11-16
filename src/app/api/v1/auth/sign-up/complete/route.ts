@@ -1,4 +1,5 @@
 import { setAuthCookies } from '@lib/cookies'
+import { metrics } from '@lib/metrics'
 import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
 import { ensureCanRegister } from '@lib/security/bruteforce'
 import { getClientKey } from '@lib/security/rate-limit'
@@ -29,6 +30,7 @@ const handler = (request: NextRequest) => {
     )
 
     const authResponse = await authService.registerWithVerifiedPasswordHash({ email, passwordHash }, { languageCode, clientMeta: getRequestClientMeta(req), t })
+    metrics.track('auth:signup', { method: 'email' }, { userId: authResponse.user.id })
 
     const response = res.json(
       {

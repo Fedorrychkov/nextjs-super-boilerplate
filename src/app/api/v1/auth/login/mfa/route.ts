@@ -3,6 +3,7 @@ import connectDB from '@lib/db/client'
 import User from '@lib/db/models/User'
 import UserSettings from '@lib/db/models/UserSettings'
 import { ValidationError } from '@lib/error/custom-errors'
+import { metrics } from '@lib/metrics'
 import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
 import { recordLoginFailure } from '@lib/security/bruteforce'
 import { returnChallengeAfterFailure, takeLoginChallenge } from '@lib/security/login-challenge'
@@ -79,6 +80,7 @@ const handler = (request: NextRequest) => {
     }
 
     const authResponse = await authService.createAuthTokensForUser(user, { languageCode, clientMeta: getRequestClientMeta(req) })
+    metrics.track('auth:login', { method: 'mfa' }, { userId: authResponse.user.id })
 
     const response = res.json(
       {

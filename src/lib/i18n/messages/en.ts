@@ -104,6 +104,7 @@ export const en = {
     adminOAuthAttempts: 'OAuth attempts',
     adminApiTokens: 'API tokens',
     adminMachineAccess: 'Machine access',
+    adminMetrics: 'Metrics',
     adminPlatformSettings: 'Platform settings',
     profileApiTokens: 'My API tokens',
     articlesCreate: 'Create Article',
@@ -443,6 +444,30 @@ export const en = {
       },
     },
   },
+  errorPage: {
+    title: 'Something went wrong',
+    description: 'This part of the page failed to load. Try again — if it repeats, send us the code below.',
+    digest: 'Error code: {digest}',
+    retry: 'Try again',
+  },
+  metricsAdmin: {
+    title: 'Metrics',
+    subtitle: 'Product events and errors from the metrics facade. Sink: {sink}.',
+    loading: 'Loading…',
+    unavailable: 'The summary is kept only by the mongo sink; the current sink is {sink}. Events go there instead.',
+    openSettings: 'Change the sink in platform settings',
+    eventsTitle: 'Events, last 14 days',
+    noEvents: 'No events yet.',
+    event: 'Event',
+    total: 'Total',
+    perDay: 'Per day',
+    errorsTitle: 'Errors, last 7 days',
+    noErrors: 'No errors — or error reporting is off in the settings.',
+    error: 'Error',
+    where: 'Where',
+    count: 'Count',
+    lastAt: 'Last',
+  },
   platformSettings: {
     title: 'Platform settings',
     subtitle: 'Runtime switches and integrations, changed here without a release. Every change goes to the security audit log.',
@@ -482,7 +507,7 @@ export const en = {
         sink: {
           title: 'Where metrics go',
           description:
-            'log — server log (default); mongo — the database of this project, with a page in the admin; posthog — PostHog (events leave the server); off — dropped.',
+            'log — server log (default); mongo — the database of this project, with a page in the admin; posthog — PostHog (events leave the server); custom — the sink registered in code (registerMetricsSink); off — dropped.',
         },
         errors: {
           title: 'Report errors',

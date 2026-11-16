@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Metrics facade (batch 6)
+
+- **One facade for product events and errors** (`lib/metrics`): `metrics.track` / `metrics.error`, a closed event list (`METRIC_EVENTS`) whose properties are enum values only. The sink is a platform setting: `log` (default), `mongo` (collection with TTL from `metrics.retentionDays`, summary at `/admin/metrics`), `posthog` (batch API, no IP or geo, no person profile for anonymous browsers, errors as `$exception`), `custom` (`registerMetricsSink`), `off`. A failing sink is logged and never breaks the action
+- **Events wired**: login (password, MFA, OAuth), sign-up, article published (manual and scheduled); page views from the browser after analytics consent
+- **Error tracking**: unexpected 500s from API handlers, final job failures in the worker, browser errors (`window.onerror`, `unhandledrejection`) and the new `src/app/error.tsx` / `global-error.tsx` (retry button, error digest). Messages scrubbed of emails, JWTs, ids, queries and tokens; the same error at most once per 5 minutes
+- **Pseudonymous ids**: a signed-in user is `u_<hmac>` keyed by the server secret, never the account id; an anonymous browser is `a_<uuid>`
+- **Browser ingestion** `POST /api/v1/ev/batch`: 32 KB, 50 events, its own 60/min limit, replayed events deduplicated by uuid
+- **Malformed ids answer 400, not 500** — a mongoose `CastError` from a bad id in the URL was reported as a server fault (found by the new error tracking on three routes)
+
 ### Platform settings (batch 5)
 
 - **Runtime settings in the admin** — `/admin/platform-settings` (ADMIN): switches, limits and integration keys changed without a release. Registry in code (`config/platform-settings.ts`: key, group, spec, default, `sensitive`, `secret`), values in Mongo (`PlatformSetting`: who, when, previous value), 60 s Redis cache dropped on write, a stored value that no longer passes its spec falls back to the default. The admin editor is chosen by the spec (`boolean`, `int`, `choice`, `text`, `textList`) — a new setting needs no UI code. Every change goes to the security audit log (`platform_setting_updated`, secrets only as set / not set); sensitive settings ask for confirmation

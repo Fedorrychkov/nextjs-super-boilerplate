@@ -19,10 +19,13 @@ export type PlatformSettingDefinition<T> = {
 const define = <T>(definition: PlatformSettingDefinition<T>) => definition
 
 export const PLATFORM_SETTINGS = {
-  /** Where product events and errors go (lib/metrics). `log` needs nothing; `off` drops them. */
-  'metrics.sink': define<'log' | 'mongo' | 'posthog' | 'off'>({
+  /**
+   * Where product events and errors go (lib/metrics). `log` needs nothing; `custom` is the sink a fork
+   * registers in code (`registerMetricsSink`); `off` drops them.
+   */
+  'metrics.sink': define<'log' | 'mongo' | 'posthog' | 'custom' | 'off'>({
     group: 'metrics',
-    spec: { kind: 'choice', options: ['log', 'mongo', 'posthog', 'off'] },
+    spec: { kind: 'choice', options: ['log', 'mongo', 'posthog', 'custom', 'off'] },
     defaultValue: 'log',
     // PostHog means events leave the server: a decision about where data goes.
     sensitive: true,

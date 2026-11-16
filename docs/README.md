@@ -41,6 +41,7 @@ relative link alive.
 | File | Purpose |
 |---|---|
 | [`develop/bundle-optimization.en.md`](./develop/bundle-optimization.en.md) | Bundle analysis, lazy loading, HTTP caching, metrics stack on small servers |
+| [`develop/metrics.ru.md`](./develop/metrics.ru.md) | Product events and errors: one facade, sink chosen in the admin (log, Mongo, PostHog, custom) |
 | [`develop/typography.ru.md`](./develop/typography.ru.md) | Typography component migration + eslint enforcement |
 | [`develop/field-components.ru.md`](./develop/field-components.ru.md) | Field components unification + enforcement |
 | [`develop/sidebar-navigation.ru.md`](./develop/sidebar-navigation.ru.md) | Sidebar navigation — design note |

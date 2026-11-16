@@ -2,6 +2,7 @@ import connectDB from '@lib/db/client'
 import Article from '@lib/db/models/Article'
 import ArticleRevision from '@lib/db/models/ArticleRevision'
 import User from '@lib/db/models/User'
+import { metrics } from '@lib/metrics'
 import { notifyArticlePublishedFromRevision } from '@lib/services/article-notification.service'
 import { forgetArticleMisses } from '@lib/services/article-page-miss'
 
@@ -84,6 +85,7 @@ export const articleScheduleService = {
       }
 
       published += 1
+      metrics.track('article:published', { how: 'scheduled' }, { userId: article.scheduledBy?.toString() ?? null })
 
       if (!revision.publishedAt) await revision.updateOne({ $set: { publishedAt: now } })
 

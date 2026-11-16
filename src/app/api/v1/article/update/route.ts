@@ -2,6 +2,7 @@ import connectDB from '@lib/db/client'
 import Article from '@lib/db/models/Article'
 import ArticleRevision from '@lib/db/models/ArticleRevision'
 import { articleDocumentToApiJson } from '@lib/db/utils/articleApiJson'
+import { metrics } from '@lib/metrics'
 import { apiErrorHandlerContainer, hasApiTokenScope, withApiTokenOrAuth, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
 import { notifyArticlePublishedFromRevision, notifyArticleUpdated } from '@lib/services/article-notification.service'
@@ -153,6 +154,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     const revisionTitle = currentRevision?.title ?? null
 
     if (isPublishing) {
+      metrics.track('article:published', { how: 'manual' }, { userId: authResult.payload.sub })
       await notifyArticlePublishedFromRevision({
         recipientUserId: authResult.payload.sub,
         articleId: id,

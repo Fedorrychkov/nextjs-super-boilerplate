@@ -91,6 +91,12 @@ export const routes = {
     tKey: 'navigation.adminMachineAccess' as const,
     needAuth: true,
   },
+  adminMetrics: {
+    path: '/admin/metrics',
+    name: 'Metrics',
+    tKey: 'navigation.adminMetrics' as const,
+    needAuth: true,
+  },
   adminPlatformSettings: {
     path: '/admin/platform-settings',
     name: 'Platform settings',

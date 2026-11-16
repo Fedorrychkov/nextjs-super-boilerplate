@@ -17,8 +17,9 @@
  * Start: `npm run worker:<env>` (uses env-cmd + `node --import tsx`).
  */
 import connectDB from '@lib/db/client'
+import { metrics } from '@lib/metrics'
 import { startNotificationsConsumer } from '@lib/queues/notifications.consumer'
-import { closeQueues } from '@lib/queues/queue'
+import { closeQueues, setFinalFailureListener } from '@lib/queues/queue'
 import { articleScheduleService } from '@lib/services/article-schedule.service'
 import { platformNotificationService } from '@lib/services/platform-notification.service'
 import { WORKER_BEAT_INTERVAL_MS } from '@lib/services/worker-health'
@@ -82,6 +83,9 @@ const jobs: WorkerJob[] = [
 
 const main = async (): Promise<void> => {
   await connectDB()
+
+  // A job that failed for good is an error worth tracking, like a 500 from the API.
+  setFinalFailureListener((queue, error) => metrics.error(error, { route: `/queue/${queue}` }))
 
   await startWorkerScheduler(jobs)
   // Queue handlers: every queue defined with defineQueue must be consumed here (check-worker-wired).

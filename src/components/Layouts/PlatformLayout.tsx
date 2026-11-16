@@ -139,6 +139,12 @@ export const PlatformLayout = ({ children }: { children: React.ReactNode }) => {
                   href: routes.adminOAuthAttempts.path,
                 },
                 {
+                  label: t(routes.adminMetrics.tKey),
+                  icon: <BarChart3Icon width={16} height={16} />,
+                  disabled: authUser?.role !== UserRole.ADMIN,
+                  href: routes.adminMetrics.path,
+                },
+                {
                   label: t(routes.adminPlatformSettings.tKey),
                   icon: <SlidersHorizontalIcon width={16} height={16} />,
                   disabled: authUser?.role !== UserRole.ADMIN,

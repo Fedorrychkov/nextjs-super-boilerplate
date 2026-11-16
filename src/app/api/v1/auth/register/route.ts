@@ -1,3 +1,4 @@
+import { metrics } from '@lib/metrics'
 import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
 import { authService } from '@lib/services/auth.service'
@@ -26,6 +27,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) => {
     const languageCode = getPreferredLanguageCodeFromAcceptLanguage(req.headers.get('accept-language'))
 
     const authResponse = await authService.register(body, false, { languageCode, t })
+    metrics.track('auth:signup', { method: 'admin' }, { userId: authResponse.user.id })
 
     return res.json(
       {

@@ -104,6 +104,7 @@ export const ru = {
     adminOAuthAttempts: 'OAuth-попытки',
     adminApiTokens: 'API-токены',
     adminMachineAccess: 'Машинный доступ',
+    adminMetrics: 'Метрики',
     adminPlatformSettings: 'Настройки платформы',
     profileApiTokens: 'Мои API-токены',
     articlesCreate: 'Создать статью',
@@ -439,6 +440,30 @@ export const ru = {
       },
     },
   },
+  errorPage: {
+    title: 'Что-то пошло не так',
+    description: 'Эта часть страницы не загрузилась. Попробуйте ещё раз — если повторится, пришлите нам код ниже.',
+    digest: 'Код ошибки: {digest}',
+    retry: 'Повторить',
+  },
+  metricsAdmin: {
+    title: 'Метрики',
+    subtitle: 'Продуктовые события и ошибки из фасада метрик. Приёмник: {sink}.',
+    loading: 'Загружаем…',
+    unavailable: 'Сводку хранит только приёмник mongo; сейчас выбран {sink} — события уходят туда.',
+    openSettings: 'Сменить приёмник в настройках платформы',
+    eventsTitle: 'События за 14 дней',
+    noEvents: 'Событий пока нет.',
+    event: 'Событие',
+    total: 'Всего',
+    perDay: 'По дням',
+    errorsTitle: 'Ошибки за 7 дней',
+    noErrors: 'Ошибок нет — или отправка ошибок выключена в настройках.',
+    error: 'Ошибка',
+    where: 'Где',
+    count: 'Сколько',
+    lastAt: 'Последняя',
+  },
   platformSettings: {
     title: 'Настройки платформы',
     subtitle: 'Переключатели и интеграции, которые меняются здесь без релиза. Каждое изменение записывается в журнал безопасности.',
@@ -478,7 +503,7 @@ export const ru = {
         sink: {
           title: 'Куда уходят метрики',
           description:
-            'log — лог сервера (по умолчанию); mongo — база этого проекта, со страницей в админке; posthog — PostHog (события уходят с сервера); off — отбрасываются.',
+            'log — лог сервера (по умолчанию); mongo — база этого проекта, со страницей в админке; posthog — PostHog (события уходят с сервера); custom — приёмник, зарегистрированный в коде (registerMetricsSink); off — отбрасываются.',
         },
         errors: {
           title: 'Отправлять ошибки',
