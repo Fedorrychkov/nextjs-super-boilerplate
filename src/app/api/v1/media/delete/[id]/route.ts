@@ -1,6 +1,7 @@
 import { apiErrorHandlerContainer, RouteHandlerContext, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
-import { deleteMediaAssetIfUnused } from '@lib/services/media.service'
+import { deleteMediaAssetIfUnused, findMediaAssetById, toMediaAssetDto } from '@lib/services/media.service'
+import { isLibraryAsset } from '@lib/services/media-access'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { UserRole } from '~/api/user'
@@ -24,6 +25,14 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult, context?: 
       return NextResponse.json({ message: t('media.errors.mediaAssetIdRequired') }, { status: 400 })
     }
 
+    // This is the CMS library's delete: a person's own file is not in the library and is not
+    // the editors' to remove — 404, the same as an id that does not exist.
+    const existing = await findMediaAssetById(id)
+
+    if (!existing || !isLibraryAsset(existing)) {
+      return NextResponse.json({ message: t('media.errors.mediaAssetNotFound') }, { status: 404 })
+    }
+
     const result = await deleteMediaAssetIfUnused(id, articleRevisionId ?? null)
 
     if (result.reason === 'not_found') {
@@ -40,10 +49,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult, context?: 
 
     return response.json({
       deleted: true,
-      asset: {
-        ...result.asset.toObject(),
-        id: result.asset._id.toString(),
-      },
+      asset: toMediaAssetDto(result.asset),
     })
   })
 

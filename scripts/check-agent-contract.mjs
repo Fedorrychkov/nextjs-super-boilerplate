@@ -1,4 +1,6 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 /**
  * Контракт агента должен ДОЕЗЖАТЬ до агента целиком.
@@ -20,15 +22,18 @@ import { readFileSync } from 'node:fs'
 const CODEX_LIMIT = 32_768
 const BUDGET = 28_672 // 28 КБ: запас в 4 КБ на то, что допишут после нас
 
+// Пути от корня репозитория: прямой запуск из любого каталога не должен падать.
+const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const contract = 'AGENTS.md'
-// The Russian twin is kept in sync by hand and must fit the same ceiling — it is the file a
-// Russian-speaking team may point Codex at instead.
-const twins = ['AGENTS_RU.md']
+// Двойник необязателен: у формата «один канон» его просто нет. Отсутствие — не ошибка, а вот
+// сгнивший двойник обманывает молча: правила, которых в нём нет, для читающего его агента не существуют.
+const twins = ['AGENTS_RU.md'].filter((twin) => existsSync(join(root, twin)))
+const TWIN_DRIFT = 0.25 // расхождение объёма больше четверти — двойник уже не перевод, а огрызок
 const adapters = ['CLAUDE.md']
 
 const problems = []
 
-const raw = readFileSync(contract)
+const raw = readFileSync(join(root, contract))
 const bytes = raw.byteLength
 
 if (bytes > BUDGET) {
@@ -59,15 +64,27 @@ if (importLine >= 0) {
 }
 
 for (const twin of twins) {
-  const twinBytes = readFileSync(twin).byteLength
+  const twinBytes = readFileSync(join(root, twin)).byteLength
 
   if (twinBytes > BUDGET) {
     problems.push(`${twin}: ${twinBytes} B при бюджете ${BUDGET} B — тот же потолок Codex, что у ${contract}.`)
   }
+
+  // Дрейф меряется в символах, не в байтах: кириллица в UTF-8 — два байта на букву, и по байтам
+  // честный русский перевод выглядит на 40 % длиннее английского оригинала.
+  const twinChars = readFileSync(join(root, twin), 'utf8').length
+  const contractChars = raw.toString('utf8').length
+
+  if (Math.abs(twinChars - contractChars) / contractChars > TWIN_DRIFT) {
+    problems.push(
+      `${twin}: ${twinChars} символов против ${contractChars} у ${contract} — расхождение больше ${TWIN_DRIFT * 100}%.` +
+        '\n     Двойник не перевод, а огрызок. Либо досинхронизировать, либо удалить двойник и оставить один канон.',
+    )
+  }
 }
 
 for (const adapter of adapters) {
-  const text = readFileSync(adapter, 'utf8')
+  const text = readFileSync(join(root, adapter), 'utf8')
 
   if (!text.includes(`@${contract}`)) {
     problems.push(`${adapter}: не импортирует \`@${contract}\` — переходник обязан подключать контракт, иначе правил у агента нет вовсе.`)
@@ -87,4 +104,4 @@ if (problems.length) {
   process.exit(1)
 }
 
-console.log(`контракт агента: ${contract} ${bytes} B из ${BUDGET} B, переходники подключены`)
+console.log(`контракт агента: ${contract} ${bytes} B из ${BUDGET} B${twins.length ? `, двойник ${twins.join(', ')} в синхроне` : ''}, переходники подключены`)

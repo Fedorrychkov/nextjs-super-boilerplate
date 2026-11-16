@@ -4,11 +4,10 @@ import { ValidationError } from '@lib/error/custom-errors'
 import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
 import { generateArticleListenAudio } from '@lib/services/article-listen-audio.service'
-import { revalidateTag } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { UserRole } from '~/api/user'
-import { publicArticleCacheTag } from '~/lib/cache/publicArticlePageCache'
+import { invalidatePublicArticlePage } from '~/lib/cache/publicArticlePageCache'
 import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 import { Logger } from '~/utils/logger'
 
@@ -55,7 +54,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
       const article = await Article.findById(articleId)
 
       if (article?.slug) {
-        revalidateTag(publicArticleCacheTag(article.slug), 'max')
+        await invalidatePublicArticlePage(article.slug)
       }
 
       return NextResponse.json(result)

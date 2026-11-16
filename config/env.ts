@@ -5,7 +5,7 @@ const {
   NEXT_PUBLIC_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
   JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change',
   JWT_ACCESS_EXPIRES_IN = Number(process.env.JWT_ACCESS_EXPIRES_IN || 3600), // 1 hour
-  JWT_REFRESH_EXPIRES_IN = Number(process.env.JWT_REFRESH_EXPIRES_IN || 15724800), // 21 days
+  JWT_REFRESH_EXPIRES_IN = Number(process.env.JWT_REFRESH_EXPIRES_IN || 604800), // 7 days; capped by REFRESH_COOKIE_MAX_AGE_SECONDS
   MONGO_URI = process.env.MONGO_URI || '',
   MONGO_HOST = process.env.MONGO_HOST || 'localhost',
   MONGO_PORT = process.env.MONGO_PORT || '27017',
@@ -117,16 +117,30 @@ const {
 const SEO_NOTIFY_AUTH_ENABLED = parseBoolEnv(process.env.SEO_NOTIFY_AUTH_ENABLED, false)
 const RUM_ENABLED = parseBoolEnv(process.env.RUM_ENABLED, true)
 const NEXT_PUBLIC_LLM_ENABLED = parseBoolEnv(process.env.NEXT_PUBLIC_LLM_ENABLED, false)
+/** /api/v1/healthcheck answers 503 when Mongo is unreachable (container goes unhealthy). Off = always 200, `db` only in the body. */
+const HEALTHCHECK_DB_STRICT = parseBoolEnv(process.env.HEALTHCHECK_DB_STRICT, false)
 
 const isDevelop = [APP_ENV, NEXT_PUBLIC_APP_ENV].includes('development')
 const isStage = [APP_ENV, NEXT_PUBLIC_APP_ENV].includes('stage')
 const isProd = [APP_ENV, NEXT_PUBLIC_APP_ENV].includes('production')
 
+/**
+ * The refresh cookie has always lived 7 days (renewed on every rotation), so an idle session
+ * ended after 7 days whatever `JWT_REFRESH_EXPIRES_IN` said — while the token and its database
+ * row lived the full env value (15724800 s = 182 days in the old template). The effective
+ * lifetime is now one number for all three: min(env, this cap). Raise the cap here, in code, to
+ * allow longer idle sessions.
+ */
+const REFRESH_COOKIE_MAX_AGE_SECONDS = 7 * 24 * 60 * 60
+
 // JWT config
 const JWT_CONFIG = {
   secret: JWT_SECRET,
   accessExpiresIn: JWT_ACCESS_EXPIRES_IN,
-  refreshExpiresIn: JWT_REFRESH_EXPIRES_IN,
+  refreshExpiresIn: Math.min(Number(JWT_REFRESH_EXPIRES_IN), REFRESH_COOKIE_MAX_AGE_SECONDS),
+  /** As configured, before the cap — for the doctor's warning only. */
+  refreshExpiresInConfigured: Number(JWT_REFRESH_EXPIRES_IN),
+  refreshCookieMaxAge: REFRESH_COOKIE_MAX_AGE_SECONDS,
 }
 
 // MongoDB: use MONGO_URI (e.g. for Atlas or full DSN) or build from host/port/user/password/db (e.g. local container mongo:27017)
@@ -278,6 +292,7 @@ export {
   FIRST_ADMIN_CONFIG,
   GOOGLE_INDEXING_CLIENT_EMAIL,
   GOOGLE_INDEXING_PRIVATE_KEY,
+  HEALTHCHECK_DB_STRICT,
   INDEXNOW_API_KEY,
   INDEXNOW_KEY_LOCATION,
   isDevelop,

@@ -3,11 +3,29 @@ on:
   push:
     branches:
       - main
+    # A push that touches only what never reaches the image or the server does not restart the
+    # stack: documentation, agent files, patches, CI-only workflows. Everything else deploys.
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - 'patch/**'
+      - 'skills/**'
+      - '.claude/**'
+      - 'lighthouserc.json'
+      - '.github/PULL_REQUEST_TEMPLATE.md'
+      - '.github/workflows/ci.yml'
+      - '.github/workflows/lighthouse.yml'
+      - '.github/workflows/notify-telegram.yml'
+      - '.github/workflows/ci-secret-scan.yml'
 
   # Manual run: Actions → Production Deploy → Run workflow (branch can be selected in UI)
   workflow_dispatch:
 
-permissions: write-all
+# The minimum the pipeline uses: read the repo, push the image to GHCR. Nothing here writes to
+# the repository, issues or releases, so a leaked GITHUB_TOKEN could not either.
+permissions:
+  contents: read
+  packages: write
 
 # cancel-in-progress: false — a second push to main queues instead of cancelling the
 # running deploy. Cancelling mid-deploy leaves the server with containers torn down.
@@ -61,11 +79,19 @@ jobs:
       mongo_backup_enabled: true
       mongo_backup_cron: '30 3 * * *'
       mongo_backup_retention: 2
+      # Off-site copy of each dump (docs/deploy/mongo-backups.ru.md): any S3-compatible storage or
+      # another server over SFTP; keys go into the MONGO_BACKUP_* secrets below. Empty = this server only.
+      # mongo_backup_remote: 's3://my-backups/prod'
+      # mongo_backup_s3_endpoint: 'https://storage.yandexcloud.net'
+      # mongo_backup_s3_region: 'ru-central1'
 
     secrets:
       server_host: ${{ secrets.PROD_WEB_HOST }}
       server_username: ${{ secrets.PROD_WEB_USERNAME }}
+      # Either is enough; the key wins when both are set. Missing secrets evaluate to empty.
       server_password: ${{ secrets.PROD_WEB_PASSWORD }}
+      server_ssh_key: ${{ secrets.PROD_WEB_SSH_KEY }}
+      server_ssh_fingerprint: ${{ secrets.PROD_WEB_SSH_FINGERPRINT }}
       env: ${{ secrets.WEB_ENV_PROD }}
       ghcr_username: ${{ secrets.GHCR_USERNAME }}
       ghcr_token: ${{ secrets.GHCR_TOKEN }}
@@ -75,3 +101,8 @@ jobs:
       grafana_admin_user: ${{ secrets.GRAFANA_ADMIN_USER }}
       grafana_admin_password: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
       certbot_email: ${{ secrets.CERTBOT_EMAIL || 'example@example.com' }}
+      # Used only when mongo_backup_remote is set; a missing secret is simply empty.
+      mongo_backup_s3_access_key_id: ${{ secrets.MONGO_BACKUP_S3_ACCESS_KEY_ID }}
+      mongo_backup_s3_secret_access_key: ${{ secrets.MONGO_BACKUP_S3_SECRET_ACCESS_KEY }}
+      mongo_backup_sftp_key: ${{ secrets.MONGO_BACKUP_SFTP_KEY }}
+      mongo_backup_sftp_known_hosts: ${{ secrets.MONGO_BACKUP_SFTP_KNOWN_HOSTS }}

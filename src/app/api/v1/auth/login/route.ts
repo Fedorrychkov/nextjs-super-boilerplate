@@ -1,6 +1,7 @@
 import { setAuthCookies } from '@lib/cookies'
 import connectDB from '@lib/db/client'
 import UserSettings from '@lib/db/models/UserSettings'
+import { metrics } from '@lib/metrics'
 import { apiErrorHandlerContainer, withGlobalRateLimit } from '@lib/middleware'
 import { assertLoginNotBlocked, recordLoginFailure } from '@lib/security/bruteforce'
 import { createLoginChallenge } from '@lib/security/login-challenge'
@@ -31,6 +32,7 @@ const handler = (request: NextRequest) => {
 
       if (!settings || !settings.mfaEnabled || !settings.mfaSecret) {
         const authResponse = await authService.login(body, { languageCode, clientMeta: getRequestClientMeta(req), t })
+        metrics.track('auth:login', { method: 'password' }, { userId: authResponse.user.id })
 
         const response = res.json(
           {

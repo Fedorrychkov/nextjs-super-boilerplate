@@ -4,6 +4,7 @@ import { redirect, RedirectType, useSearchParams } from 'next/navigation'
 import { Suspense, useEffect } from 'react'
 
 import { SpinnerScreen } from '~/components/Loaders'
+import { safeInternalPath, withNextPath } from '~/lib/security/safeInternalPath'
 import { useLogoutQuery } from '~/query/auth'
 import { Logger } from '~/utils/logger'
 
@@ -15,7 +16,11 @@ const LogoutWithParams = () => {
 
   useEffect(() => {
     if (data) {
-      redirect(`/login${nextPath ? `?nextPath=${nextPath}` : ''}`, RedirectType.replace)
+      // Validated (no open redirect) and re-encoded: a path with its own query used to be glued
+      // in raw and split into stray parameters of the login page.
+      const safe = safeInternalPath(nextPath, '')
+
+      redirect(safe ? withNextPath('/login', safe) : '/login', RedirectType.replace)
     }
   }, [data, nextPath])
 

@@ -142,7 +142,7 @@ Email-фактор: 6-digit OTP (как sign-up). Шаблоны Elastic опц�
 | Событие | Поведение |
 |---------|-----------|
 | Login / register / MFA login | `RefreshToken.create` + `deviceLabel`, `userAgent`, `ip`, `lastSeenAt` |
-| Refresh rotation | **та же** запись (`updateOne` по `_id`): новый token hash, `lastSeenAt` |
+| Refresh rotation | **та же** запись (`updateOne` по `_id`): новый токен, `lastSeenAt`. Поиск читает и исходный токен, и хеш; запись хешей отложена до совместимого релиза |
 | Revoke / logoutAll | `deleteOne` / `deleteMany` |
 
 ### Привязка access token к сессии (важно)
@@ -302,7 +302,7 @@ EMAIL_TEMPLATE_PASSWORD_CHANGE_EN=   # optional
 EMAIL_TEMPLATE_PASSWORD_FORGOT_EN=   # optional
 MFA_ENCRYPTION_KEY=
 JWT_ACCESS_EXPIRES_IN=3600
-JWT_REFRESH_EXPIRES_IN=15724800
+JWT_REFRESH_EXPIRES_IN=604800
 ```
 
 ---
@@ -334,8 +334,8 @@ src/app/api/v1/user/[id]/password/reset/route.ts
 src/app/api/v1/admin/security-audit/route.ts
 
 src/app/forgot-password/page.tsx
-src/app/profile/page.tsx
-src/app/admin/security-audit/page.tsx
+src/app/(cabinet)/profile/page.tsx
+src/app/(cabinet)/admin/security-audit/page.tsx
 
 src/components/Views/Profile/ProfileChangePasswordPanel.tsx
 src/components/Views/User/Blocks/UserSessionsPanel.tsx

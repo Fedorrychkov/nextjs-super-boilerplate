@@ -2,6 +2,7 @@ import connectDB from '@lib/db/client'
 import User from '@lib/db/models/User'
 import { apiErrorHandlerContainer, RouteHandlerContext, withAuthMiddleware, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
+import { invalidateUserAccess } from '@lib/services/user-session.service'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { UpdateUserDto, UserModel, UserRole, UserStatus } from '~/api/user'
@@ -44,6 +45,8 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult, context?: 
     }
 
     await user.updateOne({ ...payload, _id: id, updatedAt: time().toISOString() })
+    // The API authorizes by a cached database snapshot: drop it, or the old role lives up to 30 s.
+    await invalidateUserAccess(id)
 
     return response.json({
       success: true,

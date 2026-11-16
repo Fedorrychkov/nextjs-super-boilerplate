@@ -6,9 +6,10 @@ import React, { Suspense, useCallback, useEffect, useState } from 'react'
 
 import { SpinnerScreen } from '~/components/Loaders'
 import type { AppMessageKey } from '~/lib/i18n/types'
+import { safeInternalPath } from '~/lib/security/safeInternalPath'
 import { useAuth, useT } from '~/providers'
 import { useNotify } from '~/providers/notify'
-import { useLoginMfaMutation, useLoginMutation, useLogoutQuery, useSignUpMutation } from '~/query/auth'
+import { useLoginMfaMutation, useLoginMutation, useSignUpMutation } from '~/query/auth'
 import { Logger } from '~/utils/logger'
 import { time } from '~/utils/time'
 
@@ -19,8 +20,9 @@ const SignUpBlock = React.lazy(() => import('~/components/Views/Auth/Blocks/Sign
 const SignUpVerifyBlock = React.lazy(() => import('~/components/Views/Auth/Blocks/SignUpVerifyBlock').then((module) => ({ default: module.SignUpVerifyBlock })))
 const MfaCodeBlock = React.lazy(() => import('~/components/Views/Auth/Blocks/MfaCodeBlock').then((module) => ({ default: module.MfaCodeBlock })))
 
+/** `nextPath` is query input: `//evil.example` after a successful login is a phishing vector. */
 function postAuthRedirectPath(nextPath: string | null): string {
-  return nextPath || '/'
+  return safeInternalPath(nextPath, '/')
 }
 
 // Component for handling searchParams
@@ -38,21 +40,19 @@ const LoginWithParams = () => {
   const [mfaChallengeId, setMfaChallengeId] = useState<string | null>(null)
   const { notify } = useNotify()
   const router = useRouter()
-  const { refetch, isLoading, isClient } = useAuth()
+  const { refetch, isLoading, isClient, authUser } = useAuth()
 
-  const { refetch: refetchLogout, isLoading: isLogoutLoading } = useLogoutQuery(isClient)
-
+  /**
+   * Opening the login page no longer logs the visitor out. It used to fire POST /auth/logout on
+   * mount: any external link to /login was a logout-CSRF, and the "Sign in" button in the header
+   * threw out whoever was already signed in. Signing out is only ever explicit — /logout. A
+   * signed-in visitor is sent on to where they were going.
+   */
   useEffect(() => {
-    if (isClient) {
-      refetchLogout()
-        .catch((error) => {
-          logger.error(error)
-        })
-        .catch((error) => {
-          logger.error(error)
-        })
+    if (isClient && authUser) {
+      router.replace(postAuthRedirectPath(nextPath))
     }
-  }, [refetchLogout, isClient])
+  }, [isClient, authUser, router, nextPath])
 
   useEffect(() => {
     if (oauthMfaChallenge) {
@@ -98,11 +98,7 @@ const LoginWithParams = () => {
       if (response.success && 'user' in response) {
         await refetch?.()
 
-        if (nextPath) {
-          router.replace(nextPath)
-        } else {
-          router.replace('/')
-        }
+        router.replace(postAuthRedirectPath(nextPath))
       } else {
         logger.error('Login failed')
       }
@@ -137,11 +133,7 @@ const LoginWithParams = () => {
         setLoginStep('credentials')
         setMfaChallengeId(null)
 
-        if (nextPath) {
-          router.replace(nextPath)
-        } else {
-          router.replace('/')
-        }
+        router.replace(postAuthRedirectPath(nextPath))
       }
     } catch (error) {
       notify(t('auth.errors.invalidCode'), 'destructive')
@@ -255,7 +247,7 @@ const LoginWithParams = () => {
   )
 
   // Show loading until client state is determined
-  if (!isClient || isLoading || isLogoutLoading) {
+  if (!isClient || isLoading || authUser) {
     return <SpinnerScreen />
   }
 

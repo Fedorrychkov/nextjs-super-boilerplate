@@ -24,7 +24,7 @@ export default function PrivateArticleLayout({
   children: React.ReactNode
 }>) {
   return (
-    <LandingLayout githubUrl={seoConfig.links.github} demoUrl={seoConfig.links.demo}>
+    <LandingLayout githubUrl={seoConfig.links.github} demoUrl={seoConfig.externalDemoUrl}>
       {children}
     </LandingLayout>
   )

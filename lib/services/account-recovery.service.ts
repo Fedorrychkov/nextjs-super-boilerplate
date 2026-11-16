@@ -2,22 +2,25 @@ import { ACCOUNT_CONFIG, EMAIL_CONFIG } from '@config/env'
 import connectDB from '@lib/db/client'
 import UserSettings from '@lib/db/models/UserSettings'
 
+import { resolveEmailSendMode } from './email/email-mode'
+
 export type RecoveryFactor = 'email' | 'totp'
 export type RecoveryStrictness = 'strict' | 'flexible'
 
-/** Email factor for password change / forgot (console OK in dev; empty = off). */
+/**
+ * Email factor for password change / forgot. `console` counts (the code is in the log — a
+ * dev/stage workflow), `elastic` needs a key, `empty` and an unknown mode are off. A typo used
+ * to count as available here and the user was sent to wait for a code nobody delivered.
+ */
 export function isPasswordRecoveryEmailAvailable(): boolean {
   const { sendMode, emailApiKey } = EMAIL_CONFIG
+  const mode = resolveEmailSendMode(sendMode)
 
-  if (sendMode === 'empty') {
-    return false
-  }
+  if (mode === 'console') return true
 
-  if (sendMode === 'elastic') {
-    return Boolean(emailApiKey?.trim())
-  }
+  if (mode === 'elastic') return Boolean(emailApiKey?.trim())
 
-  return true
+  return false
 }
 
 export async function isUserMfaEnabled(userId: string): Promise<boolean> {

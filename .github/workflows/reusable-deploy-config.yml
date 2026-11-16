@@ -102,6 +102,11 @@ on:
         required: false
         default: false
         type: boolean
+      smoke_check_enabled:
+        description: 'After the deploy, request https://<domain>/api/v1/healthcheck and / from the runner with retries. A red answer fails the run (the failure notification fires); nothing is rolled back — the stack is already up, this is the proof that it answers from outside.'
+        required: false
+        default: true
+        type: boolean
       mongo_backup_enabled:
         description: 'Nightly mongodump cron on the server (scripts/backup-mongo.sh). Effective ONLY with mongo_enabled: true — remote clusters use provider backups. Cron is auto-removed when mongo or this flag turns off.'
         required: false
@@ -117,6 +122,41 @@ on:
         required: false
         default: 14
         type: number
+      mongo_backup_remote:
+        description: 'Where else each dump goes. Empty = only ~/db-backups on this server (as before). s3://bucket/prefix — any S3-compatible storage (keys: secrets mongo_backup_s3_access_key_id / mongo_backup_s3_secret_access_key; endpoint below). sftp://user@host:port/path — another server (key: secret mongo_backup_sftp_key). A failed upload fails the backup run; the local dump is kept. See docs/deploy/mongo-backups.ru.md.'
+        required: false
+        default: ''
+        type: string
+      mongo_backup_s3_endpoint:
+        description: 'S3 endpoint for a non-AWS storage, e.g. https://storage.yandexcloud.net or https://<account>.r2.cloudflarestorage.com. Empty = AWS.'
+        required: false
+        default: ''
+        type: string
+      mongo_backup_s3_region:
+        description: S3 region (some providers require it, e.g. ru-central1)
+        required: false
+        default: ''
+        type: string
+      mongo_backup_remote_retention_days:
+        description: Delete off-site dumps older than N days. Enable only on a prefix or directory dedicated to this installation. 0 leaves cleanup to the storage lifecycle.
+        required: false
+        default: 0
+        type: number
+      docker_log_max_size:
+        description: 'Rotation size of each container log (json-file) for the app, nginx, worker, certbot and metrics containers. Redis and mongo keep theirs: changing it would restart the database.'
+        required: false
+        default: '100m'
+        type: string
+      docker_log_max_file:
+        description: How many rotated log files each of those containers keeps
+        required: false
+        default: 3
+        type: number
+      build_node_options:
+        description: 'NODE_OPTIONS for `next build` only, e.g. --max-old-space-size=4096 if the build runs out of heap. It runs on the CI runner, not on the server. Empty = Node defaults.'
+        required: false
+        default: ''
+        type: string
 
       server_memory_mb:
         description: 'Total server RAM in MB (e.g. 2048). Derives per-container memory limits via scripts/lib/memory-limits.sh. 0 = keep compose defaults (api 2g, redis/mongo unlimited).'
@@ -166,8 +206,18 @@ on:
         required: true
       server_username:
         required: true
+      # SSH auth: key (server_ssh_key) is preferred, password stays as the fallback — both are
+      # passed to every ssh/scp step and the client tries whichever is set. At least one is
+      # required; the "SSH auth mode" step below refuses to run with neither.
       server_password:
-        required: true
+        description: SSH password (legacy fallback; leave empty once server_ssh_key works)
+        required: false
+      server_ssh_key:
+        description: Private SSH key (PEM) of the deploy user; wins over the password when set
+        required: false
+      server_ssh_fingerprint:
+        description: 'SHA256 host key fingerprint (from `ssh-keyscan -t ed25519 <host> | ssh-keygen -lf -`); empty = host key not verified'
+        required: false
       env:
         required: true
       database_certificate:
@@ -197,10 +247,22 @@ on:
       certbot_email:
         required: false
 
+      # Off-site backup destination keys (mongo_backup_remote). Written on the server into
+      # ~/db-backups/.remote.env (0600) and passed to rclone as an env file, never as arguments.
+      mongo_backup_s3_access_key_id:
+        required: false
+      mongo_backup_s3_secret_access_key:
+        required: false
+      mongo_backup_sftp_key:
+        description: Private key (PEM) of the SFTP account that receives dumps
+        required: false
+      mongo_backup_sftp_known_hosts:
+        description: '`ssh-keyscan -p <port> <host>` output; empty = the SFTP host key is not verified'
+        required: false
+
 permissions:
   contents: read
   packages: write
-  id-token: write
 
 # cancel-in-progress must stay false: cancelling a deploy mid-flight can kill the server
 # in a half-torn-down state (old containers removed, new ones not started yet).
@@ -220,17 +282,17 @@ jobs:
       DEPLOY_MODE: ${{ inputs.deploy_mode == 'registry' && 'registry' || 'default' }}
     steps:
       - name: ⬇️ Checkout repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
 
       - name: 📦 Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
         with:
           version: 10
 
       # `cache: pnpm` reuses the repo-scoped pnpm store (keyed by pnpm-lock.yaml) across runs —
       # shared with ci.yml, so the non-registry install below is a near-instant cache restore.
       - name: ⎔ Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ inputs.node_version }}
           cache: pnpm
@@ -246,6 +308,29 @@ jobs:
           echo 'Migrations run: ${{ inputs.migrations_run }}'
           echo 'Blue-green enabled: ${{ inputs.blue_green_enabled }}'
           echo 'Server host: ${{ secrets.server_host }}'
+
+      # Fails before anything touches the server: with neither a key nor a password every ssh
+      # step would fail one by one after the build. Names only — never the values.
+      - name: 🔐 SSH auth mode
+        env:
+          HAS_KEY: ${{ secrets.server_ssh_key != '' }}
+          HAS_PASSWORD: ${{ secrets.server_password != '' }}
+          HAS_FINGERPRINT: ${{ secrets.server_ssh_fingerprint != '' }}
+        run: |
+          if [ "$HAS_KEY" != "true" ] && [ "$HAS_PASSWORD" != "true" ]; then
+            echo "::error::Neither server_ssh_key nor server_password is set — no way to reach the server"
+            exit 1
+          fi
+          if [ "$HAS_KEY" = "true" ]; then
+            echo "SSH auth: key (password $([ "$HAS_PASSWORD" = "true" ] && echo 'also set as fallback' || echo 'not set'))"
+          else
+            echo "::warning::SSH auth: password only. Set server_ssh_key to switch to a key; the password stays as the fallback until removed"
+          fi
+          if [ "$HAS_FINGERPRINT" = "true" ]; then
+            echo "Host key: verified against server_ssh_fingerprint"
+          else
+            echo "::warning::server_ssh_fingerprint is empty — the host key is not verified (first-connection trust on every run)"
+          fi
 
       - name: Send Telegram Message
         if: ${{ inputs.notify_enabled }}
@@ -378,7 +463,7 @@ jobs:
 
       - name: 🐳 Set up Docker Buildx (registry mode)
         if: inputs.deploy_mode == 'registry'
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
       - name: 🔐 Login to GHCR and build core-api image (registry mode)
         if: inputs.deploy_mode == 'registry'
@@ -391,8 +476,11 @@ jobs:
           # are not rebuilt when package.json / lockfile / sources are unchanged.
           CACHE_REF="ghcr.io/${OWNER}/${{ inputs.registry_subname || 'service-image' }}:buildcache"
 
-          # Extract only public variables (NEXT_PUBLIC_*, VAPID_SUBJECT) from the corresponding env file in the repository
-          PUBLIC_ENV=$(grep -E '^(NEXT_PUBLIC_|VAPID_SUBJECT=)' "${{ inputs.env_file }}" || true)
+          # Only the names listed in config/public-env.json reach the image: a secret misnamed with a
+          # NEXT_PUBLIC_ prefix must not end up in the client bundle. The check-public-env gate keeps
+          # the list in sync with what the code reads, so nothing the code needs is dropped here.
+          PUBLIC_NAMES=$(jq -r '(.build + (.serverBuild // [])) | join("|")' config/public-env.json)
+          PUBLIC_ENV=$(grep -E "^(${PUBLIC_NAMES})=" "${{ inputs.env_file }}" || true)
 
           # Names only: the values are public by definition, but the log is not the place to review them.
           echo "Public env for build (names):"
@@ -402,6 +490,7 @@ jobs:
             -f .docker/Dockerfile \
             --build-arg API_ENV=${{ inputs.api_env }} \
             --build-arg PUBLIC_ENV="$PUBLIC_ENV" \
+            --build-arg BUILD_NODE_OPTIONS="${{ inputs.build_node_options }}" \
             --cache-from "type=registry,ref=$CACHE_REF" \
             --cache-to "type=registry,ref=$CACHE_REF,mode=max" \
             -t "$IMAGE" \
@@ -410,6 +499,8 @@ jobs:
 
       - name: 🚀 Build project
         if: inputs.deploy_mode != 'registry'
+        env:
+          NODE_OPTIONS: ${{ inputs.build_node_options }}
         run: |
           if [ "${{ inputs.api_env }}" = "stage" ]; then pnpm run build:stage; else pnpm run build:prod; fi
 
@@ -418,41 +509,31 @@ jobs:
           rm -rf node_modules .git .github
 
       - name: 📦 Copy project files to server (to app_new)
-        uses: appleboy/scp-action@master
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
         with:
           source: "*"
           target: "~/app_new"
           port: 22
           host: ${{ secrets.server_host }}
           username: ${{ secrets.server_username }}
+          key: ${{ secrets.server_ssh_key }}
+          fingerprint: ${{ secrets.server_ssh_fingerprint }}
           password: ${{ secrets.server_password }}
           timeout: '300s'
           overwrite: true
           strip_components: 0
-
-      - name: 🗑️ Remove all tar.gz files from server
-        uses: appleboy/ssh-action@master
-        env:
-          GH_USERNAME: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          host: ${{ secrets.server_host }}
-          username: ${{ secrets.server_username }}
-          password: ${{ secrets.server_password }}
-          port: 22
-          envs: GH_USERNAME, GITHUB_TOKEN
-          script: |
-            find ~ -type f -name '*.tar.gz' -exec rm -f {} +
+          # Fresh ~/app_new on every deploy: a stale file from a previous, interrupted upload
+          # never survives into the swap. Replaces the old `find ~ -name '*.tar.gz' -exec rm`
+          # step, which walked the whole home directory with rm.
+          rm: true
 
       - name: 🚀 Prepare and run on server (Blue/Green or Cold)
         id: deploy_run
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         # Must be >= command_timeout below, otherwise GitHub kills the step mid-deploy
         # and leaves the server half-torn-down (old containers removed, new not started).
         timeout-minutes: 30
         env:
-          GH_USERNAME: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CERTBOT_TEST_MODE: ${{ inputs.certbot_test_mode }}
           CERTBOT_EMAIL: ${{ secrets.certbot_email || inputs.certbot_email }}
           DOMAINS: ${{ inputs.domain }}
@@ -469,6 +550,16 @@ jobs:
           MONGO_BACKUP_ENABLED: ${{ inputs.mongo_backup_enabled }}
           MONGO_BACKUP_CRON: ${{ inputs.mongo_backup_cron }}
           MONGO_BACKUP_RETENTION: ${{ inputs.mongo_backup_retention }}
+          MONGO_BACKUP_REMOTE: ${{ inputs.mongo_backup_remote }}
+          MONGO_BACKUP_S3_ENDPOINT: ${{ inputs.mongo_backup_s3_endpoint }}
+          MONGO_BACKUP_S3_REGION: ${{ inputs.mongo_backup_s3_region }}
+          MONGO_BACKUP_REMOTE_RETENTION_DAYS: ${{ inputs.mongo_backup_remote_retention_days }}
+          MONGO_BACKUP_S3_ACCESS_KEY_ID: ${{ secrets.mongo_backup_s3_access_key_id }}
+          MONGO_BACKUP_S3_SECRET_ACCESS_KEY: ${{ secrets.mongo_backup_s3_secret_access_key }}
+          MONGO_BACKUP_SFTP_KEY: ${{ secrets.mongo_backup_sftp_key }}
+          MONGO_BACKUP_SFTP_KNOWN_HOSTS: ${{ secrets.mongo_backup_sftp_known_hosts }}
+          DOCKER_LOG_MAX_SIZE: ${{ inputs.docker_log_max_size }}
+          DOCKER_LOG_MAX_FILE: ${{ inputs.docker_log_max_file }}
           SERVER_MEMORY_MB: ${{ inputs.server_memory_mb }}
           API_MEM_LIMIT: ${{ inputs.api_mem_limit }}
           REDIS_MEM_LIMIT: ${{ inputs.redis_mem_limit }}
@@ -477,13 +568,17 @@ jobs:
         with:
           host: ${{ secrets.server_host }}
           username: ${{ secrets.server_username }}
+          key: ${{ secrets.server_ssh_key }}
+          fingerprint: ${{ secrets.server_ssh_fingerprint }}
           password: ${{ secrets.server_password }}
           port: 22
-          envs: GH_USERNAME, GITHUB_TOKEN, DEPLOY_MODE, CORE_API_IMAGE, GHCR_USERNAME, GHCR_TOKEN, GRAFANA_ADMIN_USER, GRAFANA_ADMIN_PASSWORD, REDIS_ENABLED, METRICS_ENABLED, MONGO_ENABLED, WORKER_ENABLED, MONGO_BACKUP_ENABLED, MONGO_BACKUP_CRON, MONGO_BACKUP_RETENTION, SERVER_MEMORY_MB, API_MEM_LIMIT, REDIS_MEM_LIMIT, MONGO_MEM_LIMIT, WORKER_MEM_LIMIT
+          envs: DEPLOY_MODE, CORE_API_IMAGE, GHCR_USERNAME, GHCR_TOKEN, GRAFANA_ADMIN_USER, GRAFANA_ADMIN_PASSWORD, REDIS_ENABLED, METRICS_ENABLED, MONGO_ENABLED, WORKER_ENABLED, MONGO_BACKUP_ENABLED, MONGO_BACKUP_CRON, MONGO_BACKUP_RETENTION, MONGO_BACKUP_REMOTE, MONGO_BACKUP_S3_ENDPOINT, MONGO_BACKUP_S3_REGION, MONGO_BACKUP_REMOTE_RETENTION_DAYS, MONGO_BACKUP_S3_ACCESS_KEY_ID, MONGO_BACKUP_S3_SECRET_ACCESS_KEY, MONGO_BACKUP_SFTP_KEY, MONGO_BACKUP_SFTP_KNOWN_HOSTS, DOCKER_LOG_MAX_SIZE, DOCKER_LOG_MAX_FILE, SERVER_MEMORY_MB, API_MEM_LIMIT, REDIS_MEM_LIMIT, MONGO_MEM_LIMIT, WORKER_MEM_LIMIT
           command_timeout: 25m
           script: |
             set -e
             export COMPOSE_HTTP_TIMEOUT=300
+            # Container log rotation (compose interpolation in docker-compose.local.yml).
+            export DOCKER_LOG_MAX_SIZE="${DOCKER_LOG_MAX_SIZE:-100m}" DOCKER_LOG_MAX_FILE="${DOCKER_LOG_MAX_FILE:-3}"
             # Compose v1/v2 compatibility: prefer the v2 plugin, fall back to the legacy binary.
             if docker compose version >/dev/null 2>&1; then DOCKER_COMPOSE="docker compose"; else DOCKER_COMPOSE="docker-compose"; fi
             if [ "$DEPLOY_MODE" = "registry" ]; then
@@ -492,6 +587,9 @@ jobs:
                 exit 1
               fi
               echo "Logging in to ghcr.io..."
+              # The login writes the token into ~/.docker/config.json on the server; the trap
+              # removes it when this script ends, whether the deploy succeeded or failed.
+              trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
               echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin || exit 1
               # Preflight BEFORE the stack is touched: a denied pull must fail here, while the old
               # containers are still serving. Login only proves the token is valid; read access to
@@ -582,39 +680,35 @@ jobs:
                   # `up -d` calls below would see a different config and recreate redis/mongo.
                   . scripts/lib/memory-limits.sh && compute_memory_limits
                   set -a; [ -f "${{ inputs.env_file }}" ] && . "./${{ inputs.env_file }}"; set +a; export ENV_FILE="${{ inputs.env_file }}"
-                  # Only the app container gets force-recreated: redis/mongo keep running
-                  # (compose `up -d` below recreates them automatically if their config changed).
-                  BG_STOP="core-api"
-                  API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }} \
-                    $DOCKER_COMPOSE -f docker-compose.local.yml stop $BG_STOP || true
-                  API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }} \
-                    $DOCKER_COMPOSE -f docker-compose.local.yml rm -f $BG_STOP || true
+                  # The new image is ready BEFORE anything stops: blue and green both serve meanwhile.
                   if [ "$DEPLOY_MODE" = "registry" ] && [ -n "$CORE_API_IMAGE" ]; then
                     docker pull "$CORE_API_IMAGE"
                   else
                     API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }} \
                       $DOCKER_COMPOSE -f docker-compose.local.yml build --no-cache core-api
                   fi
+                  # Swap with no window where nobody serves (scripts/lib/blue-green.sh): green answers
+                  # as api-service while blue is replaced; nginx is reloaded, never restarted. Only the
+                  # app container is recreated — redis/mongo keep running (`up -d` recreates them only
+                  # if their own config changed).
+                  . scripts/lib/blue-green.sh
+                  bg_join_green || echo "Warning: green could not take traffic — the swap will have a short gap"
+                  bg_retire_blue
                   ( set -a; [ -f "${{ inputs.env_file }}" ] && . "./${{ inputs.env_file }}"; set +a; export ENV_FILE="${{ inputs.env_file }}" API_ENV=${{ inputs.api_env }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} NGINX_MODE=${{ inputs.nginx_mode }} CORE_API_IMAGE="$CORE_API_IMAGE"; $DOCKER_COMPOSE -f docker-compose.local.yml up -d $CORE_UP )
-                  # Wait for the new api to become healthy before declaring the swap done
-                  echo "Waiting for new api-service to become healthy..."
-                  attempts=0; max_attempts=150
-                  while true; do
-                    # exact name (docker ps name filter would also match api-service-green)
-                    status=$(docker inspect api-service --format '{{.State.Health.Status}}' 2>/dev/null || true)
-                    if [ "$status" = "healthy" ]; then echo "api-service is healthy"; break; fi
-                    attempts=$((attempts+1))
-                    if [ $attempts -ge $max_attempts ]; then
-                      echo "Error: api-service failed to become healthy after swap"
-                      docker logs --tail=200 api-service 2>&1 || true
-                      exit 1
-                    fi
-                    sleep 2
-                  done
-                  # Restart nginx so it picks up the new upstream immediately
-                  # (the resolver in nginx.conf re-resolves within 10s anyway; this is belt-and-braces)
-                  ( set -a; [ -f "${{ inputs.env_file }}" ] && . "./${{ inputs.env_file }}"; set +a; export ENV_FILE="${{ inputs.env_file }}" API_ENV=${{ inputs.api_env }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }}; $DOCKER_COMPOSE -f docker-compose.local.yml restart nginx || true )
-                  MIGRATIONS_RUN=${{ inputs.migrations_run }} ./scripts/local-containers-run.sh bg-down ${{ inputs.api_env }} || true
+                  # A new blue that never gets healthy fails the run, but green stays and keeps serving.
+                  bg_wait_healthy api-service 150 || exit 1
+                  bg_nginx_reload
+                  bg_retire_green
+                  # nginx renders its template only at start: recreate it when this release changed the
+                  # template (the bind mount still points at the previous file) — a one-second gap, and
+                  # only then. Otherwise `up -d` recreates it only if its compose config changed.
+                  NGINX_RECREATE=""
+                  if [ -f "$HOME/app.bak/.docker/nginx/nginx.conf.template.${{ inputs.nginx_mode }}" ] && \
+                     ! cmp -s "$HOME/app.bak/.docker/nginx/nginx.conf.template.${{ inputs.nginx_mode }}" ".docker/nginx/nginx.conf.template.${{ inputs.nginx_mode }}"; then
+                    NGINX_RECREATE="--force-recreate"
+                    echo "nginx template changed in this release — recreating nginx"
+                  fi
+                  ( set -a; [ -f "${{ inputs.env_file }}" ] && . "./${{ inputs.env_file }}"; set +a; export ENV_FILE="${{ inputs.env_file }}" API_ENV=${{ inputs.api_env }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }}; $DOCKER_COMPOSE -f docker-compose.local.yml up -d --no-deps $NGINX_RECREATE nginx || true )
                   API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} \
                     $DOCKER_COMPOSE -f docker-compose.local.yml stop $EXTRA_STOP || true
                   API_ENV=${{ inputs.api_env }} ENV_FILE=${{ inputs.env_file }} NGINX_MODE=${{ inputs.nginx_mode }} DOMAINS=${{ inputs.domain }} FIRST_DOMAIN=${{ inputs.domain }} \
@@ -666,6 +760,36 @@ jobs:
             if [ "$MONGO_ENABLED" = "true" ] && [ "$MONGO_BACKUP_ENABLED" = "true" ]; then
               mkdir -p "$HOME/db-backups"
               chmod +x "$HOME/app/scripts/backup-mongo.sh" "$HOME/app/scripts/restore-mongo.sh" 2>/dev/null || true
+              # Off-site destination and its keys: a 0600 file next to the dumps that backup-mongo.sh
+              # reads (scripts/lib/backup-remote.sh). Rewritten on every deploy; an empty
+              # mongo_backup_remote removes it. Values are single-quoted (the file is sourced by bash)
+              # and written with printf: `echo` in sh would turn the key's literal \n into newlines.
+              REMOTE_ENV="$HOME/db-backups/.remote.env"
+              KNOWN_HOSTS_FILE="$HOME/db-backups/.known_hosts"
+              shq() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
+              if [ -n "${MONGO_BACKUP_REMOTE:-}" ]; then
+                KH=""
+                if [ -n "${MONGO_BACKUP_SFTP_KNOWN_HOSTS:-}" ]; then
+                  ( umask 077; printf '%s\n' "$MONGO_BACKUP_SFTP_KNOWN_HOSTS" > "$KNOWN_HOSTS_FILE" )
+                  KH="$KNOWN_HOSTS_FILE"
+                fi
+                # The PEM key goes on one line with literal \n — the form rclone reads from an env file.
+                KEY_ONE_LINE="$(printf '%s' "${MONGO_BACKUP_SFTP_KEY:-}" | awk 'BEGIN{ORS="\\n"}1')"
+                ( umask 077; {
+                  printf '%s=%s\n' MONGO_BACKUP_REMOTE "$(shq "$MONGO_BACKUP_REMOTE")"
+                  printf '%s=%s\n' MONGO_BACKUP_S3_ENDPOINT "$(shq "${MONGO_BACKUP_S3_ENDPOINT:-}")"
+                  printf '%s=%s\n' MONGO_BACKUP_S3_REGION "$(shq "${MONGO_BACKUP_S3_REGION:-}")"
+                  printf '%s=%s\n' MONGO_BACKUP_S3_ACCESS_KEY_ID "$(shq "${MONGO_BACKUP_S3_ACCESS_KEY_ID:-}")"
+                  printf '%s=%s\n' MONGO_BACKUP_S3_SECRET_ACCESS_KEY "$(shq "${MONGO_BACKUP_S3_SECRET_ACCESS_KEY:-}")"
+                  printf '%s=%s\n' MONGO_BACKUP_SFTP_KEY_PEM "$(shq "$KEY_ONE_LINE")"
+                  printf '%s=%s\n' MONGO_BACKUP_SFTP_KNOWN_HOSTS_FILE "$(shq "$KH")"
+                  printf '%s=%s\n' MONGO_BACKUP_REMOTE_RETENTION_DAYS "$(shq "${MONGO_BACKUP_REMOTE_RETENTION_DAYS:-0}")"
+                } > "$REMOTE_ENV" )
+                echo "Mongo backup off-site copy: ${MONGO_BACKUP_REMOTE%%://*} (keys in $REMOTE_ENV, 0600)"
+              else
+                rm -f "$REMOTE_ENV" "$KNOWN_HOSTS_FILE"
+                echo "Mongo backup off-site copy: off (dumps stay on this server)"
+              fi
               CRON_LINE="${MONGO_BACKUP_CRON:-30 3 * * *} ENV_FILE=${{ inputs.env_file }} API_ENV=${{ inputs.api_env }} MONGO_BACKUP_RETENTION=${MONGO_BACKUP_RETENTION:-14} $HOME/app/scripts/backup-mongo.sh >> $HOME/db-backups/backup.log 2>&1 $BACKUP_MARKER"
               ( crontab -l 2>/dev/null | grep -vF "$BACKUP_MARKER" || true; echo "$CRON_LINE" ) | crontab -
               echo "Mongo backup cron installed: ${MONGO_BACKUP_CRON:-30 3 * * *} (retention ${MONGO_BACKUP_RETENTION:-14})"
@@ -676,10 +800,12 @@ jobs:
 
       - name: 🧹 Cleanup backup on success
         if: always() && steps.deploy_run.outcome == 'success'
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         with:
           host: ${{ secrets.server_host }}
           username: ${{ secrets.server_username }}
+          key: ${{ secrets.server_ssh_key }}
+          fingerprint: ${{ secrets.server_ssh_fingerprint }}
           password: ${{ secrets.server_password }}
           port: 22
           script: |
@@ -698,10 +824,12 @@ jobs:
 
       - name: 🧹 Cleanup app_new containers and images
         if: always()
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         with:
           host: ${{ secrets.server_host }}
           username: ${{ secrets.server_username }}
+          key: ${{ secrets.server_ssh_key }}
+          fingerprint: ${{ secrets.server_ssh_fingerprint }}
           password: ${{ secrets.server_password }}
           port: 22
           script: |
@@ -711,14 +839,6 @@ jobs:
             echo "Logs certbot-init:"
             cd $HOME/app || true
             $DOCKER_COMPOSE -f docker-compose.local.yml logs certbot-init || true
-
-            echo "Restarting nginx with proper env context after deploy..."
-            API_ENV=${{ inputs.api_env }} \
-            ENV_FILE=${{ inputs.env_file }} \
-            NGINX_MODE=${{ inputs.nginx_mode }} \
-            DOMAINS=${{ inputs.domain }} \
-            FIRST_DOMAIN=${{ inputs.domain }} \
-              $DOCKER_COMPOSE -f docker-compose.local.yml restart nginx || true
 
             echo "🧹 Starting Docker cleanup..."
             docker images --filter "reference=app_new_*" --filter "reference=app_new-*" --format "table {{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.Size}}" || true
@@ -749,14 +869,49 @@ jobs:
 
             echo "✅ Docker cleanup completed"
 
-      
+      # Runs after deploy and cleanup, so it sees what a visitor sees. Until now a deploy
+      # was "green" when the ssh script exited 0 — a 502 from nginx or a crash-looping api was
+      # noticed by users first.
+      - name: 🔎 Smoke check from outside
+        if: success() && inputs.smoke_check_enabled
+        env:
+          DOMAIN: ${{ inputs.domain }}
+          NGINX_MODE: ${{ inputs.nginx_mode }}
+          CERTBOT_TEST_MODE: ${{ inputs.certbot_test_mode }}
+        run: |
+          SCHEME=https; [ "$NGINX_MODE" = "http" ] && SCHEME=http
+          # Let's Encrypt staging issues an untrusted chain on purpose.
+          INSECURE=""; [ "$CERTBOT_TEST_MODE" = "true" ] && INSECURE="-k"
+          check() {
+            local url="$1" attempt=1 code
+            while [ $attempt -le 12 ]; do
+              # -w prints 000 when the connection itself failed; a slow first answer after a
+              # container start is the normal case the retries are for.
+              code=$(curl $INSECURE -sS -o /tmp/smoke.body -w '%{http_code}' --max-time 30 "$url" 2>/dev/null)
+              if [ "${code:-000}" = "200" ]; then
+                echo "OK  $url ($code)"
+                return 0
+              fi
+              echo "..  $url answered $code, attempt $attempt/12"
+              attempt=$((attempt + 1))
+              sleep 10
+            done
+            echo "FAIL $url — last answer ${code:-000}"
+            head -c 600 /tmp/smoke.body 2>/dev/null || true
+            echo
+            return 1
+          }
+          check "$SCHEME://$DOMAIN/api/v1/healthcheck"
+          echo "healthcheck body: $(head -c 300 /tmp/smoke.body)"
+          check "$SCHEME://$DOMAIN/"
+
   failure-notify:
     if: ${{ failure() && inputs.notify_enabled }}
     needs: [deploy]
     runs-on: ubuntu-latest
     steps:
     - name: ⬇️ Checkout repo
-      uses: actions/checkout@v2
+      uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
     - name: Send Telegram Message
       env:
         TG_TOKEN: ${{ secrets.tg_token }}
@@ -782,7 +937,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: ⬇️ Checkout repo
-      uses: actions/checkout@v2
+      uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
     - name: Send Telegram Message
       env:
         TG_TOKEN: ${{ secrets.tg_token }}
@@ -808,7 +963,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: ⬇️ Checkout repo
-      uses: actions/checkout@v2
+      uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
     - name: Send Telegram Message
       env:
         TG_TOKEN: ${{ secrets.tg_token }}

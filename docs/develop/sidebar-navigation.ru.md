@@ -25,7 +25,7 @@ const CollapsibleSection = ({ title, children, defaultOpen }) => {
 - `open` инициализируется **однократно** из `defaultOpen` и никак не связан с `usePathname()`.
 - `defaultOpen` задаётся статически в `PlatformLayout.tsx` (обе секции — `defaultOpen: true`), то есть не зависит от текущего маршрута.
 - Подсветка **отдельных ссылок** уже вычисляется через `matchesPathname(item.href, pathname)` (`src/utils/matchPath.ts`), но на **уровне секции** этот сигнал не используется.
-- Каждая группа маршрутов (`src/app/admin/layout.tsx`, `src/app/profile/layout.tsx`, `.../articles/layout.tsx`, …) оборачивает свой собственный экземпляр `PlatformLayout` → `Sidebar`. При переходе между группами React размонтирует и монтирует поддерево сайдбара заново, и локальный `useState` теряется. Провайдер, переживающий эти переходы, должен находиться выше — в `src/app/layout.tsx`.
+- Раньше каждый раздел (`src/app/admin/layout.tsx`, `src/app/profile/layout.tsx`, …) оборачивал свой собственный экземпляр `PlatformLayout` → `Sidebar`, и при переходе между разделами React размонтировал и монтировал поддерево сайдбара заново — локальный `useState` терялся. С 13.09.2026 кабинет — одна группа маршрутов `src/app/(cabinet)/layout.tsx` (скобки на URL не влияют), сайдбар живёт через переходы `/admin` ↔ `/profile` ↔ `/notifications` ↔ `/ui-kit`. Провайдер состояния, если понадобится ещё выше, — в `src/app/layout.tsx`.
 
 Дополнительный риск: ключ секции сейчас — локализованный `title`. При смене языка строка меняется, и любое сохранённое по ней состояние «отвяжется». Нужен стабильный `id`.
 

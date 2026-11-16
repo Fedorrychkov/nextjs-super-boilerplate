@@ -114,6 +114,11 @@ export const ArticleListTable = ({ isLoading, data }: Props) => {
                   >
                     {item.status ? t(`article.statuses.${item.status}`) : '-'}
                   </Badge>
+                  {item.scheduledAt && item.status !== ArticleStatus.PUBLISHED && (
+                    <Typography asTag="span" variant="Body/XS/Regular" className="text-muted-foreground">
+                      {t('article.ui.publication.scheduledShort', { date: time(item.scheduledAt).format('DD.MM HH:mm') })}
+                    </Typography>
+                  )}
                 </div>
               </TableCell>
             )}

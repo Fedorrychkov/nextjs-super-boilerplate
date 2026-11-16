@@ -2,12 +2,17 @@ import connectDB from '@lib/db/client'
 import PlatformNotification from '@lib/db/models/PlatformNotification'
 import User from '@lib/db/models/User'
 import { ValidationError } from '@lib/error/custom-errors'
+import { notificationsQueue } from '@lib/queues/notifications.queue'
+import { enqueue } from '@lib/queues/queue'
+import { isWorkerAlive } from '@lib/services/worker-health.service'
 import { buildAbsoluteNotificationUrl, normalizeNotificationUrlPath } from '@lib/utils/notification-url'
 import mongoose from 'mongoose'
 
 import { NotificationChannel, type NotificationChannelDeliveryModel, NotificationDeliveryStatus, type PlatformNotificationModel } from '~/api/notification'
 import type { CreatePlatformNotificationDto, PlatformNotificationFilter } from '~/api/notification/types'
 import type { TFunction } from '~/lib/i18n'
+import { getDefaultLocale } from '~/lib/i18n/config'
+import { getT } from '~/lib/i18n/getT'
 import type { PaginationMeta } from '~/types/pagination'
 import { time } from '~/utils/time'
 
@@ -50,6 +55,17 @@ function computeAggregateDeliveryStatus(recipientUserId: string | null, deliveri
   const attempted = deliveries.filter((d) => d.attempted)
 
   if (attempted.length === 0) {
+    // No channel was even tried. With channels configured that means every one of them was
+    // skipped (mail not configured, no push subscription) — say so, do not call it delivered.
+    // Without channels the in-app record itself is the delivery.
+    if (deliveries.length > 0 && deliveries.every((d) => d.status === NotificationDeliveryStatus.SKIPPED_NO_TARGET)) {
+      return NotificationDeliveryStatus.SKIPPED_NO_TARGET
+    }
+
+    if (deliveries.length > 0) {
+      return NotificationDeliveryStatus.SKIPPED
+    }
+
     return NotificationDeliveryStatus.DELIVERED
   }
 
@@ -192,7 +208,25 @@ function escapeHtml(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
+/** A claim older than this is a crashed attempt, not a running one. */
+const DELIVERY_LEASE_MS = 5 * 60 * 1000
+/** Younger than this a pending notification is just queued, not lost. */
+const REQUEUE_AFTER_MS = 2 * 60 * 1000
+/** Older than this it is not delivered at all: "someone signed in to your account" three days late only scares. */
+const REQUEUE_WITHIN_MS = 24 * 60 * 60 * 1000
+const REQUEUE_BATCH = 200
+/** How long the per-channel delivery log (errors, counts) is kept. The notification itself stays. */
+const DELIVERY_HISTORY_DAYS = 90
+const RETENTION_BATCH = 500
+
 export class PlatformNotificationService {
+  /**
+   * Record a notification and deliver it. When the worker is alive, delivery goes to the
+   * `notifications` queue: the request does not wait for mail and push services, and a failing
+   * channel does not slow the action the notification accompanies. Without a live worker (the
+   * default deployment, local development) it is delivered right here, as before — a queue nobody
+   * reads would lose it.
+   */
   async createAndDeliver(params: CreatePlatformNotificationDto, t: TFunction): Promise<PlatformNotificationModel> {
     await connectDB()
 
@@ -208,6 +242,9 @@ export class PlatformNotificationService {
       throw new ValidationError(t('platformNotifications.errors.invalidRecipientUserId'))
     }
 
+    // Nobody or nothing to deliver to: the record is final at once.
+    const needsDelivery = Boolean(recipientUserId) && channelsRequested.length > 0
+
     const created = await PlatformNotification.create({
       recipientUserId: recipientUserId ? new mongoose.Types.ObjectId(recipientUserId) : null,
       type: String(params.type ?? '').trim(),
@@ -217,50 +254,140 @@ export class PlatformNotificationService {
       source: params.source?.trim() || null,
       channelsRequested,
       channelDeliveries: [],
-      deliveryStatus: NotificationDeliveryStatus.PENDING,
+      deliveryStatus: needsDelivery ? NotificationDeliveryStatus.PENDING : computeAggregateDeliveryStatus(recipientUserId, []),
       createdAt: time().toISOString(),
     })
 
-    const notificationId = created._id.toString()
-    const channelDeliveries: NotificationChannelDeliveryModel[] = []
+    if (!needsDelivery) return docToModel(created)
 
-    if (recipientUserId) {
-      for (const channel of channelsRequested) {
-        if (channel === NotificationChannel.WEB_PUSH) {
-          channelDeliveries.push(
-            await deliverWebPush(
-              recipientUserId,
-              {
-                type: created.type,
-                title: created.title,
-                body: created.body,
-                urlPath: created.urlPath,
-                notificationId,
-              },
-              t,
-            ),
-          )
-        } else if (channel === NotificationChannel.EMAIL) {
-          channelDeliveries.push(
-            await deliverEmail(
-              {
-                recipientUserId,
-                title: created.title,
-                body: created.body,
-                urlPath: created.urlPath,
-              },
-              t,
-            ),
-          )
-        }
-      }
+    const notificationId = created._id.toString()
+
+    if ((await isWorkerAlive()) && (await enqueue(notificationsQueue, { notificationId }, { jobId: notificationId })) === 'queued') {
+      return docToModel(created)
     }
 
-    created.channelDeliveries = channelDeliveries
-    created.deliveryStatus = computeAggregateDeliveryStatus(recipientUserId, channelDeliveries)
-    await created.save()
+    const delivered = await this.deliver(notificationId, t)
 
-    return docToModel(created)
+    if (delivered) return delivered
+
+    // Another delivery took the record — answer with what is in the database now, not the snapshot before it.
+    return docToModel((await PlatformNotification.findById(notificationId)) ?? created)
+  }
+
+  /**
+   * Deliver a recorded notification over its channels. Called by the worker, and by
+   * `createAndDeliver` when there is no worker.
+   *
+   * Idempotent: the record is taken by a lease — only a pending one not taken recently by another
+   * attempt. A retried job and a requeue sweep may arrive for the same record; the notification goes
+   * out once. Not taken — `null`: it is delivered already or being delivered right now.
+   */
+  async deliver(notificationId: string, t: TFunction = getT(getDefaultLocale())): Promise<PlatformNotificationModel | null> {
+    await connectDB()
+
+    const now = new Date()
+    const claimed = await PlatformNotification.findOneAndUpdate(
+      {
+        _id: new mongoose.Types.ObjectId(notificationId),
+        deliveryStatus: NotificationDeliveryStatus.PENDING,
+        $or: [{ deliveringAt: null }, { deliveringAt: { $lt: new Date(now.getTime() - DELIVERY_LEASE_MS) } }],
+      },
+      { $set: { deliveringAt: now } },
+      { returnDocument: 'after' },
+    )
+
+    if (!claimed) return null
+
+    try {
+      const recipientUserId = claimed.recipientUserId?.toString() ?? null
+      const channelDeliveries: NotificationChannelDeliveryModel[] = []
+
+      if (recipientUserId) {
+        for (const channel of claimed.channelsRequested ?? []) {
+          if (channel === NotificationChannel.WEB_PUSH) {
+            channelDeliveries.push(
+              await deliverWebPush(
+                recipientUserId,
+                { type: claimed.type, title: claimed.title, body: claimed.body, urlPath: claimed.urlPath, notificationId },
+                t,
+              ),
+            )
+          } else if (channel === NotificationChannel.EMAIL) {
+            channelDeliveries.push(await deliverEmail({ recipientUserId, title: claimed.title, body: claimed.body, urlPath: claimed.urlPath }, t))
+          }
+        }
+      }
+
+      const deliveryStatus = computeAggregateDeliveryStatus(recipientUserId, channelDeliveries)
+      // Saved only while the lease is ours: a crashed attempt whose lease expired must not overwrite a newer one.
+      const finished = await PlatformNotification.updateOne(
+        { _id: claimed._id, deliveringAt: now },
+        { $set: { channelDeliveries, deliveryStatus, deliveringAt: null } },
+      )
+
+      if (!finished.matchedCount) throw new Error('Notification delivery lease lost')
+
+      claimed.channelDeliveries = channelDeliveries
+      claimed.deliveryStatus = deliveryStatus
+      claimed.deliveringAt = null
+
+      return docToModel(claimed)
+    } catch (error) {
+      // Release the lease so the retry (or the sweep) can take it at once instead of in five minutes.
+      await PlatformNotification.updateOne({ _id: claimed._id, deliveringAt: now }, { $set: { deliveringAt: null } }).catch(() => undefined)
+
+      throw error
+    }
+  }
+
+  /**
+   * Re-enqueue notifications stuck pending: the job was lost (Redis restarted) or the worker died
+   * mid-delivery. Run by the worker on a schedule.
+   */
+  async requeueStuck(now: Date = new Date()): Promise<number> {
+    await connectDB()
+
+    const stuck = await PlatformNotification.find({
+      deliveryStatus: NotificationDeliveryStatus.PENDING,
+      createdAt: { $lt: new Date(now.getTime() - REQUEUE_AFTER_MS).toISOString(), $gt: new Date(now.getTime() - REQUEUE_WITHIN_MS).toISOString() },
+      $or: [{ deliveringAt: null }, { deliveringAt: { $lt: new Date(now.getTime() - DELIVERY_LEASE_MS) } }],
+    })
+      .select('_id')
+      .limit(REQUEUE_BATCH)
+      .lean()
+
+    for (const { _id } of stuck) {
+      const notificationId = String(_id)
+
+      // A new jobId per requeue: BullMQ does not add a job whose id still sits among completed or
+      // failed ones, so the same id would silently do nothing. The lease, not the job id, rules out
+      // a double delivery.
+      await enqueue(notificationsQueue, { notificationId }, { jobId: `${notificationId}-${now.getTime()}` })
+    }
+
+    return stuck.length
+  }
+
+  /**
+   * Retention: drop the per-channel delivery log (provider errors, counts) older than
+   * DELIVERY_HISTORY_DAYS. The notification itself — title, body, link, aggregate status — stays
+   * in the person's list. Run by the worker.
+   */
+  async sweepDeliveryHistory(now: Date = new Date()): Promise<number> {
+    await connectDB()
+
+    const cutoff = new Date(now.getTime() - DELIVERY_HISTORY_DAYS * 24 * 60 * 60 * 1000).toISOString()
+    const filter = { createdAt: { $lte: cutoff }, deliveryHistoryClearedAt: null, 'channelDeliveries.0': { $exists: true } }
+    const ids = await PlatformNotification.find(filter).select('_id').limit(RETENTION_BATCH).lean()
+
+    if (!ids.length) return 0
+
+    const result = await PlatformNotification.updateMany(
+      { ...filter, _id: { $in: ids.map(({ _id }) => _id) } },
+      { $set: { channelDeliveries: [], deliveryHistoryClearedAt: now } },
+    )
+
+    return result.modifiedCount
   }
 
   async listPaginated(filter: PlatformNotificationFilter): Promise<PaginationMeta<PlatformNotificationModel>> {

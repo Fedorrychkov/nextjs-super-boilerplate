@@ -6,11 +6,12 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
+import { isEmailDeliverable, resolveEmailSendMode } from '../lib/services/email/email-mode'
+import { isMissingOrDefaultJwtSecret, isShortJwtSecret } from '../src/lib/security/jwtSecret'
+
 type Level = 'error' | 'warn' | 'info'
 
 type Finding = { level: Level; code: string; message: string }
-
-const DEFAULT_JWT_SECRET = 'your-secret-key-change'
 
 function loadEnvFile(filePath: string): void {
   if (!existsSync(filePath)) {
@@ -82,8 +83,27 @@ async function main() {
   push(findings, 'info', 'env_file', `Loaded ${envFile}`)
   push(findings, 'info', 'app_env', `APP_ENV=${process.env.APP_ENV ?? 'development'}`)
 
-  if (!JWT_CONFIG.secret || JWT_CONFIG.secret === DEFAULT_JWT_SECRET) {
-    push(findings, isProd ? 'error' : 'warn', 'jwt_secret', 'JWT_SECRET is empty or still the default placeholder — set a strong random value.')
+  // Same rules as src/instrumentation.ts. Only empty/default is an error (no signature at all);
+  // a short secret is a warning — stopping a deploy over it would be an outage, not a fix.
+  if (isMissingOrDefaultJwtSecret(JWT_CONFIG.secret)) {
+    push(
+      findings,
+      isProd ? 'error' : 'warn',
+      'jwt_secret',
+      'JWT_SECRET is empty or still the default placeholder — set a strong random value (make setup generates one).',
+    )
+  } else if (isShortJwtSecret(JWT_CONFIG.secret)) {
+    push(findings, 'warn', 'jwt_secret_short', 'JWT_SECRET is shorter than 32 characters — rotate to a longer one when convenient.')
+  }
+
+  if (JWT_CONFIG.refreshExpiresInConfigured > JWT_CONFIG.refreshCookieMaxAge) {
+    push(
+      findings,
+      'warn',
+      'jwt_refresh_capped',
+      `JWT_REFRESH_EXPIRES_IN=${JWT_CONFIG.refreshExpiresInConfigured} is above the ${JWT_CONFIG.refreshCookieMaxAge}s refresh cookie — ` +
+        'the effective session lifetime is the cookie lifetime (config/env.ts). Set 604800 or raise the cap in code.',
+    )
   }
 
   if (!MONGODB_CONFIG.uri && !MONGODB_CONFIG.host) {
@@ -119,19 +139,51 @@ async function main() {
     push(findings, 'warn', 'mfa_key_short', 'MFA_ENCRYPTION_KEY looks short; use a long random string.')
   }
 
+  /**
+   * Mail: `elastic` is the only mode that delivers, `console` logs (a dev/stage workflow — codes
+   * are read from the log), `empty` is off, anything else is a typo. A typo used to pass this
+   * check green and drop every mail at runtime. Errors only where they already were (empty +
+   * email registration in production, elastic without a key); the rest are warnings — a
+   * misconfigured mail must be visible, but it must not stop a deploy that ran yesterday.
+   */
+  const emailMode = resolveEmailSendMode(EMAIL_CONFIG.sendMode)
   const registrationEmail = REGISTRATION_CONFIG.mode === 'email'
+  const emailDeliverable = isEmailDeliverable(EMAIL_CONFIG.sendMode, EMAIL_CONFIG.emailApiKey)
 
-  if (registrationEmail && EMAIL_CONFIG.sendMode === 'empty') {
+  if (emailMode === null) {
+    push(
+      findings,
+      'warn',
+      'email_mode_unknown',
+      `EMAIL_SEND_MODE=${EMAIL_CONFIG.sendMode} is not a known mode (console | elastic | empty) — no mail is delivered, sign-up and recovery codes fail.`,
+    )
+  }
+
+  if (registrationEmail && emailMode === 'empty') {
     push(findings, isProd ? 'error' : 'warn', 'email_signup', 'REGISTRATION_MODE=email but EMAIL_SEND_MODE=empty — sign-up codes will not be delivered.')
   }
 
-  if (EMAIL_CONFIG.sendMode === 'elastic' && !EMAIL_CONFIG.emailApiKey?.trim()) {
+  if (registrationEmail && emailMode === 'console' && isProd) {
+    push(
+      findings,
+      'warn',
+      'email_signup_console',
+      'REGISTRATION_MODE=email with EMAIL_SEND_MODE=console in production — users are asked for a code that only reaches the server log.',
+    )
+  }
+
+  if (emailMode === 'elastic' && !EMAIL_CONFIG.emailApiKey?.trim()) {
     push(findings, 'error', 'email_elastic', 'EMAIL_SEND_MODE=elastic requires EMAIL_API_KEY.')
   }
 
   if (ACCOUNT_CONFIG.passwordChangeEnabled || ACCOUNT_CONFIG.passwordForgotEnabled) {
-    if (EMAIL_CONFIG.sendMode === 'empty' && isProd) {
-      push(findings, 'warn', 'password_email', 'Password change/forgot enabled but EMAIL_SEND_MODE=empty — recovery may be MFA-only or support-only.')
+    if (!emailDeliverable && isProd) {
+      push(
+        findings,
+        'warn',
+        'password_email',
+        `Password change/forgot enabled but mail does not deliver (EMAIL_SEND_MODE=${emailMode ?? EMAIL_CONFIG.sendMode}) — recovery is MFA- or support-only.`,
+      )
     }
   }
 
@@ -157,6 +209,15 @@ async function main() {
       NOTIFICATION_CONFIG.passwordChannels,
     ].join(',')
 
+    if ((channels.includes('email') || channels.includes('mail') || channels.includes('all')) && !emailDeliverable) {
+      push(
+        findings,
+        'warn',
+        'notify_email',
+        `Notifications use the email channel but mail does not deliver (EMAIL_SEND_MODE=${emailMode ?? EMAIL_CONFIG.sendMode}) — recorded as skipped.`,
+      )
+    }
+
     if (channels.includes('web_push') || channels.includes('all')) {
       if (!PUSH_CONFIG.publicKey?.trim() || !PUSH_CONFIG.privateKey?.trim()) {
         push(findings, 'warn', 'vapid', 'Notifications may use web_push but VAPID keys are missing.')
@@ -179,15 +240,6 @@ async function main() {
 
   if (workerHeartbeat && !workerEnabled) {
     push(findings, 'info', 'worker_heartbeat_only', 'WORKER_HEARTBEAT=true but WORKER_ENABLED is off — the flag only matters inside the worker container.')
-  }
-
-  if (workerEnabled && !workerHeartbeat) {
-    push(
-      findings,
-      'info',
-      'worker_no_jobs_hint',
-      'WORKER_ENABLED=true with WORKER_HEARTBEAT off — make sure scripts/worker.ts has project jobs enabled, otherwise the worker idles ("no jobs registered").',
-    )
   }
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? ''

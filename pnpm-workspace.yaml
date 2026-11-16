@@ -3,13 +3,20 @@
 # Версионно-скоупленные селекторы (picomatch/ws/brace-expansion) правят только уязвимые ветки,
 # не трогая места, где в дереве нужна другая мажорная версия.
 overrides:
-  dompurify: '>=3.4.11'
+  dompurify: '>=3.4.17' # GHSA-mrv2-3pqr-j5jr (high) — исправлено в 3.4.17
   happy-dom: '>=20.8.9'
-  markdown-it: '>=14.2.0'
+  # @tiptap/pm → prosemirror-markdown → markdown-it (^14); high-advisory исправлены в 14.3.3, 15 — другая мажорная.
+  markdown-it: '^14.3.3'
   linkify-it: '>=5.0.1'
-  postcss: '>=8.5.10'
+  # critters → postcss → nanoid, source-map-js: high-advisory октября 2026.
+  postcss: '>=8.5.18'
+  'nanoid@>=3.0.0 <3.3.18': '^3.3.18'
+  source-map-js: '>=1.2.2'
+  # sass → immutable 5; @tiptap/pm → prosemirror-view.
+  'immutable@>=5.0.0 <5.1.8': '^5.1.8'
+  prosemirror-view: '>=1.42.3'
   '@babel/core': '>=7.29.6'
   'picomatch@>=4.0.0 <4.0.4': '>=4.0.4'
   'ws@>=7.0.0 <7.5.11': '>=7.5.11'
-  'brace-expansion@>=1.0.0 <1.1.13': 1.1.13
+  'brace-expansion@>=1.0.0 <1.1.20': 1.1.21
   'brace-expansion@>=4.0.0 <5.0.6': 5.0.6

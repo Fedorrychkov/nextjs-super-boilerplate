@@ -3,24 +3,24 @@ import AiReferralVisit from '@lib/db/models/AiReferralVisit'
 
 import type { AiReferralSource } from '~/api/ai-referrals/model'
 
-const AI_REFERRAL_HOST_RULES: Array<{ source: AiReferralSource; hostIncludes: string[] }> = [
-  { source: 'perplexity', hostIncludes: ['perplexity.ai'] },
-  { source: 'chatgpt', hostIncludes: ['chatgpt.com', 'chat.openai.com'] },
-  { source: 'copilot', hostIncludes: ['copilot.microsoft.com', 'bing.com'] },
-  { source: 'gemini', hostIncludes: ['gemini.google.com'] },
-  { source: 'claude', hostIncludes: ['claude.ai'] },
+const AI_REFERRAL_HOST_RULES: Array<{ source: AiReferralSource; hosts: string[] }> = [
+  { source: 'perplexity', hosts: ['perplexity.ai'] },
+  { source: 'chatgpt', hosts: ['chatgpt.com', 'chat.openai.com'] },
+  { source: 'copilot', hosts: ['copilot.microsoft.com'] },
+  { source: 'gemini', hosts: ['gemini.google.com'] },
+  { source: 'claude', hosts: ['claude.ai'] },
 ]
 
 export const detectAiReferralSource = (referrer: string): AiReferralSource | null => {
   let host: string
 
   try {
-    host = new URL(referrer).host.toLowerCase()
+    host = new URL(referrer).hostname.toLowerCase()
   } catch {
     return null
   }
 
-  const matchedRule = AI_REFERRAL_HOST_RULES.find((rule) => rule.hostIncludes.some((entry) => host.includes(entry)))
+  const matchedRule = AI_REFERRAL_HOST_RULES.find((rule) => rule.hosts.some((entry) => host === entry || host.endsWith(`.${entry}`)))
 
   return matchedRule?.source ?? null
 }
@@ -63,7 +63,7 @@ export function detectAiReferralSourceFromUtm(utmSource: string | null | undefin
     return 'perplexity'
   }
 
-  if (s.includes('copilot') || s.includes('bing')) {
+  if (s.includes('copilot')) {
     return 'copilot'
   }
 

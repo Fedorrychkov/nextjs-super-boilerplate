@@ -126,14 +126,18 @@ export const NotifyProvider = ({ children }: { children: React.ReactNode }) => {
     <NotifyContext.Provider value={values}>
       {children}
       <div
-        className={cn('fixed left-0 bottom-0 max-w-[600px] flex flex-col gap-6 p-10', {
+        // The empty padded container covered the bottom-left corner and swallowed clicks on buttons
+        // under it: it is transparent to the pointer, only the toasts themselves take clicks.
+        className={cn('pointer-events-none fixed left-0 bottom-0 max-w-[600px] flex flex-col gap-6 p-10', {
           'z-[1000]': notifies && notifies?.length > 0,
         })}
       >
         {/* preload="none": the 68 KB clip is fetched on the first play(), not on every page load */}
         <audio ref={audioRef} src="/notify.mp3" preload="none" style={{ display: 'none' }} />
         {notifies?.map((notify) => (
-          <AlertBlock notify={notify} onClose={handleClose} key={notify.id} />
+          <div key={notify.id} className="pointer-events-auto">
+            <AlertBlock notify={notify} onClose={handleClose} />
+          </div>
         ))}
       </div>
     </NotifyContext.Provider>

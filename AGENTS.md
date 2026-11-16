@@ -36,10 +36,11 @@ pnpm lint / lint:fix        # ESLint
 pnpm typecheck              # tsc --noEmit
 pnpm test                   # node --test via tsx (*.test.ts, scripts/**/*.test.mjs) — no infrastructure needed
 pnpm format                 # prettier over src/**/*.ts
+pnpm tokens                 # regenerate src/app/tokens.css from config/design-tokens.json (theme colors)
 pnpm build:local|stage|prod # build with env-cmd for the target env
 ```
 
-Pre-commit: husky + lint-staged (`pnpm lint:src` over staged files in `src/`).
+Pre-commit: husky (`typecheck` + `lint-staged`: `eslint --fix --max-warnings 0` over the staged files in `src/` only — no repo-wide lint pass, nothing outside the commit is touched).
 
 ## Structure
 
@@ -143,10 +144,12 @@ message is the source of truth, and a retelling drifts on the first edit.
 ### What wins on conflict (top to bottom)
 
 1. **Nothing irreversible or externally visible without the owner's explicit word for that exact
-   action:** `git push`, a manual deploy (`workflow_dispatch`), any command touching `.env.prod` /
-   `.env.stage`, writes to a live database, restore from backup, sending to external services,
-   secret rotation. One approval covers one action. Everything internal — code, files, search,
-   installs, read-only queries — do yourself and report.
+   action:** push to `main` or any force-push (`prod-deploy.yml` deploys on push to `main`; `main`
+   is fed only by a PR from `develop` that the owner merges), a manual deploy (`workflow_dispatch`),
+   any command touching `.env.prod` / `.env.stage`, writes to a live database, restore from backup,
+   sending to external services, secret rotation. One approval covers one action. Everything
+   internal — code, files, search, installs, read-only queries, pushing a feature branch and
+   opening a PR into `develop` — do yourself and report.
 2. **A direct instruction from the owner in the current session.**
 3. **Correctness and security:** auth and role checks, per-user scoping, secrets never in logs or
    client DTOs, server-side validation.
@@ -204,12 +207,17 @@ exceptions can only shrink.
 |---|---|---|
 | `check-agent-contract` | `pnpm gates` | `AGENTS.md` over 28 KB or with `@file` imports; `CLAUDE.md` without `@AGENTS.md` or over 4 KB |
 | `check-eslint-disable-ratchet` | `pnpm gates` | A new `eslint-disable` (baseline `scripts/eslint-disable-ratchet-baseline.txt`; shrink it with `--update`) |
-| `check-docs-structure` | `pnpm gates` | A doc outside `docs/<topic>/<name>.<ru\|en>.md`, a doc missing from `docs/README.md`, a broken relative link in any `.md` |
+| `check-docs-structure` | `pnpm gates` | A doc outside `docs/<topic>/<name>.<ru\|en>.md`, a doc missing from `docs/README.md`, a broken relative link or `#anchor` in any `.md` |
 | `check-env-reference` | `pnpm gates` | A variable in `.env.example` without a row in `docs/configure/env-reference.{ru,en}.md`, or a documented variable the template no longer has |
-| eslint `no-restricted-syntax` | `pnpm lint` | Raw `<input>/<select>/<textarea>` outside `src/components/ui`; bare `<span>` text instead of `Typography` |
+| `check-actions-pinned` | `pnpm gates` | A third-party `uses:` not pinned to a 40-char SHA, or a registry image in a workflow without `@sha256:` — a tag can be moved to another commit, a SHA cannot |
+| `check-worker-wired` | `pnpm gates` | A queue defined with `defineQueue` whose `consume(...)` is not in a module `scripts/worker.ts` imports, or a raw `new Queue(`/`new Worker(` outside wired modules — jobs would pile up in Redis while producers report "queued" |
+| `check-public-env` | `pnpm gates` | A `NEXT_PUBLIC_*` the code reads or the template has but `config/public-env.json` lacks — the deploy passes only listed names to the build |
+| `check-design-tokens` | `pnpm gates` | `src/app/tokens.css` edited by hand or out of date with `config/design-tokens.json`, or a dark-only token the light theme would leave unset — run `pnpm tokens` |
+| eslint `no-restricted-syntax` (`error`) | `pnpm lint` | Raw `<input>/<select>/<textarea>` outside `src/components/ui`; bare `<span>` text instead of `Typography` |
 | `gitleaks` | `Secret scan` workflow | New secret material in tracked files |
 | `Lighthouse` | `lighthouse.yml` | Public pages heavier than the `lighthouserc.json` budgets (weight and CLS block, timings warn) |
-| `guard-external.sh` | Claude Code `PreToolUse` (`.claude/settings.json`) | Running `git push`, any `pnpm <script>:prod` / `:stage` (build, start, worker, doctor), commands naming `.env.prod` / `.env.stage`, running `restore-mongo.sh` / `mongorestore` |
+| `guard-external.sh` | Claude Code `PreToolUse` (`.claude/settings.json`) | Bare `git push` / into `main` / `--force` / `--all`, `gh pr merge`, `gh api` writes, `gh workflow run` / `release` / `secret`, `docker volume rm` / `prune`, `compose down -v`, `system prune`, `crontab -r`, deleting backups, `pnpm <script>:prod` / `:stage`, `.env.prod` / `.env.stage`, `restore-mongo.sh` / `mongorestore` — also inside `ssh '…'` / `bash -c` / `eval`. Verdict table: `scripts/guard-external.test.mjs` |
+| `check-agent-gate` | `pnpm gates` | The guard losing its executable bit, the hook losing its `[ -x ]` wrapper, or `settings.json` not wiring it — each would silently switch the whole agent gate off |
 
 ### Documentation discipline
 
@@ -217,7 +225,7 @@ A code change without the doc change is an unfinished task.
 
 - A decision someone may want to revert → dated entry in `docs/decisions/journal.ru.md` (why, and why not otherwise)
 - New env variable → `.env.example` (one-line comment at most) + a row in `docs/configure/env-reference.ru.md` **and** `.en.md`, same section; `pnpm gates` checks the names
-- Plan for large work → `docs/plans/`
+- Plan for large work → `docs/plans/<domain>-<what>.<ru|en>.md` + a row in `docs/plans/README.md`; `pnpm gates` checks both
 - New document → `docs/<topic>/<kebab-name>.<ru|en>.md` + a row in `docs/README.md`; `pnpm gates` checks both
 - Keep `AGENTS.md` and `AGENTS_RU.md` in sync
 
@@ -225,6 +233,7 @@ A code change without the doc change is an unfinished task.
 
 - When starting a new feature, follow an existing domain as a template (e.g. `article`): api → query → app/api/v1 → services → models
 - If a new domain should be usable by AI agents, expose it through the MCP registry (see "MCP server and machine auth" above)
+- A new runtime switch, limit or integration key is a platform setting (`config/platform-settings.ts`, see `docs/configure/platform-settings.ru.md`), not a new env variable; env keeps only what the process needs to start
 - Do not change `pnpm-workspace.yaml` overrides without reason — they are security fixes for transitive dependencies
 - When forking for a new product, edit `config/product.ts` and `.env.local` first, then run `pnpm doctor`; repeat onboarding (new machine, new keys in the template) is `make setup`
 - Before committing: `pnpm gates`, `pnpm lint`, `pnpm typecheck`, `pnpm test`

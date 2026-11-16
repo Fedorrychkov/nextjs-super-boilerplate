@@ -30,7 +30,7 @@
 
 | Проверка | Где | Что ловит |
 |---|---|---|
-| `gates` | `quality` | `check-agent-contract` (размер `AGENTS.md`, тонкий `CLAUDE.md`), `check-eslint-disable-ratchet` (число `eslint-disable` не растёт), `check-docs-structure` (имена `docs/<тема>/<имя>.<ru\|en>.md`, индекс, живые ссылки), `check-env-reference` (`.env.example` ↔ справочник по именам) |
+| `gates` | `quality` | `check-agent-contract` (размер `AGENTS.md`, тонкий `CLAUDE.md`), `check-eslint-disable-ratchet` (число `eslint-disable` не растёт), `check-docs-structure` (имена `docs/<тема>/<имя>.<ru\|en>.md`, индекс, живые ссылки), `check-env-reference` (`.env.example` ↔ справочник по именам), `check-agent-gate` (гейт агента исполняем и навешен через обёртку) |
 | `lint` | `quality` | ESLint: сырые `<input>/<select>/<textarea>` вне `src/components/ui`, голые `<span>`, порядок импортов, prettier |
 | `typecheck` | `quality` | `tsc --noEmit`, strict |
 | `test` | `quality` | `node --test` по `*.test.ts` и `scripts/telegram/*.test.mjs`, без инфраструктуры |
@@ -42,18 +42,20 @@
 
 1. **Целостность scope.** PR делает то, что написано в заголовке, и ничего «заодно».
    Форматирование чужих файлов, переименования мимо задачи — P2 с просьбой вынести.
-2. **Права.** Новый роут — какая обёртка (`withAuth` / `withAdminAuth` / `withApiTokenOrAuth`
-   и scope)? Новый изменяющий эндпоинт — проверка владельца ресурса, не только роли. Публичный
+2. **Права.** Новый роут — какая обёртка (`withAuthMiddleware` с нужной ролью /
+   `withApiTokenOrAuth('<scope>')`)? Новый изменяющий эндпоинт — проверка владельца ресурса,
+   не только роли. Публичный
    DTO — нет `email`, хэшей, серверных полей.
 3. **Секреты и клиент.** Серверная переменная не утекла в `NEXT_PUBLIC_*`; ключи провайдеров не
-   логируются; новая переменная есть в `.env.example` и `docs/ENV_REFERENCE.md`.
+   логируются; новая переменная есть в `.env.example` и `docs/configure/env-reference.ru.md`
+   **и** `.en.md` (это проверяет `check-env-reference`).
 4. **Rate limit.** Новый публичный роут обёрнут `withGlobalRateLimit` или профильным лимитером.
 5. **Тесты.** Новая чистая логика без теста — P1 для средней и крупной задачи. Тест, который не
    может упасть (проверяет мок, а не поведение), — P1.
 6. **Состояния экрана.** Новый экран без loading / error / empty — P2. Ключи i18n добавлены в оба
    словаря (`src/lib/i18n/messages/{ru,en}.ts`).
 7. **Документация.** Изменился процесс, контракт, правило — обновлён `AGENTS.md` или `docs/`;
-   решение, которое захочется отменить, — запись в `docs/DECISIONS_RU.md`.
+   решение, которое захочется отменить, — запись в `docs/decisions/journal.ru.md`.
 8. **Деплой.** Тронуты `.github/workflows/**`, `scripts/local-containers-run.sh`,
    `docker-compose.local.yml` — в PR написано, что должен сделать владелец при выкатке.
 

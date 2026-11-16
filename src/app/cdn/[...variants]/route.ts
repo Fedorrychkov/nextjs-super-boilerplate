@@ -1,9 +1,8 @@
-import connectDB from '@lib/db/client'
-import MediaAsset from '@lib/db/models/MediaAsset'
 import { buildUploadcareCdnUrl } from '@lib/services/cdn-uploadcare.service'
+import { findMediaAssetById } from '@lib/services/media.service'
 import { NextRequest, NextResponse } from 'next/server'
 
-import { MediaResourceType } from '~/api/media'
+import { MediaResourceType, MediaVisibility } from '~/api/media'
 import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 
 const variantToOps: Record<string, string> = {
@@ -20,6 +19,11 @@ const variantToOps: Record<string, string> = {
   'seo-fit': '-/autorotate/yes/-/quality/smart/-/format/auto/-/stretch/off/-/resize/1200x/',
 }
 
+/**
+ * Public, unauthenticated redirect to the CDN. Serves public assets only: a private one answers
+ * 404 here for everyone, including its owner — the same answer as "no such asset", so the route
+ * does not confirm that an id exists. Private files go through `/api/v1/media/[id]/file`.
+ */
 export const GET = async (request: NextRequest, context: { params: Promise<{ variants: string[] }> }) => {
   const { t } = await getServerTFromNextRequestAsync(request)
   const { variants } = await context.params
@@ -30,11 +34,9 @@ export const GET = async (request: NextRequest, context: { params: Promise<{ var
     return NextResponse.json({ message: t('media.errors.invalidRequest') }, { status: 400 })
   }
 
-  await connectDB()
+  const asset = await findMediaAssetById(assetId)
 
-  const asset = await MediaAsset.findById(assetId)
-
-  if (!asset || asset.isDeleted) {
+  if (!asset || asset.isDeleted || asset.visibility === MediaVisibility.PRIVATE) {
     return NextResponse.json({ message: t('media.errors.mediaNotFound') }, { status: 404 })
   }
 

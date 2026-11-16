@@ -18,6 +18,7 @@ Legend: **R** — required in prod, **C** — conditional (when the feature is o
 | `NEXT_PUBLIC_SITE_URL` | http://localhost:3000 | **R** — canonical URL for metadata, sitemap, OAuth redirects |
 | `APP_INTERNAL_ORIGIN` | http://127.0.0.1:3000 | O — server-side requests to the app's own API when the public hostname does not resolve from inside the container |
 | `COMMIT_HASH` | — | Injected by CI; server-only, correlates RUM and deploys |
+| `HEALTHCHECK_DB_STRICT` | false | `true` — `/api/v1/healthcheck` answers 503 when Mongo is unreachable (2 s timeout): the container goes unhealthy, blue/green does not swap, nginx drops the upstream. Default: status is always 200 and the database state is only in the body (`db: ok\|fail`) and the log, so a short database hiccup does not become an outage |
 
 ## Theme & i18n
 
@@ -34,8 +35,8 @@ Legend: **R** — required in prod, **C** — conditional (when the feature is o
 |---|---|---|
 | `JWT_SECRET` | placeholder | **R** — signs access/refresh tokens; `make setup` generates it |
 | `JWT_ACCESS_EXPIRES_IN` | 3600 | Seconds |
-| `JWT_REFRESH_EXPIRES_IN` | 15724800 | ~21 days; refresh session TTL |
-| `MFA_ENCRYPTION_KEY` | — | **R** when TOTP is used. Regenerating invalidates every enrolled MFA |
+| `JWT_REFRESH_EXPIRES_IN` | 604800 | Refresh session TTL in seconds (7 days). Capped at 7 days in `config/env.ts`, the lifetime of the refresh cookie: a larger value is ignored and the doctor warns |
+| `MFA_ENCRYPTION_KEY` | — | **R** when TOTP or platform-setting secrets are used (their key is derived from it by HKDF). Regenerating invalidates every enrolled MFA and makes stored setting secrets unreadable |
 | `FIRST_ADMIN_LOGIN` | — | O — the first admin is created on start if the user does not exist |
 | `FIRST_ADMIN_PASSWORD` | — | O |
 
@@ -77,7 +78,7 @@ The container itself is enabled by the deploy input `worker_enabled`; the variab
 |---|---|---|
 | `REGISTRATION_MODE` | — | `email` — OTP to the mailbox; empty — sign-up without verification |
 | `REGISTRATION_CODE_PEPPER` | JWT_SECRET | HMAC pepper for codes |
-| `EMAIL_SEND_MODE` | empty | `console` (log only) \| `elastic` (Elastic Email API) \| `empty` (do not send) |
+| `EMAIL_SEND_MODE` | empty | `console` — the mail goes to the server log, sign-up and recovery codes are read from there (dev/stage); `elastic` — Elastic Email API, the only production transport; `empty` — no mail. A typo = no mail: `pnpm doctor` warns, and code-based sign-up answers with an honest error instead of "code sent" |
 | `EMAIL_API_KEY` | — | **C** elastic |
 | `EMAIL_FROM` | Noreply \<noreply@localhost\> | **C** elastic — verified sender |
 | `EMAIL_REPLY_TO` | — | O |

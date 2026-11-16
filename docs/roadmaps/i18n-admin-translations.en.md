@@ -39,7 +39,7 @@
 - Модели Mongo: `lib/db/models/I18nLocale.ts`, `I18nTranslationOverride.ts`; API-контракты `src/api/i18n/*`; сервис `lib/services/i18n.service.ts`.
 - Роуты: `GET/POST /api/v1/i18n/locales`, `POST .../locales/sync-from-files`, `GET/PUT /api/v1/i18n/translations`, `POST .../translations/batch`; права ADMIN/EDITOR.
 - Резолв в рантайме: `getT(locale, overrides?)` — **override map → файловая локаль (`en`/`ru` в `getMessages`) → `en` → ключ** (`src/lib/i18n/getT.ts`). Оверрайды на SSR: `getLocaleOverrides` + передача в `I18nProvider` из `src/app/layout.tsx`. Ключи только из flatten `en` (`src/lib/i18n/messageKeys.ts` + проверки в сервисе).
-- Админ UI: `src/app/admin/i18n/page.tsx`, `I18nTranslationsScreen` — табы по локалям, карточки, single/batch save, сброс override, поиск, `react-hook-form`; алерт «синхронизировать локали из файлов в БД» при расхождении с `SUPPORTED_LOCALES`.
+- Админ UI: `src/app/(cabinet)/admin/i18n/page.tsx`, `I18nTranslationsScreen` — табы по локалям, карточки, single/batch save, сброс override, поиск, `react-hook-form`; алерт «синхронизировать локали из файлов в БД» при расхождении с `SUPPORTED_LOCALES`.
 
 **Частично / отличия от текста плана**
 

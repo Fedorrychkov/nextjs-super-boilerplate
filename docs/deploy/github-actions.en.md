@@ -2,8 +2,16 @@
 
 Push to `main` runs `.github/workflows/prod-deploy.yml`: the `quality` gate (gates, lint,
 typecheck, test), then `reusable-deploy-config.yml` builds the image in CI, pushes it to GHCR,
-copies the repo to the server and (re)starts the Docker stack. A stage environment is the same
-caller workflow with `develop`, `api_env: stage` and `.env.stage`.
+copies the repo to the server, (re)starts the Docker stack and smoke-checks the domain from the
+runner. A stage environment is the same caller workflow with `develop`, `api_env: stage` and
+`.env.stage`.
+
+A push that touches only documentation, agent files, `patch/`, `skills/`, `lighthouserc.json` or
+the CI-only workflows does not deploy (`paths-ignore` in `prod-deploy.yml`); anything else does.
+The caller runs with `contents: read` + `packages: write` — nothing in the pipeline writes to the
+repository, and the runner's `GITHUB_TOKEN` is used only to push the image and never reaches the
+server. Third-party actions (`appleboy/ssh-action`, `appleboy/scp-action`, `actions/checkout`)
+are pinned to a commit SHA with the release tag in a comment; bump them by editing the SHA.
 
 Related: CI notifications, Lighthouse, secret scan —
 [`ci-notifications-lighthouse.ru.md`](./ci-notifications-lighthouse.ru.md) (RU); memory limits and
@@ -17,19 +25,23 @@ blue/green — [`hardening-playbook.ru.md`](./hardening-playbook.ru.md) (RU); ba
 | `domain` | Target domain (`app.example.com`), used by nginx and certbot |
 | `api_env` | `stage` or `prod` |
 | `env_file` | Env file path on the server (`.env.stage`, `.env.prod`) |
-| `env_public` | Public (non-secret) env lines from the caller's **Variables** (`${{ vars.WEB_ENV_PUBLIC_PROD }}`). Appended after the `env` secret, so it wins on overlap (overlaps are printed by name). Names ending in `_SECRET/_PASSWORD/_TOKEN/_KEY…` fail the deploy — Variables are not masked in logs. Empty = everything still comes from the secret |
+| `env_public` | Public (non-secret) env lines from the caller's **Variables** (`${{ vars.WEB_ENV_PUBLIC_PROD }}`). Appended after the `env` secret, so it wins on overlap (overlaps are printed by name). Names ending in `_SECRET/_PASSWORD/_TOKEN/_KEY…` fail the deploy — Variables are not masked in logs. Empty = everything still comes from the secret. Of the assembled file, only the names listed in `config/public-env.json` are passed to `docker build` (baked into the client); a new public variable is a line there, kept in sync by the `check-public-env` gate |
 | `doctor_check_enabled` | Run `pnpm doctor:<api_env>` on the assembled env file in CI before touching the server. Catches `localhost` inside a container, missing keys, inconsistent flags |
 | `nginx_mode` | `http` or `https` |
 | `certbot_test_mode` | Use the Let's Encrypt staging CA |
 | `certbot_email` | Email for Let's Encrypt (a real one, or certbot refuses) |
-| `migrations_run` | Run DB migrations on deploy |
-| `blue_green_enabled` | Validate the new api in a green container before swapping |
-| `deploy_mode` | `default` = build on the server; `registry` = build in CI, image from GHCR (recommended) |
+| `migrations_run` | Run DB migrations on deploy. The image must define `migration:show:<env>` / `migration:run:<env>` scripts; with the flag on and the scripts missing the deploy fails instead of reporting "no pending migrations" |
+| `blue_green_enabled` | Validate the new api in a green container, then swap with no gap: green answers as `api-service` while blue is replaced, nginx is reloaded, never restarted (`scripts/lib/blue-green.sh`, details in `hardening-playbook.ru.md` §2.8) |
+| `deploy_mode` | `default` = build on the server; `registry` = build in CI, image from GHCR (recommended). The server logs in to GHCR for the pull and logs out when the deploy script ends |
+| `smoke_check_enabled` | Default `true`. After deploy and cleanup, the runner requests `<scheme>://<domain>/api/v1/healthcheck` and `/` (12 attempts, 10 s apart, `-k` under `certbot_test_mode`). A non-200 answer fails the run and triggers the failure notification; nothing is rolled back. Turn off only when the domain is not reachable from GitHub runners |
 | `node_version` | Node in CI; must match `.docker/Dockerfile` |
 | `registry_subname` | GHCR image name fragment (`web` → `ghcr.io/owner/web:sha`) |
 | `notify_enabled`, `tag` | Telegram deploy notifications and their hashtag |
 | `redis_enabled`, `mongo_enabled`, `worker_enabled`, `metrics_enabled` | Which containers to run. `mongo_enabled: false` = external cluster via `MONGO_URI` |
 | `mongo_backup_enabled`, `mongo_backup_cron`, `mongo_backup_retention` | Nightly `mongodump` cron for the local mongo |
+| `mongo_backup_remote`, `mongo_backup_s3_endpoint`, `mongo_backup_s3_region`, `mongo_backup_remote_retention_days` | Optional off-site copy of each dump: empty = this server only (default); `s3://bucket/prefix` = any S3-compatible storage; `sftp://user@host:port/path` = another server. A failed upload keeps the local dump and fails the backup run. Remote deletion defaults to off (0); enable it only on a destination dedicated to this installation. Details: `mongo-backups.ru.md` |
+| `docker_log_max_size`, `docker_log_max_file` | Rotation of container logs (`100m` × 3 by default; was `2g` × 3). Redis and mongo keep theirs — changing it would restart the database |
+| `build_node_options` | `NODE_OPTIONS` for `next build` only, e.g. `--max-old-space-size=4096` if the build runs out of heap. The build runs on the CI runner, so this does not depend on the server's RAM. Empty = Node defaults |
 | `server_memory_mb`, `*_mem_limit` | Memory budget; per-container limits are derived from the total (`scripts/lib/memory-limits.sh`). Below ~4 GB keep metrics off |
 | `grafana_admin_user`, `grafana_admin_password` | Grafana credentials (or pass as secrets) |
 
@@ -37,13 +49,17 @@ blue/green — [`hardening-playbook.ru.md`](./hardening-playbook.ru.md) (RU); ba
 
 | Secret | Description |
 |---|---|
-| `server_host`, `server_username`, `server_password` | SSH access to the VPS |
+| `server_host`, `server_username` | SSH target |
+| `server_ssh_key`, `server_ssh_fingerprint` | Preferred SSH auth: the deploy user's private key (PEM) and the host key fingerprint (`ssh-keyscan -t ed25519 <host> \| ssh-keygen -lf -`, the part after `SHA256:`). Both optional; without the fingerprint the host key is not verified (a warning in the run) |
+| `server_password` | Legacy SSH password. Kept as the fallback: when both key and password are set the key wins; with neither the deploy stops before touching the server. Rollout on a live server: add the key to `authorized_keys`, set `PROD_WEB_SSH_KEY`, watch one green deploy, then drop the password and set `PasswordAuthentication no` |
 | `env` | Contents of the env file (appended to `env_file` on the server). One secret per environment, e.g. `WEB_ENV_PROD` |
 | `database_certificate` | Optional DB certificate |
 | `ghcr_username`, `ghcr_token` | For `deploy_mode: registry`; the token needs `read:packages` |
 | `tg_token`, `tg_chat_id`, `tg_thread_id` | Telegram bot and chat (prefix group ids with `-100`). The same repository secrets `TG_TOKEN` / `TG_CHAT_ID` / `TG_THREAD_ID` feed the PR / review / CI-failure / Lighthouse notifications |
 | `grafana_admin_user`, `grafana_admin_password` | Optional, instead of inputs |
 | `certbot_email` | Optional, instead of the input |
+| `mongo_backup_s3_access_key_id`, `mongo_backup_s3_secret_access_key` | Keys for `mongo_backup_remote: s3://…` — a key that may only write objects to that bucket is enough |
+| `mongo_backup_sftp_key`, `mongo_backup_sftp_known_hosts` | For `mongo_backup_remote: sftp://…`: the private key (PEM) of the receiving account and `ssh-keyscan -p <port> <host>` output (empty = host key not verified) |
 
 ## Domain and DNS
 
@@ -94,10 +110,12 @@ ENV_FILE=.env.prod ~/app/scripts/restore-mongo.sh ~/db-backups/mongo_prod_<stamp
 |---|---|
 | Certbot: "example@example.com is an invalid email" | Set the `CERTBOT_EMAIL` secret or the `certbot_email` input |
 | nginx: broken or leftover containers, wrong names | On the server: `./scripts/local-containers-run.sh clean`, then redeploy |
-| MongoDB: registration fails, "Access control is not enabled", wrong user/password | Mongo init runs only on the first start with an empty volume. Remove the volume, fix `MONGO_USER`/`MONGO_PASSWORD` in the `env` secret, redeploy. See [FAQ](../start/faq.en.md#mongodb-wrong-init-data) |
+| MongoDB: registration fails, "Access control is not enabled", wrong user/password | Mongo init runs only on the first start with an empty volume. Remove the volume, fix `MONGO_USER`/`MONGO_PASSWORD` in the `env` secret, redeploy. See [FAQ](../start/faq.en.md#mongodb-authentication-errors-and-recreating-the-database) |
 | `MONGO_URI=mongodb://localhost…` on the server | Inside the api container `localhost` is the api. Use the service name `mongo`; the pre-deploy doctor rejects loopback |
 | Env vars missing in the container | The `env` secret must contain every key; redeploy so the env file is recreated |
 | Deploy fails on "pull denied" | The GHCR token on the server lacks `read:packages` or package access. Nothing was stopped: the pull is a preflight |
+| Deploy is red on "Smoke check from outside" | The stack is up but the domain does not answer 200 within two minutes. `docker ps` and `docker logs api-service` on the server; check DNS and the firewall for port 443. If the domain is deliberately unreachable from the internet, set `smoke_check_enabled: false` |
+| Push to `main` did not start a deploy | The commit touched only paths in `paths-ignore` (docs, `*.md`, agent files, CI-only workflows). Run the workflow manually or push a code change |
 | Disk full: many ghcr.io images | The deploy prunes old images; manually `./scripts/local-containers-run.sh prune-images` |
 | Build: "no space left on device" | `prune-images`, `docker system prune -a -f`, or `deploy_mode: registry` |
 | Metrics stack overloads a small VPS (CPU 100 %, Grafana 502 / restart loop) | `metrics_enabled: false`, or a bigger box with the real `server_memory_mb` |

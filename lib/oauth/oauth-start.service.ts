@@ -2,6 +2,7 @@ import { OAUTH_CONFIG } from '@config/auth-oauth'
 import { ValidationError } from '@lib/error/custom-errors'
 
 import type { OAuthFlow, OAuthProviderId } from '~/api/oauth'
+import { safeInternalPath } from '~/lib/security/safeInternalPath'
 
 import { isProviderAllowedForFlow } from './oauth-flow.service'
 import { resolveOAuthRedirectUri } from './oauth-redirect-uri'
@@ -42,7 +43,8 @@ export async function buildOAuthStartRedirect(params: {
     flow: params.flow,
     codeVerifier,
     userId: params.actorUserId ?? undefined,
-    nextPath: params.nextPath?.startsWith('/') ? params.nextPath : undefined,
+    // Validated at WRITE time: from here the value lives in the cache and is read back as trusted.
+    nextPath: params.nextPath ? safeInternalPath(params.nextPath, '') || undefined : undefined,
   })
 
   return adapter.getAuthorizationUrl({

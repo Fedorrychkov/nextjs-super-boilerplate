@@ -6,14 +6,14 @@ import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } fro
 import { AuthSuccessResult } from '@lib/security/auth'
 import { notifyArticlePublishedFromRevision } from '@lib/services/article-notification.service'
 import mongoose from 'mongoose'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidatePath } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { ArticleStatus } from '~/api/article'
 import { ArticleRevisionStatus } from '~/api/article-revision'
 import { UserRole } from '~/api/user'
 import { routes } from '~/constants'
-import { publicArticleCacheTag } from '~/lib/cache/publicArticlePageCache'
+import { invalidatePublicArticlePage } from '~/lib/cache/publicArticlePageCache'
 import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 import { collectPublishedIndexableArticleUrlsForTranslationGroups, collectSlugsForTranslationGroups } from '~/lib/seo/articleTranslationAlternates'
 import { notifySearchEngines } from '~/lib/seo/indexing'
@@ -99,7 +99,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     }
 
     for (const s of slugSet) {
-      revalidateTag(publicArticleCacheTag(s), 'max')
+      await invalidatePublicArticlePage(s)
       revalidatePath(routes.articlePublic.path.replace(':slug', s))
     }
 

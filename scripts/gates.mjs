@@ -18,7 +18,8 @@ import { fileURLToPath } from 'node:url'
 const scriptsDir = dirname(fileURLToPath(import.meta.url))
 
 const gates = readdirSync(scriptsDir)
-  .filter((name) => name.startsWith('check-') && name.endsWith('.mjs'))
+  // A gate's own unit test (`check-x.test.mjs`) runs in `pnpm test`, not as a gate.
+  .filter((name) => name.startsWith('check-') && name.endsWith('.mjs') && !name.endsWith('.test.mjs'))
   .sort()
 
 if (!gates.length) {

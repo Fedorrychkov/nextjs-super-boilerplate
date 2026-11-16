@@ -18,6 +18,7 @@ English version: [env-reference.en.md](./env-reference.en.md)
 | `NEXT_PUBLIC_SITE_URL` | http://localhost:3000 | **R** — канонический URL для metadata, sitemap, OAuth-редиректов |
 | `APP_INTERNAL_ORIGIN` | http://127.0.0.1:3000 | O — серверные запросы к собственному API, когда публичный hostname из контейнера не резолвится |
 | `COMMIT_HASH` | — | Проставляет CI; серверный, нужен для корреляции RUM и деплоев |
+| `HEALTHCHECK_DB_STRICT` | false | `true` — `/api/v1/healthcheck` отвечает 503, когда Mongo недоступна (тайм-аут 2 с): контейнер становится unhealthy, blue/green не свопает, nginx убирает апстрим. По умолчанию статус всегда 200, состояние базы только в теле (`db: ok\|fail`) и в логе — так короткая заминка базы не превращается в простой |
 
 ## Theme & i18n
 
@@ -34,8 +35,8 @@ English version: [env-reference.en.md](./env-reference.en.md)
 |---|---|---|
 | `JWT_SECRET` | заглушка | **R** — подпись access/refresh; `make setup` генерирует |
 | `JWT_ACCESS_EXPIRES_IN` | 3600 | Секунды |
-| `JWT_REFRESH_EXPIRES_IN` | 15724800 | ~21 день; TTL refresh-сессии |
-| `MFA_ENCRYPTION_KEY` | — | **R**, если используется TOTP. Перегенерация обнуляет все подключённые MFA |
+| `JWT_REFRESH_EXPIRES_IN` | 604800 | TTL refresh-сессии в секундах (7 дней). Ограничен 7 днями в `config/env.ts` — столько живёт cookie refresh; большее значение не действует, доктор предупреждает |
+| `MFA_ENCRYPTION_KEY` | — | **R**, если используется TOTP или секреты настроек платформы (из него по HKDF выводится их ключ). Перегенерация обнуляет все подключённые MFA и делает сохранённые секреты настроек нечитаемыми |
 | `FIRST_ADMIN_LOGIN` | — | O — первый админ создаётся на старте, если пользователя нет |
 | `FIRST_ADMIN_PASSWORD` | — | O |
 
@@ -76,7 +77,7 @@ English version: [env-reference.en.md](./env-reference.en.md)
 |---|---|---|
 | `REGISTRATION_MODE` | — | `email` — OTP на почту; пусто — регистрация без подтверждения |
 | `REGISTRATION_CODE_PEPPER` | JWT_SECRET | HMAC для кодов |
-| `EMAIL_SEND_MODE` | empty | `console` (только лог) \| `elastic` (Elastic Email API) \| `empty` (не слать) |
+| `EMAIL_SEND_MODE` | empty | `console` — письмо в лог сервера, коды регистрации и восстановления читаются оттуда (dev/stage); `elastic` — Elastic Email API, единственный боевой транспорт; `empty` — почты нет. Опечатка = почты нет: `pnpm doctor` предупреждает, а регистрация по коду честно отвечает ошибкой вместо «код отправлен» |
 | `EMAIL_API_KEY` | — | **C** elastic |
 | `EMAIL_FROM` | Noreply \<noreply@localhost\> | **C** elastic — подтверждённый отправитель |
 | `EMAIL_REPLY_TO` | — | O |

@@ -10,6 +10,8 @@ export interface CacheClient {
   incr(key: string, ttlSeconds?: number): Promise<number>
   del(key: string): Promise<void>
   ttl(key: string): Promise<number | null>
+  /** Atomic get + delete: a one-time value (login challenge, code) must not be usable twice. */
+  take(key: string): Promise<CacheValue | null>
 }
 
 type InMemoryEntry = {
@@ -51,6 +53,14 @@ class InMemoryCacheClient implements CacheClient {
 
   async del(key: string): Promise<void> {
     this.store.delete(key)
+  }
+
+  async take(key: string): Promise<CacheValue | null> {
+    const value = await this.get(key)
+
+    this.store.delete(key)
+
+    return value
   }
 
   async ttl(key: string): Promise<number | null> {
@@ -106,6 +116,13 @@ class RedisCacheClient implements CacheClient {
     await this.client.del(key)
   }
 
+  async take(key: string): Promise<CacheValue | null> {
+    // GETDEL — Redis 6.2+; the compose file runs 7.2.
+    const value = await this.client.getdel(key)
+
+    return value ?? null
+  }
+
   async ttl(key: string): Promise<number | null> {
     const ttl = await this.client.ttl(key)
 
@@ -120,3 +137,10 @@ class RedisCacheClient implements CacheClient {
 const redis = redisClient.client
 
 export const cacheClient: CacheClient = redis ? new RedisCacheClient(redis) : new InMemoryCacheClient()
+
+/**
+ * True when the cache is shared by every app process (Redis). The in-memory fallback is per
+ * process: a value cached there cannot be invalidated from another process, so state that must
+ * flip everywhere at once (a revoked session) must not be cached in it.
+ */
+export const isSharedCache = Boolean(redis)

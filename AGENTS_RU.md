@@ -36,10 +36,11 @@ pnpm lint / lint:fix        # ESLint
 pnpm typecheck              # tsc --noEmit
 pnpm test                   # node --test через tsx (*.test.ts, scripts/**/*.test.mjs) — без инфраструктуры
 pnpm format                 # prettier по src/**/*.ts
+pnpm tokens                 # пересобрать src/app/tokens.css из config/design-tokens.json (цвета темы)
 pnpm build:local|stage|prod # сборка с env-cmd под нужный env
 ```
 
-Pre-commit: husky + lint-staged (`pnpm lint:src` по staged-файлам в `src/`).
+Pre-commit: husky (`typecheck` + `lint-staged`: `eslint --fix --max-warnings 0` только по staged-файлам в `src/` — без прохода по всему репозиторию, вне коммита ничего не правится).
 
 ## Структура
 
@@ -143,10 +144,12 @@ API-роуты живут в `src/app/api/v1/*` (auth, article, llm, media, noti
 ### Что побеждает при конфликте (сверху вниз)
 
 1. **Ничего необратимого или внешне видимого без явного слова владельца именно на эту
-   операцию:** `git push`, ручной деплой (`workflow_dispatch`), любая команда с `.env.prod` /
-   `.env.stage`, запись в боевую базу, восстановление из бэкапа, отправка наружу, ротация
-   секретов. Разрешение на одну операцию не распространяется на следующую. Всё внутреннее — код,
-   файлы, поиск, установка зависимостей, read-only запросы — делай сам и отчитайся.
+   операцию:** push в `main` и любой force-push (`prod-deploy.yml` выкатывает прод на push в
+   `main`; в `main` попадает только PR из `develop`, мержит владелец), ручной деплой
+   (`workflow_dispatch`), любая команда с `.env.prod` / `.env.stage`, запись в боевую базу,
+   восстановление из бэкапа, отправка наружу, ротация секретов. Разрешение на одну операцию не
+   распространяется на следующую. Всё внутреннее — код, файлы, поиск, установка зависимостей,
+   read-only запросы, push своей ветки и PR в `develop` — делай сам и отчитайся.
 2. **Прямая инструкция владельца в текущей сессии.**
 3. **Корректность и безопасность:** проверки auth и ролей, скоуп по пользователю, секреты не в
    логах и не в клиентских DTO, валидация на сервере.
@@ -205,12 +208,17 @@ API-роуты живут в `src/app/api/v1/*` (auth, article, llm, media, noti
 |---|---|---|
 | `check-agent-contract` | `pnpm gates` | `AGENTS.md` больше 28 КБ или с `@file`-импортами; `CLAUDE.md` без `@AGENTS.md` или больше 4 КБ |
 | `check-eslint-disable-ratchet` | `pnpm gates` | Новый `eslint-disable` (baseline `scripts/eslint-disable-ratchet-baseline.txt`; уменьшать через `--update`) |
-| `check-docs-structure` | `pnpm gates` | Документ вне `docs/<тема>/<имя>.<ru\|en>.md`, документ без строки в `docs/README.md`, битая относительная ссылка в любом `.md` |
+| `check-docs-structure` | `pnpm gates` | Документ вне `docs/<тема>/<имя>.<ru\|en>.md`, документ без строки в `docs/README.md`, битая относительная ссылка или `#якорь` в любом `.md` |
 | `check-env-reference` | `pnpm gates` | Переменная в `.env.example` без строки в `docs/configure/env-reference.{ru,en}.md`, или описанная переменная, которой в шаблоне больше нет |
-| eslint `no-restricted-syntax` | `pnpm lint` | Сырые `<input>/<select>/<textarea>` вне `src/components/ui`; голый `<span>` с текстом вместо `Typography` |
+| `check-actions-pinned` | `pnpm gates` | Стороннее `uses:` без 40-значного SHA или образ из реестра в workflow без `@sha256:` — тег можно перевесить на другой коммит, SHA нет |
+| `check-worker-wired` | `pnpm gates` | Очередь из `defineQueue`, чей `consume(...)` не в модуле, который импортирует `scripts/worker.ts`, или голый `new Queue(`/`new Worker(` вне подключённых модулей — задачи копились бы в Redis, а продюсер отвечал бы «поставлено» |
+| `check-public-env` | `pnpm gates` | `NEXT_PUBLIC_*`, которое читает код или описывает шаблон, но которого нет в `config/public-env.json`: деплой передаёт в сборку только имена из списка |
+| `check-design-tokens` | `pnpm gates` | `src/app/tokens.css` поправлен руками или отстал от `config/design-tokens.json`, либо токен есть только в тёмной теме и в светлой остался бы без значения — запусти `pnpm tokens` |
+| eslint `no-restricted-syntax` (`error`) | `pnpm lint` | Сырые `<input>/<select>/<textarea>` вне `src/components/ui`; голый `<span>` с текстом вместо `Typography` |
 | `gitleaks` | workflow `Secret scan` | Новый секрет в отслеживаемых файлах |
 | `Lighthouse` | `lighthouse.yml` | Публичные страницы тяжелее бюджетов `lighthouserc.json` (вес и CLS ломают, тайминги предупреждают) |
-| `guard-external.sh` | Claude Code `PreToolUse` (`.claude/settings.json`) | Запуск `git push`, любой `pnpm <script>:prod` / `:stage` (build, start, worker, doctor), команды с именем `.env.prod` / `.env.stage`, запуск `restore-mongo.sh` / `mongorestore` |
+| `guard-external.sh` | Claude Code `PreToolUse` (`.claude/settings.json`) | Голый `git push` / в `main` / `--force` / `--all`, `gh pr merge`, `gh api` с записью, `gh workflow run` / `release` / `secret`, `docker volume rm` / `prune`, `compose down -v`, `system prune`, `crontab -r`, удаление бэкапов, `pnpm <script>:prod` / `:stage`, `.env.prod` / `.env.stage`, `restore-mongo.sh` / `mongorestore` — в том числе внутри `ssh '…'` / `bash -c` / `eval`. Таблица вердиктов: `scripts/guard-external.test.mjs` |
+| `check-agent-gate` | `pnpm gates` | Потеря бита x у гейта, потеря обёртки `[ -x ]` у хука или отсутствие хука в `settings.json` — каждое молча выключило бы весь агентский слой |
 
 ### Дисциплина документации
 
@@ -218,7 +226,7 @@ API-роуты живут в `src/app/api/v1/*` (auth, article, llm, media, noti
 
 - Решение, которое кто-то захочет отменить → запись с датой в `docs/decisions/journal.ru.md` (почему так и почему не иначе)
 - Новая переменная окружения → `.env.example` (комментарий не длиннее строки) + строка в `docs/configure/env-reference.ru.md` **и** `.en.md`, в той же секции; `pnpm gates` сверяет имена
-- План крупной работы → `docs/plans/`
+- План крупной работы → `docs/plans/<домен>-<что>.<ru|en>.md` + строка в `docs/plans/README.md`; `pnpm gates` проверяет и то и другое
 - Новый документ → `docs/<тема>/<kebab-имя>.<ru|en>.md` + строка в `docs/README.md`; `pnpm gates` проверяет и то и другое
 - `AGENTS.md` и `AGENTS_RU.md` синхронизируются
 
@@ -226,6 +234,7 @@ API-роуты живут в `src/app/api/v1/*` (auth, article, llm, media, noti
 
 - Начиная новую фичу, смотри существующий домен-образец (например, `article`): api → query → app/api/v1 → services → models
 - Если новый домен должен быть доступен AI-агентам — выведи его через MCP-реестр (см. «MCP-сервер и машинная авторизация» выше)
+- Новый переключатель, лимит или ключ интеграции — настройка платформы (`config/platform-settings.ts`, см. `docs/configure/platform-settings.ru.md`), а не новая переменная env; в env — только то, без чего процесс не стартует
 - Не менять `pnpm-workspace.yaml` overrides без причины — это security-фиксы транзитивных зависимостей
 - При форке под новый продукт первым делом правится `config/product.ts` и `.env.local`, затем `pnpm doctor`; повторная настройка (новая машина, новые ключи в шаблоне) — `make setup`
 - Перед коммитом: `pnpm gates`, `pnpm lint`, `pnpm typecheck`, `pnpm test`

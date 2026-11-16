@@ -8,6 +8,7 @@ import { time } from '~/utils/time'
 
 import { applyCreatedAtRange } from '../utils/applyCreatedAtRange'
 import { buildPaginationMeta, clampLimit } from '../utils/buildPaginationMeta'
+import { userSearchCondition } from './user-search'
 
 export interface IUser extends Document, Omit<UserModel, 'id'> {
   role: UserRole
@@ -146,7 +147,7 @@ UserSchema.methods.comparePassword = async function (candidatePassword: string):
   this: Model<IUser>,
   filter: UserFilter,
 ): Promise<PaginationMeta<HydratedDocument<IUser>>> {
-  const { limit: limitRaw, offset: offsetRaw, sortBy, sortOrder, startOfDateIso, endOfDateIso, ...rest } = filter
+  const { limit: limitRaw, offset: offsetRaw, sortBy, sortOrder, startOfDateIso, endOfDateIso, q, ...rest } = filter
 
   const limit = clampLimit(typeof limitRaw === 'number' ? limitRaw : Number(limitRaw))
   const offset = typeof offsetRaw === 'number' ? Math.max(0, Math.floor(offsetRaw)) : Math.max(0, Number(offsetRaw) || 0)
@@ -156,6 +157,10 @@ UserSchema.methods.comparePassword = async function (candidatePassword: string):
   const base: QueryFilter<IUser> = {}
   applyUserFilterFields(base, rest)
   applyCreatedAtRange<IUser>(base, startOfDateIso, endOfDateIso)
+
+  const search = userSearchCondition(q)
+
+  if (search) Object.assign(base, search)
 
   const count = await this.countDocuments(base)
   const list = await this.find(base)

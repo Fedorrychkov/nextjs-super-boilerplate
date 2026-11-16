@@ -22,8 +22,8 @@ services:
       driver: "json-file"
       options:
         tag: "{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}"
-        max-size: "2g"
-        max-file: "3"
+        max-size: "${DOCKER_LOG_MAX_SIZE:-100m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
 
   nginx-prometheus-exporter:
     image: nginx/nginx-prometheus-exporter:1.0
@@ -34,7 +34,8 @@ services:
         limits:
           memory: ${EXPORTER_MEM_LIMIT:-512M}
     command:
-      - -nginx.scrape-uri=https://nginx-container/nginx_status
+      # Сервис nginx в той же сети; `nginx-container` не существует — экспортёр отдавал nginx_up=0.
+      - -nginx.scrape-uri=http://nginx/nginx_status
     expose: 
       - 9113
     networks:
@@ -47,8 +48,8 @@ services:
       driver: "json-file"
       options:
         tag: "{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}"
-        max-size: "2g"
-        max-file: "3"
+        max-size: "${DOCKER_LOG_MAX_SIZE:-100m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
 
   prometheus-node-exporter:
     image: prom/node-exporter:v1.7.0
@@ -80,11 +81,11 @@ services:
       driver: "json-file"
       options:
         tag: "{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}"
-        max-size: "2g"
-        max-file: "3"
+        max-size: "${DOCKER_LOG_MAX_SIZE:-100m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    image: gcr.io/cadvisor/cadvisor:v0.52.1
     restart: always
     container_name: cadvisor
     deploy:
@@ -101,16 +102,17 @@ services:
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
+    # cAdvisor слушает 8080; Prometheus ходил на 8081 и не получал метрик контейнеров.
     expose:
-      - 8081
+      - 8080
     networks:
       - api_network
     logging:
       driver: "json-file"
       options:
         tag: "{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}"
-        max-size: "2g"
-        max-file: "3"
+        max-size: "${DOCKER_LOG_MAX_SIZE:-100m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
 
   promtail:
     container_name: promtail
@@ -133,8 +135,8 @@ services:
       driver: "json-file"
       options:
         tag: "{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}"
-        max-size: "2g"
-        max-file: "3"
+        max-size: "${DOCKER_LOG_MAX_SIZE:-100m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
 
   loki:
     container_name: loki
@@ -158,8 +160,8 @@ services:
       driver: "json-file"
       options:
         tag: "{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}"
-        max-size: "2g"
-        max-file: "3"
+        max-size: "${DOCKER_LOG_MAX_SIZE:-100m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
 
   telegraf:
     image: telegraf:latest
@@ -187,8 +189,8 @@ services:
       driver: "json-file"
       options:
         tag: "{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}"
-        max-size: "2g"
-        max-file: "3"
+        max-size: "${DOCKER_LOG_MAX_SIZE:-100m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
 
   grafana:
     container_name: grafana
@@ -223,8 +225,8 @@ services:
       driver: "json-file"
       options:
         tag: "{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}"
-        max-size: "2g"
-        max-file: "3"
+        max-size: "${DOCKER_LOG_MAX_SIZE:-100m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
 
   # Main API service (may be renamed in blue/green)
   core-api:
@@ -255,8 +257,8 @@ services:
       driver: "json-file"
       options:
         tag: "{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}"
-        max-size: "2g"
-        max-file: "3"
+        max-size: "${DOCKER_LOG_MAX_SIZE:-100m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
     deploy:
       resources:
         limits:
@@ -303,8 +305,8 @@ services:
       driver: "json-file"
       options:
         tag: "{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}"
-        max-size: "1g"
-        max-file: "3"
+        max-size: "${DOCKER_LOG_MAX_SIZE:-100m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
     deploy:
       resources:
         limits:
@@ -348,6 +350,8 @@ services:
       fi &&
       envsubst '$${DOMAINS} $${FIRST_DOMAIN}' < /tmp/nginx.conf.tpl > /etc/nginx/nginx.conf &&
       nginx -t &&
+      mkdir -p /var/run/nginx-signals &&
+      (while true; do sleep 30; if [ -f /var/run/nginx-signals/reload ]; then mv -f /var/run/nginx-signals/reload /tmp/nginx-reload.done; nginx -t && nginx -s reload; fi; done) &
       nginx -g 'daemon off;'"
     volumes:
       - ./.docker/nginx/nginx.conf.template.http:/etc/nginx/nginx.conf.template.http:ro
@@ -355,6 +359,9 @@ services:
       - ./certbot/www:/var/www/certbot/:rw
       - letsencrypt_certs:/etc/letsencrypt/:ro
       - certbot_logs:/var/log/certbot:ro
+      # certbot asks for a reload by dropping a file here (the loop in `command` picks it up within
+      # 30 s) instead of holding the Docker socket, which is root on the host.
+      - nginx_signals:/var/run/nginx-signals:rw
     build:
       context: .
       dockerfile: ./.docker/Dockerfile.nginx
@@ -368,8 +375,8 @@ services:
       driver: "json-file"
       options:
         tag: "{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}"
-        max-size: "2g"
-        max-file: "3"
+        max-size: "${DOCKER_LOG_MAX_SIZE:-100m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
     deploy:
       resources:
         limits:
@@ -394,14 +401,15 @@ services:
       - ./certbot/www:/var/www/certbot:rw
       - letsencrypt_certs:/etc/letsencrypt:rw
       - certbot_logs:/var/log/certbot:rw
+      - nginx_signals:/var/run/nginx-signals:rw
     networks:
       - api_network
     logging:
       driver: "json-file"
       options:
         tag: "{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}"
-        max-size: "500m"
-        max-file: "1"
+        max-size: "${DOCKER_LOG_MAX_SIZE:-100m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
     depends_on:
       nginx:
         condition: service_healthy
@@ -418,7 +426,7 @@ services:
       - ./certbot/www:/var/www/certbot:rw
       - letsencrypt_certs:/etc/letsencrypt:rw
       - certbot_logs:/var/log/certbot:rw
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - nginx_signals:/var/run/nginx-signals:rw
     environment:
       - CERTBOT_EMAIL=${CERTBOT_EMAIL:-example@example.com}
       - DOMAINS=${DOMAINS:-app.example.local}
@@ -429,8 +437,8 @@ services:
       driver: "json-file"
       options:
         tag: "{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}"
-        max-size: "500m"
-        max-file: "1"
+        max-size: "${DOCKER_LOG_MAX_SIZE:-100m}"
+        max-file: "${DOCKER_LOG_MAX_FILE:-3}"
     depends_on:
       nginx:
         condition: service_healthy
@@ -461,6 +469,8 @@ services:
         limits:
           # 0 = unlimited (historical default); set via SERVER_MEMORY_MB / REDIS_MEM_LIMIT
           memory: ${REDIS_MEM_LIMIT:-0}
+    # Redis and mongo keep their old log limits on purpose: a changed logging option recreates the
+    # container on the next `up -d`, i.e. a database restart under the live API. They log little.
     logging:
       driver: "json-file"
       options:
@@ -515,6 +525,8 @@ volumes:
     name: letsencrypt_certs
   certbot_logs:
     name: certbot_logs
+  nginx_signals:
+    name: nginx_signals
 
 networks:
   api_network:

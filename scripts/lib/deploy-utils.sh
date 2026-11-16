@@ -111,6 +111,15 @@ function parse_domains() {
     echo "$domains"
 }
 
+# The image must define migration:show|run|revert:<env> for the flow below to mean anything.
+# Without them `migrations_show` printed nothing, counted 0 pending and the deploy said
+# "No pending migrations" — MIGRATIONS_RUN=true was a silent no-op.
+function migrations_scripts_present() {
+    local env=$1
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} exec -T core-api sh -lc \
+        "node -e 'const s=require(\"./package.json\").scripts||{};process.exit(s[\"migration:show:${env}\"]&&s[\"migration:run:${env}\"]?0:1)'"
+}
+
 # TypeORM helpers (run inside core-api container)
 function migrations_show() {
     local env=$1
@@ -147,6 +156,12 @@ function run_migrations_flow() {
         echo "Migrations are disabled by default (MIGRATIONS_RUN=$MIGRATIONS_RUN). Skipping."
         echo 0
         return 0
+    fi
+
+    if ! migrations_scripts_present "$env"; then
+        echo "MIGRATIONS_RUN=true but the image has no migration:show:${env} / migration:run:${env} scripts — add them or set migrations_run: false"
+        echo 0
+        return 1
     fi
 
     echo "Checking migrations status before run..."

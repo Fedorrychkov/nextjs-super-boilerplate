@@ -5,12 +5,12 @@ import { apiErrorHandlerContainer, withAuthMiddleware, withGlobalRateLimit } fro
 import { AuthSuccessResult } from '@lib/security/auth'
 import { randomUUID } from 'crypto'
 import mongoose from 'mongoose'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidatePath } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { UserRole } from '~/api/user'
 import { routes } from '~/constants'
-import { publicArticleCacheTag } from '~/lib/cache/publicArticlePageCache'
+import { invalidatePublicArticlePage } from '~/lib/cache/publicArticlePageCache'
 import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
 import { collectSlugsForTranslationGroups } from '~/lib/seo/articleTranslationAlternates'
 import { time } from '~/utils/time'
@@ -67,7 +67,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
 
     const slugs = await collectSlugsForTranslationGroups([...groupIds])
     for (const s of slugs) {
-      revalidateTag(publicArticleCacheTag(s), 'max')
+      await invalidatePublicArticlePage(s)
       revalidatePath(routes.articlePublic.path.replace(':slug', s))
     }
 

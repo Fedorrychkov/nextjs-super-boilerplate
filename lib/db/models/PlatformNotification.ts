@@ -40,6 +40,10 @@ const ChannelDeliverySchema = new Schema<NotificationChannelDeliveryModel>(
 
 export interface IPlatformNotification extends Document, Omit<PlatformNotificationModel, 'id' | 'recipientUserId'> {
   recipientUserId: mongoose.Types.ObjectId | null
+  /** Delivery lease: set while one attempt delivers, so a retry or a sweep never sends twice. */
+  deliveringAt?: Date | null
+  /** Set when the retention sweep dropped the per-channel delivery log. */
+  deliveryHistoryClearedAt?: Date | null
 }
 
 export interface IPlatformNotificationModel extends Model<IPlatformNotification> {
@@ -123,6 +127,14 @@ const PlatformNotificationSchema: Schema<IPlatformNotification> = new Schema<IPl
       type: String,
       default: () => time().toISOString(),
       index: true,
+    },
+    deliveringAt: {
+      type: Date,
+      default: null,
+    },
+    deliveryHistoryClearedAt: {
+      type: Date,
+      default: null,
     },
   },
   {

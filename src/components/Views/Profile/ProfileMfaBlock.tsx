@@ -4,16 +4,14 @@ import { KeyRound, Shield, ShieldOff } from 'lucide-react'
 import { useState } from 'react'
 
 import { CopyContainer } from '~/components/Blocks/CopyContainer'
-import { ImageLoader } from '~/components/Containers'
-import { Skeleton } from '~/components/Loaders'
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Typography } from '~/components/ui'
 import { Input } from '~/components/ui/fields/input'
+import { QrCode } from '~/components/ui/QrCode'
 import { useT } from '~/providers'
 import { useNotify } from '~/providers/notify'
 import { useMfaConfirmMutation, useMfaDisableMutation, useMfaSetupMutation, useMfaStatusQuery } from '~/query/auth'
 import { cp } from '~/utils/cp'
 
-const QR_API = 'https://api.qrserver.com/v1/create-qr-code/'
 const QR_SIZE = 200
 
 export function ProfileMfaBlock() {
@@ -126,14 +124,8 @@ export function ProfileMfaBlock() {
         <div className="space-y-4">
           <Typography variant="Body/M/Regular">{t('auth.ui.scanTheQRCodeWithYourAuthenticatorAppOrEnterTheSecretManually')}</Typography>
           <div className="flex flex-col sm:flex-row gap-4 items-start">
-            <ImageLoader
-              src={`${QR_API}?size=${QR_SIZE}x${QR_SIZE}&data=${encodeURIComponent(setupData.otpauthUrl)}`}
-              alt={t('auth.ui.qrCodeFor2FA')}
-              width={QR_SIZE}
-              height={QR_SIZE}
-              defaultPlaceholder={<Skeleton className="w-[200px] h-[200px]" />}
-              className="rounded border bg-white"
-            />
+            {/* Drawn in the browser: the otpauth URL carries the MFA seed and must not go to an image service. */}
+            <QrCode text={setupData.otpauthUrl} label={t('auth.ui.qrCodeFor2FA')} size={QR_SIZE} />
             <div className="flex-1 min-w-0">
               <Typography variant="Body/S/Regular" className="text-muted-foreground mb-1">
                 {t('auth.ui.secretKey')}

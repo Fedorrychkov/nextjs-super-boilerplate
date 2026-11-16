@@ -22,7 +22,10 @@ type DeliverEventNotificationParams = {
 export async function deliverEventNotification(params: DeliverEventNotificationParams): Promise<void> {
   const channels = params.channels ?? resolveNotificationChannelsForEvent(params.eventId)
 
-  if (!channels?.length) {
+  // `null` — the event is switched off by its flag: a deliberate "do not notify". An empty or
+  // unavailable channel list is different: the record must still exist, or the event (a login,
+  // a password change) simply never happened as far as the history is concerned.
+  if (channels == null) {
     return
   }
 

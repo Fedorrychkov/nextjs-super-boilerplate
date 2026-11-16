@@ -35,12 +35,22 @@ export function countMatches(files, regex) {
 
 export function ratchet({ name, baselinePath, current, unit, hint, root, details = [] }) {
   const update = process.argv.includes('--update');
-  const baseline = existsSync(baselinePath) ? Number(readFileSync(baselinePath, 'utf8').trim()) : null;
+  const raw = existsSync(baselinePath) ? readFileSync(baselinePath, 'utf8').trim() : null;
+  const baseline = raw !== null && /^\d+$/.test(raw) ? Number(raw) : null;
 
-  if (update || baseline === null) {
+  if (update) {
     writeFileSync(baselinePath, `${current}\n`);
     console.log(`${name}: baseline записан = ${current} ${unit}`);
     return 0;
+  }
+
+  // Молчаливая автозапись = вечно зелёный гейт: в CI файловая система одноразовая, запись
+  // теряется, и храповик больше никогда ни с чем не сравнивается.
+  if (baseline === null) {
+    console.error(`${name}: ${baselinePath} отсутствует или не содержит числа (прочитано: ${JSON.stringify(raw)}).`);
+    console.error(`Храповик без baseline не проверяет ничего. Текущее значение ${current} ${unit}.`);
+    console.error(`Зафиксируй осознанно и закоммить файл: node scripts/check-${name}.mjs --update`);
+    return 1;
   }
 
   if (current === baseline) {

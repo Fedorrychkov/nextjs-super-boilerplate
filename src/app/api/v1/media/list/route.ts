@@ -1,17 +1,11 @@
 import { apiErrorHandlerContainer, withApiTokenOrAuth, withGlobalRateLimit } from '@lib/middleware'
 import { AuthSuccessResult } from '@lib/security/auth'
-import { listMediaAssets } from '@lib/services/media.service'
+import { listMediaAssets, toMediaAssetDto } from '@lib/services/media.service'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { MediaResourceType } from '~/api/media'
 import { UserRole } from '~/api/user'
 import { getServerTFromNextRequestAsync } from '~/lib/i18n/server'
-
-const mapAsset = (asset: any) => ({
-  ...asset.toObject(),
-  id: asset._id.toString(),
-  createdBy: asset.createdBy?.toString?.() ?? null,
-})
 
 const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
   apiErrorHandlerContainer(request)(async (response: typeof NextResponse) => {
@@ -35,7 +29,7 @@ const handler = (request: NextRequest, authResult: AuthSuccessResult) =>
     })
 
     return response.json({
-      items: items.map(mapAsset),
+      items: items.map(toMediaAssetDto),
     })
   })
 

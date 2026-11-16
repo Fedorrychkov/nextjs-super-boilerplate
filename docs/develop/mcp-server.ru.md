@@ -70,6 +70,7 @@ AI-агент ──MCP──▶ MCP-сервер (mcp/) ──HTTP + Bearer PAT
 | `suggest_seo` | `POST /api/v1/llm/seo/suggest` | `articles:seo` |
 | `publish_article` | `POST /api/v1/article-revision/update` (`status=CONFIRMED`) | `articles:publish` |
 | `unpublish_article` | `POST /api/v1/article-revision/update` / `article/update` | `articles:publish` |
+| `schedule_article` | `PUT /api/v1/article/update` (`scheduledAt`, `revisionId`) | `articles:publish` |
 | `get_article_views` | `GET /api/v1/article/views/by-article/[articleId]` | `articles:read` |
 
 **Конвертация контента.** Агент присылает **Markdown** — сервер конвертирует в TipTap JSON, которого ждут ревизии, переиспользуя `@tiptap/markdown` + `markdownNormalize.ts`. Санитайз при рендере уже гарантирован (`articleHtml.ts`), поэтому UGC от агента не опаснее, чем от человека. Логику конвертации вынести в общую утилиту, чтобы UI и MCP шли одним путём.
@@ -101,7 +102,7 @@ AI-агент ──MCP──▶ MCP-сервер (mcp/) ──HTTP + Bearer PAT
 - Роуты статей — обернуть в `withApiTokenOrAuth` + `requireScope` (минимальная правка).
 - `mcp/` — **новый** пакет: `server.ts` (stdio), клиент REST, конвертер Markdown→TipTap, `README`.
 - `src/app/api/mcp/route.ts` — **новый** (опциональный HTTP-транспорт, этап 2).
-- `src/app/admin/api-tokens/*`, `src/api/api-token/*`, `src/query/api-token/*` — **новый** (админ-UI).
+- `src/app/(cabinet)/admin/api-tokens/*`, `src/api/api-token/*`, `src/query/api-token/*` — **новый** (админ-UI).
 - `src/constants/routes.ts`, `src/components/Layouts/PlatformLayout.tsx` — пункт навигации.
 - `config/env.ts`, `.env.example`, `docs/ENV_REFERENCE.md` — флаг + переменные.
 - `docs/AGENTS_RU.md`/`AGENTS.md`, `README.md`, `public/llms.txt` — документация и discovery.

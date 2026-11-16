@@ -9,13 +9,13 @@ export type NotificationEventConfig = {
   channels: NotificationChannel[]
 }
 
-/** Mirrors `isTransactionalEmailEnabled` without importing email service (avoids env/logger cycle). */
-function isNotificationEmailAvailable(): boolean {
-  if (EMAIL_CONFIG.sendMode === 'elastic') {
-    return Boolean(EMAIL_CONFIG.emailApiKey.trim())
-  }
-
-  return EMAIL_CONFIG.sendMode !== 'console'
+/**
+ * Mirrors `isEmailDeliverable` (lib/services/email/email-mode.ts) without importing the email
+ * service — that would create an env/logger cycle. Keep the two in step: elastic with a key is
+ * the only mode that delivers; console, empty and a typo do not.
+ */
+export function isNotificationEmailAvailable(): boolean {
+  return EMAIL_CONFIG.sendMode?.trim().toLowerCase() === 'elastic' && Boolean(EMAIL_CONFIG.emailApiKey.trim())
 }
 
 function parseBoolFlag(value: string | undefined, defaultValue: boolean): boolean {
@@ -32,19 +32,16 @@ function parseBoolFlag(value: string | undefined, defaultValue: boolean): boolea
   return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on'
 }
 
-function filterAvailableChannels(channels: NotificationChannel[]): NotificationChannel[] {
-  return channels.filter((channel) => {
-    if (channel === NotificationChannel.EMAIL) {
-      return isNotificationEmailAvailable()
-    }
-
-    return true
-  })
-}
-
+/**
+ * Channels are NOT filtered by availability here. The EMAIL channel used to be dropped when mail
+ * was not configured, and an event whose only channel is email (`login`, `password` by default)
+ * then had no channels and was never recorded at all — a security event lost without a trace.
+ * Delivery marks the channel SKIPPED with a reason instead (`platform-notification.service.ts`),
+ * so the notification exists and the screen says why no mail went out.
+ */
 function parseChannelsCsv(value: string | undefined, fallback: NotificationChannel[]): NotificationChannel[] {
   if (!value?.trim()) {
-    return filterAvailableChannels(fallback)
+    return fallback
   }
 
   const tokens = value
@@ -53,7 +50,7 @@ function parseChannelsCsv(value: string | undefined, fallback: NotificationChann
     .filter(Boolean)
 
   if (tokens.includes('all')) {
-    return filterAvailableChannels([NotificationChannel.WEB_PUSH, NotificationChannel.EMAIL])
+    return [NotificationChannel.WEB_PUSH, NotificationChannel.EMAIL]
   }
 
   const mapped = new Set<NotificationChannel>()
@@ -67,10 +64,10 @@ function parseChannelsCsv(value: string | undefined, fallback: NotificationChann
   }
 
   if (mapped.size === 0) {
-    return filterAvailableChannels(fallback)
+    return fallback
   }
 
-  return filterAvailableChannels([...mapped])
+  return [...mapped]
 }
 
 const NOTIFICATION_EVENTS_CONFIG: Record<NotificationEventId, NotificationEventConfig> = {
@@ -96,11 +93,11 @@ export function getNotificationEventConfig(eventId: NotificationEventId): Notifi
   return NOTIFICATION_EVENTS_CONFIG[eventId]
 }
 
-/** Returns channels when event is enabled; otherwise `null` (skip notification). */
+/** Channels of an enabled event; `null` only when the event is switched off by its flag. */
 export function resolveNotificationChannelsForEvent(eventId: NotificationEventId): NotificationChannel[] | null {
   const config = getNotificationEventConfig(eventId)
 
-  if (!config.enabled || config.channels.length === 0) {
+  if (!config.enabled) {
     return null
   }
 

@@ -7,6 +7,7 @@ import type { TFunction } from '~/lib/i18n'
 import { isPasswordRecoveryEmailAvailable } from '../account-recovery.service'
 import { emailService } from '../email/email.service'
 import { resolvePasswordEmailTemplateName } from '../email/email-locale'
+import { type EmailSendResult, isOtpEmailAccepted } from '../email/email-mode'
 import {
   PENDING_PASSWORD_TTL_SEC,
   REDIS_PREFIX,
@@ -121,8 +122,10 @@ export async function sendPasswordRecoveryCode(
   const text = t('auth.password.email.codeText', { code })
   const templateName = resolvePasswordEmailTemplateName(params.purpose, params.locale)?.trim()
 
+  let result: EmailSendResult
+
   try {
-    await emailService.sendTransactional({
+    result = await emailService.sendTransactional({
       to: email,
       subject,
       text,
@@ -136,6 +139,12 @@ export async function sendPasswordRecoveryCode(
         : {}),
     })
   } catch {
+    result = { sent: false, skipped: false, error: 'email_send_failed' }
+  }
+
+  // Same rule as sign-up: console is accepted, empty / unknown / refused is a real failure.
+  // The send counter below is not incremented on failure — a mail that did not go out is not a send.
+  if (!isOtpEmailAccepted(result)) {
     const { ValidationError } = await import('@lib/error/custom-errors')
 
     throw new ValidationError(t('auth.password.errors.emailFailed'), { code: 'PASSWORD_EMAIL_FAILED' })

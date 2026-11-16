@@ -7,6 +7,7 @@ import { NextResponse } from 'next/server'
 
 import type { OAuthProviderId } from '~/api/oauth'
 import type { TFunction } from '~/lib/i18n'
+import { safeInternalPath } from '~/lib/security/safeInternalPath'
 
 import { handleOAuthAuthCallback, handleOAuthLinkCallback } from './oauth-flow.service'
 import { buildOAuthLoginRedirect, buildProfileRedirect } from './oauth-redirect'
@@ -95,7 +96,9 @@ export async function processOAuthCallback(params: {
     return NextResponse.redirect(result.url)
   }
 
-  const nextPath = stored.nextPath?.startsWith('/') ? stored.nextPath : '/'
+  // Second line of defence: the state may have been written by the old code. This is a server
+  // 307 issued AFTER the session cookies are set — the one place an open redirect is a phish.
+  const nextPath = safeInternalPath(stored.nextPath, '/')
   const siteBase = NEXT_PUBLIC_SITE_URL.replace(/\/+$/, '') || 'http://localhost:3000'
   const siteRedirect = NextResponse.redirect(new URL(nextPath, siteBase))
 
